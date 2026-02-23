@@ -92,6 +92,58 @@ class SettingsDialog extends StatelessWidget {
             ],
             const SizedBox(height: 24),
             const Text(
+              'DEFAULT BRANCH PREFIX',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontFamily: 'monospace',
+              ),
+              decoration: InputDecoration(
+                labelText: 'Branch prefix',
+                labelStyle: const TextStyle(color: AppColors.textMuted),
+                hintText: 'e.g. feature, fix, username',
+                hintStyle: TextStyle(
+                  color: AppColors.textMuted.withValues(alpha: 0.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.accent),
+                ),
+                filled: true,
+                fillColor: AppColors.surface0,
+              ),
+              controller: TextEditingController(
+                text: settings.defaultBranchPrefix ?? '',
+              ),
+              onChanged: (value) {
+                settingsProvider.updateDefaultBranchPrefix(
+                  value.isEmpty ? null : value,
+                );
+              },
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'New branches will be auto-filled as prefix/worktree-name',
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.textMuted.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
               'EXTRA ACTIONS',
               style: TextStyle(
                 fontSize: 10,

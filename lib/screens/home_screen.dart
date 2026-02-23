@@ -11,8 +11,16 @@ import '../widgets/add_repo_dialog.dart';
 import '../widgets/add_worktree_dialog.dart';
 import '../widgets/settings_dialog.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  static const double _collapseBreakpoint = 800;
+  bool _sidebarOpen = false;
 
   @override
   Widget build(BuildContext context) {
@@ -32,29 +40,83 @@ class HomeScreen extends StatelessWidget {
         autofocus: true,
         child: Scaffold(
           backgroundColor: AppColors.base,
-          body: Row(
-            children: [
-              RepoSidebar(
-                onAddRepo: () => AddRepoDialog.show(context),
-                onOpenSettings: () => SettingsDialog.show(context),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    _buildHeader(context, repoProvider),
-                    const Expanded(child: WorktreeGrid()),
-                    const TerminalPanel(),
-                  ],
-                ),
-              ),
-            ],
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final isCollapsed = constraints.maxWidth < _collapseBreakpoint;
+
+              // Auto-close overlay when window grows past breakpoint
+              if (!isCollapsed && _sidebarOpen) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() => _sidebarOpen = false);
+                });
+              }
+
+              return Stack(
+                children: [
+                  Row(
+                    children: [
+                      if (!isCollapsed)
+                        RepoSidebar(
+                          onAddRepo: () => AddRepoDialog.show(context),
+                          onOpenSettings: () => SettingsDialog.show(context),
+                        ),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _buildHeader(context, repoProvider,
+                                showMenuButton: isCollapsed),
+                            const Expanded(child: WorktreeGrid()),
+                            const TerminalPanel(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Scrim
+                  if (isCollapsed && _sidebarOpen)
+                    GestureDetector(
+                      onTap: () => setState(() => _sidebarOpen = false),
+                      child: AnimatedOpacity(
+                        opacity: _sidebarOpen ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Container(color: Colors.black54),
+                      ),
+                    ),
+                  // Sliding sidebar overlay
+                  if (isCollapsed)
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      top: 0,
+                      bottom: 0,
+                      left: _sidebarOpen ? 0 : -240,
+                      width: 240,
+                      child: Material(
+                        elevation: 8,
+                        color: Colors.transparent,
+                        child: RepoSidebar(
+                          onAddRepo: () {
+                            setState(() => _sidebarOpen = false);
+                            AddRepoDialog.show(context);
+                          },
+                          onOpenSettings: () {
+                            setState(() => _sidebarOpen = false);
+                            SettingsDialog.show(context);
+                          },
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, RepoProvider repoProvider) {
+  Widget _buildHeader(BuildContext context, RepoProvider repoProvider,
+      {bool showMenuButton = false}) {
     final selectedRepo = repoProvider.selectedRepo;
 
     return Container(
@@ -68,6 +130,12 @@ class HomeScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (showMenuButton) ...[
+            _MenuButton(
+              onPressed: () => setState(() => _sidebarOpen = !_sidebarOpen),
+            ),
+            const SizedBox(width: 12),
+          ],
           if (selectedRepo != null) ...[
             // Repo name — big and bold
             Text(
@@ -270,6 +338,43 @@ class _AddWorktreeButtonState extends State<_AddWorktreeButton> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuButton extends StatefulWidget {
+  final VoidCallback onPressed;
+
+  const _MenuButton({required this.onPressed});
+
+  @override
+  State<_MenuButton> createState() => _MenuButtonState();
+}
+
+class _MenuButtonState extends State<_MenuButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: _hovered ? AppColors.surface2 : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            Icons.menu_rounded,
+            size: 20,
+            color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
           ),
         ),
       ),

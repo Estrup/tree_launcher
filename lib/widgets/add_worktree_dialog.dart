@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/repo_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import 'branch_search_dropdown.dart';
 
@@ -34,6 +35,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   bool _creating = false;
   List<String> _branches = [];
   bool _loadingBranches = true;
+  bool _branchManuallyEdited = false;
 
   static const _defaultPrompt =
       'Retrieve the jira issue {issue} with comments and files. '
@@ -58,13 +60,19 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
   Future<void> _loadBranches() async {
     try {
-      final branches = await context.read<RepoProvider>().listBranches();
+      final repoProvider = context.read<RepoProvider>();
+      final branches = await repoProvider.listBranches();
       if (mounted) {
+        final lastBaseBranch = repoProvider.selectedRepo?.lastBaseBranch;
         setState(() {
           _branches = branches;
           _loadingBranches = false;
           if (branches.isNotEmpty) {
-            _selectedBranch = branches.first;
+            if (lastBaseBranch != null && branches.contains(lastBaseBranch)) {
+              _selectedBranch = lastBaseBranch;
+            } else {
+              _selectedBranch = branches.first;
+            }
           }
         });
       }
@@ -72,6 +80,19 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       if (mounted) {
         setState(() => _loadingBranches = false);
       }
+    }
+  }
+
+  void _updateAutoFillBranch() {
+    if (_branchManuallyEdited) return;
+    final prefix = context.read<SettingsProvider>().settings.defaultBranchPrefix;
+    final name = _effectiveWorktreeName;
+    if (name.isEmpty) {
+      _newBranchController.text = '';
+    } else if (prefix != null && prefix.isNotEmpty) {
+      _newBranchController.text = '$prefix/$name';
+    } else {
+      _newBranchController.text = name;
     }
   }
 
@@ -127,14 +148,23 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     });
 
     try {
+      final repoProvider = context.read<RepoProvider>();
       final worktreeName = _effectiveWorktreeName;
       final newBranch = _newBranchController.text.trim();
 
-      final worktreePath = await context.read<RepoProvider>().addWorktree(
+      final worktreePath = await repoProvider.addWorktree(
             worktreeName,
             baseBranch: _selectedBranch,
             newBranch: newBranch.isNotEmpty ? newBranch : null,
           );
+
+      // Save last used base branch for this repo
+      if (_selectedBranch != null && repoProvider.selectedRepo != null) {
+        await repoProvider.updateLastBaseBranch(
+          repoProvider.selectedRepo!,
+          _selectedBranch!,
+        );
+      }
 
       if (_launchTerminal && worktreePath != null) {
         await _launchGhosttyTerminal(worktreePath, jira);
@@ -223,7 +253,10 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                   hint: 'e.g. feature-auth',
                   hasError: hasError,
                 ),
-                onChanged: (_) => setState(() => _error = null),
+                onChanged: (_) {
+                  setState(() => _error = null);
+                  _updateAutoFillBranch();
+                },
                 onSubmitted: (_) => _submit(),
               ),
               if (displayError != null) ...[
@@ -252,7 +285,10 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                   hint: 'e.g. AU2-0001',
                   hasError: jiraError != null,
                 ),
-                onChanged: (_) => setState(() => _error = null),
+                onChanged: (_) {
+                  setState(() => _error = null);
+                  _updateAutoFillBranch();
+                },
               ),
               if (jiraError != null) ...[
                 const SizedBox(height: 6),
@@ -307,7 +343,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               const SizedBox(height: 16),
 
               // New Branch
-              _sectionLabel('NEW BRANCH (OPTIONAL)'),
+              _sectionLabel('NEW BRANCH'),
               const SizedBox(height: 8),
               TextField(
                 controller: _newBranchController,
@@ -318,9 +354,16 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                   fontFamily: 'monospace',
                 ),
                 decoration: _inputDecoration(
-                  hint: 'Leave blank to checkout base branch',
+                  hint: 'Auto-filled from worktree name',
                   hasError: false,
                 ),
+                onChanged: (value) {
+                  if (value.isEmpty) {
+                    _branchManuallyEdited = false;
+                  } else {
+                    _branchManuallyEdited = true;
+                  }
+                },
               ),
 
               const SizedBox(height: 16),

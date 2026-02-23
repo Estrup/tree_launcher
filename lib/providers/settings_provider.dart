@@ -27,4 +27,10 @@ class SettingsProvider extends ChangeNotifier {
     await _configService.saveSettings(_settings);
     notifyListeners();
   }
+
+  Future<void> updateDefaultBranchPrefix(String? prefix) async {
+    _settings = _settings.copyWith(defaultBranchPrefix: prefix);
+    await _configService.saveSettings(_settings);
+    notifyListeners();
+  }
 }
