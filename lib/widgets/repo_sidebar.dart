@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/repo_config.dart';
+import '../models/vscode_config.dart';
 import '../providers/repo_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -115,8 +116,8 @@ class RepoSidebar extends StatelessWidget {
                         onTap: () => repoProvider.selectRepo(repo),
                         onRemove: () =>
                             _confirmRemove(context, repoProvider, repo),
-                        onRename: () =>
-                            _showRename(context, repoProvider, repo),
+                        onSettings: () =>
+                            _showRepoSettings(context, repoProvider, repo),
                       );
                     },
                   ),
@@ -172,54 +173,370 @@ class RepoSidebar extends StatelessWidget {
     );
   }
 
-  void _showRename(
+  void _showRepoSettings(
       BuildContext context, RepoProvider provider, RepoConfig repo) {
-    final controller = TextEditingController(text: repo.name);
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Rename Repository'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: const TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            labelText: 'Display Name',
-            labelStyle: const TextStyle(color: AppColors.textMuted),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.accent),
-            ),
-          ),
-          onSubmitted: (value) {
-            if (value.trim().isNotEmpty) {
-              provider.renameRepo(repo, value.trim());
-              Navigator.pop(ctx);
-            }
-          },
+      builder: (ctx) => _RepoSettingsDialog(repo: repo, provider: provider),
+    );
+  }
+}
+
+// --- Repo settings dialog ---
+
+class _RepoSettingsDialog extends StatefulWidget {
+  final RepoConfig repo;
+  final RepoProvider provider;
+
+  const _RepoSettingsDialog({required this.repo, required this.provider});
+
+  @override
+  State<_RepoSettingsDialog> createState() => _RepoSettingsDialogState();
+}
+
+class _RepoSettingsDialogState extends State<_RepoSettingsDialog> {
+  late TextEditingController _nameController;
+  late List<VscodeConfig> _vscodeConfigs;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.repo.name);
+    _vscodeConfigs = List.from(widget.repo.vscodeConfigs);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _addConfig() {
+    setState(() {
+      _vscodeConfigs.add(VscodeConfig(name: '', path: ''));
+    });
+  }
+
+  void _removeConfig(int index) {
+    setState(() {
+      _vscodeConfigs.removeAt(index);
+    });
+  }
+
+  void _save() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+
+    final configs = _vscodeConfigs
+        .where((c) => c.name.trim().isNotEmpty && c.path.trim().isNotEmpty)
+        .map((c) => VscodeConfig(name: c.name.trim(), path: c.path.trim()))
+        .toList();
+
+    if (name != widget.repo.name) {
+      widget.provider.renameRepo(widget.repo, name);
+    }
+
+    // Re-fetch the repo after potential rename
+    final currentRepo = widget.provider.repos.firstWhere(
+      (r) => r.path == widget.repo.path,
+      orElse: () => widget.repo,
+    );
+    widget.provider.updateRepoVscodeConfigs(currentRepo, configs);
+
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      title: const Text(
+        'Repository Settings',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+          letterSpacing: -0.3,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+      ),
+      content: SizedBox(
+        width: 440,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Display name
+              const Text(
+                'DISPLAY NAME',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _nameController,
+                autofocus: true,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Repository name',
+                  hintStyle: TextStyle(
+                    color: AppColors.textMuted.withValues(alpha: 0.5),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppColors.accent),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.surface0,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // VS Code configs
+              Row(
+                children: [
+                  const Text(
+                    'VS CODE CONFIGURATIONS',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _addConfig,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.vscodeBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.vscode.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_rounded,
+                              size: 12, color: AppColors.vscode),
+                          SizedBox(width: 4),
+                          Text(
+                            'Add',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.vscode,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              if (_vscodeConfigs.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface0,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: const Text(
+                    'No VS Code configs. The button will open the worktree root.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                )
+              else
+                ...List.generate(_vscodeConfigs.length, (index) {
+                  return _VscodeConfigRow(
+                    key: ValueKey(index),
+                    config: _vscodeConfigs[index],
+                    onChanged: (config) {
+                      setState(() => _vscodeConfigs[index] = config);
+                    },
+                    onRemove: () => _removeConfig(index),
+                  );
+                }),
+
+              const SizedBox(height: 4),
+              const Text(
+                'Paths are relative to the worktree directory.',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textMuted,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              if (value.isNotEmpty) {
-                provider.renameRepo(repo, value);
-                Navigator.pop(ctx);
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: AppColors.base,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        GestureDetector(
+          onTap: _save,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.accent,
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('Rename'),
+            child: const Text(
+              'Save',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.base,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _VscodeConfigRow extends StatelessWidget {
+  final VscodeConfig config;
+  final ValueChanged<VscodeConfig> onChanged;
+  final VoidCallback onRemove;
+
+  const _VscodeConfigRow({
+    super.key,
+    required this.config,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          // Name field
+          SizedBox(
+            width: 140,
+            child: TextField(
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Name',
+                hintStyle: TextStyle(
+                  color: AppColors.textMuted.withValues(alpha: 0.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: AppColors.vscode),
+                ),
+                filled: true,
+                fillColor: AppColors.surface0,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+              ),
+              controller: TextEditingController(text: config.name)
+                ..selection = TextSelection.collapsed(
+                    offset: config.name.length),
+              onChanged: (v) =>
+                  onChanged(VscodeConfig(name: v, path: config.path)),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Path field
+          Expanded(
+            child: TextField(
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+                fontFamily: 'monospace',
+              ),
+              decoration: InputDecoration(
+                hintText: 'Relative path (e.g. frontend/)',
+                hintStyle: TextStyle(
+                  color: AppColors.textMuted.withValues(alpha: 0.5),
+                  fontFamily: 'monospace',
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: AppColors.vscode),
+                ),
+                filled: true,
+                fillColor: AppColors.surface0,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+              ),
+              controller: TextEditingController(text: config.path)
+                ..selection = TextSelection.collapsed(
+                    offset: config.path.length),
+              onChanged: (v) =>
+                  onChanged(VscodeConfig(name: config.name, path: v)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          // Remove button
+          GestureDetector(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.close_rounded,
+                size: 14,
+                color: AppColors.textMuted,
+              ),
+            ),
           ),
         ],
       ),
@@ -234,14 +551,14 @@ class _RepoTile extends StatefulWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onRemove;
-  final VoidCallback onRename;
+  final VoidCallback onSettings;
 
   const _RepoTile({
     required this.repo,
     required this.isSelected,
     required this.onTap,
     required this.onRemove,
-    required this.onRename,
+    required this.onSettings,
   });
 
   @override
@@ -327,7 +644,7 @@ class _RepoTileState extends State<_RepoTile> {
                     children: [
                       _TinyIconButton(
                         icon: Icons.edit_rounded,
-                        onTap: widget.onRename,
+                        onTap: widget.onSettings,
                       ),
                       _TinyIconButton(
                         icon: Icons.close_rounded,

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import '../models/repo_config.dart';
+import '../models/vscode_config.dart';
 import '../models/worktree.dart';
 import '../services/git_service.dart';
 import '../services/config_service.dart';
@@ -64,7 +65,31 @@ class RepoProvider extends ChangeNotifier {
     final index = _repos.indexOf(repo);
     if (index == -1) return;
 
-    final updated = RepoConfig(name: newName, path: repo.path);
+    final updated = RepoConfig(
+      name: newName,
+      path: repo.path,
+      vscodeConfigs: repo.vscodeConfigs,
+    );
+    _repos[index] = updated;
+    await _configService.saveRepos(_repos);
+
+    if (_selectedRepo == repo) {
+      _selectedRepo = updated;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> updateRepoVscodeConfigs(
+      RepoConfig repo, List<VscodeConfig> configs) async {
+    final index = _repos.indexOf(repo);
+    if (index == -1) return;
+
+    final updated = RepoConfig(
+      name: repo.name,
+      path: repo.path,
+      vscodeConfigs: configs,
+    );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);
 

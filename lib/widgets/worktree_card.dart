@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import '../models/worktree.dart';
 import '../providers/repo_provider.dart';
@@ -179,12 +180,9 @@ class _WorktreeCardState extends State<WorktreeCard> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _ActionButton(
-                    icon: Icons.code_rounded,
-                    label: 'VS Code',
-                    color: AppColors.vscode,
-                    bgColor: AppColors.vscodeBg,
-                    onPressed: () => _launcherService.openVSCode(wt.path),
+                  child: _VscodeSplitButton(
+                    worktreePath: wt.path,
+                    launcherService: _launcherService,
                   ),
                 ),
               ],
@@ -238,6 +236,189 @@ class _WorktreeCardState extends State<WorktreeCard> {
         }
       }
     }
+  }
+}
+
+class _VscodeSplitButton extends StatefulWidget {
+  final String worktreePath;
+  final LauncherService launcherService;
+
+  const _VscodeSplitButton({
+    required this.worktreePath,
+    required this.launcherService,
+  });
+
+  @override
+  State<_VscodeSplitButton> createState() => _VscodeSplitButtonState();
+}
+
+class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
+  bool _mainHovered = false;
+  bool _dropHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = context.watch<RepoProvider>().selectedRepo;
+    final configs = repo?.vscodeConfigs ?? [];
+    final hasConfigs = configs.isNotEmpty;
+
+    if (!hasConfigs) {
+      return _ActionButton(
+        icon: Icons.code_rounded,
+        label: 'VS Code',
+        color: AppColors.vscode,
+        bgColor: AppColors.vscodeBg,
+        onPressed: () => widget.launcherService.openVSCode(widget.worktreePath),
+      );
+    }
+
+    return SizedBox(
+      height: 36,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          color: AppColors.vscodeBg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: (_mainHovered || _dropHovered)
+                ? AppColors.vscode.withValues(alpha: 0.4)
+                : AppColors.vscode.withValues(alpha: 0.15),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(7),
+          child: Row(
+            children: [
+              // Main button
+              Expanded(
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _mainHovered = true),
+                  onExit: (_) => setState(() => _mainHovered = false),
+                  child: GestureDetector(
+                    onTap: () =>
+                        widget.launcherService.openVSCode(widget.worktreePath),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 120),
+                      color: _mainHovered
+                          ? AppColors.vscode.withValues(alpha: 0.2)
+                          : Colors.transparent,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.code_rounded,
+                              size: 14, color: AppColors.vscode),
+                          SizedBox(width: 6),
+                          Text(
+                            'VS Code',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.vscode,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Divider
+              Container(
+                width: 1,
+                color: AppColors.vscode.withValues(alpha: 0.15),
+              ),
+              // Dropdown arrow
+              MouseRegion(
+                onEnter: (_) => setState(() => _dropHovered = true),
+                onExit: (_) => setState(() => _dropHovered = false),
+                child: GestureDetector(
+                  onTap: () => _showDropdown(context, configs),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    width: 28,
+                    color: _dropHovered
+                        ? AppColors.vscode.withValues(alpha: 0.2)
+                        : Colors.transparent,
+                    child: const Center(
+                      child: Icon(
+                        Icons.arrow_drop_down_rounded,
+                        size: 18,
+                        color: AppColors.vscode,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDropdown(
+      BuildContext context, List<dynamic> configs) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height)),
+        button.localToGlobal(
+            Offset(button.size.width, button.size.height)),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      color: AppColors.surface1,
+      constraints: const BoxConstraints(minWidth: 280),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      items: configs.map((config) {
+        return PopupMenuItem<String>(
+          value: config.path as String,
+          height: 36,
+          child: Row(
+            children: [
+              const Icon(Icons.code_rounded,
+                  size: 13, color: AppColors.vscode),
+              const SizedBox(width: 8),
+              Text(
+                config.name as String,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  config.path as String,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                    fontFamily: 'monospace',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((selectedPath) {
+      if (selectedPath != null) {
+        final resolved = p.join(widget.worktreePath, selectedPath);
+        widget.launcherService.openVSCode(resolved);
+      }
+    });
   }
 }
 
