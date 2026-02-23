@@ -4,7 +4,7 @@ import '../models/app_settings.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 
-class SettingsDialog extends StatelessWidget {
+class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
 
   static Future<void> show(BuildContext context) {
@@ -15,6 +15,33 @@ class SettingsDialog extends StatelessWidget {
         child: const SettingsDialog(),
       ),
     );
+  }
+
+  @override
+  State<SettingsDialog> createState() => _SettingsDialogState();
+}
+
+class _SettingsDialogState extends State<SettingsDialog> {
+  late final TextEditingController _customTerminalController;
+  late final TextEditingController _branchPrefixController;
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = context.read<SettingsProvider>().settings;
+    _customTerminalController = TextEditingController(
+      text: settings.customTerminalCommand ?? '',
+    );
+    _branchPrefixController = TextEditingController(
+      text: settings.defaultBranchPrefix ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _customTerminalController.dispose();
+    _branchPrefixController.dispose();
+    super.dispose();
   }
 
   @override
@@ -80,9 +107,7 @@ class SettingsDialog extends StatelessWidget {
                   filled: true,
                   fillColor: AppColors.surface0,
                 ),
-                controller: TextEditingController(
-                  text: settings.customTerminalCommand ?? '',
-                ),
+                controller: _customTerminalController,
                 onChanged: (value) {
                   settingsProvider.updateCustomTerminalCommand(
                     value.isEmpty ? null : value,
@@ -125,9 +150,7 @@ class SettingsDialog extends StatelessWidget {
                 filled: true,
                 fillColor: AppColors.surface0,
               ),
-              controller: TextEditingController(
-                text: settings.defaultBranchPrefix ?? '',
-              ),
+              controller: _branchPrefixController,
               onChanged: (value) {
                 settingsProvider.updateDefaultBranchPrefix(
                   value.isEmpty ? null : value,
