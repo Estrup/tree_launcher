@@ -35,8 +35,47 @@ class GitService {
     return result.exitCode == 0;
   }
 
+  /// Lists all branches (local and remote), sorted by most recent commit.
+  Future<List<String>> listBranches(String repoPath) async {
+    final result = await Process.run(
+      '/usr/bin/git',
+      ['branch', '-a', '--sort=-committerdate', '--format=%(refname:short)'],
+      workingDirectory: repoPath,
+    );
+
+    if (result.exitCode != 0) {
+      throw Exception(
+          'Failed to list branches: ${result.stderr.toString().trim()}');
+    }
+
+    final lines = (result.stdout as String)
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty && !l.contains(' -> '))
+        .toList();
+
+    // Normalize remote branches: strip origin/ prefix, deduplicate
+    final seen = <String>{};
+    final branches = <String>[];
+    for (final line in lines) {
+      final name = line.startsWith('origin/')
+          ? line.substring('origin/'.length)
+          : line;
+      if (seen.add(name)) {
+        branches.add(name);
+      }
+    }
+    return branches;
+  }
+
   /// Creates a new worktree as a sibling of the repo directory.
-  Future<void> addWorktree(String repoPath, String name) async {
+  /// Returns the path to the created worktree.
+  Future<String> addWorktree(
+    String repoPath,
+    String name, {
+    String? baseBranch,
+    String? newBranch,
+  }) async {
     final parentDir = p.dirname(repoPath);
     final worktreePath = p.join(parentDir, name);
 
@@ -45,15 +84,30 @@ class GitService {
       throw Exception('Folder "$name" already exists');
     }
 
+    final args = <String>['worktree', 'add'];
+    if (newBranch != null && newBranch.isNotEmpty) {
+      args.addAll(['-b', newBranch, worktreePath]);
+      if (baseBranch != null && baseBranch.isNotEmpty) {
+        args.add(baseBranch);
+      }
+    } else {
+      args.add(worktreePath);
+      if (baseBranch != null && baseBranch.isNotEmpty) {
+        args.add(baseBranch);
+      }
+    }
+
     final result = await Process.run(
       '/usr/bin/git',
-      ['worktree', 'add', worktreePath],
+      args,
       workingDirectory: repoPath,
     );
 
     if (result.exitCode != 0) {
       throw Exception(result.stderr.toString().trim());
     }
+
+    return worktreePath;
   }
 
   /// Removes a worktree from disk and git.
