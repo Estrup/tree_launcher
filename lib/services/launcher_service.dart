@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import '../models/app_settings.dart';
 
 class LauncherService {
@@ -79,13 +80,33 @@ class LauncherService {
     String terminalCommand, {
     String? command,
   }) async {
-    final fullCommand = command != null
-        ? 'cd \'$directory\' && $command'
-        : 'cd \'$directory\'';
-    await Process.run(
-      '/bin/bash',
-      ['-c', '$terminalCommand -e "$fullCommand"'],
-    );
+    final String shellCommand;
+    if (terminalCommand.contains('{path}')) {
+      // Substitute {path} with the directory
+      shellCommand = terminalCommand.replaceAll('{path}', directory);
+    } else {
+      // Legacy: assume terminal emulator with -e flag
+      final fullCommand = command != null
+          ? 'cd \'$directory\' && $command'
+          : 'cd \'$directory\'';
+      shellCommand = '$terminalCommand -e "$fullCommand"';
+    }
+    final args = ['-c', shellCommand];
+    debugPrint('Running custom terminal: /bin/bash ${args.join(' ')}');
+    try {
+      final result = await Process.run('/bin/bash', args);
+      if (result.exitCode != 0) {
+        debugPrint('Custom terminal exited with code ${result.exitCode}');
+        if ((result.stdout as String).isNotEmpty) {
+          debugPrint('stdout: ${result.stdout}');
+        }
+        if ((result.stderr as String).isNotEmpty) {
+          debugPrint('stderr: ${result.stderr}');
+        }
+      }
+    } catch (e) {
+      debugPrint('Custom terminal error: $e');
+    }
   }
 
   Future<void> _runAppleScript(String script) async {

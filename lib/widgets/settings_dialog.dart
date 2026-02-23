@@ -65,7 +65,7 @@ class SettingsDialog extends StatelessWidget {
                 decoration: InputDecoration(
                   labelText: 'Command path',
                   labelStyle: const TextStyle(color: AppColors.textMuted),
-                  hintText: '/usr/local/bin/alacritty',
+                  hintText: 'shortcuts run "My Shortcut" --input-path "{path}"',
                   hintStyle: TextStyle(
                     color: AppColors.textMuted.withValues(alpha: 0.5),
                   ),

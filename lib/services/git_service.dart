@@ -56,6 +56,19 @@ class GitService {
     }
   }
 
+  /// Removes a worktree from disk and git.
+  Future<void> removeWorktree(String repoPath, String worktreePath) async {
+    final result = await Process.run(
+      '/usr/bin/git',
+      ['worktree', 'remove', worktreePath, '--force'],
+      workingDirectory: repoPath,
+    );
+
+    if (result.exitCode != 0) {
+      throw Exception(result.stderr.toString().trim());
+    }
+  }
+
   List<Worktree> _parsePorcelainOutput(String output) {
     final worktrees = <Worktree>[];
     final blocks = output.trim().split('\n\n');

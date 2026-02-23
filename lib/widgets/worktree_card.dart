@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/worktree.dart';
+import '../providers/repo_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/launcher_service.dart';
 import '../theme/app_theme.dart';
@@ -36,44 +37,47 @@ class _WorktreeCardState extends State<WorktreeCard> {
           ),
         ),
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Top row: name + badge
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    wt.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.3,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (wt.isMain)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentMuted,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'PRIMARY',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.accent,
-                        letterSpacing: 0.8,
+                // Top row: name + badge
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        wt.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.3,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-              ],
-            ),
+                    if (wt.isMain)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentMuted,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'PRIMARY',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.accent,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    if (!wt.isMain) const SizedBox(width: 24),
+                  ],
+                ),
             const SizedBox(height: 12),
 
             // Branch tag
@@ -186,6 +190,90 @@ class _WorktreeCardState extends State<WorktreeCard> {
               ],
             ),
           ],
+        ),
+            // Delete icon (upper-right, hover-only, non-primary only)
+            if (!wt.isMain && _hovered)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: _DeleteIcon(onPressed: () => _confirmDelete(context)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final wt = widget.worktree;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete worktree?'),
+        content: Text(
+          'This will permanently remove "${wt.name}" (${wt.branch}) from disk and git.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await context.read<RepoProvider>().deleteWorktree(wt);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: $e')),
+          );
+        }
+      }
+    }
+  }
+}
+
+class _DeleteIcon extends StatefulWidget {
+  final VoidCallback onPressed;
+  const _DeleteIcon({required this.onPressed});
+
+  @override
+  State<_DeleteIcon> createState() => _DeleteIconState();
+}
+
+class _DeleteIconState extends State<_DeleteIcon> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: _hovered
+                ? AppColors.error.withValues(alpha: 0.2)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            Icons.close_rounded,
+            size: 14,
+            color: _hovered ? AppColors.error : AppColors.textMuted,
+          ),
         ),
       ),
     );

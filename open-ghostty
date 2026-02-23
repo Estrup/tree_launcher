@@ -1,0 +1,4 @@
+open -na ghostty --args \
+  --title=ghostty-from-vscode \
+  --working-directory="{path}" \
+  -e zsh -lc 'copilot -i "Hello world"; exec zsh -l'
