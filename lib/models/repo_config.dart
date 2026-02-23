@@ -1,14 +1,17 @@
+import 'custom_command.dart';
 import 'vscode_config.dart';
 
 class RepoConfig {
   final String name;
   final String path;
   final List<VscodeConfig> vscodeConfigs;
+  final List<CustomCommand> customCommands;
 
   RepoConfig({
     required this.name,
     required this.path,
     this.vscodeConfigs = const [],
+    this.customCommands = const [],
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -19,6 +22,10 @@ class RepoConfig {
               ?.map((e) => VscodeConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      customCommands: (json['customCommands'] as List<dynamic>?)
+              ?.map((e) => CustomCommand.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -26,6 +33,7 @@ class RepoConfig {
         'name': name,
         'path': path,
         'vscodeConfigs': vscodeConfigs.map((c) => c.toJson()).toList(),
+        'customCommands': customCommands.map((c) => c.toJson()).toList(),
       };
 
   @override

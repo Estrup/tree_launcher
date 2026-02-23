@@ -63,6 +63,16 @@ class LauncherService {
     }
   }
 
+  Future<void> runCustomCommand(
+      String directory, String command, AppSettings settings) async {
+        await _runAppleScript('''
+          tell application "Terminal"
+            activate
+            do script "cd '${_escapeForAppleScript(directory)}' && ${_escapeForAppleScript(command)}"
+          end tell
+        ''');
+  }
+
   Future<void> _openITerm2(String directory) async {
     await _runAppleScript('''
       tell application "iTerm"

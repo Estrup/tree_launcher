@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import '../models/custom_command.dart';
 import '../models/worktree.dart';
 import '../providers/repo_provider.dart';
 import '../providers/settings_provider.dart';
@@ -23,6 +24,8 @@ class _WorktreeCardState extends State<WorktreeCard> {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>().settings;
+    final repo = context.watch<RepoProvider>().selectedRepo;
+    final customCommands = repo?.customCommands ?? [];
     final wt = widget.worktree;
 
     return MouseRegion(
@@ -185,6 +188,14 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     launcherService: _launcherService,
                   ),
                 ),
+                if (customCommands.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  _CustomCommandsButton(
+                    worktreePath: wt.path,
+                    commands: customCommands,
+                    launcherService: _launcherService,
+                  ),
+                ],
               ],
             ),
           ],
@@ -417,6 +428,114 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
       if (selectedPath != null) {
         final resolved = p.join(widget.worktreePath, selectedPath);
         widget.launcherService.openVSCode(resolved);
+      }
+    });
+  }
+}
+
+class _CustomCommandsButton extends StatefulWidget {
+  final String worktreePath;
+  final List<CustomCommand> commands;
+  final LauncherService launcherService;
+
+  const _CustomCommandsButton({
+    required this.worktreePath,
+    required this.commands,
+    required this.launcherService,
+  });
+
+  @override
+  State<_CustomCommandsButton> createState() => _CustomCommandsButtonState();
+}
+
+class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => _showDropdown(context),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: _hovered
+                ? AppColors.terminal.withValues(alpha: 0.2)
+                : AppColors.terminalBg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _hovered
+                  ? AppColors.terminal.withValues(alpha: 0.4)
+                  : AppColors.terminal.withValues(alpha: 0.15),
+            ),
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.play_arrow_rounded,
+              size: 18,
+              color: AppColors.terminal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDropdown(BuildContext context) {
+    final settings = context.read<SettingsProvider>().settings;
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height)),
+        button.localToGlobal(
+            Offset(button.size.width, button.size.height)),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      color: AppColors.surface1,
+      constraints: const BoxConstraints(minWidth: 220),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      items: widget.commands.map((cmd) {
+        return PopupMenuItem<String>(
+          value: cmd.command,
+          height: 36,
+          child: Row(
+            children: [
+              const Icon(Icons.play_arrow_rounded,
+                  size: 13, color: AppColors.terminal),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  cmd.name,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((selectedCommand) {
+      if (selectedCommand != null) {
+        widget.launcherService
+            .runCustomCommand(widget.worktreePath, selectedCommand, settings);
       }
     });
   }

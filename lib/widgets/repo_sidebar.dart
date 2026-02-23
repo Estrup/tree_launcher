@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/custom_command.dart';
 import '../models/repo_config.dart';
 import '../models/vscode_config.dart';
 import '../providers/repo_provider.dart';
@@ -197,12 +198,14 @@ class _RepoSettingsDialog extends StatefulWidget {
 class _RepoSettingsDialogState extends State<_RepoSettingsDialog> {
   late TextEditingController _nameController;
   late List<VscodeConfig> _vscodeConfigs;
+  late List<CustomCommand> _customCommands;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.repo.name);
     _vscodeConfigs = List.from(widget.repo.vscodeConfigs);
+    _customCommands = List.from(widget.repo.customCommands);
   }
 
   @override
@@ -223,6 +226,18 @@ class _RepoSettingsDialogState extends State<_RepoSettingsDialog> {
     });
   }
 
+  void _addCommand() {
+    setState(() {
+      _customCommands.add(CustomCommand(name: '', command: ''));
+    });
+  }
+
+  void _removeCommand(int index) {
+    setState(() {
+      _customCommands.removeAt(index);
+    });
+  }
+
   void _save() {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
@@ -230,6 +245,13 @@ class _RepoSettingsDialogState extends State<_RepoSettingsDialog> {
     final configs = _vscodeConfigs
         .where((c) => c.name.trim().isNotEmpty && c.path.trim().isNotEmpty)
         .map((c) => VscodeConfig(name: c.name.trim(), path: c.path.trim()))
+        .toList();
+
+    final commands = _customCommands
+        .where(
+            (c) => c.name.trim().isNotEmpty && c.command.trim().isNotEmpty)
+        .map((c) =>
+            CustomCommand(name: c.name.trim(), command: c.command.trim()))
         .toList();
 
     if (name != widget.repo.name) {
@@ -242,6 +264,13 @@ class _RepoSettingsDialogState extends State<_RepoSettingsDialog> {
       orElse: () => widget.repo,
     );
     widget.provider.updateRepoVscodeConfigs(currentRepo, configs);
+
+    // Re-fetch again after vscode config update
+    final latestRepo = widget.provider.repos.firstWhere(
+      (r) => r.path == widget.repo.path,
+      orElse: () => currentRepo,
+    );
+    widget.provider.updateRepoCustomCommands(latestRepo, commands);
 
     Navigator.pop(context);
   }
@@ -400,6 +429,87 @@ class _RepoSettingsDialogState extends State<_RepoSettingsDialog> {
                   fontStyle: FontStyle.italic,
                 ),
               ),
+
+              const SizedBox(height: 24),
+
+              // Custom commands
+              Row(
+                children: [
+                  const Text(
+                    'CUSTOM COMMANDS',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _addCommand,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.terminalBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.terminal.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_rounded,
+                              size: 12, color: AppColors.terminal),
+                          SizedBox(width: 4),
+                          Text(
+                            'Add',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.terminal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              if (_customCommands.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface0,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: const Text(
+                    'No custom commands configured.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                )
+              else
+                ...List.generate(_customCommands.length, (index) {
+                  return _CustomCommandRow(
+                    key: ValueKey('cmd_$index'),
+                    command: _customCommands[index],
+                    onChanged: (cmd) {
+                      setState(() => _customCommands[index] = cmd);
+                    },
+                    onRemove: () => _removeCommand(index),
+                  );
+                }),
             ],
           ),
         ),
@@ -520,6 +630,118 @@ class _VscodeConfigRow extends StatelessWidget {
                     offset: config.path.length),
               onChanged: (v) =>
                   onChanged(VscodeConfig(name: config.name, path: v)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          // Remove button
+          GestureDetector(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.close_rounded,
+                size: 14,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomCommandRow extends StatelessWidget {
+  final CustomCommand command;
+  final ValueChanged<CustomCommand> onChanged;
+  final VoidCallback onRemove;
+
+  const _CustomCommandRow({
+    super.key,
+    required this.command,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          // Name field
+          SizedBox(
+            width: 140,
+            child: TextField(
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Name',
+                hintStyle: TextStyle(
+                  color: AppColors.textMuted.withValues(alpha: 0.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: AppColors.terminal),
+                ),
+                filled: true,
+                fillColor: AppColors.surface0,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+              ),
+              controller: TextEditingController(text: command.name)
+                ..selection =
+                    TextSelection.collapsed(offset: command.name.length),
+              onChanged: (v) =>
+                  onChanged(CustomCommand(name: v, command: command.command)),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Command field
+          Expanded(
+            child: TextField(
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+                fontFamily: 'monospace',
+              ),
+              decoration: InputDecoration(
+                hintText: 'e.g. dotnet run --project ./src',
+                hintStyle: TextStyle(
+                  color: AppColors.textMuted.withValues(alpha: 0.5),
+                  fontFamily: 'monospace',
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: AppColors.terminal),
+                ),
+                filled: true,
+                fillColor: AppColors.surface0,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+              ),
+              controller: TextEditingController(text: command.command)
+                ..selection =
+                    TextSelection.collapsed(offset: command.command.length),
+              onChanged: (v) =>
+                  onChanged(CustomCommand(name: command.name, command: v)),
             ),
           ),
           const SizedBox(width: 4),

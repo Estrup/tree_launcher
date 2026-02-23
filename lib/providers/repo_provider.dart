@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
+import '../models/custom_command.dart';
 import '../models/repo_config.dart';
 import '../models/vscode_config.dart';
 import '../models/worktree.dart';
@@ -69,6 +70,7 @@ class RepoProvider extends ChangeNotifier {
       name: newName,
       path: repo.path,
       vscodeConfigs: repo.vscodeConfigs,
+      customCommands: repo.customCommands,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);
@@ -89,6 +91,28 @@ class RepoProvider extends ChangeNotifier {
       name: repo.name,
       path: repo.path,
       vscodeConfigs: configs,
+      customCommands: repo.customCommands,
+    );
+    _repos[index] = updated;
+    await _configService.saveRepos(_repos);
+
+    if (_selectedRepo == repo) {
+      _selectedRepo = updated;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> updateRepoCustomCommands(
+      RepoConfig repo, List<CustomCommand> commands) async {
+    final index = _repos.indexOf(repo);
+    if (index == -1) return;
+
+    final updated = RepoConfig(
+      name: repo.name,
+      path: repo.path,
+      vscodeConfigs: repo.vscodeConfigs,
+      customCommands: commands,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);
