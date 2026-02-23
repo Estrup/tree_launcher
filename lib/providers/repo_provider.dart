@@ -98,6 +98,12 @@ class RepoProvider extends ChangeNotifier {
     await refreshWorktrees();
   }
 
+  Future<void> addWorktree(String name) async {
+    if (_selectedRepo == null) return;
+    await _gitService.addWorktree(_selectedRepo!.path, name);
+    await refreshWorktrees();
+  }
+
   Future<void> refreshWorktrees() async {
     if (_selectedRepo == null) return;
 

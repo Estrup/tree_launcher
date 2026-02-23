@@ -35,6 +35,27 @@ class GitService {
     return result.exitCode == 0;
   }
 
+  /// Creates a new worktree as a sibling of the repo directory.
+  Future<void> addWorktree(String repoPath, String name) async {
+    final parentDir = p.dirname(repoPath);
+    final worktreePath = p.join(parentDir, name);
+
+    // Check if folder already exists
+    if (await Directory(worktreePath).exists()) {
+      throw Exception('Folder "$name" already exists');
+    }
+
+    final result = await Process.run(
+      '/usr/bin/git',
+      ['worktree', 'add', worktreePath],
+      workingDirectory: repoPath,
+    );
+
+    if (result.exitCode != 0) {
+      throw Exception(result.stderr.toString().trim());
+    }
+  }
+
   List<Worktree> _parsePorcelainOutput(String output) {
     final worktrees = <Worktree>[];
     final blocks = output.trim().split('\n\n');

@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/repo_sidebar.dart';
 import '../widgets/worktree_grid.dart';
 import '../widgets/add_repo_dialog.dart';
+import '../widgets/add_worktree_dialog.dart';
 import '../widgets/settings_dialog.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -88,11 +89,16 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           const Spacer(),
-          if (selectedRepo != null)
+          if (selectedRepo != null) ...[
+            _AddWorktreeButton(
+              onPressed: () => AddWorktreeDialog.show(context),
+            ),
+            const SizedBox(width: 8),
             _RefreshButton(
               loading: repoProvider.loading,
               onPressed: () => repoProvider.refreshWorktrees(),
             ),
+          ],
         ],
       ),
     );
@@ -142,6 +148,65 @@ class _RefreshButtonState extends State<_RefreshButton> {
                       ? AppColors.textPrimary
                       : AppColors.textMuted,
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddWorktreeButton extends StatefulWidget {
+  final VoidCallback onPressed;
+
+  const _AddWorktreeButton({required this.onPressed});
+
+  @override
+  State<_AddWorktreeButton> createState() => _AddWorktreeButtonState();
+}
+
+class _AddWorktreeButtonState extends State<_AddWorktreeButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? AppColors.terminal.withValues(alpha: 0.15)
+                : AppColors.terminalBg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _hovered
+                  ? AppColors.terminal.withValues(alpha: 0.4)
+                  : AppColors.terminal.withValues(alpha: 0.15),
+            ),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.add_rounded,
+                size: 15,
+                color: AppColors.terminal,
+              ),
+              SizedBox(width: 5),
+              Text(
+                'New Worktree',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.terminal,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
