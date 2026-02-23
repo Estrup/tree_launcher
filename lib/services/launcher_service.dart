@@ -1,0 +1,96 @@
+import 'dart:io';
+import '../models/app_settings.dart';
+
+class LauncherService {
+  Future<void> openTerminal(String directory, AppSettings settings) async {
+    switch (settings.terminalApp) {
+      case TerminalApp.terminal:
+        await Process.run('open', ['-a', 'Terminal', directory]);
+        break;
+      case TerminalApp.iterm2:
+        await _openITerm2(directory);
+        break;
+      case TerminalApp.custom:
+        if (settings.customTerminalCommand != null) {
+          await _openCustomTerminal(directory, settings.customTerminalCommand!);
+        }
+        break;
+    }
+  }
+
+  Future<void> openCopilotCli(String directory, AppSettings settings) async {
+    switch (settings.terminalApp) {
+      case TerminalApp.terminal:
+        await _runAppleScript('''
+          tell application "Terminal"
+            activate
+            do script "cd '${_escapeForAppleScript(directory)}' && gh copilot"
+          end tell
+        ''');
+        break;
+      case TerminalApp.iterm2:
+        await _runAppleScript('''
+          tell application "iTerm"
+            activate
+            set newWindow to (create window with default profile)
+            tell current session of newWindow
+              write text "cd '${_escapeForAppleScript(directory)}' && gh copilot"
+            end tell
+          end tell
+        ''');
+        break;
+      case TerminalApp.custom:
+        if (settings.customTerminalCommand != null) {
+          await _openCustomTerminal(
+            directory,
+            settings.customTerminalCommand!,
+            command: 'gh copilot',
+          );
+        }
+        break;
+    }
+  }
+
+  Future<void> openVSCode(String directory) async {
+    // Try `code` CLI first, fall back to `open -a`
+    final result = await Process.run('which', ['code']);
+    if (result.exitCode == 0) {
+      await Process.run('code', [directory]);
+    } else {
+      await Process.run(
+          'open', ['-a', 'Visual Studio Code', directory]);
+    }
+  }
+
+  Future<void> _openITerm2(String directory) async {
+    await _runAppleScript('''
+      tell application "iTerm"
+        activate
+        set newWindow to (create window with default profile)
+        tell current session of newWindow
+          write text "cd '${_escapeForAppleScript(directory)}'"
+        end tell
+      end tell
+    ''');
+  }
+
+  Future<void> _openCustomTerminal(
+    String directory,
+    String terminalCommand, {
+    String? command,
+  }) async {
+    final fullCommand = command != null
+        ? 'cd \'$directory\' && $command'
+        : 'cd \'$directory\'';
+    await Process.run(
+      '/bin/bash',
+      ['-c', '$terminalCommand -e "$fullCommand"'],
+    );
+  }
+
+  Future<void> _runAppleScript(String script) async {
+    await Process.run('osascript', ['-e', script]);
+  }
+
+  String _escapeForAppleScript(String s) => s.replaceAll("'", "'\\''");
+}
