@@ -4,6 +4,7 @@ import 'services/git_service.dart';
 import 'services/config_service.dart';
 import 'providers/repo_provider.dart';
 import 'providers/settings_provider.dart';
+import 'providers/terminal_provider.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 
@@ -31,6 +32,9 @@ class TreeLauncherApp extends StatelessWidget {
           create: (_) => SettingsProvider(
             configService: configService,
           )..loadSettings(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => TerminalProvider(),
         ),
       ],
       child: MaterialApp(

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/repo_provider.dart';
+import '../providers/terminal_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/repo_sidebar.dart';
 import '../widgets/worktree_grid.dart';
+import '../widgets/terminal_panel.dart';
 import '../widgets/add_repo_dialog.dart';
 import '../widgets/add_worktree_dialog.dart';
 import '../widgets/settings_dialog.dart';
@@ -15,23 +18,38 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final repoProvider = context.watch<RepoProvider>();
 
-    return Scaffold(
-      backgroundColor: AppColors.base,
-      body: Row(
-        children: [
-          RepoSidebar(
-            onAddRepo: () => AddRepoDialog.show(context),
-            onOpenSettings: () => SettingsDialog.show(context),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.backquote, meta: true):
+            () {
+          final tp = context.read<TerminalProvider>();
+          if (tp.sessions.isNotEmpty) {
+            tp.toggleVisibility();
+          }
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          backgroundColor: AppColors.base,
+          body: Row(
+            children: [
+              RepoSidebar(
+                onAddRepo: () => AddRepoDialog.show(context),
+                onOpenSettings: () => SettingsDialog.show(context),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildHeader(context, repoProvider),
+                    const Expanded(child: WorktreeGrid()),
+                    const TerminalPanel(),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: Column(
-              children: [
-                _buildHeader(context, repoProvider),
-                const Expanded(child: WorktreeGrid()),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -94,6 +112,8 @@ class HomeScreen extends StatelessWidget {
               onPressed: () => AddWorktreeDialog.show(context),
             ),
             const SizedBox(width: 8),
+            _TerminalToggleButton(),
+            const SizedBox(width: 8),
             _RefreshButton(
               loading: repoProvider.loading,
               onPressed: () => repoProvider.refreshWorktrees(),
@@ -148,6 +168,50 @@ class _RefreshButtonState extends State<_RefreshButton> {
                       ? AppColors.textPrimary
                       : AppColors.textMuted,
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TerminalToggleButton extends StatefulWidget {
+  @override
+  State<_TerminalToggleButton> createState() => _TerminalToggleButtonState();
+}
+
+class _TerminalToggleButtonState extends State<_TerminalToggleButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tp = context.watch<TerminalProvider>();
+    final isActive = tp.isVisible && tp.sessions.isNotEmpty;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () {
+          if (tp.sessions.isNotEmpty) {
+            tp.toggleVisibility();
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isActive
+                ? AppColors.terminal.withValues(alpha: 0.15)
+                : (_hovered ? AppColors.surface2 : Colors.transparent),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            Icons.terminal_rounded,
+            size: 20,
+            color: isActive
+                ? AppColors.terminal
+                : (_hovered ? AppColors.textPrimary : AppColors.textMuted),
+          ),
         ),
       ),
     );

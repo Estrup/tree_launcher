@@ -5,6 +5,7 @@ import '../models/custom_command.dart';
 import '../models/worktree.dart';
 import '../providers/repo_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/terminal_provider.dart';
 import '../services/launcher_service.dart';
 import '../theme/app_theme.dart';
 
@@ -40,7 +41,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
             color: _hovered ? AppColors.border : AppColors.borderSubtle,
           ),
         ),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Stack(
           children: [
             Column(
@@ -161,13 +162,10 @@ class _WorktreeCardState extends State<WorktreeCard> {
             Row(
               children: [
                 Expanded(
-                  child: _ActionButton(
-                    icon: Icons.terminal_rounded,
-                    label: 'Terminal',
-                    color: AppColors.terminal,
-                    bgColor: AppColors.terminalBg,
-                    onPressed: () =>
-                        _launcherService.openTerminal(wt.path, settings),
+                  child: _TerminalSplitButton(
+                    worktreePath: wt.path,
+                    worktreeName: wt.name,
+                    launcherService: _launcherService,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -192,8 +190,8 @@ class _WorktreeCardState extends State<WorktreeCard> {
                   const SizedBox(width: 8),
                   _CustomCommandsButton(
                     worktreePath: wt.path,
+                    worktreeName: wt.name,
                     commands: customCommands,
-                    launcherService: _launcherService,
                   ),
                 ],
               ],
@@ -238,6 +236,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
 
     if (confirmed == true && context.mounted) {
       try {
+        context.read<TerminalProvider>().closeSessionsForPath(wt.path);
         await context.read<RepoProvider>().deleteWorktree(wt);
       } catch (e) {
         if (context.mounted) {
@@ -247,6 +246,171 @@ class _WorktreeCardState extends State<WorktreeCard> {
         }
       }
     }
+  }
+}
+
+class _TerminalSplitButton extends StatefulWidget {
+  final String worktreePath;
+  final String worktreeName;
+  final LauncherService launcherService;
+
+  const _TerminalSplitButton({
+    required this.worktreePath,
+    required this.worktreeName,
+    required this.launcherService,
+  });
+
+  @override
+  State<_TerminalSplitButton> createState() => _TerminalSplitButtonState();
+}
+
+class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
+  bool _mainHovered = false;
+  bool _dropHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          color: AppColors.terminalBg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: (_mainHovered || _dropHovered)
+                ? AppColors.terminal.withValues(alpha: 0.4)
+                : AppColors.terminal.withValues(alpha: 0.15),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(7),
+          child: Row(
+            children: [
+              // Main button — opens embedded terminal
+              Expanded(
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _mainHovered = true),
+                  onExit: (_) => setState(() => _mainHovered = false),
+                  child: GestureDetector(
+                    onTap: () {
+                      final repo =
+                          context.read<RepoProvider>().selectedRepo;
+                      final tp = context.read<TerminalProvider>();
+                      tp.openTerminal(
+                        widget.worktreeName,
+                        widget.worktreePath,
+                        repo?.path ?? widget.worktreePath,
+                      );
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 120),
+                      color: _mainHovered
+                          ? AppColors.terminal.withValues(alpha: 0.2)
+                          : Colors.transparent,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.terminal_rounded,
+                              size: 14, color: AppColors.terminal),
+                          SizedBox(width: 6),
+                          Text(
+                            'Terminal',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.terminal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Divider
+              Container(
+                width: 1,
+                color: AppColors.terminal.withValues(alpha: 0.15),
+              ),
+              // Dropdown — external terminal
+              MouseRegion(
+                onEnter: (_) => setState(() => _dropHovered = true),
+                onExit: (_) => setState(() => _dropHovered = false),
+                child: GestureDetector(
+                  onTap: () => _showDropdown(context),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    width: 28,
+                    color: _dropHovered
+                        ? AppColors.terminal.withValues(alpha: 0.2)
+                        : Colors.transparent,
+                    child: const Center(
+                      child: Icon(
+                        Icons.arrow_drop_down_rounded,
+                        size: 18,
+                        color: AppColors.terminal,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDropdown(BuildContext context) {
+    final settings = context.read<SettingsProvider>().settings;
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height)),
+        button.localToGlobal(
+            Offset(button.size.width, button.size.height)),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      color: AppColors.surface1,
+      constraints: const BoxConstraints(minWidth: 200),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      items: [
+        const PopupMenuItem<String>(
+          value: 'external',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.open_in_new_rounded,
+                  size: 13, color: AppColors.terminal),
+              SizedBox(width: 8),
+              Text(
+                'External Terminal',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'external') {
+        widget.launcherService.openTerminal(widget.worktreePath, settings);
+      }
+    });
   }
 }
 
@@ -435,13 +599,13 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
 
 class _CustomCommandsButton extends StatefulWidget {
   final String worktreePath;
+  final String worktreeName;
   final List<CustomCommand> commands;
-  final LauncherService launcherService;
 
   const _CustomCommandsButton({
     required this.worktreePath,
+    required this.worktreeName,
     required this.commands,
-    required this.launcherService,
   });
 
   @override
@@ -486,7 +650,8 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
   }
 
   void _showDropdown(BuildContext context) {
-    final settings = context.read<SettingsProvider>().settings;
+    final repo = context.read<RepoProvider>().selectedRepo;
+    final tp = context.read<TerminalProvider>();
     final RenderBox button = context.findRenderObject() as RenderBox;
     final overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox;
@@ -499,7 +664,7 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
       Offset.zero & overlay.size,
     );
 
-    showMenu<String>(
+    showMenu<CustomCommand>(
       context: context,
       position: position,
       color: AppColors.surface1,
@@ -509,8 +674,8 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
         side: const BorderSide(color: AppColors.border),
       ),
       items: widget.commands.map((cmd) {
-        return PopupMenuItem<String>(
-          value: cmd.command,
+        return PopupMenuItem<CustomCommand>(
+          value: cmd,
           height: 36,
           child: Row(
             children: [
@@ -532,10 +697,14 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
           ),
         );
       }).toList(),
-    ).then((selectedCommand) {
-      if (selectedCommand != null) {
-        widget.launcherService
-            .runCustomCommand(widget.worktreePath, selectedCommand, settings);
+    ).then((selected) {
+      if (selected != null) {
+        tp.openTerminalWithCommand(
+          '${widget.worktreeName}: ${selected.name}',
+          widget.worktreePath,
+          repo?.path ?? widget.worktreePath,
+          selected.command,
+        );
       }
     });
   }

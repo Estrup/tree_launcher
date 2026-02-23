@@ -37,6 +37,8 @@ dependencies:
   provider: ^6.1.5+1
   path_provider: ^2.1.5
   path: ^1.9.1
+  xterm: ^4.0.0
+  flutter_pty: ^0.4.0
 
 dev_dependencies:
   flutter_test:
