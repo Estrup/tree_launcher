@@ -80,6 +80,29 @@ class TerminalSession {
 
   bool get isDisposed => _disposed;
 
+  /// Gracefully closes the session by sending SIGINT first (like Ctrl+C),
+  /// then escalating to SIGTERM and SIGKILL if the process doesn't exit.
+  Future<void> gracefulClose() async {
+    if (_disposed) return;
+    _disposed = true;
+    _outputSub.cancel();
+
+    // SIGINT (Ctrl+C)
+    _pty.kill(ProcessSignal.sigint);
+    final exited = await _pty.exitCode
+        .timeout(const Duration(seconds: 2), onTimeout: () => -1);
+    if (exited != -1) return;
+
+    // SIGTERM
+    _pty.kill(ProcessSignal.sigterm);
+    final exited2 = await _pty.exitCode
+        .timeout(const Duration(seconds: 1), onTimeout: () => -1);
+    if (exited2 != -1) return;
+
+    // SIGKILL as last resort
+    _pty.kill(ProcessSignal.sigkill);
+  }
+
   void dispose() {
     if (_disposed) return;
     _disposed = true;

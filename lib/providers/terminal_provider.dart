@@ -120,8 +120,18 @@ class TerminalProvider extends ChangeNotifier {
 
   void closeTerminal(int index) {
     if (index < 0 || index >= _sessions.length) return;
-    _closeSessionAt(index);
+    final session = _sessions[index];
+    _sessions.removeAt(index);
+    if (_activeIndex >= _sessions.length) {
+      _activeIndex = (_sessions.length - 1).clamp(0, maxSessions);
+    }
+    if (_sessions.isEmpty) {
+      _visible = false;
+    }
     notifyListeners();
+
+    // Graceful shutdown in background
+    session.gracefulClose();
   }
 
   void _closeSessionAt(int index) {
