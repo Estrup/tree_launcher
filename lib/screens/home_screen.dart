@@ -6,7 +6,9 @@ import '../providers/terminal_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/repo_sidebar.dart';
 import '../widgets/worktree_grid.dart';
+import '../widgets/repo_settings_view.dart';
 import '../widgets/terminal_panel.dart';
+import '../widgets/running_commands_bar.dart';
 import '../widgets/add_repo_dialog.dart';
 import '../widgets/add_worktree_dialog.dart';
 import '../widgets/settings_dialog.dart';
@@ -51,6 +53,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
               }
 
+              if (repoProvider.showSettings) {
+                return const RepoSettingsView();
+              }
+
               return Stack(
                 children: [
                   Row(
@@ -65,7 +71,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             _buildHeader(context, repoProvider,
                                 showMenuButton: isCollapsed),
-                            const Expanded(child: WorktreeGrid()),
+                            Expanded(
+                              child: const WorktreeGrid(),
+                            ),
+                            const RunningCommandsBar(),
                             const TerminalPanel(),
                           ],
                         ),

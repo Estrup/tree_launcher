@@ -171,7 +171,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _ActionButton(
-                    icon: Icons.auto_awesome_rounded,
+                    icon: Icons.auto_awesome_rounded,                    
                     label: 'Copilot',
                     color: AppColors.copilot,
                     bgColor: AppColors.copilotBg,
@@ -308,18 +308,21 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
                       color: _mainHovered
                           ? AppColors.terminal.withValues(alpha: 0.2)
                           : Colors.transparent,
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.terminal_rounded,
+                          const Icon(Icons.terminal_rounded,
                               size: 14, color: AppColors.terminal),
-                          SizedBox(width: 6),
-                          Text(
-                            'Terminal',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.terminal,
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Terminal',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.terminal,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -477,18 +480,21 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
                       color: _mainHovered
                           ? AppColors.vscode.withValues(alpha: 0.2)
                           : Colors.transparent,
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.code_rounded,
+                          const Icon(Icons.code_rounded,
                               size: 14, color: AppColors.vscode),
-                          SizedBox(width: 6),
-                          Text(
-                            'VS Code',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.vscode,
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'VS Code',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.vscode,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -797,12 +803,15 @@ class _ActionButtonState extends State<_ActionButton> {
             children: [
               Icon(widget.icon, size: 14, color: widget.color),
               const SizedBox(width: 6),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: widget.color,
+              Flexible(
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: widget.color,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

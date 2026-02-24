@@ -16,6 +16,7 @@ class RepoProvider extends ChangeNotifier {
   List<Worktree> _worktrees = [];
   bool _loading = false;
   String? _error;
+  bool _showSettings = false;
 
   RepoProvider({
     required GitService gitService,
@@ -28,6 +29,17 @@ class RepoProvider extends ChangeNotifier {
   List<Worktree> get worktrees => _worktrees;
   bool get loading => _loading;
   String? get error => _error;
+  bool get showSettings => _showSettings;
+
+  void toggleSettings() {
+    _showSettings = !_showSettings;
+    notifyListeners();
+  }
+
+  void closeSettings() {
+    _showSettings = false;
+    notifyListeners();
+  }
 
   Future<void> loadRepos() async {
     _repos = await _configService.loadRepos();
