@@ -536,7 +536,7 @@ class _VscodeConfigsSectionState extends State<_VscodeConfigsSection> {
   }
 }
 
-class _VscodeConfigCard extends StatelessWidget {
+class _VscodeConfigCard extends StatefulWidget {
   final VscodeConfig config;
   final ValueChanged<VscodeConfig> onChanged;
   final VoidCallback onRemove;
@@ -547,6 +547,28 @@ class _VscodeConfigCard extends StatelessWidget {
     required this.onChanged,
     required this.onRemove,
   });
+
+  @override
+  State<_VscodeConfigCard> createState() => _VscodeConfigCardState();
+}
+
+class _VscodeConfigCardState extends State<_VscodeConfigCard> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _pathController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.config.name);
+    _pathController = TextEditingController(text: widget.config.path);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _pathController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -602,11 +624,9 @@ class _VscodeConfigCard extends StatelessWidget {
                       vertical: 10,
                     ),
                   ),
-                  controller: TextEditingController(text: config.name)
-                    ..selection =
-                        TextSelection.collapsed(offset: config.name.length),
+                  controller: _nameController,
                   onChanged: (v) =>
-                      onChanged(VscodeConfig(name: v, path: config.path)),
+                      widget.onChanged(VscodeConfig(name: v, path: widget.config.path)),
                 ),
               ],
             ),
@@ -654,11 +674,9 @@ class _VscodeConfigCard extends StatelessWidget {
                       vertical: 10,
                     ),
                   ),
-                  controller: TextEditingController(text: config.path)
-                    ..selection =
-                        TextSelection.collapsed(offset: config.path.length),
+                  controller: _pathController,
                   onChanged: (v) =>
-                      onChanged(VscodeConfig(name: config.name, path: v)),
+                      widget.onChanged(VscodeConfig(name: widget.config.name, path: v)),
                 ),
               ],
             ),
@@ -667,7 +685,7 @@ class _VscodeConfigCard extends StatelessWidget {
           // Remove button
           Padding(
             padding: const EdgeInsets.only(top: 22),
-            child: _RemoveButton(onTap: onRemove),
+            child: _RemoveButton(onTap: widget.onRemove),
           ),
         ],
       ),
@@ -844,7 +862,7 @@ class _CustomCommandsSectionState extends State<_CustomCommandsSection> {
   }
 }
 
-class _CustomCommandCard extends StatelessWidget {
+class _CustomCommandCard extends StatefulWidget {
   final CustomCommand command;
   final int index;
   final ValueChanged<CustomCommand> onChanged;
@@ -859,9 +877,31 @@ class _CustomCommandCard extends StatelessWidget {
   });
 
   @override
+  State<_CustomCommandCard> createState() => _CustomCommandCardState();
+}
+
+class _CustomCommandCardState extends State<_CustomCommandCard> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _commandController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.command.name);
+    _commandController = TextEditingController(text: widget.command.command);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _commandController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final effectiveIcon = getCommandIcon(command.iconName);
-    final effectiveColor = getCommandColor(command.colorHex, index);
+    final effectiveIcon = getCommandIcon(widget.command.iconName);
+    final effectiveColor = getCommandColor(widget.command.colorHex, widget.index);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -880,12 +920,12 @@ class _CustomCommandCard extends StatelessWidget {
               _IconColorPicker(
                 icon: effectiveIcon,
                 color: effectiveColor,
-                iconName: command.iconName,
-                colorHex: command.colorHex,
+                iconName: widget.command.iconName,
+                colorHex: widget.command.colorHex,
                 onIconChanged: (name) =>
-                    onChanged(command.copyWith(iconName: name)),
+                    widget.onChanged(widget.command.copyWith(iconName: name)),
                 onColorChanged: (hex) =>
-                    onChanged(command.copyWith(colorHex: hex)),
+                    widget.onChanged(widget.command.copyWith(colorHex: hex)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -931,17 +971,15 @@ class _CustomCommandCard extends StatelessWidget {
                             vertical: 10,
                           ),
                         ),
-                        controller: TextEditingController(text: command.name)
-                          ..selection = TextSelection.collapsed(
-                              offset: command.name.length),
+                        controller: _nameController,
                         onChanged: (v) =>
-                            onChanged(command.copyWith(name: v)),
+                            widget.onChanged(widget.command.copyWith(name: v)),
                       ),
                     ),
                   ],
                 ),
               ),
-              _RemoveButton(onTap: onRemove),
+              _RemoveButton(onTap: widget.onRemove),
             ],
           ),
           const SizedBox(height: 16),
@@ -983,11 +1021,9 @@ class _CustomCommandCard extends StatelessWidget {
               fillColor: AppColors.surface1,
               contentPadding: const EdgeInsets.all(12),
             ),
-            controller: TextEditingController(text: command.command)
-              ..selection =
-                  TextSelection.collapsed(offset: command.command.length),
+            controller: _commandController,
             onChanged: (v) =>
-                onChanged(command.copyWith(command: v)),
+                widget.onChanged(widget.command.copyWith(command: v)),
           ),
         ],
       ),

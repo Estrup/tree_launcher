@@ -4,7 +4,7 @@ import '../models/worktree.dart';
 
 class GitService {
   /// Fetches worktrees for a given repo path using `git worktree list --porcelain`.
-  Future<List<Worktree>> getWorktrees(String repoPath) async {
+  Future<WorktreeListResult> getWorktrees(String repoPath) async {
     final result = await Process.run(
       '/usr/bin/git',
       ['worktree', 'list', '--porcelain'],
@@ -75,8 +75,11 @@ class GitService {
     String name, {
     String? baseBranch,
     String? newBranch,
+    bool isBareLayout = false,
   }) async {
-    final parentDir = p.dirname(repoPath);
+    // Bare layout: worktrees live inside the repo dir.
+    // Normal layout: worktrees are siblings of the main worktree.
+    final parentDir = isBareLayout ? repoPath : p.dirname(repoPath);
     final worktreePath = p.join(parentDir, name);
 
     // Check if folder already exists
@@ -123,9 +126,10 @@ class GitService {
     }
   }
 
-  List<Worktree> _parsePorcelainOutput(String output) {
+  WorktreeListResult _parsePorcelainOutput(String output) {
     final worktrees = <Worktree>[];
     final blocks = output.trim().split('\n\n');
+    bool isBareLayout = false;
 
     for (final block in blocks) {
       if (block.trim().isEmpty) continue;
@@ -158,14 +162,19 @@ class GitService {
         }
       }
 
-      if (worktreePath == null || isBare) continue;
+      if (worktreePath == null) continue;
+      if (isBare) {
+        isBareLayout = true;
+        continue;
+      }
 
       if (isDetached) {
         branch = 'detached @ $commitHash';
       }
 
       final name = p.basename(worktreePath);
-      final isMain = worktrees.isEmpty; // First worktree is the main one
+      // In bare layouts, no worktree is primary — all are equal peers.
+      final isMain = !isBareLayout && worktrees.isEmpty;
 
       worktrees.add(Worktree(
         path: worktreePath,
@@ -176,6 +185,9 @@ class GitService {
       ));
     }
 
-    return worktrees;
+    return WorktreeListResult(
+      worktrees: worktrees,
+      isBareLayout: isBareLayout,
+    );
   }
 }

@@ -13,3 +13,10 @@ class Worktree {
     required this.commitHash,
   });
 }
+
+class WorktreeListResult {
+  final List<Worktree> worktrees;
+  final bool isBareLayout;
+
+  WorktreeListResult({required this.worktrees, required this.isBareLayout});
+}

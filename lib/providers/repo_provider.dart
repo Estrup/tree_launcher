@@ -17,6 +17,7 @@ class RepoProvider extends ChangeNotifier {
   bool _loading = false;
   String? _error;
   bool _showSettings = false;
+  bool _isBareLayout = false;
 
   RepoProvider({
     required GitService gitService,
@@ -30,6 +31,7 @@ class RepoProvider extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
   bool get showSettings => _showSettings;
+  bool get isBareLayout => _isBareLayout;
 
   void toggleSettings() {
     _showSettings = !_showSettings;
@@ -199,6 +201,7 @@ class RepoProvider extends ChangeNotifier {
       name,
       baseBranch: baseBranch,
       newBranch: newBranch,
+      isBareLayout: _isBareLayout,
     );
     await refreshWorktrees();
     return path;
@@ -218,7 +221,9 @@ class RepoProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _worktrees = await _gitService.getWorktrees(_selectedRepo!.path);
+      final result = await _gitService.getWorktrees(_selectedRepo!.path);
+      _worktrees = result.worktrees;
+      _isBareLayout = result.isBareLayout;
       _error = null;
     } catch (e) {
       _worktrees = [];
