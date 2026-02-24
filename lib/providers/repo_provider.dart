@@ -210,6 +210,8 @@ class RepoProvider extends ChangeNotifier {
   Future<void> deleteWorktree(Worktree worktree) async {
     if (_selectedRepo == null) return;
     await _gitService.removeWorktree(_selectedRepo!.path, worktree.path);
+    _worktrees.removeWhere((w) => w.path == worktree.path);
+    notifyListeners();
     await refreshWorktrees();
   }
 

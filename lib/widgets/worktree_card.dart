@@ -213,6 +213,8 @@ class _WorktreeCardState extends State<WorktreeCard> {
 
   Future<void> _confirmDelete(BuildContext context) async {
     final wt = widget.worktree;
+    final repoProvider = context.read<RepoProvider>();
+    final terminalProvider = context.read<TerminalProvider>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -234,10 +236,10 @@ class _WorktreeCardState extends State<WorktreeCard> {
       ),
     );
 
-    if (confirmed == true && context.mounted) {
+    if (confirmed == true) {
       try {
-        context.read<TerminalProvider>().closeSessionsForPath(wt.path);
-        await context.read<RepoProvider>().deleteWorktree(wt);
+        terminalProvider.closeSessionsForPath(wt.path);
+        await repoProvider.deleteWorktree(wt);
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
