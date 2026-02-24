@@ -87,6 +87,7 @@ class TerminalProvider extends ChangeNotifier {
         title: title,
         workingDirectory: workingDirectory,
         repoPath: repoPath,
+        command: command,
       );
     } catch (e) {
       debugPrint('Failed to create terminal session: $e');

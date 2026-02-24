@@ -125,12 +125,21 @@ class _TabBar extends StatelessWidget {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: sessions.length,
-              itemBuilder: (context, i) => _Tab(
-                title: sessions[i].title,
-                isActive: i == activeIndex,
-                onTap: () => onSelect(i),
-                onClose: () => onClose(i),
-              ),
+              itemBuilder: (context, i) {
+                final session = sessions[i];
+                final tooltipLines = [session.title];
+                tooltipLines.add(session.workingDirectory);
+                if (session.command != null) {
+                  tooltipLines.add('cmd: ${session.command}');
+                }
+                return _Tab(
+                  title: session.title,
+                  tooltip: tooltipLines.join('\n'),
+                  isActive: i == activeIndex,
+                  onTap: () => onSelect(i),
+                  onClose: () => onClose(i),
+                );
+              },
             ),
           ),
           _IconBtn(
@@ -147,12 +156,14 @@ class _TabBar extends StatelessWidget {
 
 class _Tab extends StatefulWidget {
   final String title;
+  final String tooltip;
   final bool isActive;
   final VoidCallback onTap;
   final VoidCallback onClose;
 
   const _Tab({
     required this.title,
+    required this.tooltip,
     required this.isActive,
     required this.onTap,
     required this.onClose,
@@ -167,53 +178,64 @@ class _TabState extends State<_Tab> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          margin: const EdgeInsets.only(right: 2),
-          decoration: BoxDecoration(
-            color: widget.isActive
-                ? AppColors.base
-                : (_hovered ? AppColors.surface2 : Colors.transparent),
-            border: widget.isActive
-                ? const Border(
-                    bottom:
-                        BorderSide(color: AppColors.terminal, width: 2),
-                  )
-                : null,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.title,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight:
-                      widget.isActive ? FontWeight.w600 : FontWeight.w400,
-                  color: widget.isActive
-                      ? AppColors.textPrimary
-                      : AppColors.textMuted,
-                ),
+    return Tooltip(
+      message: widget.tooltip,
+      waitDuration: const Duration(milliseconds: 400),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 100),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              margin: const EdgeInsets.only(right: 2),
+              decoration: BoxDecoration(
+                color: widget.isActive
+                    ? AppColors.base
+                    : (_hovered ? AppColors.surface2 : Colors.transparent),
+                border: widget.isActive
+                    ? const Border(
+                        bottom:
+                            BorderSide(color: AppColors.terminal, width: 2),
+                      )
+                    : null,
               ),
-              if (_hovered || widget.isActive) ...[
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: widget.onClose,
-                  child: Icon(
-                    Icons.close_rounded,
-                    size: 12,
-                    color: _hovered
-                        ? AppColors.textSecondary
-                        : AppColors.textMuted,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight:
+                            widget.isActive ? FontWeight.w600 : FontWeight.w400,
+                        color: widget.isActive
+                            ? AppColors.textPrimary
+                            : AppColors.textMuted,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
-                ),
-              ],
-            ],
+                  if (_hovered || widget.isActive) ...[
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: widget.onClose,
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 12,
+                        color: _hovered
+                            ? AppColors.textSecondary
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ),

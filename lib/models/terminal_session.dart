@@ -8,6 +8,7 @@ class TerminalSession {
   final String title;
   final String workingDirectory;
   final String repoPath;
+  final String? command;
   final Terminal terminal;
   final Pty _pty;
   late final StreamSubscription<List<int>> _outputSub;
@@ -17,6 +18,7 @@ class TerminalSession {
     required this.title,
     required this.workingDirectory,
     required this.repoPath,
+    this.command,
     required this.terminal,
     required Pty pty,
   }) : _pty = pty {
@@ -44,6 +46,7 @@ class TerminalSession {
     required String title,
     required String workingDirectory,
     required String repoPath,
+    String? command,
   }) {
     final env = Map<String, String>.from(Platform.environment)
       ..['TERM'] = 'xterm-256color';
@@ -60,6 +63,7 @@ class TerminalSession {
       title: title,
       workingDirectory: workingDirectory,
       repoPath: repoPath,
+      command: command,
       terminal: terminal,
       pty: pty,
     );
