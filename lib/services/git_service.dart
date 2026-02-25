@@ -75,11 +75,9 @@ class GitService {
     String name, {
     String? baseBranch,
     String? newBranch,
-    bool isBareLayout = false,
   }) async {
-    // Bare layout: worktrees live inside the repo dir.
-    // Normal layout: worktrees are siblings of the main worktree.
-    final parentDir = isBareLayout ? repoPath : p.dirname(repoPath);
+    // Worktrees are always placed alongside the repo directory.
+    final parentDir = p.dirname(repoPath);
     final worktreePath = p.join(parentDir, name);
 
     // Check if folder already exists

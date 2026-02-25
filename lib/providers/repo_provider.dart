@@ -201,7 +201,6 @@ class RepoProvider extends ChangeNotifier {
       name,
       baseBranch: baseBranch,
       newBranch: newBranch,
-      isBareLayout: _isBareLayout,
     );
     await refreshWorktrees();
     return path;
