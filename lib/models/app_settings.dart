@@ -1,4 +1,4 @@
-enum TerminalApp { terminal, iterm2, custom }
+enum TerminalApp { terminal, ghostty, custom }
 
 class AppSettings {
   final TerminalApp terminalApp;
@@ -12,9 +12,13 @@ class AppSettings {
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
+    final terminalAppRaw = json['terminalApp'] as String?;
+    final terminalAppName = terminalAppRaw == 'iterm2'
+        ? 'ghostty'
+        : terminalAppRaw;
     return AppSettings(
       terminalApp: TerminalApp.values.firstWhere(
-        (e) => e.name == json['terminalApp'],
+        (e) => e.name == terminalAppName,
         orElse: () => TerminalApp.terminal,
       ),
       customTerminalCommand: json['customTerminalCommand'] as String?,
@@ -23,10 +27,10 @@ class AppSettings {
   }
 
   Map<String, dynamic> toJson() => {
-        'terminalApp': terminalApp.name,
-        'customTerminalCommand': customTerminalCommand,
-        'defaultBranchPrefix': defaultBranchPrefix,
-      };
+    'terminalApp': terminalApp.name,
+    'customTerminalCommand': customTerminalCommand,
+    'defaultBranchPrefix': defaultBranchPrefix,
+  };
 
   AppSettings copyWith({
     TerminalApp? terminalApp,
@@ -37,8 +41,7 @@ class AppSettings {
       terminalApp: terminalApp ?? this.terminalApp,
       customTerminalCommand:
           customTerminalCommand ?? this.customTerminalCommand,
-      defaultBranchPrefix:
-          defaultBranchPrefix ?? this.defaultBranchPrefix,
+      defaultBranchPrefix: defaultBranchPrefix ?? this.defaultBranchPrefix,
     );
   }
 }

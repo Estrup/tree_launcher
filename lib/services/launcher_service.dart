@@ -8,8 +8,8 @@ class LauncherService {
       case TerminalApp.terminal:
         await Process.run('open', ['-a', 'Terminal', directory]);
         break;
-      case TerminalApp.iterm2:
-        await _openITerm2(directory);
+      case TerminalApp.ghostty:
+        await openGhostty(directory);
         break;
       case TerminalApp.custom:
         if (settings.customTerminalCommand != null) {
@@ -29,16 +29,8 @@ class LauncherService {
           end tell
         ''');
         break;
-      case TerminalApp.iterm2:
-        await _runAppleScript('''
-          tell application "iTerm"
-            activate
-            set newWindow to (create window with default profile)
-            tell current session of newWindow
-              write text "cd '${_escapeForAppleScript(directory)}' && gh copilot"
-            end tell
-          end tell
-        ''');
+      case TerminalApp.ghostty:
+        await openGhosttyWithCommand(directory, 'gh copilot');
         break;
       case TerminalApp.custom:
         if (settings.customTerminalCommand != null) {
@@ -58,14 +50,16 @@ class LauncherService {
     if (result.exitCode == 0) {
       await Process.run('code', [directory]);
     } else {
-      await Process.run(
-          'open', ['-a', 'Visual Studio Code', directory]);
+      await Process.run('open', ['-a', 'Visual Studio Code', directory]);
     }
   }
 
   Future<void> runCustomCommand(
-      String directory, String command, AppSettings settings) async {
-        await _runAppleScript('''
+    String directory,
+    String command,
+    AppSettings settings,
+  ) async {
+    await _runAppleScript('''
           tell application "Terminal"
             activate
             do script "cd '${_escapeForAppleScript(directory)}' && ${_escapeForAppleScript(command)}"
@@ -73,13 +67,42 @@ class LauncherService {
         ''');
   }
 
-  Future<void> _openITerm2(String directory) async {
+  Future<void> openGhostty(String directory) async {
+    await openGhosttyWithCommand(directory, null);
+  }
+
+  Future<void> openGhosttyWithCommand(String directory, String? command) async {
+    final escapedDirectory = _escapeForAppleScript(directory);
+    final commandToRun = command != null && command.isNotEmpty
+        ? "cd '$escapedDirectory' && $command"
+        : "cd '$escapedDirectory'";
+    await _openGhosttyCommand(commandToRun);
+  }
+
+  Future<void> _openGhosttyCommand(String commandToRun) async {
+    final escapedCommand = _escapeForAppleScriptText(commandToRun);
     await _runAppleScript('''
-      tell application "iTerm"
-        activate
-        set newWindow to (create window with default profile)
-        tell current session of newWindow
-          write text "cd '${_escapeForAppleScript(directory)}'"
+      set commandToRun to "$escapedCommand"
+      tell application "System Events"
+        set ghosttyRunning to (exists (processes where name is "Ghostty"))
+      end tell
+      if ghosttyRunning then
+        tell application "Ghostty" to activate
+        delay 0.2
+        tell application "System Events"
+          tell process "Ghostty"
+            keystroke "t" using command down
+          end tell
+        end tell
+        delay 1
+      else
+        tell application "Ghostty" to activate
+        delay 0.5
+      end if
+      tell application "System Events"
+        tell process "Ghostty"
+          keystroke commandToRun
+          key code 36
         end tell
       end tell
     ''');
@@ -124,4 +147,6 @@ class LauncherService {
   }
 
   String _escapeForAppleScript(String s) => s.replaceAll("'", "'\\''");
+  String _escapeForAppleScriptText(String s) =>
+      s.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
 }

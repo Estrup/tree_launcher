@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/repo_provider.dart';
 import '../providers/settings_provider.dart';
+import '../services/launcher_service.dart';
 import '../theme/app_theme.dart';
 import 'branch_search_dropdown.dart';
 
@@ -25,6 +25,7 @@ class AddWorktreeDialog extends StatefulWidget {
 }
 
 class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
+  final _launcherService = LauncherService();
   final _nameController = TextEditingController();
   final _jiraController = TextEditingController();
   final _newBranchController = TextEditingController();
@@ -85,7 +86,10 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
   void _updateAutoFillBranch() {
     if (_branchManuallyEdited) return;
-    final prefix = context.read<SettingsProvider>().settings.defaultBranchPrefix;
+    final prefix = context
+        .read<SettingsProvider>()
+        .settings
+        .defaultBranchPrefix;
     final name = _effectiveWorktreeName;
     if (name.isEmpty) {
       _newBranchController.text = '';
@@ -153,10 +157,10 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       final newBranch = _newBranchController.text.trim();
 
       final worktreePath = await repoProvider.addWorktree(
-            worktreeName,
-            baseBranch: _selectedBranch,
-            newBranch: newBranch.isNotEmpty ? newBranch : null,
-          );
+        worktreeName,
+        baseBranch: _selectedBranch,
+        newBranch: newBranch.isNotEmpty ? newBranch : null,
+      );
 
       // Save last used base branch for this repo
       if (_selectedBranch != null && repoProvider.selectedRepo != null) {
@@ -190,18 +194,16 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     }
     prompt = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
 
-    final escapedPrompt = prompt.replaceAll("'", "'\\''");
+    if (prompt.isNotEmpty) {
+      final escapedPrompt = prompt.replaceAll("'", "'\\''");
+      await _launcherService.openGhosttyWithCommand(
+        path,
+        "copilot -i '$escapedPrompt'",
+      );
+      return;
+    }
 
-    final command = prompt.isNotEmpty
-        ? "open -na ghostty --args "
-            "--title=ghostty-from-vscode "
-            '--working-directory="$path" '
-            "-e zsh -lc 'copilot -i \"$escapedPrompt\"; exec zsh -l'"
-        : "open -na ghostty --args "
-            "--title=ghostty-from-vscode "
-            '--working-directory="$path"';
-
-    await Process.run('/bin/bash', ['-c', command]);
+    await _launcherService.openGhostty(path);
   }
 
   @override
@@ -246,8 +248,10 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                   fontFamily: 'monospace',
                 ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.deny(RegExp(r'[A-Z\s]'),
-                      replacementString: ''),
+                  FilteringTextInputFormatter.deny(
+                    RegExp(r'[A-Z\s]'),
+                    replacementString: '',
+                  ),
                 ],
                 decoration: _inputDecoration(
                   hint: 'e.g. feature-auth',
@@ -443,16 +447,18 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                     value: _launchTerminal,
                     onChanged: _creating
                         ? null
-                        : (v) =>
-                            setState(() => _launchTerminal = v ?? false),
+                        : (v) => setState(() => _launchTerminal = v ?? false),
                     activeColor: AppColors.accent,
                     side: const BorderSide(color: AppColors.textMuted),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.terminal_rounded,
-                    size: 16, color: AppColors.terminal),
+                const Icon(
+                  Icons.terminal_rounded,
+                  size: 16,
+                  color: AppColors.terminal,
+                ),
                 const SizedBox(width: 6),
                 const Text(
                   'Launch Ghostty terminal',

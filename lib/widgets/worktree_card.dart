@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import '../models/custom_command.dart';
@@ -86,7 +87,11 @@ class _WorktreeCardState extends State<WorktreeCard> {
             const SizedBox(height: 12),
 
             // Branch tag
-            Container(
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => _copyToClipboard(context, wt.branch, 'Branch'),
+                child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: AppColors.copilotBg,
@@ -116,12 +121,18 @@ class _WorktreeCardState extends State<WorktreeCard> {
                 ],
               ),
             ),
+              ),
+            ),
             const SizedBox(height: 10),
 
             // Commit + path
             Row(
               children: [
-                Container(
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => _copyToClipboard(context, wt.commitHash, 'Commit hash'),
+                    child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
@@ -138,9 +149,15 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     ),
                   ),
                 ),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Tooltip(
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () => _copyToClipboard(context, wt.path, 'Path'),
+                      child: Tooltip(
                     message: wt.path,
                     child: Text(
                       wt.path.replaceFirst(RegExp(r'^/Users/[^/]+'), '~'),
@@ -150,6 +167,8 @@ class _WorktreeCardState extends State<WorktreeCard> {
                         fontFamily: 'monospace',
                       ),
                       overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                     ),
                   ),
                 ),
@@ -207,6 +226,18 @@ class _WorktreeCardState extends State<WorktreeCard> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _copyToClipboard(BuildContext context, String value, String label) {
+    Clipboard.setData(ClipboardData(text: value));
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$label copied to clipboard'),
+        duration: const Duration(milliseconds: 1500),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

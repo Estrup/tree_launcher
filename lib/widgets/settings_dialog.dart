@@ -220,7 +220,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
   }
 
   Widget _buildTerminalOptions(
-      AppSettings settings, SettingsProvider provider) {
+    AppSettings settings,
+    SettingsProvider provider,
+  ) {
     return Row(
       children: [
         _TerminalOption(
@@ -231,10 +233,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
         ),
         const SizedBox(width: 8),
         _TerminalOption(
-          label: 'iTerm2',
+          label: 'Ghostty',
           icon: Icons.terminal_rounded,
-          isSelected: settings.terminalApp == TerminalApp.iterm2,
-          onTap: () => provider.updateTerminalApp(TerminalApp.iterm2),
+          isSelected: settings.terminalApp == TerminalApp.ghostty,
+          onTap: () => provider.updateTerminalApp(TerminalApp.ghostty),
         ),
         const SizedBox(width: 8),
         _TerminalOption(
@@ -283,8 +285,8 @@ class _TerminalOptionState extends State<_TerminalOption> {
               color: widget.isSelected
                   ? AppColors.accentMuted
                   : _hovered
-                      ? AppColors.surface2
-                      : AppColors.surface0,
+                  ? AppColors.surface2
+                  : AppColors.surface0,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: widget.isSelected

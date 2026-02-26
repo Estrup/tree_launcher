@@ -144,7 +144,7 @@ class _CommandIconButtonState extends State<_CommandIconButton> {
               child: Center(
                 child: Icon(
                   e.icon,
-                  size: 15,
+                  size: 22,
                   color: e.isActive
                       ? e.color
                       : (_hovered
