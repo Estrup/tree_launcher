@@ -8,6 +8,12 @@ class MainFlutterWindow: NSWindow {
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
 
+    // Make the title bar match the app's dark theme (#14171C)
+    self.titleVisibility = .hidden
+    self.titlebarAppearsTransparent = true
+    self.backgroundColor = NSColor(calibratedRed: 0.078, green: 0.090, blue: 0.110, alpha: 1.0)
+    self.isMovableByWindowBackground = true
+
     RegisterGeneratedPlugins(registry: flutterViewController)
 
     let channel = FlutterMethodChannel(
