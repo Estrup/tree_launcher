@@ -86,6 +86,7 @@ class RepoProvider extends ChangeNotifier {
       vscodeConfigs: repo.vscodeConfigs,
       customCommands: repo.customCommands,
       lastBaseBranch: repo.lastBaseBranch,
+      defaultRunCommands: repo.defaultRunCommands,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);
@@ -108,6 +109,7 @@ class RepoProvider extends ChangeNotifier {
       vscodeConfigs: configs,
       customCommands: repo.customCommands,
       lastBaseBranch: repo.lastBaseBranch,
+      defaultRunCommands: repo.defaultRunCommands,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);
@@ -130,6 +132,7 @@ class RepoProvider extends ChangeNotifier {
       vscodeConfigs: repo.vscodeConfigs,
       customCommands: commands,
       lastBaseBranch: repo.lastBaseBranch,
+      defaultRunCommands: repo.defaultRunCommands,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);
@@ -151,6 +154,30 @@ class RepoProvider extends ChangeNotifier {
       vscodeConfigs: repo.vscodeConfigs,
       customCommands: repo.customCommands,
       lastBaseBranch: branch,
+      defaultRunCommands: repo.defaultRunCommands,
+    );
+    _repos[index] = updated;
+    await _configService.saveRepos(_repos);
+
+    if (_selectedRepo == repo) {
+      _selectedRepo = updated;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> updateDefaultRunCommands(
+      RepoConfig repo, List<String> commandNames) async {
+    final index = _repos.indexOf(repo);
+    if (index == -1) return;
+
+    final updated = RepoConfig(
+      name: repo.name,
+      path: repo.path,
+      vscodeConfigs: repo.vscodeConfigs,
+      customCommands: repo.customCommands,
+      lastBaseBranch: repo.lastBaseBranch,
+      defaultRunCommands: commandNames,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);

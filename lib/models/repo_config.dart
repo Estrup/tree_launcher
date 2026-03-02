@@ -7,6 +7,7 @@ class RepoConfig {
   final List<VscodeConfig> vscodeConfigs;
   final List<CustomCommand> customCommands;
   final String? lastBaseBranch;
+  final List<String> defaultRunCommands;
 
   RepoConfig({
     required this.name,
@@ -14,6 +15,7 @@ class RepoConfig {
     this.vscodeConfigs = const [],
     this.customCommands = const [],
     this.lastBaseBranch,
+    this.defaultRunCommands = const [],
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,10 @@ class RepoConfig {
               .toList() ??
           [],
       lastBaseBranch: json['lastBaseBranch'] as String?,
+      defaultRunCommands: (json['defaultRunCommands'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
     );
   }
 
@@ -38,6 +44,7 @@ class RepoConfig {
         'vscodeConfigs': vscodeConfigs.map((c) => c.toJson()).toList(),
         'customCommands': customCommands.map((c) => c.toJson()).toList(),
         'lastBaseBranch': lastBaseBranch,
+        'defaultRunCommands': defaultRunCommands,
       };
 
   @override

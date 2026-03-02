@@ -173,6 +173,29 @@ class TerminalProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Gracefully close all command sessions (those with a non-null command)
+  /// belonging to a given repo. Removes them from the list immediately so the
+  /// UI updates, then awaits graceful shutdown of each in parallel.
+  Future<void> gracefulCloseCommandSessionsForRepo(String repoPath) async {
+    final targets = _sessions
+        .where((s) => s.repoPath == repoPath && s.command != null && !s.isDisposed)
+        .toList();
+    if (targets.isEmpty) return;
+
+    for (final s in targets) {
+      _sessions.remove(s);
+    }
+    if (_activeIndex >= _sessions.length) {
+      _activeIndex = (_sessions.length - 1).clamp(0, maxSessions);
+    }
+    if (_sessions.isEmpty) {
+      _visible = false;
+    }
+    notifyListeners();
+
+    await Future.wait(targets.map((s) => s.gracefulClose()));
+  }
+
   /// Close all sessions belonging to a given repo.
   void closeSessionsForRepo(String repoPath) {
     _sessions

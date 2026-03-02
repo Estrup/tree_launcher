@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/command_style.dart';
+import '../models/custom_command.dart';
 import '../providers/repo_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/terminal_provider.dart';
 import '../services/launcher_service.dart';
 import '../theme/app_theme.dart';
 import 'branch_search_dropdown.dart';
@@ -13,8 +16,11 @@ class AddWorktreeDialog extends StatefulWidget {
   static Future<void> show(BuildContext context) {
     return showDialog(
       context: context,
-      builder: (_) => ChangeNotifierProvider.value(
-        value: context.read<RepoProvider>(),
+      builder: (_) => MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: context.read<RepoProvider>()),
+          ChangeNotifierProvider.value(value: context.read<TerminalProvider>()),
+        ],
         child: const AddWorktreeDialog(),
       ),
     );
@@ -32,6 +38,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   final _promptController = TextEditingController();
   String? _selectedBranch;
   bool _launchTerminal = false;
+  bool _runCommands = false;
+  Set<String> _selectedCommands = {};
   String? _error;
   bool _creating = false;
   List<String> _branches = [];
@@ -48,6 +56,21 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     super.initState();
     _promptController.text = _defaultPrompt;
     _loadBranches();
+    _initRunCommandDefaults();
+  }
+
+  void _initRunCommandDefaults() {
+    final repo = context.read<RepoProvider>().selectedRepo;
+    if (repo == null) return;
+    final commandNames =
+        repo.customCommands.map((c) => c.name).toSet();
+    final validDefaults = repo.defaultRunCommands
+        .where((name) => commandNames.contains(name))
+        .toSet();
+    if (validDefaults.isNotEmpty) {
+      _runCommands = true;
+      _selectedCommands = validDefaults;
+    }
   }
 
   @override
@@ -153,6 +176,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
     try {
       final repoProvider = context.read<RepoProvider>();
+      final terminalProvider = context.read<TerminalProvider>();
       final worktreeName = _effectiveWorktreeName;
       final newBranch = _newBranchController.text.trim();
 
@@ -172,6 +196,32 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
       if (_launchTerminal && worktreePath != null) {
         await _launchGhosttyTerminal(worktreePath, jira);
+      }
+
+      // Launch selected run commands in the new worktree
+      if (_runCommands && _selectedCommands.isNotEmpty && worktreePath != null) {
+        final repo = repoProvider.selectedRepo!;
+
+        // Persist selected commands as defaults
+        await repoProvider.updateDefaultRunCommands(
+          repo,
+          _selectedCommands.toList(),
+        );
+
+        // Shut down existing command sessions for this repo
+        await terminalProvider.gracefulCloseCommandSessionsForRepo(repo.path);
+
+        // Launch each selected command
+        for (final cmd in repo.customCommands) {
+          if (_selectedCommands.contains(cmd.name)) {
+            terminalProvider.openTerminalWithCommand(
+              cmd.name,
+              worktreePath,
+              repo.path,
+              cmd.command,
+            );
+          }
+        }
       }
 
       if (mounted) Navigator.pop(context);
@@ -375,6 +425,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               // Launch Terminal
               _buildTerminalSection(),
 
+              // Run Commands
+              _buildRunSection(),
+
               const SizedBox(height: 12),
               Text(
                 'Created in the same folder as the repository.',
@@ -500,6 +553,133 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildRunSection() {
+    final repo = context.read<RepoProvider>().selectedRepo;
+    if (repo == null || repo.customCommands.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _creating
+                ? null
+                : () => setState(() => _runCommands = !_runCommands),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: Checkbox(
+                    value: _runCommands,
+                    onChanged: _creating
+                        ? null
+                        : (v) => setState(() => _runCommands = v ?? false),
+                    activeColor: AppColors.accent,
+                    side: const BorderSide(color: AppColors.textMuted),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.play_arrow_rounded,
+                  size: 16,
+                  color: AppColors.accent,
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'Run',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_runCommands) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 26),
+            child: Column(
+              children: [
+                for (int i = 0; i < repo.customCommands.length; i++)
+                  _buildCommandCheckbox(repo.customCommands[i], i),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCommandCheckbox(CustomCommand cmd, int index) {
+    final isSelected = _selectedCommands.contains(cmd.name);
+    final color = getCommandColor(cmd.colorHex, index);
+    final icon = getCommandIcon(cmd.iconName);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: _creating
+              ? null
+              : () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedCommands.remove(cmd.name);
+                    } else {
+                      _selectedCommands.add(cmd.name);
+                    }
+                  });
+                },
+          child: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: Checkbox(
+                  value: isSelected,
+                  onChanged: _creating
+                      ? null
+                      : (v) {
+                          setState(() {
+                            if (v == true) {
+                              _selectedCommands.add(cmd.name);
+                            } else {
+                              _selectedCommands.remove(cmd.name);
+                            }
+                          });
+                        },
+                  activeColor: color,
+                  side: const BorderSide(color: AppColors.textMuted),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(
+                cmd.name,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
