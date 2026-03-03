@@ -28,5 +28,7 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Tree Launcher needs to control terminal applications to open tabs and run commands.</string>
 </dict>
 </plist>
