@@ -85,16 +85,30 @@ class GitService {
       throw Exception('Folder "$name" already exists');
     }
 
+    // Fetch latest changes from origin for the base branch so the worktree
+    // is created from the newest remote state.
+    String? effectiveBaseBranch = baseBranch;
+    if (baseBranch != null && baseBranch.isNotEmpty) {
+      final fetchResult = await Process.run(
+        '/usr/bin/git',
+        ['fetch', 'origin', baseBranch],
+        workingDirectory: repoPath,
+      );
+      if (fetchResult.exitCode == 0) {
+        effectiveBaseBranch = 'origin/$baseBranch';
+      }
+    }
+
     final args = <String>['worktree', 'add'];
     if (newBranch != null && newBranch.isNotEmpty) {
       args.addAll(['-b', newBranch, worktreePath]);
-      if (baseBranch != null && baseBranch.isNotEmpty) {
-        args.add(baseBranch);
+      if (effectiveBaseBranch != null && effectiveBaseBranch.isNotEmpty) {
+        args.add(effectiveBaseBranch);
       }
     } else {
       args.add(worktreePath);
-      if (baseBranch != null && baseBranch.isNotEmpty) {
-        args.add(baseBranch);
+      if (effectiveBaseBranch != null && effectiveBaseBranch.isNotEmpty) {
+        args.add(effectiveBaseBranch);
       }
     }
 
