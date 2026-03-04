@@ -109,13 +109,7 @@ class TerminalProvider extends ChangeNotifier {
     _activeIndex = _sessions.length - 1;
     _visible = true;
     notifyListeners();
-
-    // Send the command after a brief delay to let the shell initialize
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (!session.isDisposed) {
-        session.sendCommand(command);
-      }
-    });
+    // Command is sent by _TerminalBodyState after PTY starts
   }
 
   void closeTerminal(int index) {

@@ -10,73 +10,75 @@ class TerminalSession {
   final String repoPath;
   final String? command;
   final Terminal terminal;
-  final Pty _pty;
-  late final StreamSubscription<List<int>> _outputSub;
-  bool _disposed = false;
 
-  TerminalSession._({
+  Pty? _pty;
+  StreamSubscription<String>? _outputSub;
+  bool _disposed = false;
+  bool _ptyStarted = false;
+  final Completer<int> _exitCodeCompleter = Completer<int>();
+
+  TerminalSession({
     required this.title,
     required this.workingDirectory,
     required this.repoPath,
     this.command,
-    required this.terminal,
-    required Pty pty,
-  }) : _pty = pty {
-    // PTY output → terminal display
-    _outputSub = _pty.output.listen((data) {
-      terminal.write(utf8.decode(data, allowMalformed: true));
-    });
+  }) : terminal = Terminal(maxLines: 10000);
 
-    // Terminal user input → PTY stdin
-    terminal.onOutput = (data) {
-      _pty.write(utf8.encode(data));
-    };
+  /// Start the PTY process. Must be called after the TerminalView has been
+  /// laid out so that [terminal.viewWidth] and [terminal.viewHeight] reflect
+  /// the actual view dimensions. Following the official xterm.dart example
+  /// pattern, call this from `WidgetsBinding.instance.endOfFrame`.
+  void startPty() {
+    if (_ptyStarted || _disposed) return;
+    _ptyStarted = true;
 
-    // Terminal resize (from TerminalView autoResize) → PTY resize
-    terminal.onResize = (int width, int height, int pixelWidth, int pixelHeight) {
-      if (!_disposed) {
-        _pty.resize(height, width);
-      }
-    };
-  }
+    final env = Map<String, String>.from(Platform.environment);
 
-  /// Factory that creates a session and starts the PTY process.
-  /// Inherits the current process environment with TERM override.
-  factory TerminalSession({
-    required String title,
-    required String workingDirectory,
-    required String repoPath,
-    String? command,
-  }) {
-    final env = Map<String, String>.from(Platform.environment)
-      ..['TERM'] = 'xterm-256color';
-
-    final terminal = Terminal(maxLines: 10000);
     final pty = Pty.start(
       '/bin/zsh',
       arguments: ['-l'],
       workingDirectory: workingDirectory,
       environment: env,
+      columns: terminal.viewWidth,
+      rows: terminal.viewHeight,
     );
+    _pty = pty;
 
-    return TerminalSession._(
-      title: title,
-      workingDirectory: workingDirectory,
-      repoPath: repoPath,
-      command: command,
-      terminal: terminal,
-      pty: pty,
-    );
+    // PTY output → terminal display (Utf8Decoder maintains state across chunks)
+    _outputSub = pty.output
+        .cast<List<int>>()
+        .transform(const Utf8Decoder())
+        .listen(terminal.write);
+
+    // Terminal user input → PTY stdin
+    terminal.onOutput = (data) {
+      pty.write(utf8.encode(data));
+    };
+
+    // Terminal resize (from TerminalView autoResize) → PTY resize
+    terminal.onResize = (int width, int height, int pixelWidth, int pixelHeight) {
+      if (!_disposed) {
+        pty.resize(height, width);
+      }
+    };
+
+    pty.exitCode.then((code) {
+      if (!_exitCodeCompleter.isCompleted) {
+        _exitCodeCompleter.complete(code);
+      }
+    });
   }
+
+  bool get isPtyStarted => _ptyStarted;
 
   /// Writes an initial command to the PTY (e.g., for custom commands).
   void sendCommand(String command) {
-    if (_disposed) return;
-    _pty.write(utf8.encode('$command\n'));
+    if (_disposed || _pty == null) return;
+    _pty!.write(utf8.encode('$command\n'));
   }
 
   /// Future that completes when the shell process exits.
-  Future<int> get exitCode => _pty.exitCode;
+  Future<int> get exitCode => _exitCodeCompleter.future;
 
   bool get isDisposed => _disposed;
 
@@ -85,28 +87,39 @@ class TerminalSession {
   Future<void> gracefulClose() async {
     if (_disposed) return;
     _disposed = true;
-    _outputSub.cancel();
+    _outputSub?.cancel();
+
+    final pty = _pty;
+    if (pty == null) {
+      if (!_exitCodeCompleter.isCompleted) {
+        _exitCodeCompleter.complete(-1);
+      }
+      return;
+    }
 
     // SIGINT (Ctrl+C)
-    _pty.kill(ProcessSignal.sigint);
-    final exited = await _pty.exitCode
+    pty.kill(ProcessSignal.sigint);
+    final exited = await pty.exitCode
         .timeout(const Duration(seconds: 2), onTimeout: () => -1);
     if (exited != -1) return;
 
     // SIGTERM
-    _pty.kill(ProcessSignal.sigterm);
-    final exited2 = await _pty.exitCode
+    pty.kill(ProcessSignal.sigterm);
+    final exited2 = await pty.exitCode
         .timeout(const Duration(seconds: 1), onTimeout: () => -1);
     if (exited2 != -1) return;
 
     // SIGKILL as last resort
-    _pty.kill(ProcessSignal.sigkill);
+    pty.kill(ProcessSignal.sigkill);
   }
 
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    _outputSub.cancel();
-    _pty.kill();
+    _outputSub?.cancel();
+    _pty?.kill();
+    if (!_exitCodeCompleter.isCompleted) {
+      _exitCodeCompleter.complete(-1);
+    }
   }
 }

@@ -289,18 +289,61 @@ class _IconBtnState extends State<_IconBtn> {
   }
 }
 
-class _TerminalBody extends StatelessWidget {
+class _TerminalBody extends StatefulWidget {
   final dynamic session;
   const _TerminalBody({required this.session});
 
   @override
+  State<_TerminalBody> createState() => _TerminalBodyState();
+}
+
+class _TerminalBodyState extends State<_TerminalBody> {
+  @override
+  void initState() {
+    super.initState();
+    _ensurePtyStarted();
+  }
+
+  @override
+  void didUpdateWidget(_TerminalBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.session != oldWidget.session) {
+      _ensurePtyStarted();
+    }
+  }
+
+  void _ensurePtyStarted() {
+    final session = widget.session;
+    if (!session.isPtyStarted) {
+      // Defer PTY start until after the TerminalView has been laid out,
+      // so terminal.viewWidth/viewHeight reflect the actual view size.
+      WidgetsBinding.instance.endOfFrame.then((_) {
+        if (mounted && !session.isPtyStarted && !session.isDisposed) {
+          session.startPty();
+          // Send queued command after PTY and shell have initialized
+          if (session.command != null) {
+            Future.delayed(const Duration(milliseconds: 200), () {
+              if (!session.isDisposed) {
+                session.sendCommand(session.command!);
+              }
+            });
+          }
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return TerminalView(
-      session.terminal as Terminal,
-      theme: appTerminalTheme,
+    return Padding(
       padding: const EdgeInsets.all(8),
-      autofocus: true,
-      hardwareKeyboardOnly: true,
+      child: TerminalView(
+        widget.session.terminal as Terminal,
+        theme: appTerminalTheme,
+        padding: EdgeInsets.zero,
+        autofocus: true,
+        hardwareKeyboardOnly: true,
+      ),
     );
   }
 }
