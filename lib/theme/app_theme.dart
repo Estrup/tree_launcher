@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 class AppColorPalette {
   // App surface layers
   final Color base;
+  final Color? terminalSurface;
   final Color surface0;
   final Color surface1;
   final Color surface2;
@@ -56,6 +57,7 @@ class AppColorPalette {
 
   const AppColorPalette({
     required this.base,
+    this.terminalSurface,
     required this.surface0,
     required this.surface1,
     required this.surface2,
@@ -101,6 +103,7 @@ class AppColorPalette {
 const palettes = <String, AppColorPalette>{
   'vivid': AppColorPalette(
     base: Color(0xFF0D0F12),
+    terminalSurface: Color.fromARGB(255, 29, 31, 36),
     surface0: Color(0xFF14171C),
     surface1: Color(0xFF1A1E24),
     surface2: Color(0xFF22272E),

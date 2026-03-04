@@ -76,6 +76,7 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView> {
     }
 
     return Container(
+      //color: AppColors.base,
       color: AppColors.base,
       padding: const EdgeInsets.all(8),
       child: TerminalView(
@@ -84,7 +85,10 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView> {
         textStyle: TerminalStyle(
           fontFamily: fontFamily,
           fontSize: fontSize,
+          height: 1.3,
+          fontFamilyFallback: [fontFamily, 'monospace'],
         ),
+        textScaler: TextScaler.noScaling,
         padding: EdgeInsets.zero,
         autofocus: true,
         hardwareKeyboardOnly: true,

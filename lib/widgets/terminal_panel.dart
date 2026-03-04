@@ -340,15 +340,19 @@ class _TerminalBodyState extends State<_TerminalBody> {
     final fontFamily = settings.terminalFontFamily ?? 'SF Mono';
     final fontSize = settings.terminalFontSize ?? 13.0;
 
-    return Padding(
+    return Container(
       padding: const EdgeInsets.all(8),
+      color: AppColors.terminalBg,
       child: TerminalView(
         widget.session.terminal as Terminal,
         theme: appTerminalTheme,
         textStyle: TerminalStyle(
           fontFamily: fontFamily,
           fontSize: fontSize,
+          height: 1.9,
+          fontFamilyFallback: [fontFamily, 'monospace'],
         ),
+        textScaler: TextScaler.noScaling,
         padding: EdgeInsets.zero,
         autofocus: true,
         hardwareKeyboardOnly: true,

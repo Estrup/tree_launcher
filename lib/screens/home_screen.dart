@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import '../models/custom_command.dart';
 import '../providers/copilot_provider.dart';
 import '../providers/repo_provider.dart';
 import '../providers/terminal_provider.dart';
+import '../services/launcher_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/repo_sidebar.dart';
 import '../widgets/worktree_grid.dart';
@@ -237,6 +240,20 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           const Spacer(),
+          if (selectedRepo != null && activeCopilot != null) ...[
+            _HeaderVscodeButton(
+              worktreePath: activeCopilot.workingDirectory,
+              vscodeConfigs: selectedRepo.vscodeConfigs,
+            ),
+            if (selectedRepo.customCommands.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              _HeaderCommandsButton(
+                worktreePath: activeCopilot.workingDirectory,
+                worktreeName: activeCopilot.name,
+                commands: selectedRepo.customCommands,
+              ),
+            ],
+          ],
           if (selectedRepo != null && activeCopilot == null) ...[
             _AddWorktreeButton(
               onPressed: () => AddWorktreeDialog.show(context),
@@ -441,5 +458,251 @@ class _MenuButtonState extends State<_MenuButton> {
         ),
       ),
     );
+  }
+}
+
+class _HeaderVscodeButton extends StatefulWidget {
+  final String worktreePath;
+  final List<dynamic> vscodeConfigs;
+
+  const _HeaderVscodeButton({
+    required this.worktreePath,
+    required this.vscodeConfigs,
+  });
+
+  @override
+  State<_HeaderVscodeButton> createState() => _HeaderVscodeButtonState();
+}
+
+class _HeaderVscodeButtonState extends State<_HeaderVscodeButton> {
+  bool _hovered = false;
+  final LauncherService _launcherService = LauncherService();
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () {
+          if (widget.vscodeConfigs.isEmpty) {
+            _launcherService.openVSCode(widget.worktreePath);
+          } else {
+            _showDropdown(context);
+          }
+        },
+        child: Tooltip(
+          message: 'Open in VS Code',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _hovered
+                  ? AppColors.vscode.withValues(alpha: 0.15)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.code_rounded,
+              size: 20,
+              color: _hovered ? AppColors.vscode : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDropdown(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height)),
+        button.localToGlobal(Offset(button.size.width, button.size.height)),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      color: AppColors.surface1,
+      constraints: const BoxConstraints(minWidth: 280),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.border),
+      ),
+      items: [
+        PopupMenuItem<String>(
+          value: '',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.code_rounded, size: 13, color: AppColors.vscode),
+              const SizedBox(width: 8),
+              Text(
+                'VS Code (default)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ...widget.vscodeConfigs.map((config) {
+          return PopupMenuItem<String>(
+            value: config.path as String,
+            height: 36,
+            child: Row(
+              children: [
+                Icon(Icons.code_rounded, size: 13, color: AppColors.vscode),
+                const SizedBox(width: 8),
+                Text(
+                  config.name as String,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    config.path as String,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textMuted,
+                      fontFamily: 'monospace',
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    ).then((selectedPath) {
+      if (selectedPath != null) {
+        if (selectedPath.isEmpty) {
+          _launcherService.openVSCode(widget.worktreePath);
+        } else {
+          final resolved = p.join(widget.worktreePath, selectedPath);
+          _launcherService.openVSCode(resolved);
+        }
+      }
+    });
+  }
+}
+
+class _HeaderCommandsButton extends StatefulWidget {
+  final String worktreePath;
+  final String worktreeName;
+  final List<CustomCommand> commands;
+
+  const _HeaderCommandsButton({
+    required this.worktreePath,
+    required this.worktreeName,
+    required this.commands,
+  });
+
+  @override
+  State<_HeaderCommandsButton> createState() => _HeaderCommandsButtonState();
+}
+
+class _HeaderCommandsButtonState extends State<_HeaderCommandsButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => _showDropdown(context),
+        child: Tooltip(
+          message: 'Run Command',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _hovered
+                  ? AppColors.terminal.withValues(alpha: 0.15)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.play_arrow_rounded,
+              size: 20,
+              color: _hovered ? AppColors.terminal : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDropdown(BuildContext context) {
+    final repo = context.read<RepoProvider>().selectedRepo;
+    final tp = context.read<TerminalProvider>();
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height)),
+        button.localToGlobal(Offset(button.size.width, button.size.height)),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<CustomCommand>(
+      context: context,
+      position: position,
+      color: AppColors.surface1,
+      constraints: const BoxConstraints(minWidth: 220),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.border),
+      ),
+      items: widget.commands.map((cmd) {
+        return PopupMenuItem<CustomCommand>(
+          value: cmd,
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.play_arrow_rounded,
+                  size: 13, color: AppColors.terminal),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  cmd.name,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((selected) {
+      if (selected != null) {
+        tp.openTerminalWithCommand(
+          '${widget.worktreeName}: ${selected.name}',
+          widget.worktreePath,
+          repo?.path ?? widget.worktreePath,
+          selected.command,
+        );
+      }
+    });
   }
 }

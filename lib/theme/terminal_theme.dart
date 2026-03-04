@@ -8,7 +8,7 @@ TerminalTheme get appTerminalTheme {
     cursor: p.accent,
     selection: p.accent.withValues(alpha: 0.25),
     foreground: p.textPrimary,
-    background: p.base,
+    background: p.terminalSurface ?? p.base,
     black: p.ansiBlack,
     red: p.ansiRed,
     green: p.ansiGreen,
