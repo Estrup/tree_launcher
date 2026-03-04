@@ -60,4 +60,10 @@ class SettingsProvider extends ChangeNotifier {
     await _configService.saveSettings(_settings);
     notifyListeners();
   }
+
+  Future<void> updateCopilotButtonMode(CopilotButtonMode mode) async {
+    _settings = _settings.copyWith(copilotButtonMode: mode);
+    await _configService.saveSettings(_settings);
+    notifyListeners();
+  }
 }

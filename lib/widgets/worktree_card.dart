@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import '../models/app_settings.dart';
 import '../models/custom_command.dart';
 import '../models/worktree.dart';
+import '../providers/copilot_provider.dart';
 import '../providers/repo_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/terminal_provider.dart';
@@ -194,8 +196,18 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     label: 'Copilot',
                     color: AppColors.copilot,
                     bgColor: AppColors.copilotBg,
-                    onPressed: () =>
-                        _launcherService.openCopilotCli(wt.path, settings),
+                    onPressed: () {
+                      if (settings.copilotButtonMode == CopilotButtonMode.inApp) {
+                        final repo = context.read<RepoProvider>().selectedRepo;
+                        context.read<CopilotProvider>().createSession(
+                          repo?.path ?? wt.path,
+                          wt.path,
+                          wt.name,
+                        );
+                      } else {
+                        _launcherService.openCopilotCli(wt.path, settings);
+                      }
+                    },
                   ),
                 ),
                 SizedBox(width: 8),

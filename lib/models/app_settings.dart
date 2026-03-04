@@ -1,4 +1,5 @@
 enum TerminalApp { terminal, ghostty, custom }
+enum CopilotButtonMode { inApp, external }
 
 class AppSettings {
   final TerminalApp terminalApp;
@@ -7,6 +8,7 @@ class AppSettings {
   final String themeName;
   final String? terminalFontFamily;
   final double? terminalFontSize;
+  final CopilotButtonMode copilotButtonMode;
 
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
@@ -15,6 +17,7 @@ class AppSettings {
     this.themeName = 'muted',
     this.terminalFontFamily,
     this.terminalFontSize,
+    this.copilotButtonMode = CopilotButtonMode.inApp,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -32,6 +35,10 @@ class AppSettings {
       themeName: json['themeName'] as String? ?? 'muted',
       terminalFontFamily: json['terminalFontFamily'] as String?,
       terminalFontSize: (json['terminalFontSize'] as num?)?.toDouble(),
+      copilotButtonMode: CopilotButtonMode.values.firstWhere(
+        (e) => e.name == (json['copilotButtonMode'] as String?),
+        orElse: () => CopilotButtonMode.inApp,
+      ),
     );
   }
 
@@ -42,6 +49,7 @@ class AppSettings {
     'themeName': themeName,
     'terminalFontFamily': terminalFontFamily,
     'terminalFontSize': terminalFontSize,
+    'copilotButtonMode': copilotButtonMode.name,
   };
 
   AppSettings copyWith({
@@ -53,6 +61,7 @@ class AppSettings {
     double? terminalFontSize,
     bool clearTerminalFontFamily = false,
     bool clearTerminalFontSize = false,
+    CopilotButtonMode? copilotButtonMode,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -66,6 +75,7 @@ class AppSettings {
       terminalFontSize: clearTerminalFontSize
           ? null
           : (terminalFontSize ?? this.terminalFontSize),
+      copilotButtonMode: copilotButtonMode ?? this.copilotButtonMode,
     );
   }
 }

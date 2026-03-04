@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
+import '../models/copilot_session.dart';
 import '../models/custom_command.dart';
 import '../models/repo_config.dart';
 import '../models/vscode_config.dart';
@@ -87,6 +88,7 @@ class RepoProvider extends ChangeNotifier {
       customCommands: repo.customCommands,
       lastBaseBranch: repo.lastBaseBranch,
       defaultRunCommands: repo.defaultRunCommands,
+      copilotSessions: repo.copilotSessions,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);
@@ -110,6 +112,7 @@ class RepoProvider extends ChangeNotifier {
       customCommands: repo.customCommands,
       lastBaseBranch: repo.lastBaseBranch,
       defaultRunCommands: repo.defaultRunCommands,
+      copilotSessions: repo.copilotSessions,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);
@@ -133,6 +136,7 @@ class RepoProvider extends ChangeNotifier {
       customCommands: commands,
       lastBaseBranch: repo.lastBaseBranch,
       defaultRunCommands: repo.defaultRunCommands,
+      copilotSessions: repo.copilotSessions,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);
@@ -155,6 +159,7 @@ class RepoProvider extends ChangeNotifier {
       customCommands: repo.customCommands,
       lastBaseBranch: branch,
       defaultRunCommands: repo.defaultRunCommands,
+      copilotSessions: repo.copilotSessions,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);
@@ -178,6 +183,31 @@ class RepoProvider extends ChangeNotifier {
       customCommands: repo.customCommands,
       lastBaseBranch: repo.lastBaseBranch,
       defaultRunCommands: commandNames,
+      copilotSessions: repo.copilotSessions,
+    );
+    _repos[index] = updated;
+    await _configService.saveRepos(_repos);
+
+    if (_selectedRepo == repo) {
+      _selectedRepo = updated;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> updateRepoCopilotSessions(
+      RepoConfig repo, List<CopilotSession> sessions) async {
+    final index = _repos.indexOf(repo);
+    if (index == -1) return;
+
+    final updated = RepoConfig(
+      name: repo.name,
+      path: repo.path,
+      vscodeConfigs: repo.vscodeConfigs,
+      customCommands: repo.customCommands,
+      lastBaseBranch: repo.lastBaseBranch,
+      defaultRunCommands: repo.defaultRunCommands,
+      copilotSessions: sessions,
     );
     _repos[index] = updated;
     await _configService.saveRepos(_repos);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../providers/copilot_provider.dart';
 import '../providers/repo_provider.dart';
 import '../providers/terminal_provider.dart';
 import '../theme/app_theme.dart';
@@ -9,6 +10,7 @@ import '../widgets/worktree_grid.dart';
 import '../widgets/repo_settings_view.dart';
 import '../widgets/terminal_panel.dart';
 import '../widgets/running_commands_bar.dart';
+import '../widgets/copilot_terminal_view.dart';
 import '../widgets/add_repo_dialog.dart';
 import '../widgets/add_worktree_dialog.dart';
 import '../widgets/settings_dialog.dart';
@@ -27,6 +29,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final repoProvider = context.watch<RepoProvider>();
+    final copilotProvider = context.watch<CopilotProvider>();
+    final isCopilotActive = copilotProvider.activeSession != null;
 
     return CallbackShortcuts(
       bindings: {
@@ -69,13 +73,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: Column(
                           children: [
-                            _buildHeader(context, repoProvider,
+                            _buildHeader(context, repoProvider, copilotProvider,
                                 showMenuButton: isCollapsed),
-                            Expanded(
-                              child: const WorktreeGrid(),
-                            ),
-                            const RunningCommandsBar(),
-                            const TerminalPanel(),
+                            if (isCopilotActive)
+                              const Expanded(
+                                child: CopilotTerminalView(),
+                              )
+                            else ...[
+                              Expanded(
+                                child: const WorktreeGrid(),
+                              ),
+                              const RunningCommandsBar(),
+                              const TerminalPanel(),
+                            ],
                           ],
                         ),
                       ),
@@ -125,8 +135,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader(BuildContext context, RepoProvider repoProvider,
+      CopilotProvider copilotProvider,
       {bool showMenuButton = false}) {
     final selectedRepo = repoProvider.selectedRepo;
+    final activeCopilot = copilotProvider.activeSession;
 
     return Container(
       height: 64,
@@ -146,33 +158,74 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 12),
           ],
           if (selectedRepo != null) ...[
-            // Repo name — big and bold
-            Text(
-              selectedRepo.name,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Worktree count badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.accentMuted,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                '${repoProvider.worktrees.length}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
+            if (activeCopilot != null) ...[
+              // Breadcrumb: reponame > session-name
+              GestureDetector(
+                onTap: () => copilotProvider.deselectSession(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Text(
+                    selectedRepo.name,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textMuted,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
                 ),
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              Icon(
+                Icons.auto_awesome_rounded,
+                size: 16,
+                color: AppColors.copilot,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                activeCopilot.name,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ] else ...[
+              // Normal header: repo name + count
+              Text(
+                selectedRepo.name,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.accentMuted,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${repoProvider.worktrees.length}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent,
+                  ),
+                ),
+              ),
+            ],
           ] else
             Text(
               'TreeLauncher',
@@ -184,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           const Spacer(),
-          if (selectedRepo != null) ...[
+          if (selectedRepo != null && activeCopilot == null) ...[
             _AddWorktreeButton(
               onPressed: () => AddWorktreeDialog.show(context),
             ),

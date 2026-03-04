@@ -39,6 +39,7 @@ dependencies:
   path: ^1.9.1
   xterm: ^4.0.0
   flutter_pty: ^0.4.0
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:

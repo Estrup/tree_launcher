@@ -147,6 +147,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
               _buildTerminalFontSettings(settings, settingsProvider),
               const SizedBox(height: 24),
 
+              // ── Copilot button ──
+              Text(
+                'COPILOT BUTTON',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildCopilotButtonOptions(settings, settingsProvider),
+              const SizedBox(height: 24),
+
               // ── Branch prefix ──
               Text(
                 'DEFAULT BRANCH PREFIX',
@@ -315,6 +329,29 @@ class _SettingsDialogState extends State<SettingsDialog> {
             )).toList(),
             onChanged: (v) => provider.updateTerminalFontSize(v),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCopilotButtonOptions(
+    AppSettings settings,
+    SettingsProvider provider,
+  ) {
+    return Row(
+      children: [
+        _OptionCard(
+          label: 'In-App',
+          icon: Icons.auto_awesome_rounded,
+          isSelected: settings.copilotButtonMode == CopilotButtonMode.inApp,
+          onTap: () => provider.updateCopilotButtonMode(CopilotButtonMode.inApp),
+        ),
+        const SizedBox(width: 8),
+        _OptionCard(
+          label: 'External',
+          icon: Icons.open_in_new_rounded,
+          isSelected: settings.copilotButtonMode == CopilotButtonMode.external,
+          onTap: () => provider.updateCopilotButtonMode(CopilotButtonMode.external),
         ),
       ],
     );

@@ -1,3 +1,4 @@
+import 'copilot_session.dart';
 import 'custom_command.dart';
 import 'vscode_config.dart';
 
@@ -8,6 +9,7 @@ class RepoConfig {
   final List<CustomCommand> customCommands;
   final String? lastBaseBranch;
   final List<String> defaultRunCommands;
+  final List<CopilotSession> copilotSessions;
 
   RepoConfig({
     required this.name,
@@ -16,6 +18,7 @@ class RepoConfig {
     this.customCommands = const [],
     this.lastBaseBranch,
     this.defaultRunCommands = const [],
+    this.copilotSessions = const [],
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -35,6 +38,10 @@ class RepoConfig {
               ?.map((e) => e as String)
               .toList() ??
           [],
+      copilotSessions: (json['copilotSessions'] as List<dynamic>?)
+              ?.map((e) => CopilotSession.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -45,6 +52,7 @@ class RepoConfig {
         'customCommands': customCommands.map((c) => c.toJson()).toList(),
         'lastBaseBranch': lastBaseBranch,
         'defaultRunCommands': defaultRunCommands,
+        'copilotSessions': copilotSessions.map((s) => s.toJson()).toList(),
       };
 
   @override

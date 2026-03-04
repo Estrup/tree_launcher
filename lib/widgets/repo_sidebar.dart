@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/copilot_session.dart';
 import '../models/repo_config.dart';
+import '../providers/copilot_provider.dart';
 import '../providers/repo_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -80,6 +82,7 @@ class RepoSidebar extends StatelessWidget {
 
           // Repo list
           Expanded(
+            flex: 3,
             child: repoProvider.repos.isEmpty
                 ? Padding(
                     padding: const EdgeInsets.all(20),
@@ -112,7 +115,12 @@ class RepoSidebar extends StatelessWidget {
                       return _RepoTile(
                         repo: repo,
                         isSelected: isSelected,
-                        onTap: () => repoProvider.selectRepo(repo),
+                        onTap: () {
+                          final copilotProvider =
+                              context.read<CopilotProvider>();
+                          copilotProvider.deselectSession();
+                          repoProvider.selectRepo(repo);
+                        },
                         onRemove: () =>
                             _confirmRemove(context, repoProvider, repo),
                         onSettings: () {
@@ -125,6 +133,9 @@ class RepoSidebar extends StatelessWidget {
                     },
                   ),
           ),
+
+          // Copilots section
+          _CopilotsSidebarSection(),
 
           // Bottom bar
           Container(
@@ -422,6 +433,178 @@ class _SettingsButtonState extends State<_SettingsButton> {
             Icons.tune_rounded,
             size: 16,
             color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Copilots sidebar section ---
+
+class _CopilotsSidebarSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final repoProvider = context.watch<RepoProvider>();
+    final copilotProvider = context.watch<CopilotProvider>();
+    final selectedRepo = repoProvider.selectedRepo;
+    final sessions = selectedRepo?.copilotSessions ?? [];
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AppColors.borderSubtle, width: 1),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 12,
+                  color: AppColors.copilot.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'COPILOTS',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted.withValues(alpha: 0.7),
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (sessions.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Text(
+                'No copilot sessions',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted.withValues(alpha: 0.5),
+                ),
+              ),
+            )
+          else
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: sessions.length,
+                itemBuilder: (context, index) {
+                  final session = sessions[index];
+                  final isActive =
+                      copilotProvider.activeSession?.id == session.id;
+                  return _CopilotTile(
+                    session: session,
+                    isActive: isActive,
+                    onTap: () => copilotProvider.selectSession(session),
+                    onRemove: () => copilotProvider.removeSession(session),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CopilotTile extends StatefulWidget {
+  final CopilotSession session;
+  final bool isActive;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const _CopilotTile({
+    required this.session,
+    required this.isActive,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  State<_CopilotTile> createState() => _CopilotTileState();
+}
+
+class _CopilotTileState extends State<_CopilotTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          margin: const EdgeInsets.only(bottom: 2),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? AppColors.copilot.withValues(alpha: 0.12)
+                : _hovered
+                    ? AppColors.surface1
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: widget.isActive
+                        ? AppColors.copilot
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 12,
+                  color: widget.isActive
+                      ? AppColors.copilot
+                      : AppColors.textMuted,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      widget.session.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: widget.isActive
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: widget.isActive
+                            ? AppColors.copilot
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+                if (_hovered || widget.isActive)
+                  _TinyIconButton(
+                    icon: Icons.close_rounded,
+                    onTap: widget.onRemove,
+                  ),
+                const SizedBox(width: 4),
+              ],
+            ),
           ),
         ),
       ),

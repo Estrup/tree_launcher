@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/git_service.dart';
 import 'services/config_service.dart';
+import 'providers/copilot_provider.dart';
 import 'providers/repo_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/terminal_provider.dart';
@@ -35,6 +36,13 @@ class TreeLauncherApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => TerminalProvider(),
+        ),
+        ChangeNotifierProxyProvider<RepoProvider, CopilotProvider>(
+          create: (ctx) => CopilotProvider(
+            repoProvider: ctx.read<RepoProvider>(),
+          ),
+          update: (ctx, repoProvider, previous) =>
+              previous ?? CopilotProvider(repoProvider: repoProvider),
         ),
       ],
       child: Builder(
