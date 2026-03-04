@@ -46,7 +46,7 @@ class RunningCommandsBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface0,
         border: Border(
           top: BorderSide(color: AppColors.borderSubtle, width: 1),

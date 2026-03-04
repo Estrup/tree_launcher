@@ -106,7 +106,7 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
               ],
             ),
             child: _filtered.isEmpty
-                ? const Padding(
+                ? Padding(
                     padding: EdgeInsets.all(12),
                     child: Text(
                       'No branches found',
@@ -150,7 +150,7 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
         controller: _controller,
         focusNode: _focusNode,
         enabled: widget.enabled,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.textPrimary,
           fontSize: 14,
           fontFamily: 'monospace',
@@ -161,18 +161,18 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
             color: AppColors.textMuted.withValues(alpha: 0.4),
             fontFamily: 'monospace',
           ),
-          suffixIcon: const Icon(
+          suffixIcon: Icon(
             Icons.unfold_more_rounded,
             size: 18,
             color: AppColors.textMuted,
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderSide: BorderSide(color: AppColors.border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.accent),
+            borderSide: BorderSide(color: AppColors.accent),
           ),
           filled: true,
           fillColor: AppColors.surface0,

@@ -13,7 +13,7 @@ import '../theme/app_theme.dart';
 class WorktreeCard extends StatefulWidget {
   final Worktree worktree;
 
-  const WorktreeCard({super.key, required this.worktree});
+  WorktreeCard({super.key, required this.worktree});
 
   @override
   State<WorktreeCard> createState() => _WorktreeCardState();
@@ -42,7 +42,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
             color: _hovered ? AppColors.border : AppColors.borderSubtle,
           ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Stack(
           children: [
             Column(
@@ -54,7 +54,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     Expanded(
                       child: Text(
                         wt.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
@@ -71,7 +71,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                           color: AppColors.accentMuted,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text(
+                        child: Text(
                           'PRIMARY',
                           style: TextStyle(
                             fontSize: 9,
@@ -92,7 +92,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
               child: GestureDetector(
                 onTap: () => _copyToClipboard(context, wt.branch, 'Branch'),
                 child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: AppColors.copilotBg,
                 borderRadius: BorderRadius.circular(6),
@@ -103,13 +103,13 @@ class _WorktreeCardState extends State<WorktreeCard> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.call_split_rounded,
+                  Icon(Icons.call_split_rounded,
                       size: 12, color: AppColors.copilot),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       wt.branch,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: AppColors.copilot,
@@ -123,7 +123,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
             ),
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
 
             // Commit + path
             Row(
@@ -134,14 +134,14 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     onTap: () => _copyToClipboard(context, wt.commitHash, 'Commit hash'),
                     child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppColors.surface2,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     wt.commitHash,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontFamily: 'monospace',
                       fontWeight: FontWeight.w500,
@@ -161,7 +161,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     message: wt.path,
                     child: Text(
                       wt.path.replaceFirst(RegExp(r'^/Users/[^/]+'), '~'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
                         fontFamily: 'monospace',
@@ -175,7 +175,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
               ],
             ),
 
-            const Spacer(),
+            Spacer(),
 
             // Action buttons
             Row(
@@ -187,7 +187,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     launcherService: _launcherService,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: _ActionButton(
                     icon: Icons.auto_awesome_rounded,                    
@@ -198,7 +198,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                         _launcherService.openCopilotCli(wt.path, settings),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: _VscodeSplitButton(
                     worktreePath: wt.path,
@@ -287,7 +287,7 @@ class _TerminalSplitButton extends StatefulWidget {
   final String worktreeName;
   final LauncherService launcherService;
 
-  const _TerminalSplitButton({
+  _TerminalSplitButton({
     required this.worktreePath,
     required this.worktreeName,
     required this.launcherService,
@@ -306,7 +306,7 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
     return SizedBox(
       height: 36,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: Duration(milliseconds: 120),
         decoration: BoxDecoration(
           color: AppColors.terminalBg,
           borderRadius: BorderRadius.circular(8),
@@ -344,13 +344,13 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.terminal_rounded,
+                          Icon(Icons.terminal_rounded,
                               size: 14, color: AppColors.terminal),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
                               'Terminal',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.terminal,
@@ -381,7 +381,7 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
                     color: _dropHovered
                         ? AppColors.terminal.withValues(alpha: 0.2)
                         : Colors.transparent,
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.arrow_drop_down_rounded,
                         size: 18,
@@ -419,10 +419,10 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
       constraints: const BoxConstraints(minWidth: 200),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       items: [
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'external',
           height: 36,
           child: Row(
@@ -516,13 +516,13 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.code_rounded,
+                          Icon(Icons.code_rounded,
                               size: 14, color: AppColors.vscode),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
                               'VS Code',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.vscode,
@@ -553,7 +553,7 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
                     color: _dropHovered
                         ? AppColors.vscode.withValues(alpha: 0.2)
                         : Colors.transparent,
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.arrow_drop_down_rounded,
                         size: 18,
@@ -591,7 +591,7 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
       constraints: const BoxConstraints(minWidth: 280),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       items: configs.map((config) {
         return PopupMenuItem<String>(
@@ -599,12 +599,12 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
           height: 36,
           child: Row(
             children: [
-              const Icon(Icons.code_rounded,
+              Icon(Icons.code_rounded,
                   size: 13, color: AppColors.vscode),
               const SizedBox(width: 8),
               Text(
                 config.name as String,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
@@ -614,7 +614,7 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
               Expanded(
                 child: Text(
                   config.path as String,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     color: AppColors.textMuted,
                     fontFamily: 'monospace',
@@ -676,7 +676,7 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
                   : AppColors.terminal.withValues(alpha: 0.15),
             ),
           ),
-          child: const Center(
+          child: Center(
             child: Icon(
               Icons.play_arrow_rounded,
               size: 18,
@@ -710,7 +710,7 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
       constraints: const BoxConstraints(minWidth: 220),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
       items: widget.commands.map((cmd) {
         return PopupMenuItem<CustomCommand>(
@@ -718,13 +718,13 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
           height: 36,
           child: Row(
             children: [
-              const Icon(Icons.play_arrow_rounded,
+              Icon(Icons.play_arrow_rounded,
                   size: 13, color: AppColors.terminal),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   cmd.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: AppColors.textPrimary,

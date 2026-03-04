@@ -20,7 +20,7 @@ class WorktreeGrid extends StatelessWidget {
     }
 
     if (repoProvider.loading) {
-      return const Center(
+      return Center(
         child: SizedBox(
           width: 24,
           height: 24,
@@ -44,14 +44,14 @@ class WorktreeGrid extends StatelessWidget {
                 color: AppColors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.warning_amber_rounded,
                 color: AppColors.error,
                 size: 24,
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Failed to load worktrees',
               style: TextStyle(
                 fontSize: 15,
@@ -64,7 +64,7 @@ class WorktreeGrid extends StatelessWidget {
               width: 320,
               child: Text(
                 repoProvider.error!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textMuted,
                   fontFamily: 'monospace',
@@ -116,7 +116,7 @@ class _EmptyState extends StatelessWidget {
   final String subtitle;
   final bool isCode;
 
-  const _EmptyState({
+  _EmptyState({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -142,7 +142,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
@@ -151,7 +151,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 6),
           if (isCode)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.surface1,
                 borderRadius: BorderRadius.circular(6),
@@ -159,7 +159,7 @@ class _EmptyState extends StatelessWidget {
               ),
               child: Text(
                 subtitle,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontFamily: 'monospace',
                   color: AppColors.textMuted,
@@ -169,7 +169,7 @@ class _EmptyState extends StatelessWidget {
           else
             Text(
               subtitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 color: AppColors.textMuted,
               ),

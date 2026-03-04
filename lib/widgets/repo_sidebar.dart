@@ -20,7 +20,7 @@ class RepoSidebar extends StatelessWidget {
 
     return Container(
       width: 240,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface0,
         border: Border(
           right: BorderSide(color: AppColors.borderSubtle, width: 1),
@@ -40,14 +40,14 @@ class RepoSidebar extends StatelessWidget {
                     color: AppColors.accentMuted,
                     borderRadius: BorderRadius.circular(7),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.account_tree_rounded,
                     size: 16,
                     color: AppColors.accent,
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'TreeLauncher',
                   style: TextStyle(
                     fontSize: 15,
@@ -129,7 +129,7 @@ class RepoSidebar extends StatelessWidget {
           // Bottom bar
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
                 top: BorderSide(color: AppColors.borderSubtle, width: 1),
               ),
@@ -261,7 +261,7 @@ class _RepoTileState extends State<_RepoTile> {
                           widget.repo.path
                               .replaceFirst(RegExp(r'^/Users/[^/]+'), '~'),
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
                             color: AppColors.textMuted,
                             fontFamily: 'monospace',

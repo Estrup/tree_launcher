@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
+import '../providers/settings_provider.dart';
 import '../providers/terminal_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/terminal_theme.dart';
@@ -23,7 +24,7 @@ class TerminalPanel extends StatelessWidget {
         ),
         Container(
           height: tp.panelHeight,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.base,
             border: Border(
               top: BorderSide(color: AppColors.borderSubtle, width: 1),
@@ -99,7 +100,7 @@ class _TabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 32,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface0,
         border: Border(
           bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
@@ -108,10 +109,10 @@ class _TabBar extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 8),
-          const Icon(Icons.terminal_rounded,
+          Icon(Icons.terminal_rounded,
               size: 14, color: AppColors.terminal),
           const SizedBox(width: 6),
-          const Text(
+          Text(
             'TERMINAL',
             style: TextStyle(
               fontSize: 10,
@@ -196,7 +197,7 @@ class _TabState extends State<_Tab> {
                     ? AppColors.base
                     : (_hovered ? AppColors.surface2 : Colors.transparent),
                 border: widget.isActive
-                    ? const Border(
+                    ? Border(
                         bottom:
                             BorderSide(color: AppColors.terminal, width: 2),
                       )
@@ -335,11 +336,19 @@ class _TerminalBodyState extends State<_TerminalBody> {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>().settings;
+    final fontFamily = settings.terminalFontFamily ?? 'SF Mono';
+    final fontSize = settings.terminalFontSize ?? 13.0;
+
     return Padding(
       padding: const EdgeInsets.all(8),
       child: TerminalView(
         widget.session.terminal as Terminal,
         theme: appTerminalTheme,
+        textStyle: TerminalStyle(
+          fontFamily: fontFamily,
+          fontSize: fontSize,
+        ),
         padding: EdgeInsets.zero,
         autofocus: true,
         hardwareKeyboardOnly: true,

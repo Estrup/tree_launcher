@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface0,
         border: Border(
           bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
@@ -149,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Repo name — big and bold
             Text(
               selectedRepo.name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -166,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Text(
                 '${repoProvider.worktrees.length}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.accent,
@@ -174,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ] else
-            const Text(
+            Text(
               'TreeLauncher',
               style: TextStyle(
                 fontSize: 18,
@@ -230,7 +230,7 @@ class _RefreshButtonState extends State<_RefreshButton> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: widget.loading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
@@ -329,7 +329,7 @@ class _AddWorktreeButtonState extends State<_AddWorktreeButton> {
                   : AppColors.terminal.withValues(alpha: 0.15),
             ),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(

@@ -37,13 +37,19 @@ class TreeLauncherApp extends StatelessWidget {
           create: (_) => TerminalProvider(),
         ),
       ],
-      child: MaterialApp(
-        title: 'TreeLauncher',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark,
-        darkTheme: AppTheme.dark,
-        themeMode: ThemeMode.dark,
-        home: const HomeScreen(),
+      child: Builder(
+        builder: (context) {
+          // Watch settings so MaterialApp rebuilds on theme change.
+          context.watch<SettingsProvider>();
+          return MaterialApp(
+            title: 'TreeLauncher',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.dark,
+            darkTheme: AppTheme.dark,
+            themeMode: ThemeMode.dark,
+            home: const HomeScreen(),
+          );
+        },
       ),
     );
   }

@@ -30,7 +30,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
         Container(
           height: 64,
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.surface0,
             border: Border(
               bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
@@ -44,7 +44,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
               const SizedBox(width: 12),
               Text(
                 repo != null ? repo.name : 'Repository Settings',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
@@ -59,7 +59,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                   color: AppColors.surface2,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
+                child: Text(
                   'Settings',
                   style: TextStyle(
                     fontSize: 11,
@@ -78,7 +78,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
               // Left nav menu
               Container(
                 width: 200,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.surface0,
                   border: Border(
                     right:
@@ -282,7 +282,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'General',
             style: TextStyle(
               fontSize: 20,
@@ -300,7 +300,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
             ),
           ),
           const SizedBox(height: 32),
-          const Text(
+          Text(
             'DISPLAY NAME',
             style: TextStyle(
               fontSize: 10,
@@ -314,7 +314,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
             width: 400,
             child: TextField(
               controller: _nameController,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 14,
               ),
@@ -325,11 +325,11 @@ class _GeneralSectionState extends State<_GeneralSection> {
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide(color: AppColors.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.accent),
+                  borderSide: BorderSide(color: AppColors.accent),
                 ),
                 filled: true,
                 fillColor: AppColors.surface0,
@@ -342,7 +342,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'PATH',
             style: TextStyle(
               fontSize: 10,
@@ -362,7 +362,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
             ),
             child: Text(
               repo.path,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontFamily: 'monospace',
                 color: AppColors.textSecondary,
@@ -449,7 +449,7 @@ class _VscodeConfigsSectionState extends State<_VscodeConfigsSection> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -499,7 +499,7 @@ class _VscodeConfigsSectionState extends State<_VscodeConfigsSection> {
                     color: AppColors.textMuted.withValues(alpha: 0.4),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'No VS Code configs',
                     style: TextStyle(
                       fontSize: 14,
@@ -508,7 +508,7 @@ class _VscodeConfigsSectionState extends State<_VscodeConfigsSection> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'The VS Code button will open the worktree root by default.',
                     style: TextStyle(
                       fontSize: 12,
@@ -589,7 +589,7 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'NAME',
                   style: TextStyle(
                     fontSize: 10,
@@ -600,7 +600,7 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                 ),
                 const SizedBox(height: 6),
                 TextField(
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,
                   ),
@@ -611,11 +611,11 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.border),
+                      borderSide: BorderSide(color: AppColors.border),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.vscode),
+                      borderSide: BorderSide(color: AppColors.vscode),
                     ),
                     filled: true,
                     fillColor: AppColors.surface1,
@@ -637,7 +637,7 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'PATH',
                   style: TextStyle(
                     fontSize: 10,
@@ -648,7 +648,7 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                 ),
                 const SizedBox(height: 6),
                 TextField(
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,
                     fontFamily: 'monospace',
@@ -661,11 +661,11 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.border),
+                      borderSide: BorderSide(color: AppColors.border),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.vscode),
+                      borderSide: BorderSide(color: AppColors.vscode),
                     ),
                     filled: true,
                     fillColor: AppColors.surface1,
@@ -774,7 +774,7 @@ class _CustomCommandsSectionState extends State<_CustomCommandsSection> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -824,7 +824,7 @@ class _CustomCommandsSectionState extends State<_CustomCommandsSection> {
                     color: AppColors.textMuted.withValues(alpha: 0.4),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'No custom commands',
                     style: TextStyle(
                       fontSize: 14,
@@ -833,7 +833,7 @@ class _CustomCommandsSectionState extends State<_CustomCommandsSection> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Add commands to run them directly from worktree cards.',
                     style: TextStyle(
                       fontSize: 12,
@@ -932,7 +932,7 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'NAME',
                       style: TextStyle(
                         fontSize: 10,
@@ -945,7 +945,7 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
                     SizedBox(
                       width: 300,
                       child: TextField(
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 13,
                         ),
@@ -957,12 +957,12 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide:
-                                const BorderSide(color: AppColors.border),
+                                BorderSide(color: AppColors.border),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide:
-                                const BorderSide(color: AppColors.terminal),
+                                BorderSide(color: AppColors.terminal),
                           ),
                           filled: true,
                           fillColor: AppColors.surface1,
@@ -983,7 +983,7 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'COMMAND',
             style: TextStyle(
               fontSize: 10,
@@ -994,7 +994,7 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
           ),
           const SizedBox(height: 6),
           TextField(
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 13,
               fontFamily: 'monospace',
@@ -1011,11 +1011,11 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: AppColors.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: AppColors.terminal),
+                borderSide: BorderSide(color: AppColors.terminal),
               ),
               filled: true,
               fillColor: AppColors.surface1,
@@ -1134,9 +1134,9 @@ class _IconColorPickerDialogState extends State<_IconColorPickerDialog> {
       backgroundColor: AppColors.surface1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
-      title: const Text(
+      title: Text(
         'Icon & Color',
         style: TextStyle(
           fontSize: 16,
@@ -1150,7 +1150,7 @@ class _IconColorPickerDialogState extends State<_IconColorPickerDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'ICON',
               style: TextStyle(
                 fontSize: 10,
@@ -1200,7 +1200,7 @@ class _IconColorPickerDialogState extends State<_IconColorPickerDialog> {
               }).toList(),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'COLOR',
               style: TextStyle(
                 fontSize: 10,
@@ -1250,7 +1250,7 @@ class _IconColorPickerDialogState extends State<_IconColorPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text(
+          child: Text(
             'Done',
             style: TextStyle(color: AppColors.accent),
           ),

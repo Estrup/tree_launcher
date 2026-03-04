@@ -267,9 +267,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       backgroundColor: AppColors.surface1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: AppColors.border),
       ),
-      title: const Text(
+      title: Text(
         'New Worktree',
         style: TextStyle(
           fontSize: 18,
@@ -292,7 +292,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                 controller: _nameController,
                 autofocus: true,
                 enabled: !_creating,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 14,
                   fontFamily: 'monospace',
@@ -317,7 +317,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                 const SizedBox(height: 6),
                 Text(
                   displayError,
-                  style: const TextStyle(fontSize: 11, color: AppColors.error),
+                  style: TextStyle(fontSize: 11, color: AppColors.error),
                 ),
               ],
 
@@ -329,7 +329,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               TextField(
                 controller: _jiraController,
                 enabled: !_creating,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 14,
                   fontFamily: 'monospace',
@@ -348,7 +348,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                 const SizedBox(height: 6),
                 Text(
                   jiraError,
-                  style: const TextStyle(fontSize: 11, color: AppColors.error),
+                  style: TextStyle(fontSize: 11, color: AppColors.error),
                 ),
               ],
               if (_jiraController.text.isNotEmpty &&
@@ -371,7 +371,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               _sectionLabel('BASE BRANCH'),
               const SizedBox(height: 8),
               if (_loadingBranches)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: Center(
                     child: SizedBox(
@@ -402,7 +402,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               TextField(
                 controller: _newBranchController,
                 enabled: !_creating,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 14,
                   fontFamily: 'monospace',
@@ -443,7 +443,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       actions: [
         TextButton(
           onPressed: _creating ? null : () => Navigator.pop(context),
-          child: const Text(
+          child: Text(
             'Cancel',
             style: TextStyle(color: AppColors.textMuted),
           ),
@@ -459,7 +459,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: _creating
-                ? const SizedBox(
+                ? SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
@@ -467,7 +467,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                       color: AppColors.base,
                     ),
                   )
-                : const Text(
+                : Text(
                     'Create',
                     style: TextStyle(
                       fontSize: 13,
@@ -502,18 +502,18 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                         ? null
                         : (v) => setState(() => _launchTerminal = v ?? false),
                     activeColor: AppColors.accent,
-                    side: const BorderSide(color: AppColors.textMuted),
+                    side: BorderSide(color: AppColors.textMuted),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(
+                Icon(
                   Icons.terminal_rounded,
                   size: 16,
                   color: AppColors.terminal,
                 ),
                 const SizedBox(width: 6),
-                const Text(
+                Text(
                   'Launch Ghostty terminal',
                   style: TextStyle(
                     fontSize: 13,
@@ -533,7 +533,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
             controller: _promptController,
             enabled: !_creating,
             maxLines: 3,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 13,
               fontFamily: 'monospace',
@@ -583,18 +583,18 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                         ? null
                         : (v) => setState(() => _runCommands = v ?? false),
                     activeColor: AppColors.accent,
-                    side: const BorderSide(color: AppColors.textMuted),
+                    side: BorderSide(color: AppColors.textMuted),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(
+                Icon(
                   Icons.play_arrow_rounded,
                   size: 16,
                   color: AppColors.accent,
                 ),
                 const SizedBox(width: 6),
-                const Text(
+                Text(
                   'Run',
                   style: TextStyle(
                     fontSize: 13,
@@ -662,7 +662,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                           });
                         },
                   activeColor: color,
-                  side: const BorderSide(color: AppColors.textMuted),
+                  side: BorderSide(color: AppColors.textMuted),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
@@ -671,7 +671,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               const SizedBox(width: 6),
               Text(
                 cmd.name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
                 ),
@@ -686,7 +686,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   Widget _sectionLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 10,
         fontWeight: FontWeight.w600,
         color: AppColors.textMuted,
