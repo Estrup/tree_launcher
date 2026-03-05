@@ -1,3 +1,4 @@
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
@@ -15,6 +16,7 @@ class CopilotTerminalView extends StatefulWidget {
 }
 
 class _CopilotTerminalViewState extends State<CopilotTerminalView> {
+  bool _isDragging = false;
   @override
   void initState() {
     super.initState();
@@ -76,27 +78,56 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView> {
       });
     }
 
-    return Container(
-      //color: AppColors.base,
+    return DropTarget(
+      onDragDone: (details) {
+        if (details.files.isNotEmpty) {
+          final path = details.files.first.path;
+          final copilot = context.read<CopilotProvider>();
+          copilot.activeTerminal?.writeInput(path);
+        }
+        setState(() => _isDragging = false);
+      },
+      onDragEntered: (_) => setState(() => _isDragging = true),
+      onDragExited: (_) => setState(() => _isDragging = false),
+      child: Container(
       color: AppColors.base,
       padding: const EdgeInsets.all(8),
-      child: TerminalView(
-        session.terminal,
-        theme: appTerminalTheme,
-        textStyle: TerminalStyle(
-          fontFamily: fontFamily,
-          fontSize: fontSize,
-          height: 1.3,
-          fontFamilyFallback: [fontFamily, 'monospace'],
-        ),
-        textScaler: TextScaler.noScaling,
-        padding: EdgeInsets.zero,
-        autofocus: true,
-        hardwareKeyboardOnly: true,
-        onKeyEvent: (node, event) =>
-            terminalShiftEnterHandler(session.terminal, node, event) ??
-            KeyEventResult.ignored,
+      child: Stack(
+        children: [
+          TerminalView(
+            session.terminal,
+            theme: appTerminalTheme,
+            textStyle: TerminalStyle(
+              fontFamily: fontFamily,
+              fontSize: fontSize,
+              height: 1.3,
+              fontFamilyFallback: [fontFamily, 'monospace'],
+            ),
+            textScaler: TextScaler.noScaling,
+            padding: EdgeInsets.zero,
+            autofocus: true,
+            hardwareKeyboardOnly: true,
+            onKeyEvent: (node, event) =>
+                terminalShiftEnterHandler(session.terminal, node, event) ??
+                KeyEventResult.ignored,
+          ),
+          if (_isDragging)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.blueAccent.withValues(alpha: 0.7),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
+    ),
     );
   }
 }
