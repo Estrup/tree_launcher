@@ -41,6 +41,10 @@ dependencies:
   flutter_pty: ^0.4.0
   uuid: ^4.5.1
 
+dependency_overrides:
+  xterm:
+    path: ../xterm.dart
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

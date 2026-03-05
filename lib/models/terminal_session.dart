@@ -36,6 +36,8 @@ class TerminalSession {
     _ptyStarted = true;
 
     final env = Map<String, String>.from(Platform.environment);
+    env['TERM'] = 'xterm-256color';
+    env['COLORTERM'] = 'truecolor';
 
     final pty = Pty.start(
       '/bin/zsh',
