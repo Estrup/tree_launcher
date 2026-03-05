@@ -66,4 +66,22 @@ class SettingsProvider extends ChangeNotifier {
     await _configService.saveSettings(_settings);
     notifyListeners();
   }
+
+  Future<void> updateRemoteControlEnabled(bool enabled) async {
+    _settings = _settings.copyWith(remoteControlEnabled: enabled);
+    await _configService.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateRemoteControlPort(int port) async {
+    _settings = _settings.copyWith(remoteControlPort: port);
+    await _configService.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateRemoteControlBindAddress(String address) async {
+    _settings = _settings.copyWith(remoteControlBindAddress: address);
+    await _configService.saveSettings(_settings);
+    notifyListeners();
+  }
 }

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TreeLauncher – Copilot Remote</title>
+  <link rel="stylesheet" href="/assets/xterm.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1b26;
+      color: #c0caf5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: #16161e;
+      border-bottom: 1px solid #292e42;
+      flex-shrink: 0;
+    }
+    header h1 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #7aa2f7;
+      letter-spacing: 0.5px;
+    }
+    .session-select {
+      background: #1a1b26;
+      color: #c0caf5;
+      border: 1px solid #292e42;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      min-width: 200px;
+    }
+    .session-select:focus { border-color: #7aa2f7; }
+    .session-select option { background: #1a1b26; }
+    .status {
+      margin-left: auto;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #565f89;
+    }
+    .status-dot.connected { background: #9ece6a; }
+    .status-dot.connecting { background: #e0af68; }
+    .status-dot.error { background: #f7768e; }
+    #terminal-container {
+      flex: 1;
+      padding: 4px;
+      overflow: hidden;
+    }
+    .no-sessions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #565f89;
+      font-size: 14px;
+    }
+    .xterm { height: 100%; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌳 COPILOT REMOTE</h1>
+    <select id="session-select" class="session-select">
+      <option value="">— Select session —</option>
+    </select>
+    <div class="status">
+      <div id="status-dot" class="status-dot"></div>
+      <span id="status-text">Disconnected</span>
+    </div>
+  </header>
+  <div id="terminal-container">
+    <div class="no-sessions" id="placeholder">Select a Copilot session to connect</div>
+  </div>
+
+  <script src="/assets/xterm.min.js"></script>
+  <script src="/assets/addon-fit.min.js"></script>
+  <script>
+    const selectEl = document.getElementById('session-select');
+    const container = document.getElementById('terminal-container');
+    const placeholder = document.getElementById('placeholder');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+
+    let term = null;
+    let fitAddon = null;
+    let ws = null;
+    let currentSessionId = null;
+    let reconnectTimer = null;
+
+    function setStatus(state, text) {
+      statusDot.className = 'status-dot ' + state;
+      statusText.textContent = text;
+    }
+
+    async function loadSessions() {
+      try {
+        const res = await fetch('/api/sessions');
+        const sessions = await res.json();
+        const current = selectEl.value;
+        selectEl.innerHTML = '<option value="">— Select session —</option>';
+        sessions.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name + ' (' + s.workingDirectory.split('/').pop() + ')';
+          selectEl.appendChild(opt);
+        });
+        if (current && sessions.some(s => s.id === current)) {
+          selectEl.value = current;
+        }
+      } catch (e) {
+        console.error('Failed to load sessions:', e);
+      }
+    }
+
+    function initTerminal() {
+      if (term) {
+        term.dispose();
+      }
+      placeholder.style.display = 'none';
+
+      term = new window.Terminal({
+        cursorBlink: true,
+        fontSize: 13,
+        fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace",
+        theme: {
+          background: '#1a1b26',
+          foreground: '#c0caf5',
+          cursor: '#c0caf5',
+          selectionBackground: '#33467c',
+          black: '#15161e',
+          red: '#f7768e',
+          green: '#9ece6a',
+          yellow: '#e0af68',
+          blue: '#7aa2f7',
+          magenta: '#bb9af7',
+          cyan: '#7dcfff',
+          white: '#a9b1d6',
+          brightBlack: '#414868',
+          brightRed: '#f7768e',
+          brightGreen: '#9ece6a',
+          brightYellow: '#e0af68',
+          brightBlue: '#7aa2f7',
+          brightMagenta: '#bb9af7',
+          brightCyan: '#7dcfff',
+          brightWhite: '#c0caf5',
+        },
+        allowProposedApi: true,
+      });
+
+      fitAddon = new window.FitAddon.FitAddon();
+      term.loadAddon(fitAddon);
+      term.open(container);
+      fitAddon.fit();
+
+      term.onData(data => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(data);
+        }
+      });
+
+      term.onResize(size => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'resize', cols: size.cols, rows: size.rows }));
+        }
+      });
+    }
+
+    function connectSession(sessionId) {
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      if (!sessionId) {
+        if (term) { term.dispose(); term = null; }
+        placeholder.style.display = 'flex';
+        setStatus('', 'Disconnected');
+        currentSessionId = null;
+        return;
+      }
+
+      currentSessionId = sessionId;
+      initTerminal();
+      setStatus('connecting', 'Connecting…');
+
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(proto + '//' + location.host + '/ws/' + sessionId);
+
+      ws.onopen = () => {
+        setStatus('connected', 'Connected');
+        // Send initial resize
+        if (fitAddon) {
+          const dims = fitAddon.proposeDimensions();
+          if (dims) {
+            ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }));
+          }
+        }
+      };
+
+      ws.onmessage = (event) => {
+        if (term) term.write(event.data);
+      };
+
+      ws.onclose = () => {
+        setStatus('error', 'Disconnected');
+        // Auto-reconnect after 3s
+        if (currentSessionId === sessionId) {
+          reconnectTimer = setTimeout(() => connectSession(sessionId), 3000);
+        }
+      };
+
+      ws.onerror = () => {
+        setStatus('error', 'Connection error');
+      };
+    }
+
+    selectEl.addEventListener('change', () => {
+      connectSession(selectEl.value);
+    });
+
+    window.addEventListener('resize', () => {
+      if (fitAddon && term) {
+        fitAddon.fit();
+      }
+    });
+
+    // Poll for session list updates
+    loadSessions();
+    setInterval(loadSessions, 5000);
+  </script>
+</body>
+</html>

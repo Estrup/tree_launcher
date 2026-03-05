@@ -20,6 +20,12 @@ class CopilotProvider extends ChangeNotifier {
   TerminalSession? get activeTerminal =>
       _activeSession != null ? _terminals[_activeSession!.id] : null;
 
+  /// Returns the terminal session for a given copilot session ID, if running.
+  TerminalSession? terminalForSession(String sessionId) => _terminals[sessionId];
+
+  /// All copilot sessions across all repos.
+  List<CopilotSession> get allSessions => _repoProvider.allCopilotSessions;
+
   /// Returns the activity status for a given copilot session.
   CopilotActivityStatus statusForSession(String id) =>
       _sessionStatuses[id] ?? CopilotActivityStatus.idle;

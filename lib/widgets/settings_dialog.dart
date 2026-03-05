@@ -24,6 +24,7 @@ class SettingsDialog extends StatefulWidget {
 class _SettingsDialogState extends State<SettingsDialog> {
   late final TextEditingController _customTerminalController;
   late final TextEditingController _branchPrefixController;
+  late final TextEditingController _remotePortController;
 
   @override
   void initState() {
@@ -35,12 +36,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
     _branchPrefixController = TextEditingController(
       text: settings.defaultBranchPrefix ?? '',
     );
+    _remotePortController = TextEditingController(
+      text: settings.remoteControlPort.toString(),
+    );
   }
 
   @override
   void dispose() {
     _customTerminalController.dispose();
     _branchPrefixController.dispose();
+    _remotePortController.dispose();
     super.dispose();
   }
 
@@ -211,6 +216,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   color: AppColors.textMuted.withValues(alpha: 0.6),
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // ── Remote control ──
+              Text(
+                'REMOTE CONTROL',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildRemoteControlSettings(settings, settingsProvider),
             ],
           ),
         ),
@@ -353,6 +372,125 @@ class _SettingsDialogState extends State<SettingsDialog> {
           isSelected: settings.copilotButtonMode == CopilotButtonMode.external,
           onTap: () => provider.updateCopilotButtonMode(CopilotButtonMode.external),
         ),
+      ],
+    );
+  }
+
+  Widget _buildRemoteControlSettings(
+    AppSettings settings,
+    SettingsProvider provider,
+  ) {
+    final isEnabled = settings.remoteControlEnabled;
+    final bindAddress = settings.remoteControlBindAddress;
+    final port = settings.remoteControlPort;
+    final url = 'http://$bindAddress:$port';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Serve Copilot terminals via web browser',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            Switch(
+              value: isEnabled,
+              activeTrackColor: AppColors.accent,
+              onChanged: (v) => provider.updateRemoteControlEnabled(v),
+            ),
+          ],
+        ),
+        if (isEnabled) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: _DropdownField<String>(
+                  label: 'Bind address',
+                  value: bindAddress,
+                  items: const [
+                    DropdownMenuItem(
+                      value: '127.0.0.1',
+                      child: Text('localhost', style: TextStyle(fontSize: 12)),
+                    ),
+                    DropdownMenuItem(
+                      value: '0.0.0.0',
+                      child: Text('All interfaces', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) provider.updateRemoteControlBindAddress(v);
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Port',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 36,
+                      child: TextField(
+                        controller: _remotePortController,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 12,
+                          fontFamily: 'monospace',
+                        ),
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: AppColors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: AppColors.accent),
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface0,
+                        ),
+                        onChanged: (value) {
+                          final parsed = int.tryParse(value);
+                          if (parsed != null && parsed > 0 && parsed < 65536) {
+                            provider.updateRemoteControlPort(parsed);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SelectableText(
+            url,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.accent,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ],
       ],
     );
   }
