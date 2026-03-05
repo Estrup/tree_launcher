@@ -14,6 +14,7 @@ import '../widgets/repo_settings_view.dart';
 import '../widgets/terminal_panel.dart';
 import '../widgets/running_commands_bar.dart';
 import '../widgets/copilot_terminal_view.dart';
+import '../widgets/copilot_attention_snackbar.dart';
 import '../widgets/add_repo_dialog.dart';
 import '../widgets/add_worktree_dialog.dart';
 import '../widgets/settings_dialog.dart';
@@ -128,6 +129,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
+                  // Copilot attention notification
+                  const CopilotAttentionSnackbar(),
                 ],
               );
             },

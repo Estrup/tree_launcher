@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/command_style.dart';
+import '../models/copilot_prompt.dart';
 import '../models/custom_command.dart';
+import '../providers/copilot_provider.dart';
 import '../providers/repo_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/terminal_provider.dart';
-import '../services/launcher_service.dart';
 import '../theme/app_theme.dart';
 import 'branch_search_dropdown.dart';
 
@@ -20,6 +21,7 @@ class AddWorktreeDialog extends StatefulWidget {
         providers: [
           ChangeNotifierProvider.value(value: context.read<RepoProvider>()),
           ChangeNotifierProvider.value(value: context.read<TerminalProvider>()),
+          ChangeNotifierProvider.value(value: context.read<CopilotProvider>()),
         ],
         child: const AddWorktreeDialog(),
       ),
@@ -31,13 +33,12 @@ class AddWorktreeDialog extends StatefulWidget {
 }
 
 class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
-  final _launcherService = LauncherService();
   final _nameController = TextEditingController();
   final _jiraController = TextEditingController();
   final _newBranchController = TextEditingController();
-  final _promptController = TextEditingController();
   String? _selectedBranch;
-  bool _launchTerminal = false;
+  bool _launchCopilot = false;
+  CopilotPrompt? _selectedPrompt;
   bool _runCommands = false;
   Set<String> _selectedCommands = {};
   String? _error;
@@ -45,16 +46,11 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   List<String> _branches = [];
   bool _loadingBranches = true;
   bool _branchManuallyEdited = false;
-
-  static const _defaultPrompt =
-      'Retrieve the jira issue {issue} with comments and files. '
-      'Analyse the issue and problem relating to the codebase. '
-      'Try to find a solution';
+  bool _createNewBranch = true;
 
   @override
   void initState() {
     super.initState();
-    _promptController.text = _defaultPrompt;
     _loadBranches();
     _initRunCommandDefaults();
   }
@@ -78,7 +74,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     _nameController.dispose();
     _jiraController.dispose();
     _newBranchController.dispose();
-    _promptController.dispose();
     super.dispose();
   }
 
@@ -108,7 +103,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   }
 
   void _updateAutoFillBranch() {
-    if (_branchManuallyEdited) return;
+    if (_branchManuallyEdited || !_createNewBranch) return;
     final prefix = context
         .read<SettingsProvider>()
         .settings
@@ -125,7 +120,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
   String? _validateName(String value) {
     if (value.isEmpty) return null;
-    if (value.contains(' ')) return 'No spaces allowed';
     if (value != value.toLowerCase()) return 'Must be lowercase';
     if (!RegExp(r'^[a-z0-9._\-]+$').hasMatch(value)) {
       return 'Only a-z, 0-9, ., -, _ allowed';
@@ -177,6 +171,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     try {
       final repoProvider = context.read<RepoProvider>();
       final terminalProvider = context.read<TerminalProvider>();
+      final copilotProvider = context.read<CopilotProvider>();
       final worktreeName = _effectiveWorktreeName;
       final newBranch = _newBranchController.text.trim();
 
@@ -194,8 +189,25 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         );
       }
 
-      if (_launchTerminal && worktreePath != null) {
-        await _launchGhosttyTerminal(worktreePath, jira);
+      if (_launchCopilot && worktreePath != null) {
+        final repo = repoProvider.selectedRepo;
+        String? prompt;
+        if (_selectedPrompt != null) {
+          prompt = _selectedPrompt!.prompt;
+          if (jira.isNotEmpty) {
+            prompt = prompt.replaceAll('{issue}', jira);
+          } else {
+            prompt = prompt.replaceAll('{issue}', '');
+          }
+          prompt = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
+          if (prompt.isEmpty) prompt = null;
+        }
+        await copilotProvider.createSession(
+          repo?.path ?? worktreePath,
+          worktreePath,
+          worktreeName,
+          prompt: prompt,
+        );
       }
 
       // Launch selected run commands in the new worktree
@@ -233,27 +245,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         });
       }
     }
-  }
-
-  Future<void> _launchGhosttyTerminal(String path, String jiraIssue) async {
-    var prompt = _promptController.text.trim();
-    if (jiraIssue.isNotEmpty) {
-      prompt = prompt.replaceAll('{issue}', jiraIssue);
-    } else {
-      prompt = prompt.replaceAll('{issue}', '');
-    }
-    prompt = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-    if (prompt.isNotEmpty) {
-      final escapedPrompt = prompt.replaceAll("'", "'\\''");
-      await _launcherService.openGhosttyWithCommand(
-        path,
-        "copilot -i '$escapedPrompt'",
-      );
-      return;
-    }
-
-    await _launcherService.openGhostty(path);
   }
 
   @override
@@ -298,8 +289,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                   fontFamily: 'monospace',
                 ),
                 inputFormatters: [
+                  _SpaceToDashFormatter(),
                   FilteringTextInputFormatter.deny(
-                    RegExp(r'[A-Z\s]'),
+                    RegExp(r'[A-Z]'),
                     replacementString: '',
                   ),
                 ],
@@ -396,29 +388,95 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
               const SizedBox(height: 16),
 
-              // New Branch
-              _sectionLabel('NEW BRANCH'),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _newBranchController,
-                enabled: !_creating,
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                  fontFamily: 'monospace',
+              // Create New Branch toggle
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: _creating
+                      ? null
+                      : () {
+                          setState(() {
+                            _createNewBranch = !_createNewBranch;
+                            if (!_createNewBranch) {
+                              _newBranchController.clear();
+                              _branchManuallyEdited = false;
+                            } else {
+                              _updateAutoFillBranch();
+                            }
+                          });
+                        },
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: Checkbox(
+                          value: _createNewBranch,
+                          onChanged: _creating
+                              ? null
+                              : (v) {
+                                  setState(() {
+                                    _createNewBranch = v ?? true;
+                                    if (!_createNewBranch) {
+                                      _newBranchController.clear();
+                                      _branchManuallyEdited = false;
+                                    } else {
+                                      _updateAutoFillBranch();
+                                    }
+                                  });
+                                },
+                          activeColor: AppColors.accent,
+                          side: BorderSide(color: AppColors.textMuted),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.merge_type_rounded,
+                        size: 16,
+                        color: AppColors.accent,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Create new branch',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                decoration: _inputDecoration(
-                  hint: 'Auto-filled from worktree name',
-                  hasError: false,
-                ),
-                onChanged: (value) {
-                  if (value.isEmpty) {
-                    _branchManuallyEdited = false;
-                  } else {
-                    _branchManuallyEdited = true;
-                  }
-                },
               ),
+
+              // New Branch
+              if (_createNewBranch) ...[
+                const SizedBox(height: 12),
+                _sectionLabel('NEW BRANCH'),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _newBranchController,
+                  enabled: !_creating,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontFamily: 'monospace',
+                  ),
+                  decoration: _inputDecoration(
+                    hint: 'Auto-filled from worktree name',
+                    hasError: false,
+                  ),
+                  onChanged: (value) {
+                    if (value.isEmpty) {
+                      _branchManuallyEdited = false;
+                    } else {
+                      _branchManuallyEdited = true;
+                    }
+                  },
+                ),
+              ],
 
               const SizedBox(height: 16),
 
@@ -482,6 +540,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   }
 
   Widget _buildTerminalSection() {
+    final repo = context.read<RepoProvider>().selectedRepo;
+    final prompts = repo?.copilotPrompts ?? [];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -490,17 +551,17 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           child: GestureDetector(
             onTap: _creating
                 ? null
-                : () => setState(() => _launchTerminal = !_launchTerminal),
+                : () => setState(() => _launchCopilot = !_launchCopilot),
             child: Row(
               children: [
                 SizedBox(
                   width: 18,
                   height: 18,
                   child: Checkbox(
-                    value: _launchTerminal,
+                    value: _launchCopilot,
                     onChanged: _creating
                         ? null
-                        : (v) => setState(() => _launchTerminal = v ?? false),
+                        : (v) => setState(() => _launchCopilot = v ?? false),
                     activeColor: AppColors.accent,
                     side: BorderSide(color: AppColors.textMuted),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -508,13 +569,13 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  Icons.terminal_rounded,
+                  Icons.auto_awesome_rounded,
                   size: 16,
-                  color: AppColors.terminal,
+                  color: AppColors.copilot,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Launch Ghostty terminal',
+                  'Launch Copilot',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -525,32 +586,73 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
             ),
           ),
         ),
-        if (_launchTerminal) ...[
+        if (_launchCopilot && prompts.isNotEmpty) ...[
           const SizedBox(height: 12),
           _sectionLabel('COPILOT PROMPT (OPTIONAL)'),
           const SizedBox(height: 8),
-          TextField(
-            controller: _promptController,
-            enabled: !_creating,
-            maxLines: 3,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontFamily: 'monospace',
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface0,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
             ),
-            decoration: _inputDecoration(
-              hint: 'Enter prompt for copilot...',
-              hasError: false,
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<CopilotPrompt?>(
+                value: _selectedPrompt,
+                isExpanded: true,
+                dropdownColor: AppColors.surface1,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                ),
+                icon: Icon(
+                  Icons.expand_more_rounded,
+                  color: AppColors.textMuted,
+                  size: 18,
+                ),
+                items: [
+                  DropdownMenuItem<CopilotPrompt?>(
+                    value: null,
+                    child: Text(
+                      'None',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  ...prompts.map((p) => DropdownMenuItem<CopilotPrompt?>(
+                        value: p,
+                        child: Text(
+                          p.name,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      )),
+                ],
+                onChanged: _creating
+                    ? null
+                    : (value) => setState(() => _selectedPrompt = value),
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '{issue} will be replaced with the JIRA issue number',
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.textMuted.withValues(alpha: 0.6),
+          if (_selectedPrompt != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              _selectedPrompt!.prompt,
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.textMuted.withValues(alpha: 0.6),
+                fontFamily: 'monospace',
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
+          ],
         ],
       ],
     );
@@ -720,6 +822,21 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       filled: true,
       fillColor: AppColors.surface0,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    );
+  }
+}
+
+class _SpaceToDashFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final newText = newValue.text.replaceAll(' ', '-');
+    if (newText == newValue.text) return newValue;
+    return newValue.copyWith(
+      text: newText,
+      selection: newValue.selection,
     );
   }
 }

@@ -87,28 +87,29 @@ class GitService {
 
     // Fetch latest changes from origin for the base branch so the worktree
     // is created from the newest remote state.
-    String? effectiveBaseBranch = baseBranch;
     if (baseBranch != null && baseBranch.isNotEmpty) {
-      final fetchResult = await Process.run(
+      await Process.run(
         '/usr/bin/git',
         ['fetch', 'origin', baseBranch],
         workingDirectory: repoPath,
       );
-      if (fetchResult.exitCode == 0) {
-        effectiveBaseBranch = 'origin/$baseBranch';
-      }
     }
 
     final args = <String>['worktree', 'add'];
     if (newBranch != null && newBranch.isNotEmpty) {
+      // Creating a new branch: base off the remote tracking branch.
+      final startPoint = (baseBranch != null && baseBranch.isNotEmpty)
+          ? 'origin/$baseBranch'
+          : null;
       args.addAll(['-b', newBranch, worktreePath]);
-      if (effectiveBaseBranch != null && effectiveBaseBranch.isNotEmpty) {
-        args.add(effectiveBaseBranch);
+      if (startPoint != null) {
+        args.add(startPoint);
       }
     } else {
+      // No new branch: check out the local base branch directly.
       args.add(worktreePath);
-      if (effectiveBaseBranch != null && effectiveBaseBranch.isNotEmpty) {
-        args.add(effectiveBaseBranch);
+      if (baseBranch != null && baseBranch.isNotEmpty) {
+        args.add(baseBranch);
       }
     }
 

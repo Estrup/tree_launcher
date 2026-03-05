@@ -45,10 +45,16 @@ class CopilotProvider extends ChangeNotifier {
     return CopilotActivityStatus.idle;
   }
 
+  /// Returns copilot sessions that currently need user action.
+  List<CopilotSession> get sessionsNeedingAction {
+    return allSessions
+        .where((s) => _sessionStatuses[s.id] == CopilotActivityStatus.needsAction)
+        .toList();
+  }
+
   /// Parses a terminal title and returns the corresponding activity status.
   static CopilotActivityStatus _parseStatus(String title) {
-    if (title.contains('\u{1F514}')) return CopilotActivityStatus.needsAction; // 🔔
-    if (title.contains('\u{1F916}')) return CopilotActivityStatus.working;     // 🤖
+    if (title.contains('\u{1F916}')) return CopilotActivityStatus.working; // 🤖
     return CopilotActivityStatus.idle;
   }
 
@@ -56,8 +62,9 @@ class CopilotProvider extends ChangeNotifier {
   Future<CopilotSession> createSession(
     String repoPath,
     String workingDirectory,
-    String worktreeName,
-  ) async {
+    String worktreeName, {
+    String? prompt,
+  }) async {
     final id = _uuid.v4();
     final session = CopilotSession(
       id: id,
@@ -73,7 +80,7 @@ class CopilotProvider extends ChangeNotifier {
       await _repoProvider.updateRepoCopilotSessions(repo, sessions);
     }
 
-    _activateSession(session);
+    _activateSession(session, initialPrompt: prompt);
     return session;
   }
 
@@ -123,17 +130,27 @@ class CopilotProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _activateSession(CopilotSession session) {
+  void _activateSession(CopilotSession session, {String? initialPrompt}) {
     _activeSession = session;
+
+    // Clear needsAction when user navigates to this session
+    if (_sessionStatuses[session.id] == CopilotActivityStatus.needsAction) {
+      _sessionStatuses[session.id] = CopilotActivityStatus.idle;
+    }
 
     // Create terminal if not already running
     if (!_terminals.containsKey(session.id) ||
         _terminals[session.id]!.isDisposed) {
+      String command = 'copilot --resume ${session.id}';
+      if (initialPrompt != null && initialPrompt.isNotEmpty) {
+        final escapedPrompt = initialPrompt.replaceAll("'", "'\\''");
+        command = "copilot -i '$escapedPrompt' --resume ${session.id}";
+      }
       final terminal = TerminalSession(
         title: session.name,
         workingDirectory: session.workingDirectory,
         repoPath: session.repoPath,
-        command: 'copilot --resume ${session.id}',
+        command: command,
       );
 
       // Listen for title changes to detect copilot activity status
@@ -144,6 +161,12 @@ class CopilotProvider extends ChangeNotifier {
           _sessionStatuses[session.id] = newStatus;
           notifyListeners();
         }
+      };
+
+      // Listen for BEL to detect when copilot needs user attention
+      terminal.onBell = () {
+        _sessionStatuses[session.id] = CopilotActivityStatus.needsAction;
+        notifyListeners();
       };
 
       _terminals[session.id] = terminal;

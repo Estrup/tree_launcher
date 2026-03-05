@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/copilot_prompt.dart';
 import '../models/custom_command.dart';
 import '../models/command_style.dart';
 import '../models/vscode_config.dart';
 import '../providers/repo_provider.dart';
 import '../theme/app_theme.dart';
 
-enum _SettingsSection { general, vscodeConfigs, customCommands }
+enum _SettingsSection { general, vscodeConfigs, customCommands, copilotPrompts }
 
 class RepoSettingsView extends StatefulWidget {
   const RepoSettingsView({super.key});
@@ -124,6 +125,14 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                       onTap: () => setState(() =>
                           _selectedSection = _SettingsSection.customCommands),
                     ),
+                    _NavItem(
+                      icon: Icons.auto_awesome_rounded,
+                      label: 'Copilot Prompts',
+                      isSelected:
+                          _selectedSection == _SettingsSection.copilotPrompts,
+                      onTap: () => setState(() =>
+                          _selectedSection = _SettingsSection.copilotPrompts),
+                    ),
                   ],
                 ),
               ),
@@ -146,6 +155,8 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
         return const _VscodeConfigsSection();
       case _SettingsSection.customCommands:
         return const _CustomCommandsSection();
+      case _SettingsSection.copilotPrompts:
+        return const _CopilotPromptsSection();
     }
   }
 }
@@ -1024,6 +1035,322 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
             controller: _commandController,
             onChanged: (v) =>
                 widget.onChanged(widget.command.copyWith(command: v)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Copilot Prompts Section ---
+
+class _CopilotPromptsSection extends StatefulWidget {
+  const _CopilotPromptsSection();
+
+  @override
+  State<_CopilotPromptsSection> createState() => _CopilotPromptsSectionState();
+}
+
+class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
+  late List<CopilotPrompt> _prompts;
+  String? _lastRepoPath;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    final repo = context.read<RepoProvider>().selectedRepo;
+    _lastRepoPath = repo?.path;
+    _prompts = List.from(repo?.copilotPrompts ?? []);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repo = context.read<RepoProvider>().selectedRepo;
+    if (repo != null && repo.path != _lastRepoPath) {
+      _lastRepoPath = repo.path;
+      _prompts = List.from(repo.copilotPrompts);
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _save() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      final provider = context.read<RepoProvider>();
+      final repo = provider.selectedRepo;
+      if (repo == null) return;
+      final cleaned = _prompts
+          .where(
+              (p) => p.name.trim().isNotEmpty || p.prompt.trim().isNotEmpty)
+          .map((p) => CopilotPrompt(
+                name: p.name.trim(),
+                prompt: p.prompt.trim(),
+              ))
+          .toList();
+      provider.updateRepoCopilotPrompts(repo, cleaned);
+    });
+  }
+
+  void _addPrompt() {
+    setState(() {
+      _prompts.add(CopilotPrompt(name: '', prompt: ''));
+    });
+  }
+
+  void _removePrompt(int index) {
+    setState(() {
+      _prompts.removeAt(index);
+    });
+    _save();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Copilot Prompts',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Prompt templates for Copilot sessions. Use {issue} for JIRA issue substitution.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _AddButton(
+                label: 'Add Prompt',
+                color: AppColors.copilot,
+                bgColor: AppColors.copilotBg,
+                onTap: _addPrompt,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          if (_prompts.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.surface0,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 32,
+                    color: AppColors.textMuted.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No copilot prompts',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Add prompt templates to use when creating worktrees.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...List.generate(_prompts.length, (index) {
+              return _CopilotPromptCard(
+                key: ValueKey('prompt_$index'),
+                prompt: _prompts[index],
+                onChanged: (p) {
+                  setState(() => _prompts[index] = p);
+                  _save();
+                },
+                onRemove: () => _removePrompt(index),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _CopilotPromptCard extends StatefulWidget {
+  final CopilotPrompt prompt;
+  final ValueChanged<CopilotPrompt> onChanged;
+  final VoidCallback onRemove;
+
+  const _CopilotPromptCard({
+    super.key,
+    required this.prompt,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  @override
+  State<_CopilotPromptCard> createState() => _CopilotPromptCardState();
+}
+
+class _CopilotPromptCardState extends State<_CopilotPromptCard> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _promptController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.prompt.name);
+    _promptController = TextEditingController(text: widget.prompt.prompt);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _promptController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface0,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NAME',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: 300,
+                      child: TextField(
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'e.g. Analyse Jira Issue',
+                          hintStyle: TextStyle(
+                            color: AppColors.textMuted.withValues(alpha: 0.5),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide(color: AppColors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide(color: AppColors.copilot),
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface1,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
+                        ),
+                        controller: _nameController,
+                        onChanged: (v) =>
+                            widget.onChanged(widget.prompt.copyWith(name: v)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _RemoveButton(onTap: widget.onRemove),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'PROMPT',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontFamily: 'monospace',
+              height: 1.5,
+            ),
+            maxLines: 6,
+            minLines: 3,
+            decoration: InputDecoration(
+              hintText:
+                  'e.g. Retrieve the jira issue {issue} with comments and files.\n'
+                  'Analyse the issue and find a solution.',
+              hintStyle: TextStyle(
+                color: AppColors.textMuted.withValues(alpha: 0.5),
+                fontFamily: 'monospace',
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: AppColors.copilot),
+              ),
+              filled: true,
+              fillColor: AppColors.surface1,
+              contentPadding: const EdgeInsets.all(12),
+            ),
+            controller: _promptController,
+            onChanged: (v) =>
+                widget.onChanged(widget.prompt.copyWith(prompt: v)),
           ),
         ],
       ),

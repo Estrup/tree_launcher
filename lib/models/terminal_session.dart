@@ -14,6 +14,9 @@ class TerminalSession {
   /// Called when the terminal title changes (e.g. Copilot CLI status icons).
   void Function(String title)? onTitleChange;
 
+  /// Called when the terminal receives a BEL character (e.g. Copilot CLI needs attention).
+  void Function()? onBell;
+
   Pty? _pty;
   StreamSubscription<String>? _outputSub;
   bool _disposed = false;
@@ -87,6 +90,11 @@ class TerminalSession {
     // Forward terminal title changes
     terminal.onTitleChange = (title) {
       onTitleChange?.call(title);
+    };
+
+    // Forward terminal bell events
+    terminal.onBell = () {
+      onBell?.call();
     };
   }
 
