@@ -1,3 +1,5 @@
+enum CopilotActivityStatus { idle, working, needsAction }
+
 class CopilotSession {
   final String id;
   final String name;

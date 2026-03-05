@@ -34,6 +34,10 @@ class RepoProvider extends ChangeNotifier {
   bool get showSettings => _showSettings;
   bool get isBareLayout => _isBareLayout;
 
+  /// All copilot sessions across all repos, as a flat list.
+  List<CopilotSession> get allCopilotSessions =>
+      _repos.expand((r) => r.copilotSessions).toList();
+
   void toggleSettings() {
     _showSettings = !_showSettings;
     notifyListeners();

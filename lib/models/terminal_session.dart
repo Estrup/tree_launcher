@@ -11,6 +11,9 @@ class TerminalSession {
   final String? command;
   final Terminal terminal;
 
+  /// Called when the terminal title changes (e.g. Copilot CLI status icons).
+  void Function(String title)? onTitleChange;
+
   Pty? _pty;
   StreamSubscription<String>? _outputSub;
   bool _disposed = false;
@@ -72,6 +75,11 @@ class TerminalSession {
         _exitCodeCompleter.complete(code);
       }
     });
+
+    // Forward terminal title changes
+    terminal.onTitleChange = (title) {
+      onTitleChange?.call(title);
+    };
   }
 
   /// Intercept Kitty keyboard protocol sequences from PTY output and respond

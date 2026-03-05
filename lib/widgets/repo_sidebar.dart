@@ -5,6 +5,7 @@ import '../models/repo_config.dart';
 import '../providers/copilot_provider.dart';
 import '../providers/repo_provider.dart';
 import '../theme/app_theme.dart';
+import 'copilot_status_dot.dart';
 
 class RepoSidebar extends StatelessWidget {
   final VoidCallback onAddRepo;
@@ -447,8 +448,7 @@ class _CopilotsSidebarSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final repoProvider = context.watch<RepoProvider>();
     final copilotProvider = context.watch<CopilotProvider>();
-    final selectedRepo = repoProvider.selectedRepo;
-    final sessions = selectedRepo?.copilotSessions ?? [];
+    final sessions = repoProvider.allCopilotSessions;
 
     return Container(
       decoration: BoxDecoration(
@@ -478,6 +478,13 @@ class _CopilotsSidebarSection extends StatelessWidget {
                     letterSpacing: 1.2,
                   ),
                 ),
+                if (copilotProvider.hasAnyActivity) ...[
+                  const SizedBox(width: 6),
+                  CopilotStatusDot(
+                    status: copilotProvider.aggregateStatus,
+                    size: 6,
+                  ),
+                ],
               ],
             ),
           ),
@@ -506,6 +513,7 @@ class _CopilotsSidebarSection extends StatelessWidget {
                   return _CopilotTile(
                     session: session,
                     isActive: isActive,
+                    activityStatus: copilotProvider.statusForSession(session.id),
                     onTap: () => copilotProvider.selectSession(session),
                     onRemove: () => copilotProvider.removeSession(session),
                   );
@@ -521,12 +529,14 @@ class _CopilotsSidebarSection extends StatelessWidget {
 class _CopilotTile extends StatefulWidget {
   final CopilotSession session;
   final bool isActive;
+  final CopilotActivityStatus activityStatus;
   final VoidCallback onTap;
   final VoidCallback onRemove;
 
   const _CopilotTile({
     required this.session,
     required this.isActive,
+    required this.activityStatus,
     required this.onTap,
     required this.onRemove,
   });
@@ -597,6 +607,10 @@ class _CopilotTileState extends State<_CopilotTile> {
                     ),
                   ),
                 ),
+                if (widget.activityStatus != CopilotActivityStatus.idle) ...[
+                  CopilotStatusDot(status: widget.activityStatus, size: 7),
+                  const SizedBox(width: 4),
+                ],
                 if (_hovered || widget.isActive)
                   _TinyIconButton(
                     icon: Icons.close_rounded,
