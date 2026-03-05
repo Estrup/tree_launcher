@@ -5,6 +5,7 @@ import '../providers/settings_provider.dart';
 import '../providers/terminal_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/terminal_theme.dart';
+import 'terminal_key_handler.dart';
 
 class TerminalPanel extends StatelessWidget {
   const TerminalPanel({super.key});
@@ -356,6 +357,9 @@ class _TerminalBodyState extends State<_TerminalBody> {
         padding: EdgeInsets.zero,
         autofocus: true,
         hardwareKeyboardOnly: true,
+        onKeyEvent: (node, event) =>
+            terminalShiftEnterHandler(widget.session.terminal as Terminal, node, event) ??
+            KeyEventResult.ignored,
       ),
     );
   }

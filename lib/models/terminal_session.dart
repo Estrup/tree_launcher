@@ -44,11 +44,16 @@ class TerminalSession {
     );
     _pty = pty;
 
-    // PTY output → terminal display (Utf8Decoder maintains state across chunks)
+    // PTY output → terminal display (Utf8Decoder maintains state across chunks).
+    // We intercept to handle Kitty keyboard protocol negotiation so that TUI
+    // apps (e.g. GitHub Copilot CLI) use the CSI u parser for Shift+Enter.
     _outputSub = pty.output
         .cast<List<int>>()
         .transform(const Utf8Decoder())
-        .listen(terminal.write);
+        .listen((data) {
+          data = _handleKittyProtocol(data, pty);
+          if (data.isNotEmpty) terminal.write(data);
+        });
 
     // Terminal user input → PTY stdin
     terminal.onOutput = (data) {
@@ -67,6 +72,25 @@ class TerminalSession {
         _exitCodeCompleter.complete(code);
       }
     });
+  }
+
+  /// Intercept Kitty keyboard protocol sequences from PTY output and respond
+  /// so that TUI apps detect CSI u support. Strips the protocol control
+  /// sequences from the data so the terminal emulator doesn't see them.
+  static final _kittyQueryRe = RegExp(r'\x1b\[\?u');
+  static final _kittyEnableRe = RegExp(r'\x1b\[>[0-9]*u');
+  static final _kittyDisableRe = RegExp(r'\x1b\[<u');
+
+  String _handleKittyProtocol(String data, Pty pty) {
+    if (data.contains('\x1b[')) {
+      if (_kittyQueryRe.hasMatch(data)) {
+        pty.write(utf8.encode('\x1b[?0u'));
+        data = data.replaceAll(_kittyQueryRe, '');
+      }
+      data = data.replaceAll(_kittyEnableRe, '');
+      data = data.replaceAll(_kittyDisableRe, '');
+    }
+    return data;
   }
 
   bool get isPtyStarted => _ptyStarted;

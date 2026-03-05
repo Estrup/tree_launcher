@@ -5,6 +5,7 @@ import '../providers/copilot_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/terminal_theme.dart';
+import 'terminal_key_handler.dart';
 
 class CopilotTerminalView extends StatefulWidget {
   const CopilotTerminalView({super.key});
@@ -92,6 +93,9 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView> {
         padding: EdgeInsets.zero,
         autofocus: true,
         hardwareKeyboardOnly: true,
+        onKeyEvent: (node, event) =>
+            terminalShiftEnterHandler(session.terminal, node, event) ??
+            KeyEventResult.ignored,
       ),
     );
   }
