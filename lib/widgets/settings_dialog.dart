@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/app_settings.dart';
 import '../providers/settings_provider.dart';
+import '../services/config_service.dart';
 import '../theme/app_theme.dart';
 
 class SettingsDialog extends StatefulWidget {
@@ -230,6 +232,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
               ),
               const SizedBox(height: 12),
               _buildRemoteControlSettings(settings, settingsProvider),
+              const SizedBox(height: 24),
+
+              // ── Config file link ──
+              _buildConfigFileLink(),
             ],
           ),
         ),
@@ -494,11 +500,33 @@ class _SettingsDialogState extends State<SettingsDialog> {
       ],
     );
   }
-}
 
-// ---------------------------------------------------------------------------
-// Theme preview card
-// ---------------------------------------------------------------------------
+  Widget _buildConfigFileLink() {
+    return FutureBuilder<String>(
+      future: ConfigService().getConfigPath(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+        final path = snapshot.data!;
+        return GestureDetector(
+          onTap: () => Process.run('open', [path]),
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Text(
+              path,
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.accent,
+                fontFamily: 'monospace',
+                decoration: TextDecoration.underline,
+                decorationColor: AppColors.accent.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 class _ThemeCard extends StatefulWidget {
   final String label;

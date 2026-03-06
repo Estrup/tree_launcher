@@ -12,6 +12,8 @@ class ConfigService {
     return p.join(appSupport.path, _configFileName);
   }
 
+  Future<String> getConfigPath() => _configPath;
+
   Future<Map<String, dynamic>> _readConfig() async {
     final path = await _configPath;
     final file = File(path);

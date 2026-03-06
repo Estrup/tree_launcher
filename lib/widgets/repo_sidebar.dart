@@ -510,8 +510,13 @@ class _CopilotsSidebarSection extends StatelessWidget {
                   final session = sessions[index];
                   final isActive =
                       copilotProvider.activeSession?.id == session.id;
+                  final repoName = repoProvider.repos
+                      .where((r) => r.path == session.repoPath)
+                      .map((r) => r.name)
+                      .firstOrNull;
                   return _CopilotTile(
                     session: session,
+                    repoName: repoName,
                     isActive: isActive,
                     activityStatus: copilotProvider.statusForSession(session.id),
                     onTap: () => copilotProvider.selectSession(session),
@@ -528,6 +533,7 @@ class _CopilotsSidebarSection extends StatelessWidget {
 
 class _CopilotTile extends StatefulWidget {
   final CopilotSession session;
+  final String? repoName;
   final bool isActive;
   final CopilotActivityStatus activityStatus;
   final VoidCallback onTap;
@@ -535,6 +541,7 @@ class _CopilotTile extends StatefulWidget {
 
   const _CopilotTile({
     required this.session,
+    this.repoName,
     required this.isActive,
     required this.activityStatus,
     required this.onTap,
@@ -593,7 +600,9 @@ class _CopilotTileState extends State<_CopilotTile> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      widget.session.name,
+                      widget.repoName != null
+                          ? '${_repoAbbreviation(widget.repoName!)}:${widget.session.name}'
+                          : widget.session.name,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
@@ -624,4 +633,16 @@ class _CopilotTileState extends State<_CopilotTile> {
       ),
     );
   }
+}
+
+String _repoAbbreviation(String repoName) {
+  if (repoName.contains('_') || repoName.contains('.')) {
+    final parts = repoName.split(RegExp(r'[_.]'));
+    return parts
+        .where((p) => p.isNotEmpty)
+        .take(3)
+        .map((p) => p[0].toUpperCase())
+        .join();
+  }
+  return repoName.substring(0, repoName.length.clamp(0, 3)).toUpperCase();
 }
