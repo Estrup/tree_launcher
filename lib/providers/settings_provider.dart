@@ -11,6 +11,7 @@ class SettingsProvider extends ChangeNotifier {
     : _configService = configService;
 
   AppSettings get settings => _settings;
+  String get openAiApiKey => _settings.openAiApiKey ?? '';
 
   Future<void> loadSettings() async {
     _settings = await _configService.loadSettings();
@@ -39,6 +40,28 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> updateTheme(String name) async {
     AppColors.setTheme(name);
     _settings = _settings.copyWith(themeName: name);
+    await _configService.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateOpenAiApiKey(String apiKey) async {
+    final normalizedApiKey = apiKey.trim();
+    _settings = _settings.copyWith(
+      openAiApiKey: normalizedApiKey,
+      clearOpenAiApiKey: normalizedApiKey.isEmpty,
+    );
+    await _configService.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateOpenAiTranscriptionModel(String model) async {
+    _settings = _settings.copyWith(openAiTranscriptionModel: model);
+    await _configService.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateOpenAiResponseModel(String model) async {
+    _settings = _settings.copyWith(openAiResponseModel: model);
     await _configService.saveSettings(_settings);
     notifyListeners();
   }

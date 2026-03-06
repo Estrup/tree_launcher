@@ -29,6 +29,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
   final SoundService _soundService = SoundService();
   late final TextEditingController _customTerminalController;
   late final TextEditingController _branchPrefixController;
+  late final TextEditingController _openAiApiKeyController;
+  late final TextEditingController _openAiTranscriptionModelController;
+  late final TextEditingController _openAiResponseModelController;
   late final TextEditingController _remotePortController;
 
   @override
@@ -41,6 +44,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
     _branchPrefixController = TextEditingController(
       text: settings.defaultBranchPrefix ?? '',
     );
+    _openAiApiKeyController = TextEditingController(
+      text: context.read<SettingsProvider>().openAiApiKey,
+    );
+    _openAiTranscriptionModelController = TextEditingController(
+      text: settings.openAiTranscriptionModel,
+    );
+    _openAiResponseModelController = TextEditingController(
+      text: settings.openAiResponseModel,
+    );
     _remotePortController = TextEditingController(
       text: settings.remoteControlPort.toString(),
     );
@@ -50,6 +62,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
   void dispose() {
     _customTerminalController.dispose();
     _branchPrefixController.dispose();
+    _openAiApiKeyController.dispose();
+    _openAiTranscriptionModelController.dispose();
+    _openAiResponseModelController.dispose();
     _remotePortController.dispose();
     super.dispose();
   }
@@ -238,6 +253,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
               ),
               const SizedBox(height: 24),
 
+              // ── OpenAI ──
+              Text(
+                'OPENAI',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildOpenAiSettings(settings, settingsProvider),
+              const SizedBox(height: 24),
+
               // ── Remote control ──
               Text(
                 'REMOTE CONTROL',
@@ -418,6 +447,112 @@ class _SettingsDialogState extends State<SettingsDialog> {
           isSelected: settings.copilotButtonMode == CopilotButtonMode.external,
           onTap: () =>
               provider.updateCopilotButtonMode(CopilotButtonMode.external),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOpenAiSettings(AppSettings settings, SettingsProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _openAiApiKeyController,
+          obscureText: true,
+          enableSuggestions: false,
+          autocorrect: false,
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 13,
+            fontFamily: 'monospace',
+          ),
+          decoration: InputDecoration(
+            labelText: 'API key',
+            labelStyle: TextStyle(color: AppColors.textMuted),
+            hintText: 'sk-...',
+            hintStyle: TextStyle(
+              color: AppColors.textMuted.withValues(alpha: 0.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.accent),
+            ),
+            filled: true,
+            fillColor: AppColors.surface0,
+          ),
+          onChanged: (value) {
+            provider.updateOpenAiApiKey(value);
+          },
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Stored directly in the app config file.',
+          style: TextStyle(
+            fontSize: 10,
+            color: AppColors.textMuted.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _openAiTranscriptionModelController,
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 13,
+            fontFamily: 'monospace',
+          ),
+          decoration: InputDecoration(
+            labelText: 'Transcription model',
+            labelStyle: TextStyle(color: AppColors.textMuted),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.accent),
+            ),
+            filled: true,
+            fillColor: AppColors.surface0,
+          ),
+          onChanged: (value) {
+            if (value.trim().isEmpty) {
+              return;
+            }
+            provider.updateOpenAiTranscriptionModel(value.trim());
+          },
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _openAiResponseModelController,
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 13,
+            fontFamily: 'monospace',
+          ),
+          decoration: InputDecoration(
+            labelText: 'Response model',
+            labelStyle: TextStyle(color: AppColors.textMuted),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.accent),
+            ),
+            filled: true,
+            fillColor: AppColors.surface0,
+          ),
+          onChanged: (value) {
+            if (value.trim().isEmpty) {
+              return;
+            }
+            provider.updateOpenAiResponseModel(value.trim());
+          },
         ),
       ],
     );

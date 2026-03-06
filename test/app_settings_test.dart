@@ -8,12 +8,18 @@ void main() {
 
       expect(settings.copilotAttentionSoundEnabled, isFalse);
       expect(settings.copilotAttentionSound, CopilotAttentionSound.ping);
+      expect(settings.openAiApiKey, isNull);
+      expect(settings.openAiTranscriptionModel, 'gpt-4o-transcribe');
+      expect(settings.openAiResponseModel, 'gpt-5');
     });
 
     test('serializes and restores Copilot attention sound settings', () {
       final settings = AppSettings(
         copilotAttentionSoundEnabled: true,
         copilotAttentionSound: CopilotAttentionSound.sosumi,
+        openAiApiKey: 'sk-test',
+        openAiTranscriptionModel: 'gpt-4o-mini-transcribe',
+        openAiResponseModel: 'gpt-5-mini',
       );
 
       final json = settings.toJson();
@@ -21,6 +27,9 @@ void main() {
 
       expect(restored.copilotAttentionSoundEnabled, isTrue);
       expect(restored.copilotAttentionSound, CopilotAttentionSound.sosumi);
+      expect(restored.openAiApiKey, 'sk-test');
+      expect(restored.openAiTranscriptionModel, 'gpt-4o-mini-transcribe');
+      expect(restored.openAiResponseModel, 'gpt-5-mini');
     });
 
     test('falls back to Ping for unknown serialized sound values', () {

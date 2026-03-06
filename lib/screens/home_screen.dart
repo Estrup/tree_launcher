@@ -7,8 +7,11 @@ import 'package:provider/provider.dart';
 import '../models/custom_command.dart';
 import '../providers/copilot_provider.dart';
 import '../providers/repo_provider.dart';
+import '../providers/settings_provider.dart';
 import '../providers/terminal_provider.dart';
+import '../services/chatgpt_service.dart';
 import '../services/launcher_service.dart';
+import '../services/microphone_recording_service.dart';
 import '../services/shortcut_overlay_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/repo_sidebar.dart';
@@ -38,7 +41,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _shortcutOverlayController = ShortcutOverlayController();
+    _shortcutOverlayController = ShortcutOverlayController(
+      microphoneRecordingService: MicrophoneRecordingService(),
+      chatGptService: ChatGptService(),
+      repoProvider: context.read<RepoProvider>(),
+      settingsProvider: context.read<SettingsProvider>(),
+    );
   }
 
   @override

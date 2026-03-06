@@ -30,6 +30,9 @@ class AppSettings {
   final String? customTerminalCommand;
   final String? defaultBranchPrefix;
   final String themeName;
+  final String? openAiApiKey;
+  final String openAiTranscriptionModel;
+  final String openAiResponseModel;
   final String? terminalFontFamily;
   final double? terminalFontSize;
   final CopilotButtonMode copilotButtonMode;
@@ -44,6 +47,9 @@ class AppSettings {
     this.customTerminalCommand,
     this.defaultBranchPrefix,
     this.themeName = 'muted',
+    this.openAiApiKey,
+    this.openAiTranscriptionModel = 'gpt-4o-transcribe',
+    this.openAiResponseModel = 'gpt-5',
     this.terminalFontFamily,
     this.terminalFontSize,
     this.copilotButtonMode = CopilotButtonMode.inApp,
@@ -67,6 +73,10 @@ class AppSettings {
       customTerminalCommand: json['customTerminalCommand'] as String?,
       defaultBranchPrefix: json['defaultBranchPrefix'] as String?,
       themeName: json['themeName'] as String? ?? 'muted',
+      openAiApiKey: json['openAiApiKey'] as String?,
+      openAiTranscriptionModel:
+          json['openAiTranscriptionModel'] as String? ?? 'gpt-4o-transcribe',
+      openAiResponseModel: json['openAiResponseModel'] as String? ?? 'gpt-5',
       terminalFontFamily: json['terminalFontFamily'] as String?,
       terminalFontSize: (json['terminalFontSize'] as num?)?.toDouble(),
       copilotButtonMode: CopilotButtonMode.values.firstWhere(
@@ -91,6 +101,9 @@ class AppSettings {
     'customTerminalCommand': customTerminalCommand,
     'defaultBranchPrefix': defaultBranchPrefix,
     'themeName': themeName,
+    'openAiApiKey': openAiApiKey,
+    'openAiTranscriptionModel': openAiTranscriptionModel,
+    'openAiResponseModel': openAiResponseModel,
     'terminalFontFamily': terminalFontFamily,
     'terminalFontSize': terminalFontSize,
     'copilotButtonMode': copilotButtonMode.name,
@@ -106,8 +119,12 @@ class AppSettings {
     String? customTerminalCommand,
     String? defaultBranchPrefix,
     String? themeName,
+    String? openAiApiKey,
+    String? openAiTranscriptionModel,
+    String? openAiResponseModel,
     String? terminalFontFamily,
     double? terminalFontSize,
+    bool clearOpenAiApiKey = false,
     bool clearTerminalFontFamily = false,
     bool clearTerminalFontSize = false,
     CopilotButtonMode? copilotButtonMode,
@@ -123,6 +140,12 @@ class AppSettings {
           customTerminalCommand ?? this.customTerminalCommand,
       defaultBranchPrefix: defaultBranchPrefix ?? this.defaultBranchPrefix,
       themeName: themeName ?? this.themeName,
+      openAiApiKey: clearOpenAiApiKey
+          ? null
+          : (openAiApiKey ?? this.openAiApiKey),
+      openAiTranscriptionModel:
+          openAiTranscriptionModel ?? this.openAiTranscriptionModel,
+      openAiResponseModel: openAiResponseModel ?? this.openAiResponseModel,
       terminalFontFamily: clearTerminalFontFamily
           ? null
           : (terminalFontFamily ?? this.terminalFontFamily),

@@ -1,7 +1,17 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../services/shortcut_overlay_controller.dart';
 import '../theme/app_theme.dart';
+
+const _overlayCardKey = ValueKey('shortcut-overlay-card');
+const _overlayDetailScrollKey = ValueKey('shortcut-overlay-detail-scroll');
+const _overlayMinHeight = 100.0;
+const _overlayMaxWidth = 600.0;
+const _overlayMaxHeightFraction = 0.4;
+const _overlayAbsoluteMaxHeight = 320.0;
 
 class ShortcutOverlay extends StatelessWidget {
   const ShortcutOverlay({required this.controller, super.key});
@@ -10,110 +20,115 @@ class ShortcutOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) {
-        final isVisible = controller.isVisible;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxOverlayHeight = _resolveMaxOverlayHeight(
+          constraints.maxHeight,
+        );
 
-        return IgnorePointer(
-          ignoring: !isVisible,
-          child: AnimatedOpacity(
-            opacity: isVisible ? 1 : 0,
-            duration: const Duration(milliseconds: 180),
-            child: AnimatedSlide(
-              offset: isVisible ? Offset.zero : const Offset(0, 0.18),
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: SafeArea(
-                  minimum: const EdgeInsets.only(
-                    bottom: 48,
-                    left: 24,
-                    right: 24,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 600,
-                      minHeight: 100,
-                      maxHeight: 100,
-                    ),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F3F7).withValues(alpha: 0.96),
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.65),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35),
-                            blurRadius: 32,
-                            offset: const Offset(0, 18),
-                          ),
-                        ],
+        return ListenableBuilder(
+          listenable: controller,
+          builder: (context, _) {
+            final isVisible = controller.isVisible;
+
+            return IgnorePointer(
+              ignoring: !isVisible,
+              child: AnimatedOpacity(
+                opacity: isVisible ? 1 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: AnimatedSlide(
+                  offset: isVisible ? Offset.zero : const Offset(0, 0.18),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: SafeArea(
+                      minimum: const EdgeInsets.only(
+                        bottom: 48,
+                        left: 24,
+                        right: 24,
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            _OverlayIconButton(
-                              icon: Icons.close_rounded,
-                              tooltip: 'Dismiss',
-                              onPressed: controller.canDismiss
-                                  ? controller.dismiss
-                                  : null,
-                              backgroundColor: const Color(
-                                0xFFE7E7EE,
-                              ).withValues(alpha: 0.95),
-                              iconColor: const Color(0xFF111111),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: _overlayMaxWidth,
+                          minHeight: _overlayMinHeight,
+                          maxHeight: maxOverlayHeight,
+                        ),
+                        child: DecoratedBox(
+                          key: _overlayCardKey,
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFFF3F3F7,
+                            ).withValues(alpha: 0.96),
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.65),
                             ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 180),
-                                child: controller.isSending
-                                    ? _OverlayStatus(
-                                        key: const ValueKey('sending-status'),
-                                        label: controller.statusLabel,
-                                        indicator: const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                  Color(0xFF111111),
-                                                ),
-                                          ),
-                                        ),
-                                      )
-                                    : _OverlayStatus(
-                                        key: const ValueKey('listening-status'),
-                                        label: controller.statusLabel,
-                                        indicator: const _ListeningIndicator(),
-                                      ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 32,
+                                offset: const Offset(0, 18),
                               ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
                             ),
-                            const SizedBox(width: 20),
-                            _OverlayIconButton(
-                              icon: Icons.arrow_upward_rounded,
-                              tooltip: 'Send',
-                              onPressed: controller.canSubmit
-                                  ? () => controller.submit()
-                                  : null,
-                              backgroundColor: const Color(0xFF0C0C0F),
-                              iconColor: const Color(0xFFF5F5F8),
+                            child: Row(
+                              children: [
+                                _OverlayIconButton(
+                                  icon: Icons.close_rounded,
+                                  tooltip: 'Dismiss',
+                                  onPressed: controller.canDismiss
+                                      ? controller.dismiss
+                                      : null,
+                                  backgroundColor: const Color(
+                                    0xFFE7E7EE,
+                                  ).withValues(alpha: 0.95),
+                                  iconColor: const Color(0xFF111111),
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 180),
+                                    child: _OverlayStatus(
+                                      key: ValueKey(controller.phase),
+                                      label: controller.statusLabel,
+                                      detail: controller.detailLabel,
+                                      indicator: _buildIndicator(controller),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                _OverlayIconButton(
+                                  icon: controller.primaryIcon,
+                                  tooltip: controller.primaryTooltip,
+                                  onPressed: controller.canPrimaryAction
+                                      ? () {
+                                          unawaited(
+                                            controller.handlePrimaryAction(),
+                                          );
+                                        }
+                                      : null,
+                                  backgroundColor: controller.isBusy
+                                      ? const Color(0xFF404048)
+                                      : const Color(0xFF0C0C0F),
+                                  iconColor: const Color(0xFFF5F5F8),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -123,32 +138,60 @@ class ShortcutOverlay extends StatelessWidget {
 class _OverlayStatus extends StatelessWidget {
   const _OverlayStatus({
     required this.label,
+    required this.detail,
     required this.indicator,
     super.key,
   });
 
   final String label;
+  final String detail;
   final Widget indicator;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          indicator,
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111111),
-              letterSpacing: -0.3,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              indicator,
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111111),
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (detail.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Flexible(
+            fit: FlexFit.loose,
+            child: SingleChildScrollView(
+              key: _overlayDetailScrollKey,
+              child: Text(
+                detail,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textMuted.withValues(alpha: 0.95),
+                  letterSpacing: -0.1,
+                  height: 1.35,
+                ),
+              ),
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -182,6 +225,34 @@ class _ListeningIndicator extends StatelessWidget {
         );
       }),
     );
+  }
+}
+
+class _BusyIndicator extends StatelessWidget {
+  const _BusyIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: 18,
+      height: 18,
+      child: CircularProgressIndicator(
+        strokeWidth: 2.2,
+        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF111111)),
+      ),
+    );
+  }
+}
+
+class _StatusIconIndicator extends StatelessWidget {
+  const _StatusIconIndicator({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(icon, size: 18, color: color);
   }
 }
 
@@ -239,4 +310,38 @@ class _OverlayIconButtonState extends State<_OverlayIconButton> {
       ),
     );
   }
+}
+
+Widget _buildIndicator(ShortcutOverlayController controller) {
+  switch (controller.phase) {
+    case ShortcutOverlayPhase.recording:
+      return const _ListeningIndicator();
+    case ShortcutOverlayPhase.trimming:
+    case ShortcutOverlayPhase.transcribing:
+    case ShortcutOverlayPhase.routing:
+      return const _BusyIndicator();
+    case ShortcutOverlayPhase.success:
+      return const _StatusIconIndicator(
+        icon: Icons.check_circle_rounded,
+        color: Color(0xFF0F8A4B),
+      );
+    case ShortcutOverlayPhase.error:
+      return const _StatusIconIndicator(
+        icon: Icons.error_rounded,
+        color: Color(0xFFB42318),
+      );
+    case ShortcutOverlayPhase.closed:
+      return const SizedBox.shrink();
+  }
+}
+
+double _resolveMaxOverlayHeight(double availableHeight) {
+  final screenRelativeMax = availableHeight.isFinite
+      ? availableHeight * _overlayMaxHeightFraction
+      : _overlayAbsoluteMaxHeight;
+
+  return math.max(
+    _overlayMinHeight,
+    math.min(_overlayAbsoluteMaxHeight, screenRelativeMax),
+  );
 }
