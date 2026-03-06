@@ -62,6 +62,14 @@ flutter build macos
 
 The resulting `.app` bundle will be located in `build/macos/Build/Products/Release/`.
 
+To build and install the app into `/Applications`, use the repo helper script:
+
+```bash
+./install-macos-app
+```
+
+The script replaces the existing `/Applications/tree_launcher.app` bundle with the freshly built app. If your machine requires elevated permissions for `/Applications`, it will prompt for administrator access during the install step.
+
 ## 🛠️ Tech Stack
 
 - **Framework:** [Flutter](https://flutter.dev/)

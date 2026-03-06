@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$script_dir"
+app_info_path="$repo_root/macos/Runner/Configs/AppInfo.xcconfig"
+install_dir="/Applications"
+
+if [[ ! -f "$app_info_path" ]]; then
+  printf 'Could not find app metadata at %s\n' "$app_info_path" >&2
+  exit 1
+fi
+
+app_name="$(
+  awk -F '=' '
+    /^PRODUCT_NAME[[:space:]]*=/ {
+      value = $2
+      sub(/^[[:space:]]+/, "", value)
+      sub(/[[:space:]]+$/, "", value)
+      print value
+      exit
+    }
+  ' "$app_info_path"
+)"
+
+if [[ -z "$app_name" || "$app_name" == *"/"* ]]; then
+  printf 'Invalid PRODUCT_NAME in %s\n' "$app_info_path" >&2
+  exit 1
+fi
+
+source_app="$repo_root/build/macos/Build/Products/Release/${app_name}.app"
+destination_app="$install_dir/${app_name}.app"
+
+printf 'Building %s for macOS...\n' "$app_name"
+(
+  cd "$repo_root"
+  flutter build macos "$@"
+)
+
+if [[ ! -d "$source_app" ]]; then
+  printf 'Build succeeded, but %s was not found.\n' "$source_app" >&2
+  exit 1
+fi
+
+printf 'Installing %s to %s...\n' "$app_name" "$destination_app"
+
+if [[ -w "$install_dir" ]]; then
+  rm -rf "$destination_app"
+  ditto "$source_app" "$destination_app"
+else
+  printf 'Administrator privileges are required to write to %s.\n' "$install_dir"
+  sudo rm -rf "$destination_app"
+  sudo ditto "$source_app" "$destination_app"
+fi
+
+printf 'Installed %s\n' "$destination_app"
