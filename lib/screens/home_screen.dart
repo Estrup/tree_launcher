@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -7,6 +9,7 @@ import '../providers/copilot_provider.dart';
 import '../providers/repo_provider.dart';
 import '../providers/terminal_provider.dart';
 import '../services/launcher_service.dart';
+import '../services/shortcut_overlay_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/repo_sidebar.dart';
 import '../widgets/worktree_grid.dart';
@@ -18,6 +21,7 @@ import '../widgets/copilot_attention_snackbar.dart';
 import '../widgets/add_repo_dialog.dart';
 import '../widgets/add_worktree_dialog.dart';
 import '../widgets/settings_dialog.dart';
+import '../widgets/shortcut_overlay.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +33,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   static const double _collapseBreakpoint = 800;
   bool _sidebarOpen = false;
+  late final ShortcutOverlayController _shortcutOverlayController;
+
+  @override
+  void initState() {
+    super.initState();
+    _shortcutOverlayController = ShortcutOverlayController();
+  }
+
+  @override
+  void dispose() {
+    _shortcutOverlayController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +55,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.backquote, meta: true):
-            () {
+        const SingleActivator(LogicalKeyboardKey.backquote, meta: true): () {
           final tp = context.read<TerminalProvider>();
           if (tp.sessions.isNotEmpty) {
             tp.toggleVisibility();
           }
+        },
+        const SingleActivator(LogicalKeyboardKey.keyM, control: true): () {
+          unawaited(_shortcutOverlayController.handleShortcut());
         },
       },
       child: Focus(
@@ -77,16 +96,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: Column(
                           children: [
-                            _buildHeader(context, repoProvider, copilotProvider,
-                                showMenuButton: isCollapsed),
+                            _buildHeader(
+                              context,
+                              repoProvider,
+                              copilotProvider,
+                              showMenuButton: isCollapsed,
+                            ),
                             if (isCopilotActive)
-                              const Expanded(
-                                child: CopilotTerminalView(),
-                              )
+                              const Expanded(child: CopilotTerminalView())
                             else ...[
-                              Expanded(
-                                child: const WorktreeGrid(),
-                              ),
+                              Expanded(child: const WorktreeGrid()),
                               const RunningCommandsBar(),
                               const TerminalPanel(),
                             ],
@@ -131,6 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   // Copilot attention notification
                   const CopilotAttentionSnackbar(),
+                  ShortcutOverlay(controller: _shortcutOverlayController),
                 ],
               );
             },
@@ -140,9 +160,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, RepoProvider repoProvider,
-      CopilotProvider copilotProvider,
-      {bool showMenuButton = false}) {
+  Widget _buildHeader(
+    BuildContext context,
+    RepoProvider repoProvider,
+    CopilotProvider copilotProvider, {
+    bool showMenuButton = false,
+  }) {
     final selectedRepo = repoProvider.selectedRepo;
     final activeCopilot = copilotProvider.activeSession;
 
@@ -314,9 +337,7 @@ class _RefreshButtonState extends State<_RefreshButton> {
               : Icon(
                   Icons.refresh_rounded,
                   size: 20,
-                  color: _hovered
-                      ? AppColors.textPrimary
-                      : AppColors.textMuted,
+                  color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
                 ),
         ),
       ),
@@ -405,11 +426,7 @@ class _AddWorktreeButtonState extends State<_AddWorktreeButton> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.add_rounded,
-                size: 15,
-                color: AppColors.terminal,
-              ),
+              Icon(Icons.add_rounded, size: 15, color: AppColors.terminal),
               SizedBox(width: 5),
               Text(
                 'New Worktree',
@@ -518,8 +535,7 @@ class _HeaderVscodeButtonState extends State<_HeaderVscodeButton> {
 
   void _showDropdown(BuildContext context) {
     final RenderBox button = context.findRenderObject() as RenderBox;
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromRect(
       Rect.fromPoints(
         button.localToGlobal(Offset(0, button.size.height)),
@@ -654,8 +670,7 @@ class _HeaderCommandsButtonState extends State<_HeaderCommandsButton> {
     final repo = context.read<RepoProvider>().selectedRepo;
     final tp = context.read<TerminalProvider>();
     final RenderBox button = context.findRenderObject() as RenderBox;
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromRect(
       Rect.fromPoints(
         button.localToGlobal(Offset(0, button.size.height)),
@@ -679,8 +694,11 @@ class _HeaderCommandsButtonState extends State<_HeaderCommandsButton> {
           height: 36,
           child: Row(
             children: [
-              Icon(Icons.play_arrow_rounded,
-                  size: 13, color: AppColors.terminal),
+              Icon(
+                Icons.play_arrow_rounded,
+                size: 13,
+                color: AppColors.terminal,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
