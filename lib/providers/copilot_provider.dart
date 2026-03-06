@@ -1,19 +1,40 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
+import '../models/app_settings.dart';
 import '../models/copilot_session.dart';
 import '../models/terminal_session.dart';
 import '../providers/repo_provider.dart';
+import '../providers/settings_provider.dart';
+import '../services/sound_service.dart';
 
 class CopilotProvider extends ChangeNotifier {
-  final RepoProvider _repoProvider;
+  RepoProvider _repoProvider;
+  SettingsProvider _settingsProvider;
+  final SoundService _soundService;
   static const _uuid = Uuid();
 
   CopilotSession? _activeSession;
   final Map<String, TerminalSession> _terminals = {};
   final Map<String, CopilotActivityStatus> _sessionStatuses = {};
 
-  CopilotProvider({required RepoProvider repoProvider})
-      : _repoProvider = repoProvider;
+  CopilotProvider({
+    required RepoProvider repoProvider,
+    required SettingsProvider settingsProvider,
+    required SoundService soundService,
+  }) : _repoProvider = repoProvider,
+       _settingsProvider = settingsProvider,
+       _soundService = soundService;
+
+  void updateDependencies({
+    required RepoProvider repoProvider,
+    required SettingsProvider settingsProvider,
+  }) {
+    _repoProvider = repoProvider;
+    _settingsProvider = settingsProvider;
+  }
 
   CopilotSession? get activeSession => _activeSession;
 
@@ -21,7 +42,8 @@ class CopilotProvider extends ChangeNotifier {
       _activeSession != null ? _terminals[_activeSession!.id] : null;
 
   /// Returns the terminal session for a given copilot session ID, if running.
-  TerminalSession? terminalForSession(String sessionId) => _terminals[sessionId];
+  TerminalSession? terminalForSession(String sessionId) =>
+      _terminals[sessionId];
 
   /// All copilot sessions across all repos.
   List<CopilotSession> get allSessions => _repoProvider.allCopilotSessions;
@@ -32,14 +54,21 @@ class CopilotProvider extends ChangeNotifier {
 
   /// True if any copilot session is working or needs action.
   bool get hasAnyActivity => _sessionStatuses.values.any(
-      (s) => s == CopilotActivityStatus.working || s == CopilotActivityStatus.needsAction);
+    (s) =>
+        s == CopilotActivityStatus.working ||
+        s == CopilotActivityStatus.needsAction,
+  );
 
   /// Returns the most urgent status across all sessions (needsAction > working > idle).
   CopilotActivityStatus get aggregateStatus {
-    if (_sessionStatuses.values.any((s) => s == CopilotActivityStatus.needsAction)) {
+    if (_sessionStatuses.values.any(
+      (s) => s == CopilotActivityStatus.needsAction,
+    )) {
       return CopilotActivityStatus.needsAction;
     }
-    if (_sessionStatuses.values.any((s) => s == CopilotActivityStatus.working)) {
+    if (_sessionStatuses.values.any(
+      (s) => s == CopilotActivityStatus.working,
+    )) {
       return CopilotActivityStatus.working;
     }
     return CopilotActivityStatus.idle;
@@ -48,7 +77,9 @@ class CopilotProvider extends ChangeNotifier {
   /// Returns copilot sessions that currently need user action.
   List<CopilotSession> get sessionsNeedingAction {
     return allSessions
-        .where((s) => _sessionStatuses[s.id] == CopilotActivityStatus.needsAction)
+        .where(
+          (s) => _sessionStatuses[s.id] == CopilotActivityStatus.needsAction,
+        )
         .toList();
   }
 
@@ -120,8 +151,9 @@ class CopilotProvider extends ChangeNotifier {
     // Remove from the session's owning repo (found by repoPath)
     for (final repo in _repoProvider.repos) {
       if (repo.path == session.repoPath) {
-        final sessions =
-            repo.copilotSessions.where((s) => s.id != session.id).toList();
+        final sessions = repo.copilotSessions
+            .where((s) => s.id != session.id)
+            .toList();
         await _repoProvider.updateRepoCopilotSessions(repo, sessions);
         break;
       }
@@ -156,7 +188,8 @@ class CopilotProvider extends ChangeNotifier {
       // Listen for title changes to detect copilot activity status
       terminal.onTitleChange = (title) {
         final newStatus = _parseStatus(title);
-        final oldStatus = _sessionStatuses[session.id] ?? CopilotActivityStatus.idle;
+        final oldStatus =
+            _sessionStatuses[session.id] ?? CopilotActivityStatus.idle;
         if (newStatus != oldStatus) {
           _sessionStatuses[session.id] = newStatus;
           notifyListeners();
@@ -165,8 +198,22 @@ class CopilotProvider extends ChangeNotifier {
 
       // Listen for BEL to detect when copilot needs user attention
       terminal.onBell = () {
+        final oldStatus =
+            _sessionStatuses[session.id] ?? CopilotActivityStatus.idle;
+        if (oldStatus == CopilotActivityStatus.needsAction) {
+          return;
+        }
+
         _sessionStatuses[session.id] = CopilotActivityStatus.needsAction;
         notifyListeners();
+
+        if (_settingsProvider.settings.copilotAttentionSoundEnabled) {
+          unawaited(
+            _playAttentionSound(
+              _settingsProvider.settings.copilotAttentionSound,
+            ),
+          );
+        }
       };
 
       _terminals[session.id] = terminal;
@@ -193,5 +240,44 @@ class CopilotProvider extends ChangeNotifier {
     }
     _terminals.clear();
     super.dispose();
+  }
+
+  Future<void> _playAttentionSound(CopilotAttentionSound sound) async {
+    try {
+      await _soundService.playSystemSound(sound);
+    } on MissingPluginException catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'tree_launcher.copilot',
+          context: ErrorDescription(
+            'while playing a Copilot attention sound without a registered platform handler',
+          ),
+        ),
+      );
+    } on PlatformException catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'tree_launcher.copilot',
+          context: ErrorDescription(
+            'while playing the configured Copilot attention sound',
+          ),
+        ),
+      );
+    } on UnsupportedError catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'tree_launcher.copilot',
+          context: ErrorDescription(
+            'while playing a Copilot attention sound on an unsupported platform',
+          ),
+        ),
+      );
+    }
   }
 }

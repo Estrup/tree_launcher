@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/app_settings.dart';
 import '../providers/settings_provider.dart';
 import '../services/config_service.dart';
+import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
 
 class SettingsDialog extends StatefulWidget {
@@ -24,6 +26,7 @@ class SettingsDialog extends StatefulWidget {
 }
 
 class _SettingsDialogState extends State<SettingsDialog> {
+  final SoundService _soundService = SoundService();
   late final TextEditingController _customTerminalController;
   late final TextEditingController _branchPrefixController;
   late final TextEditingController _remotePortController;
@@ -115,7 +118,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   decoration: InputDecoration(
                     labelText: 'Command path',
                     labelStyle: TextStyle(color: AppColors.textMuted),
-                    hintText: 'shortcuts run "My Shortcut" --input-path "{path}"',
+                    hintText:
+                        'shortcuts run "My Shortcut" --input-path "{path}"',
                     hintStyle: TextStyle(
                       color: AppColors.textMuted.withValues(alpha: 0.5),
                     ),
@@ -166,6 +170,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
               ),
               const SizedBox(height: 12),
               _buildCopilotButtonOptions(settings, settingsProvider),
+              const SizedBox(height: 24),
+
+              // ── Copilot attention ──
+              Text(
+                'COPILOT ATTENTION',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildCopilotAttentionSoundSettings(settings, settingsProvider),
               const SizedBox(height: 24),
 
               // ── Branch prefix ──
@@ -315,7 +333,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
     AppSettings settings,
     SettingsProvider provider,
   ) {
-    const fonts = ['SF Mono', 'Menlo', 'Monaco', 'JetBrains Mono', 'Fira Code', 'monospace'];
+    const fonts = [
+      'SF Mono',
+      'Menlo',
+      'Monaco',
+      'JetBrains Mono',
+      'Fira Code',
+      'monospace',
+    ];
     const sizes = [11.0, 12.0, 13.0, 14.0, 15.0, 16.0];
 
     final currentFont = settings.terminalFontFamily ?? 'SF Mono';
@@ -328,14 +353,21 @@ class _SettingsDialogState extends State<SettingsDialog> {
           child: _DropdownField<String>(
             label: 'Font',
             value: currentFont,
-            items: fonts.map((f) => DropdownMenuItem(
-              value: f,
-              child: Text(f, style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textPrimary,
-                fontFamily: f,
-              )),
-            )).toList(),
+            items: fonts
+                .map(
+                  (f) => DropdownMenuItem(
+                    value: f,
+                    child: Text(
+                      f,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                        fontFamily: f,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
             onChanged: (v) => provider.updateTerminalFontFamily(v),
           ),
         ),
@@ -345,13 +377,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
           child: _DropdownField<double>(
             label: 'Size',
             value: currentSize,
-            items: sizes.map((s) => DropdownMenuItem(
-              value: s,
-              child: Text('${s.toInt()} px', style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textPrimary,
-              )),
-            )).toList(),
+            items: sizes
+                .map(
+                  (s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(
+                      '${s.toInt()} px',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
             onChanged: (v) => provider.updateTerminalFontSize(v),
           ),
         ),
@@ -369,14 +408,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
           label: 'In-App',
           icon: Icons.auto_awesome_rounded,
           isSelected: settings.copilotButtonMode == CopilotButtonMode.inApp,
-          onTap: () => provider.updateCopilotButtonMode(CopilotButtonMode.inApp),
+          onTap: () =>
+              provider.updateCopilotButtonMode(CopilotButtonMode.inApp),
         ),
         const SizedBox(width: 8),
         _OptionCard(
           label: 'External',
           icon: Icons.open_in_new_rounded,
           isSelected: settings.copilotButtonMode == CopilotButtonMode.external,
-          onTap: () => provider.updateCopilotButtonMode(CopilotButtonMode.external),
+          onTap: () =>
+              provider.updateCopilotButtonMode(CopilotButtonMode.external),
         ),
       ],
     );
@@ -399,10 +440,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             Expanded(
               child: Text(
                 'Serve Copilot terminals via web browser',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
             ),
             Switch(
@@ -428,7 +466,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     ),
                     DropdownMenuItem(
                       value: '0.0.0.0',
-                      child: Text('All interfaces', style: TextStyle(fontSize: 12)),
+                      child: Text(
+                        'All interfaces',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                   ],
                   onChanged: (v) {
@@ -462,7 +503,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
                         ),
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                          ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide(color: AppColors.border),
@@ -501,6 +544,94 @@ class _SettingsDialogState extends State<SettingsDialog> {
     );
   }
 
+  Widget _buildCopilotAttentionSoundSettings(
+    AppSettings settings,
+    SettingsProvider provider,
+  ) {
+    if (!Platform.isMacOS) {
+      return Text(
+        'Copilot attention sounds are currently available on macOS only.',
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Play a system sound when Copilot needs your attention',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ),
+            Switch(
+              value: settings.copilotAttentionSoundEnabled,
+              activeTrackColor: AppColors.accent,
+              onChanged: (value) =>
+                  provider.updateCopilotAttentionSoundEnabled(value),
+            ),
+          ],
+        ),
+        if (settings.copilotAttentionSoundEnabled) ...[
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: _DropdownField<CopilotAttentionSound>(
+                  label: 'Sound',
+                  value: settings.copilotAttentionSound,
+                  items: _soundService.supportedCopilotAttentionSounds
+                      .map(
+                        (sound) => DropdownMenuItem(
+                          value: sound,
+                          child: Text(
+                            sound.displayName,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      provider.updateCopilotAttentionSound(value);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 36,
+                child: TextButton.icon(
+                  onPressed: () => _previewCopilotAttentionSound(settings),
+                  style: TextButton.styleFrom(
+                    backgroundColor: AppColors.surface0,
+                    foregroundColor: AppColors.textPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(color: AppColors.border),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 16),
+                  label: const Text(
+                    'Preview',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildConfigFileLink() {
     return FutureBuilder<String>(
       future: ConfigService().getConfigPath(),
@@ -525,6 +656,25 @@ class _SettingsDialogState extends State<SettingsDialog> {
         );
       },
     );
+  }
+
+  Future<void> _previewCopilotAttentionSound(AppSettings settings) async {
+    try {
+      await _soundService.playSystemSound(settings.copilotAttentionSound);
+    } on MissingPluginException catch (error) {
+      _showPreviewError(error.message ?? error.toString());
+    } on PlatformException catch (error) {
+      _showPreviewError(error.message ?? error.toString());
+    } on UnsupportedError catch (error) {
+      _showPreviewError(error.message ?? error.toString());
+    }
+  }
+
+  void _showPreviewError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -564,8 +714,8 @@ class _ThemeCardState extends State<_ThemeCard> {
             color: widget.isSelected
                 ? AppColors.accentMuted
                 : _hovered
-                    ? AppColors.surface2
-                    : AppColors.surface0,
+                ? AppColors.surface2
+                : AppColors.surface0,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: widget.isSelected
@@ -616,10 +766,7 @@ class _ThemeCardState extends State<_ThemeCard> {
       width: 8,
       height: 8,
       margin: const EdgeInsets.symmetric(horizontal: 2),
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }
@@ -746,7 +893,11 @@ class _DropdownField<T> extends StatelessWidget {
               isExpanded: true,
               dropdownColor: AppColors.surface1,
               style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
-              icon: Icon(Icons.expand_more, size: 16, color: AppColors.textMuted),
+              icon: Icon(
+                Icons.expand_more,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
               items: items,
               onChanged: onChanged,
             ),

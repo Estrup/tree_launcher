@@ -8,7 +8,7 @@ class SettingsProvider extends ChangeNotifier {
   AppSettings _settings = AppSettings();
 
   SettingsProvider({required ConfigService configService})
-      : _configService = configService;
+    : _configService = configService;
 
   AppSettings get settings => _settings;
 
@@ -63,6 +63,18 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> updateCopilotButtonMode(CopilotButtonMode mode) async {
     _settings = _settings.copyWith(copilotButtonMode: mode);
+    await _configService.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateCopilotAttentionSoundEnabled(bool enabled) async {
+    _settings = _settings.copyWith(copilotAttentionSoundEnabled: enabled);
+    await _configService.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateCopilotAttentionSound(CopilotAttentionSound sound) async {
+    _settings = _settings.copyWith(copilotAttentionSound: sound);
     await _configService.saveSettings(_settings);
     notifyListeners();
   }

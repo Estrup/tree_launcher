@@ -50,13 +50,16 @@ class RepoSidebar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  'TreeLauncher',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
+                Expanded(
+                  child: Text(
+                    'TreeLauncher',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.3,
+                    ),
                   ),
                 ),
               ],
@@ -117,8 +120,8 @@ class RepoSidebar extends StatelessWidget {
                         repo: repo,
                         isSelected: isSelected,
                         onTap: () {
-                          final copilotProvider =
-                              context.read<CopilotProvider>();
+                          final copilotProvider = context
+                              .read<CopilotProvider>();
                           copilotProvider.deselectSession();
                           repoProvider.selectRepo(repo);
                         },
@@ -148,9 +151,7 @@ class RepoSidebar extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Expanded(
-                  child: _AddRepoButton(onPressed: onAddRepo),
-                ),
+                Expanded(child: _AddRepoButton(onPressed: onAddRepo)),
                 const SizedBox(width: 8),
                 _SettingsButton(onPressed: onOpenSettings),
               ],
@@ -162,7 +163,10 @@ class RepoSidebar extends StatelessWidget {
   }
 
   void _confirmRemove(
-      BuildContext context, RepoProvider provider, RepoConfig repo) {
+    BuildContext context,
+    RepoProvider provider,
+    RepoConfig repo,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -178,16 +182,13 @@ class RepoSidebar extends StatelessWidget {
               provider.removeRepo(repo);
               Navigator.pop(ctx);
             },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Remove'),
           ),
         ],
       ),
     );
   }
-
 }
 
 // --- Repo tile with left accent bar ---
@@ -228,8 +229,8 @@ class _RepoTileState extends State<_RepoTile> {
             color: widget.isSelected
                 ? AppColors.surface2
                 : _hovered
-                    ? AppColors.surface1
-                    : Colors.transparent,
+                ? AppColors.surface1
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: IntrinsicHeight(
@@ -270,8 +271,10 @@ class _RepoTileState extends State<_RepoTile> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          widget.repo.path
-                              .replaceFirst(RegExp(r'^/Users/[^/]+'), '~'),
+                          widget.repo.path.replaceFirst(
+                            RegExp(r'^/Users/[^/]+'),
+                            '~',
+                          ),
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 10,
@@ -518,7 +521,9 @@ class _CopilotsSidebarSection extends StatelessWidget {
                     session: session,
                     repoName: repoName,
                     isActive: isActive,
-                    activityStatus: copilotProvider.statusForSession(session.id),
+                    activityStatus: copilotProvider.statusForSession(
+                      session.id,
+                    ),
                     onTap: () => copilotProvider.selectSession(session),
                     onRemove: () => copilotProvider.removeSession(session),
                   );
@@ -569,8 +574,8 @@ class _CopilotTileState extends State<_CopilotTile> {
             color: widget.isActive
                 ? AppColors.copilot.withValues(alpha: 0.12)
                 : _hovered
-                    ? AppColors.surface1
-                    : Colors.transparent,
+                ? AppColors.surface1
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: IntrinsicHeight(

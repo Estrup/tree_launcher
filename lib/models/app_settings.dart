@@ -1,5 +1,29 @@
 enum TerminalApp { terminal, ghostty, custom }
+
 enum CopilotButtonMode { inApp, external }
+
+enum CopilotAttentionSound {
+  basso('Basso'),
+  blow('Blow'),
+  bottle('Bottle'),
+  frog('Frog'),
+  funk('Funk'),
+  glass('Glass'),
+  hero('Hero'),
+  morse('Morse'),
+  ping('Ping'),
+  pop('Pop'),
+  purr('Purr'),
+  sosumi('Sosumi'),
+  submarine('Submarine'),
+  tink('Tink');
+
+  const CopilotAttentionSound(this.systemName);
+
+  final String systemName;
+
+  String get displayName => systemName;
+}
 
 class AppSettings {
   final TerminalApp terminalApp;
@@ -9,6 +33,8 @@ class AppSettings {
   final String? terminalFontFamily;
   final double? terminalFontSize;
   final CopilotButtonMode copilotButtonMode;
+  final bool copilotAttentionSoundEnabled;
+  final CopilotAttentionSound copilotAttentionSound;
   final bool remoteControlEnabled;
   final int remoteControlPort;
   final String remoteControlBindAddress;
@@ -21,6 +47,8 @@ class AppSettings {
     this.terminalFontFamily,
     this.terminalFontSize,
     this.copilotButtonMode = CopilotButtonMode.inApp,
+    this.copilotAttentionSoundEnabled = false,
+    this.copilotAttentionSound = CopilotAttentionSound.ping,
     this.remoteControlEnabled = false,
     this.remoteControlPort = 8422,
     this.remoteControlBindAddress = '127.0.0.1',
@@ -45,9 +73,16 @@ class AppSettings {
         (e) => e.name == (json['copilotButtonMode'] as String?),
         orElse: () => CopilotButtonMode.inApp,
       ),
+      copilotAttentionSoundEnabled:
+          json['copilotAttentionSoundEnabled'] as bool? ?? false,
+      copilotAttentionSound: CopilotAttentionSound.values.firstWhere(
+        (e) => e.name == (json['copilotAttentionSound'] as String?),
+        orElse: () => CopilotAttentionSound.ping,
+      ),
       remoteControlEnabled: json['remoteControlEnabled'] as bool? ?? false,
       remoteControlPort: json['remoteControlPort'] as int? ?? 8422,
-      remoteControlBindAddress: json['remoteControlBindAddress'] as String? ?? '127.0.0.1',
+      remoteControlBindAddress:
+          json['remoteControlBindAddress'] as String? ?? '127.0.0.1',
     );
   }
 
@@ -59,6 +94,8 @@ class AppSettings {
     'terminalFontFamily': terminalFontFamily,
     'terminalFontSize': terminalFontSize,
     'copilotButtonMode': copilotButtonMode.name,
+    'copilotAttentionSoundEnabled': copilotAttentionSoundEnabled,
+    'copilotAttentionSound': copilotAttentionSound.name,
     'remoteControlEnabled': remoteControlEnabled,
     'remoteControlPort': remoteControlPort,
     'remoteControlBindAddress': remoteControlBindAddress,
@@ -74,6 +111,8 @@ class AppSettings {
     bool clearTerminalFontFamily = false,
     bool clearTerminalFontSize = false,
     CopilotButtonMode? copilotButtonMode,
+    bool? copilotAttentionSoundEnabled,
+    CopilotAttentionSound? copilotAttentionSound,
     bool? remoteControlEnabled,
     int? remoteControlPort,
     String? remoteControlBindAddress,
@@ -91,9 +130,14 @@ class AppSettings {
           ? null
           : (terminalFontSize ?? this.terminalFontSize),
       copilotButtonMode: copilotButtonMode ?? this.copilotButtonMode,
+      copilotAttentionSoundEnabled:
+          copilotAttentionSoundEnabled ?? this.copilotAttentionSoundEnabled,
+      copilotAttentionSound:
+          copilotAttentionSound ?? this.copilotAttentionSound,
       remoteControlEnabled: remoteControlEnabled ?? this.remoteControlEnabled,
       remoteControlPort: remoteControlPort ?? this.remoteControlPort,
-      remoteControlBindAddress: remoteControlBindAddress ?? this.remoteControlBindAddress,
+      remoteControlBindAddress:
+          remoteControlBindAddress ?? this.remoteControlBindAddress,
     );
   }
 }

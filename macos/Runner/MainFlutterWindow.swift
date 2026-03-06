@@ -40,6 +40,55 @@ class MainFlutterWindow: NSWindow {
       }
     }
 
+    let soundChannel = FlutterMethodChannel(
+      name: "tree_launcher/system_sound",
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+    soundChannel.setMethodCallHandler { (call, result) in
+      if call.method == "playSystemSound" {
+        guard
+          let arguments = call.arguments as? [String: Any],
+          let soundName = arguments["soundName"] as? String
+        else {
+          result(
+            FlutterError(
+              code: "invalid_arguments",
+              message: "Expected a soundName argument.",
+              details: nil
+            )
+          )
+          return
+        }
+
+        let namedSound = NSSound.Name(soundName)
+        guard let sound = NSSound(named: namedSound) else {
+          result(
+            FlutterError(
+              code: "sound_not_found",
+              message: "macOS system sound '\(soundName)' is not available.",
+              details: nil
+            )
+          )
+          return
+        }
+
+        sound.stop()
+        if sound.play() {
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "sound_playback_failed",
+              message: "Failed to play macOS system sound '\(soundName)'.",
+              details: nil
+            )
+          )
+        }
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
     super.awakeFromNib()
   }
 }

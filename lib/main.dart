@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'services/git_service.dart';
 import 'services/config_service.dart';
 import 'services/remote_control_service.dart';
+import 'services/sound_service.dart';
 import 'providers/copilot_provider.dart';
 import 'providers/repo_provider.dart';
 import 'providers/settings_provider.dart';
@@ -21,29 +22,44 @@ class TreeLauncherApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final gitService = GitService();
     final configService = ConfigService();
+    final soundService = SoundService();
 
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => RepoProvider(
-            gitService: gitService,
-            configService: configService,
-          )..loadRepos(),
+          create: (_) =>
+              RepoProvider(gitService: gitService, configService: configService)
+                ..loadRepos(),
         ),
         ChangeNotifierProvider(
-          create: (_) => SettingsProvider(
-            configService: configService,
-          )..loadSettings(),
+          create: (_) =>
+              SettingsProvider(configService: configService)..loadSettings(),
         ),
-        ChangeNotifierProvider(
-          create: (_) => TerminalProvider(),
-        ),
-        ChangeNotifierProxyProvider<RepoProvider, CopilotProvider>(
+        ChangeNotifierProvider(create: (_) => TerminalProvider()),
+        ChangeNotifierProxyProvider2<
+          RepoProvider,
+          SettingsProvider,
+          CopilotProvider
+        >(
           create: (ctx) => CopilotProvider(
             repoProvider: ctx.read<RepoProvider>(),
+            settingsProvider: ctx.read<SettingsProvider>(),
+            soundService: soundService,
           ),
-          update: (ctx, repoProvider, previous) =>
-              previous ?? CopilotProvider(repoProvider: repoProvider),
+          update: (ctx, repoProvider, settingsProvider, previous) {
+            if (previous == null) {
+              return CopilotProvider(
+                repoProvider: repoProvider,
+                settingsProvider: settingsProvider,
+                soundService: soundService,
+              );
+            }
+            previous.updateDependencies(
+              repoProvider: repoProvider,
+              settingsProvider: settingsProvider,
+            );
+            return previous;
+          },
         ),
       ],
       child: Builder(
@@ -87,7 +103,9 @@ class _RemoteControlManagerState extends State<_RemoteControlManager> {
     final port = settings.remoteControlPort;
     final bindAddress = settings.remoteControlBindAddress;
 
-    if (enabled != _lastEnabled || port != _lastPort || bindAddress != _lastBindAddress) {
+    if (enabled != _lastEnabled ||
+        port != _lastPort ||
+        bindAddress != _lastBindAddress) {
       _lastEnabled = enabled;
       _lastPort = port;
       _lastBindAddress = bindAddress;
@@ -95,7 +113,11 @@ class _RemoteControlManagerState extends State<_RemoteControlManager> {
     }
   }
 
-  Future<void> _updateService(bool enabled, String bindAddress, int port) async {
+  Future<void> _updateService(
+    bool enabled,
+    String bindAddress,
+    int port,
+  ) async {
     if (enabled) {
       _service ??= RemoteControlService(
         copilotProvider: context.read<CopilotProvider>(),
