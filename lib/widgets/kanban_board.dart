@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'issue_view_dialog.dart';
 
 enum KanbanColumnStatus { todo, inProgress, inReview, done }
 
@@ -11,7 +12,7 @@ class KanbanBoard extends StatefulWidget {
 }
 
 class _KanbanBoardState extends State<KanbanBoard> {
-  late Map<KanbanColumnStatus, List<_KanbanCardData>> _columns;
+  late Map<KanbanColumnStatus, List<KanbanCardData>> _columns;
 
   @override
   void initState() {
@@ -24,7 +25,7 @@ class _KanbanBoardState extends State<KanbanBoard> {
     };
   }
 
-  void _moveCard(_KanbanCardData card, KanbanColumnStatus targetStatus) {
+  void _moveCard(KanbanCardData card, KanbanColumnStatus targetStatus) {
     setState(() {
       for (var list in _columns.values) {
         list.removeWhere((c) => c.id == card.id);
@@ -77,8 +78,8 @@ class _KanbanBoardState extends State<KanbanBoard> {
 class _KanbanColumn extends StatelessWidget {
   final String title;
   final KanbanColumnStatus status;
-  final List<_KanbanCardData> cards;
-  final void Function(_KanbanCardData card, KanbanColumnStatus target)
+  final List<KanbanCardData> cards;
+  final void Function(KanbanCardData card, KanbanColumnStatus target)
   onCardDrop;
 
   const _KanbanColumn({
@@ -90,7 +91,7 @@ class _KanbanColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DragTarget<_KanbanCardData>(
+    return DragTarget<KanbanCardData>(
       onAcceptWithDetails: (details) {
         onCardDrop(details.data, status);
       },
@@ -161,7 +162,7 @@ class _KanbanColumn extends StatelessWidget {
                 itemCount: cards.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
-                  return Draggable<_KanbanCardData>(
+                  return Draggable<KanbanCardData>(
                     data: cards[index],
                     dragAnchorStrategy: pointerDragAnchorStrategy,
                     feedback: Material(
@@ -221,130 +222,148 @@ class _KanbanColumn extends StatelessWidget {
 }
 
 class KanbanCard extends StatelessWidget {
-  final _KanbanCardData data;
+  final KanbanCardData data;
 
   const KanbanCard({required this.data, super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            data.id,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textMuted,
-            ),
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (context) => IssueViewDialog(data: data),
+        );
+      },
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.borderSubtle),
           ),
-          const SizedBox(height: 6),
-          Text(
-            data.title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-              height: 1.3,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (data.description != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              data.description!,
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textMuted,
-                height: 1.4,
-              ),
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          const SizedBox(height: 12),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.circle_outlined, size: 16, color: AppColors.textMuted),
-              const SizedBox(width: 8),
-              if (data.tags.isNotEmpty)
-                ...data.tags.map(
-                  (tag) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface2,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: AppColors.borderSubtle),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Colors.amber,
-                              shape: BoxShape.circle,
-                            ),
+              Text(
+                data.id,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                data.title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                  height: 1.3,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (data.description != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  data.description!,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textMuted,
+                    height: 1.4,
+                  ),
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle_outlined,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 8),
+                  if (data.tags.isNotEmpty)
+                    ...data.tags.map(
+                      (tag) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            tag,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
-                            ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface2,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: AppColors.borderSubtle),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Colors.amber,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                tag,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  const Spacer(),
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.network(
+                      'https://ui-avatars.com/api/?name=AI&background=random&size=40',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.person,
+                        size: 14,
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                ),
-              const Spacer(),
-              Container(
-                width: 20,
-                height: 20,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.grey,
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Image.network(
-                  'https://ui-avatars.com/api/?name=AI&background=random&size=40',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.person, size: 14, color: Colors.white),
-                ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _KanbanCardData {
+class KanbanCardData {
   final String id;
   final String title;
   final String? description;
   final List<String> tags;
 
-  const _KanbanCardData({
+  const KanbanCardData({
     required this.id,
     required this.title,
     this.description,
@@ -353,36 +372,36 @@ class _KanbanCardData {
 }
 
 class _DummyData {
-  static const List<_KanbanCardData> cards = [
-    _KanbanCardData(
+  static const List<KanbanCardData> cards = [
+    KanbanCardData(
       id: 'ISS-11',
       title: 'Bug: Image generation sometimes stalls at 99%',
       description:
           'Description for AI Agent: Investigate and fix an issue where image generation occasionally stalls at 99% progress and never resolves. This happens...',
       tags: ['bug'],
     ),
-    _KanbanCardData(
+    KanbanCardData(
       id: 'ISS-12',
       title: 'Implement drag and drop for cards',
       description:
           'Users should be able to drag cards between columns to update their status.',
       tags: ['feature'],
     ),
-    _KanbanCardData(
+    KanbanCardData(
       id: 'ISS-13',
       title: 'Dark mode styling fixes',
       description:
           'In dark mode, the card borders are too bright. Needs adjustment.',
       tags: ['design'],
     ),
-    _KanbanCardData(
+    KanbanCardData(
       id: 'ISS-8',
       title: 'Set up initial repository structure',
       description:
           'Initialize flutter project and create basic folder structure.',
       tags: ['chore'],
     ),
-    _KanbanCardData(
+    KanbanCardData(
       id: 'ISS-10',
       title: 'Create dummy data for kanban board prototyping',
       tags: ['feature'],
