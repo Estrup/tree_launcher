@@ -1,41 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/issue.dart';
+import '../providers/kanban_provider.dart';
 import '../theme/app_theme.dart';
+import 'create_issue_dialog.dart';
 import 'issue_view_dialog.dart';
 
 enum KanbanColumnStatus { todo, inProgress, inReview, done }
 
-class KanbanBoard extends StatefulWidget {
-  const KanbanBoard({super.key});
+class KanbanBoard extends StatelessWidget {
+  final String projectId;
 
-  @override
-  State<KanbanBoard> createState() => _KanbanBoardState();
-}
-
-class _KanbanBoardState extends State<KanbanBoard> {
-  late Map<KanbanColumnStatus, List<KanbanCardData>> _columns;
-
-  @override
-  void initState() {
-    super.initState();
-    _columns = {
-      KanbanColumnStatus.todo: [_DummyData.cards[0]],
-      KanbanColumnStatus.inProgress: [_DummyData.cards[1]],
-      KanbanColumnStatus.inReview: [_DummyData.cards[2]],
-      KanbanColumnStatus.done: [_DummyData.cards[3], _DummyData.cards[4]],
-    };
-  }
-
-  void _moveCard(KanbanCardData card, KanbanColumnStatus targetStatus) {
-    setState(() {
-      for (var list in _columns.values) {
-        list.removeWhere((c) => c.id == card.id);
-      }
-      _columns[targetStatus]?.add(card);
-    });
-  }
+  const KanbanBoard({super.key, required this.projectId});
 
   @override
   Widget build(BuildContext context) {
+    final kanbanProvider = context.watch<KanbanProvider>();
+    final columns = kanbanProvider.issuesByStatus(projectId);
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.all(24),
@@ -45,29 +27,29 @@ class _KanbanBoardState extends State<KanbanBoard> {
           _KanbanColumn(
             title: 'To do',
             status: KanbanColumnStatus.todo,
-            cards: _columns[KanbanColumnStatus.todo] ?? [],
-            onCardDrop: _moveCard,
+            issues: columns[KanbanColumnStatus.todo] ?? [],
+            projectId: projectId,
           ),
           const SizedBox(width: 16),
           _KanbanColumn(
             title: 'In progress',
             status: KanbanColumnStatus.inProgress,
-            cards: _columns[KanbanColumnStatus.inProgress] ?? [],
-            onCardDrop: _moveCard,
+            issues: columns[KanbanColumnStatus.inProgress] ?? [],
+            projectId: projectId,
           ),
           const SizedBox(width: 16),
           _KanbanColumn(
             title: 'In review',
             status: KanbanColumnStatus.inReview,
-            cards: _columns[KanbanColumnStatus.inReview] ?? [],
-            onCardDrop: _moveCard,
+            issues: columns[KanbanColumnStatus.inReview] ?? [],
+            projectId: projectId,
           ),
           const SizedBox(width: 16),
           _KanbanColumn(
             title: 'Done',
             status: KanbanColumnStatus.done,
-            cards: _columns[KanbanColumnStatus.done] ?? [],
-            onCardDrop: _moveCard,
+            issues: columns[KanbanColumnStatus.done] ?? [],
+            projectId: projectId,
           ),
         ],
       ),
@@ -78,22 +60,25 @@ class _KanbanBoardState extends State<KanbanBoard> {
 class _KanbanColumn extends StatelessWidget {
   final String title;
   final KanbanColumnStatus status;
-  final List<KanbanCardData> cards;
-  final void Function(KanbanCardData card, KanbanColumnStatus target)
-  onCardDrop;
+  final List<Issue> issues;
+  final String projectId;
 
   const _KanbanColumn({
     required this.title,
     required this.status,
-    required this.cards,
-    required this.onCardDrop,
+    required this.issues,
+    required this.projectId,
   });
 
   @override
   Widget build(BuildContext context) {
-    return DragTarget<KanbanCardData>(
+    return DragTarget<Issue>(
       onAcceptWithDetails: (details) {
-        onCardDrop(details.data, status);
+        context.read<KanbanProvider>().moveIssue(
+          details.data.id,
+          details.data.projectId,
+          status,
+        );
       },
       builder: (context, candidateData, rejectedData) {
         final isHovered = candidateData.isNotEmpty;
@@ -138,7 +123,7 @@ class _KanbanColumn extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${cards.length}',
+                        '${issues.length}',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -159,11 +144,11 @@ class _KanbanColumn extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: cards.length,
+                itemCount: issues.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
-                  return Draggable<KanbanCardData>(
-                    data: cards[index],
+                  return Draggable<Issue>(
+                    data: issues[index],
                     dragAnchorStrategy: pointerDragAnchorStrategy,
                     feedback: Material(
                       color: Colors.transparent,
@@ -173,42 +158,45 @@ class _KanbanColumn extends StatelessWidget {
                           angle: 0.03,
                           child: Opacity(
                             opacity: 0.8,
-                            child: KanbanCard(data: cards[index]),
+                            child: _KanbanCard(issue: issues[index]),
                           ),
                         ),
                       ),
                     ),
                     childWhenDragging: Opacity(
                       opacity: 0.3,
-                      child: KanbanCard(data: cards[index]),
+                      child: _KanbanCard(issue: issues[index]),
                     ),
-                    child: KanbanCard(data: cards[index]),
+                    child: _KanbanCard(issue: issues[index]),
                   );
                 },
               ),
               Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add, size: 16, color: AppColors.textMuted),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Add card',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textMuted,
-                            fontWeight: FontWeight.w500,
+                child: GestureDetector(
+                  onTap: () => CreateIssueDialog.show(context, projectId),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add, size: 16, color: AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Add card',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -221,10 +209,10 @@ class _KanbanColumn extends StatelessWidget {
   }
 }
 
-class KanbanCard extends StatelessWidget {
-  final KanbanCardData data;
+class _KanbanCard extends StatelessWidget {
+  final Issue issue;
 
-  const KanbanCard({required this.data, super.key});
+  const _KanbanCard({required this.issue});
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +220,7 @@ class KanbanCard extends StatelessWidget {
       onTap: () {
         showDialog(
           context: context,
-          builder: (context) => IssueViewDialog(data: data),
+          builder: (context) => IssueViewDialog(issue: issue),
         );
       },
       child: MouseRegion(
@@ -248,7 +236,7 @@ class KanbanCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                data.id,
+                issue.id.substring(0, 8),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -257,7 +245,7 @@ class KanbanCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                data.title,
+                issue.title,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -267,10 +255,10 @@ class KanbanCard extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (data.description != null) ...[
+              if (issue.description != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  data.description!,
+                  issue.description!,
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textMuted,
@@ -289,8 +277,8 @@ class KanbanCard extends StatelessWidget {
                     color: AppColors.textMuted,
                   ),
                   const SizedBox(width: 8),
-                  if (data.tags.isNotEmpty)
-                    ...data.tags.map(
+                  if (issue.tags.isNotEmpty)
+                    ...issue.tags.map(
                       (tag) => Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: Container(
@@ -329,24 +317,6 @@ class KanbanCard extends StatelessWidget {
                       ),
                     ),
                   const Spacer(),
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey,
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image.network(
-                      'https://ui-avatars.com/api/?name=AI&background=random&size=40',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.person,
-                        size: 14,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ],
@@ -355,56 +325,4 @@ class KanbanCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class KanbanCardData {
-  final String id;
-  final String title;
-  final String? description;
-  final List<String> tags;
-
-  const KanbanCardData({
-    required this.id,
-    required this.title,
-    this.description,
-    this.tags = const [],
-  });
-}
-
-class _DummyData {
-  static const List<KanbanCardData> cards = [
-    KanbanCardData(
-      id: 'ISS-11',
-      title: 'Bug: Image generation sometimes stalls at 99%',
-      description:
-          'Description for AI Agent: Investigate and fix an issue where image generation occasionally stalls at 99% progress and never resolves. This happens...',
-      tags: ['bug'],
-    ),
-    KanbanCardData(
-      id: 'ISS-12',
-      title: 'Implement drag and drop for cards',
-      description:
-          'Users should be able to drag cards between columns to update their status.',
-      tags: ['feature'],
-    ),
-    KanbanCardData(
-      id: 'ISS-13',
-      title: 'Dark mode styling fixes',
-      description:
-          'In dark mode, the card borders are too bright. Needs adjustment.',
-      tags: ['design'],
-    ),
-    KanbanCardData(
-      id: 'ISS-8',
-      title: 'Set up initial repository structure',
-      description:
-          'Initialize flutter project and create basic folder structure.',
-      tags: ['chore'],
-    ),
-    KanbanCardData(
-      id: 'ISS-10',
-      title: 'Create dummy data for kanban board prototyping',
-      tags: ['feature'],
-    ),
-  ];
 }

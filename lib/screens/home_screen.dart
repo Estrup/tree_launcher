@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import '../models/custom_command.dart';
 import '../providers/copilot_provider.dart';
+import '../providers/kanban_provider.dart';
 import '../providers/repo_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/terminal_provider.dart';
@@ -24,6 +25,7 @@ import '../widgets/copilot_terminal_view.dart';
 import '../widgets/copilot_attention_snackbar.dart';
 import '../widgets/add_repo_dialog.dart';
 import '../widgets/add_worktree_dialog.dart';
+import '../widgets/create_project_dialog.dart';
 import '../widgets/settings_dialog.dart';
 import '../widgets/shortcut_overlay.dart';
 
@@ -38,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const double _collapseBreakpoint = 800;
   bool _sidebarOpen = false;
   late final ShortcutOverlayController _shortcutOverlayController;
+  String? _lastRepoPath;
 
   @override
   void initState() {
@@ -60,7 +63,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final repoProvider = context.watch<RepoProvider>();
     final copilotProvider = context.watch<CopilotProvider>();
+    final kanbanProvider = context.watch<KanbanProvider>();
     final isCopilotActive = copilotProvider.activeSession != null;
+
+    // Load projects when repo changes
+    final currentRepoPath = repoProvider.selectedRepo?.path;
+    if (currentRepoPath != null && currentRepoPath != _lastRepoPath) {
+      _lastRepoPath = currentRepoPath;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        kanbanProvider.loadProjectsForRepo(currentRepoPath);
+      });
+    }
+
+    final projects = kanbanProvider.projects;
+    final tabCount = projects.length + 2; // Worktrees + projects + "+"
 
     return CallbackShortcuts(
       bindings: {
@@ -116,58 +132,137 @@ class _HomeScreenState extends State<HomeScreen> {
                             else ...[
                               Expanded(
                                 child: DefaultTabController(
-                                  length: 3,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 24,
-                                        ),
-                                        child: Theme(
-                                          data: Theme.of(context).copyWith(
-                                            dividerColor: Colors.transparent,
-                                          ),
-                                          child: TabBar(
-                                            isScrollable: true,
-                                            tabAlignment: TabAlignment.start,
-                                            indicatorColor: AppColors.accent,
-                                            indicatorWeight: 3,
-                                            labelColor: AppColors.textPrimary,
-                                            unselectedLabelColor:
-                                                AppColors.textMuted,
-                                            labelStyle: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
+                                  length: tabCount,
+                                  child: Builder(
+                                    builder: (context) {
+                                      final tabController =
+                                          DefaultTabController.of(context);
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 24,
                                             ),
-                                            tabs: const [
-                                              Tab(text: "Worktrees"),
-                                              Tab(text: "Project 1"),
-                                              Tab(
-                                                icon: Icon(Icons.add, size: 20),
+                                            child: Theme(
+                                              data: Theme.of(context).copyWith(
+                                                dividerColor:
+                                                    Colors.transparent,
                                               ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: TabBarView(
-                                          children: [
-                                            const WorktreeGrid(),
-                                            const KanbanBoard(),
-                                            Center(
-                                              child: Text(
-                                                "Create a new project",
-                                                style: TextStyle(
-                                                  color: AppColors.textMuted,
+                                              child: TabBar(
+                                                isScrollable: true,
+                                                tabAlignment:
+                                                    TabAlignment.start,
+                                                indicatorColor:
+                                                    AppColors.accent,
+                                                indicatorWeight: 3,
+                                                labelColor:
+                                                    AppColors.textPrimary,
+                                                unselectedLabelColor:
+                                                    AppColors.textMuted,
+                                                labelStyle: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
                                                 ),
+                                                onTap: (index) {
+                                                  // If "+" tab is tapped, show create dialog and snap back
+                                                  if (index == tabCount - 1) {
+                                                    final repoPath =
+                                                        repoProvider
+                                                            .selectedRepo
+                                                            ?.path;
+                                                    if (repoPath != null) {
+                                                      CreateProjectDialog.show(
+                                                        context,
+                                                        repoPath,
+                                                      );
+                                                    }
+                                                    // Snap back to previous tab
+                                                    WidgetsBinding.instance
+                                                        .addPostFrameCallback((
+                                                          _,
+                                                        ) {
+                                                          final prevIndex =
+                                                              tabController
+                                                                  .previousIndex;
+                                                          tabController
+                                                              .animateTo(
+                                                                prevIndex,
+                                                              );
+                                                        });
+                                                  }
+                                                },
+                                                tabs: [
+                                                  const Tab(text: "Worktrees"),
+                                                  ...projects.map(
+                                                    (p) => Tab(
+                                                      child: GestureDetector(
+                                                        onSecondaryTapUp: (details) {
+                                                          _showProjectContextMenu(
+                                                            context,
+                                                            details
+                                                                .globalPosition,
+                                                            p.id,
+                                                            kanbanProvider,
+                                                          );
+                                                        },
+                                                        child: Text(p.name),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const Tab(
+                                                    icon: Icon(
+                                                      Icons.add,
+                                                      size: 20,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                          ),
+                                          Expanded(
+                                            child: TabBarView(
+                                              children: [
+                                                const WorktreeGrid(),
+                                                ...projects.map(
+                                                  (p) => KanbanBoard(
+                                                    projectId: p.id,
+                                                  ),
+                                                ),
+                                                // "+" tab placeholder (never really shown due to onTap)
+                                                Center(
+                                                  child: TextButton.icon(
+                                                    onPressed: () {
+                                                      final repoPath =
+                                                          repoProvider
+                                                              .selectedRepo
+                                                              ?.path;
+                                                      if (repoPath != null) {
+                                                        CreateProjectDialog.show(
+                                                          context,
+                                                          repoPath,
+                                                        );
+                                                      }
+                                                    },
+                                                    icon: Icon(
+                                                      Icons.add,
+                                                      color: AppColors.accent,
+                                                    ),
+                                                    label: Text(
+                                                      'Create a new project',
+                                                      style: TextStyle(
+                                                        color: AppColors.accent,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                 ),
                               ),
@@ -223,6 +318,56 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  void _showProjectContextMenu(
+    BuildContext context,
+    Offset position,
+    String projectId,
+    KanbanProvider kanbanProvider,
+  ) {
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      color: AppColors.surface1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.border),
+      ),
+      items: [
+        PopupMenuItem<String>(
+          value: 'archive',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(
+                Icons.archive_outlined,
+                size: 14,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Archive project',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'archive') {
+        kanbanProvider.archiveProject(projectId);
+      }
+    });
   }
 
   Widget _buildHeader(

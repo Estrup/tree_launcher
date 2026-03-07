@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:marionette_flutter/marionette_flutter.dart';
 import 'package:provider/provider.dart';
+import 'providers/kanban_provider.dart';
+import 'services/database_service.dart';
 import 'services/git_service.dart';
 import 'services/config_service.dart';
 import 'services/remote_control_service.dart';
@@ -13,12 +15,15 @@ import 'providers/terminal_provider.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
   if (kDebugMode) {
     MarionetteBinding.ensureInitialized();
   } else {
     WidgetsFlutterBinding.ensureInitialized();
   }
+
+  // Initialize SQLite database
+  await DatabaseService.instance.initialize();
 
   runApp(const TreeLauncherApp());
 }
@@ -44,6 +49,7 @@ class TreeLauncherApp extends StatelessWidget {
               SettingsProvider(configService: configService)..loadSettings(),
         ),
         ChangeNotifierProvider(create: (_) => TerminalProvider()),
+        ChangeNotifierProvider(create: (_) => KanbanProvider()),
         ChangeNotifierProxyProvider2<
           RepoProvider,
           SettingsProvider,

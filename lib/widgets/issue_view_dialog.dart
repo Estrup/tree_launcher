@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:provider/provider.dart';
+import '../models/issue.dart';
+import '../models/copilot_session.dart';
+import '../providers/copilot_provider.dart';
+import '../providers/kanban_provider.dart';
+import '../providers/repo_provider.dart';
 import '../theme/app_theme.dart';
-import 'kanban_board.dart';
 
 class IssueViewDialog extends StatefulWidget {
-  final KanbanCardData data;
+  final Issue issue;
 
-  const IssueViewDialog({super.key, required this.data});
+  const IssueViewDialog({super.key, required this.issue});
 
   @override
   State<IssueViewDialog> createState() => _IssueViewDialogState();
@@ -14,28 +19,48 @@ class IssueViewDialog extends StatefulWidget {
 
 class _IssueViewDialogState extends State<IssueViewDialog> {
   bool _isEditing = false;
+  late TextEditingController _titleController;
   late TextEditingController _descController;
   late String _currentDescription;
+  late String _currentTitle;
+  late Issue _issue;
 
   @override
   void initState() {
     super.initState();
-    _currentDescription = widget.data.description ?? '';
+    _issue = widget.issue;
+    _currentTitle = _issue.title;
+    _currentDescription = _issue.description ?? '';
+    _titleController = TextEditingController(text: _currentTitle);
     _descController = TextEditingController(text: _currentDescription);
   }
 
   @override
   void dispose() {
+    _titleController.dispose();
     _descController.dispose();
     super.dispose();
   }
 
   void _toggleEdit() {
     if (_isEditing) {
-      setState(() {
-        _currentDescription = _descController.text;
-        _isEditing = false;
-      });
+      // Save
+      final newTitle = _titleController.text.trim();
+      final newDesc = _descController.text.trim();
+      if (newTitle.isNotEmpty) {
+        setState(() {
+          _currentTitle = newTitle;
+          _currentDescription = newDesc;
+          _isEditing = false;
+        });
+        final updated = _issue.copyWith(
+          title: newTitle,
+          description: newDesc.isNotEmpty ? newDesc : null,
+          updatedAt: DateTime.now(),
+        );
+        _issue = updated;
+        context.read<KanbanProvider>().updateIssue(updated);
+      }
     } else {
       setState(() {
         _isEditing = true;
@@ -43,12 +68,16 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
     }
   }
 
+  void _archiveIssue() {
+    context.read<KanbanProvider>().archiveIssue(_issue.id, _issue.projectId);
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Add some markdown formatting for nice prototype view if it's just raw text
     final String markdownDescription = _currentDescription.isNotEmpty
-        ? '# ${widget.data.title}\n\n$_currentDescription'
-        : '# ${widget.data.title}\n\n*No description provided.*';
+        ? '# $_currentTitle\n\n$_currentDescription'
+        : '# $_currentTitle\n\n*No description provided.*';
 
     return Dialog(
       backgroundColor: AppColors.surface0,
@@ -74,7 +103,7 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    widget.data.id,
+                    _issue.id.substring(0, 8),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -84,15 +113,29 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Text(
-                    widget.data.title,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                  child: _isEditing
+                      ? TextField(
+                          controller: _titleController,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        )
+                      : Text(
+                          _currentTitle,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 16),
                 TextButton.icon(
@@ -105,7 +148,17 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                         : AppColors.textMuted,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: Icon(
+                    Icons.archive_outlined,
+                    color: AppColors.textMuted,
+                    size: 18,
+                  ),
+                  onPressed: _archiveIssue,
+                  tooltip: 'Archive',
+                ),
+                const SizedBox(width: 4),
                 IconButton(
                   icon: Icon(Icons.close, color: AppColors.textMuted),
                   onPressed: () => Navigator.of(context).pop(),
@@ -248,6 +301,14 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
   }
 
   Widget _buildPropertiesSection() {
+    final statusLabel = _issue.status.name == 'todo'
+        ? 'To do'
+        : _issue.status.name == 'inProgress'
+        ? 'In progress'
+        : _issue.status.name == 'inReview'
+        ? 'In review'
+        : 'Done';
+
     return _buildSidebarSection(
       title: 'Properties',
       trailing: Icon(
@@ -264,9 +325,7 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
         ),
         child: Column(
           children: [
-            _buildPropertyRow('Status', 'Todo', Icons.circle_outlined),
-            Divider(height: 16, color: AppColors.borderSubtle),
-            _buildPropertyRow('Assignee', 'Unassigned', Icons.person_outline),
+            _buildPropertyRow('Status', statusLabel, Icons.circle_outlined),
             Divider(height: 16, color: AppColors.borderSubtle),
             _buildLabelsRow(),
           ],
@@ -320,12 +379,12 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              if (widget.data.tags.isEmpty)
+              if (_issue.tags.isEmpty)
                 Text(
                   'None',
                   style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                 ),
-              ...widget.data.tags.map(
+              ..._issue.tags.map(
                 (tag) => Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -343,7 +402,7 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                         width: 8,
                         height: 8,
                         decoration: const BoxDecoration(
-                          color: Colors.amber, // Prototype color
+                          color: Colors.amber,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -358,24 +417,6 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                       ),
                     ],
                   ),
-                ),
-              ),
-              InkWell(
-                onTap: () {},
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.borderSubtle,
-                      style: BorderStyle.solid,
-                    ),
-                  ),
-                  child: Icon(Icons.add, size: 14, color: AppColors.textMuted),
                 ),
               ),
             ],
@@ -396,11 +437,95 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
         ),
         child: Column(
           children: [
-            _buildDevRow('Worktree', 'None', onAdd: () {}),
+            _buildDevRow(
+              'Worktree',
+              _issue.worktreePath ?? 'None',
+              onAdd: _setWorktree,
+            ),
             Divider(height: 1, color: AppColors.borderSubtle),
-            _buildDevRow('Branch', 'None', onAdd: () {}),
+            _buildDevRow('Branch', _issue.branch ?? 'None', onAdd: _setBranch),
           ],
         ),
+      ),
+    );
+  }
+
+  void _setBranch() {
+    final controller = TextEditingController(text: _issue.branch ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface0,
+        title: Text(
+          'Set Branch',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: TextField(
+          controller: controller,
+          style: TextStyle(color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'feature/my-branch',
+            hintStyle: TextStyle(color: AppColors.textMuted),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              final updated = _issue.copyWith(
+                branch: value.isNotEmpty ? value : null,
+              );
+              setState(() => _issue = updated);
+              context.read<KanbanProvider>().updateIssue(updated);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _setWorktree() {
+    final controller = TextEditingController(text: _issue.worktreePath ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface0,
+        title: Text(
+          'Set Worktree Path',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: TextField(
+          controller: controller,
+          style: TextStyle(color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            hintText: '/path/to/worktree',
+            hintStyle: TextStyle(color: AppColors.textMuted),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              final updated = _issue.copyWith(
+                worktreePath: value.isNotEmpty ? value : null,
+              );
+              setState(() => _issue = updated);
+              context.read<KanbanProvider>().updateIssue(updated);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }
@@ -435,7 +560,7 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: Text(
-              '+ Create',
+              '+ Set',
               style: TextStyle(fontSize: 12, color: AppColors.accent),
             ),
           ),
@@ -445,10 +570,32 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
   }
 
   Widget _buildCopilotSessionsSection() {
+    final kanbanProvider = context.watch<KanbanProvider>();
+    final copilotProvider = context.watch<CopilotProvider>();
+    final links = kanbanProvider.getLinkedSessions(_issue.id);
+
+    // Resolve copilot session objects from links
+    final repoProvider = context.read<RepoProvider>();
+    final repo = repoProvider.selectedRepo;
+    final allSessions = repo?.copilotSessions ?? [];
+
     return _buildSidebarSection(
       title: 'Copilot Sessions',
       trailing: TextButton.icon(
-        onPressed: () {},
+        onPressed: () {
+          if (repo == null) return;
+          final worktreePath = _issue.worktreePath ?? repo.path;
+          final worktreeName = _issue.branch ?? _issue.title;
+          copilotProvider.createSession(repo.path, worktreePath, worktreeName);
+          // Link the latest session
+          final updatedSessions = repo.copilotSessions;
+          if (updatedSessions.isNotEmpty) {
+            kanbanProvider.linkCopilotSession(
+              _issue.id,
+              updatedSessions.last.id,
+            );
+          }
+        },
         icon: const Icon(Icons.add, size: 14),
         label: const Text('New'),
         style: TextButton.styleFrom(
@@ -458,76 +605,106 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
-      child: Column(
-        children: [
-          _buildSessionItem(
-            title: 'Debug stall at 99%',
-            time: '2 hours ago',
-            active: true,
-          ),
-          const SizedBox(height: 8),
-          _buildSessionItem(
-            title: 'Refactor image loader',
-            time: 'Yesterday',
-            active: false,
-          ),
-          const SizedBox(height: 8),
-          _buildSessionItem(
-            title: 'Fix dark mode borders',
-            time: '2 days ago',
-            active: false,
-          ),
-        ],
-      ),
+      child: links.isEmpty
+          ? Text(
+              'No sessions linked',
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            )
+          : Column(
+              children: links.map((link) {
+                // Try to find the matching copilot session
+                CopilotSession? session;
+                try {
+                  session = allSessions.firstWhere(
+                    (s) => s.id == link.copilotSessionId,
+                  );
+                } catch (_) {
+                  session = null;
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (session != null) {
+                        copilotProvider.selectSession(session);
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface0,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.borderSubtle),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.chat_bubble_outline,
+                            size: 14,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  session?.name ??
+                                      'Session ${link.copilotSessionId.substring(0, 8)}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textPrimary,
+                                    height: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _formatTime(link.createdAt),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.link_off,
+                              size: 14,
+                              color: AppColors.textMuted,
+                            ),
+                            onPressed: () {
+                              kanbanProvider.unlinkCopilotSession(
+                                _issue.id,
+                                link.copilotSessionId,
+                              );
+                            },
+                            tooltip: 'Unlink',
+                            iconSize: 14,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
     );
   }
 
-  Widget _buildSessionItem({
-    required String title,
-    required String time,
-    required bool active,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: active ? AppColors.surface2 : AppColors.surface0,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: active ? AppColors.accent : AppColors.borderSubtle,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.chat_bubble_outline,
-            size: 14,
-            color: active ? AppColors.accent : AppColors.textMuted,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: active ? AppColors.textPrimary : AppColors.textMuted,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  time,
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  String _formatTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.month}/${dt.day}/${dt.year}';
   }
 }
