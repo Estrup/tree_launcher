@@ -33,9 +33,46 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   static const double _collapseBreakpoint = 800;
   bool _sidebarOpen = false;
+  TabController? _tabController;
+  int _lastTabCount = 0;
+
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (!mounted || _tabController == null) return;
+    if (_tabController!.indexIsChanging) return;
+
+    final repoProvider = context.read<RepoProvider>();
+    final copilotProvider = context.read<CopilotProvider>();
+    final kanbanProvider = context.read<KanbanProvider>();
+    final projects = kanbanProvider.projects;
+    final sessionsStartIdx = projects.length + 2;
+
+    if (_tabController!.index >= sessionsStartIdx) {
+      final sessionIdx = _tabController!.index - sessionsStartIdx;
+      final allSessions = copilotProvider.allSessions
+          .where((s) => s.repoPath == repoProvider.selectedRepo?.path)
+          .toList();
+      if (sessionIdx >= 0 && sessionIdx < allSessions.length) {
+        final session = allSessions[sessionIdx];
+        if (copilotProvider.activeSession?.id != session.id) {
+          copilotProvider.selectSession(session);
+        }
+      }
+    } else {
+      if (copilotProvider.activeSession != null &&
+          _tabController!.index != projects.length + 1) {
+        copilotProvider.deselectSession();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +83,47 @@ class _HomeScreenState extends State<HomeScreen> {
     final isCopilotActive = copilotProvider.activeSession != null;
 
     final projects = kanbanProvider.projects;
-    final tabCount = projects.length + 2; // Worktrees + projects + "+"
+    final repoPath = repoProvider.selectedRepo?.path;
+    final allSessions = copilotProvider.allSessions
+        .where((s) => s.repoPath == repoPath)
+        .toList();
+    final tabCount = projects.length + 2 + allSessions.length;
+
+    if (_tabController == null || _lastTabCount != tabCount) {
+      final oldIndex = _tabController?.index ?? 0;
+      _tabController?.dispose();
+      _tabController = TabController(
+        length: tabCount,
+        initialIndex: oldIndex >= tabCount
+            ? (tabCount > 0 ? tabCount - 1 : 0)
+            : oldIndex,
+        vsync: this,
+      );
+      _tabController!.addListener(_onTabChanged);
+      _lastTabCount = tabCount;
+    }
+
+    if (isCopilotActive) {
+      final sessionIndex = allSessions.indexWhere(
+        (s) => s.id == copilotProvider.activeSession!.id,
+      );
+      if (sessionIndex != -1) {
+        final targetIndex = projects.length + 2 + sessionIndex;
+        if (_tabController!.index != targetIndex) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _tabController!.index != targetIndex) {
+              _tabController!.animateTo(targetIndex);
+            }
+          });
+        }
+      }
+    } else {
+      if (_tabController!.index >= projects.length + 2) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _tabController!.animateTo(0);
+        });
+      }
+    }
 
     return CallbackShortcuts(
       bindings: {
@@ -97,148 +174,138 @@ class _HomeScreenState extends State<HomeScreen> {
                               copilotProvider,
                               showMenuButton: isCollapsed,
                             ),
-                            if (isCopilotActive)
-                              const Expanded(child: CopilotTerminalView())
-                            else ...[
-                              Expanded(
-                                child: DefaultTabController(
-                                  length: tabCount,
-                                  child: Builder(
-                                    builder: (context) {
-                                      final tabController =
-                                          DefaultTabController.of(context);
-                                      return Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 24,
-                                            ),
-                                            child: Theme(
-                                              data: Theme.of(context).copyWith(
-                                                dividerColor:
-                                                    Colors.transparent,
-                                              ),
-                                              child: TabBar(
-                                                isScrollable: true,
-                                                tabAlignment:
-                                                    TabAlignment.start,
-                                                indicatorColor:
-                                                    AppColors.accent,
-                                                indicatorWeight: 3,
-                                                labelColor:
-                                                    AppColors.textPrimary,
-                                                unselectedLabelColor:
-                                                    AppColors.textMuted,
-                                                labelStyle: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                                onTap: (index) {
-                                                  // If "+" tab is tapped, show create dialog and snap back
-                                                  if (index == tabCount - 1) {
-                                                    final repoPath =
-                                                        repoProvider
-                                                            .selectedRepo
-                                                            ?.path;
-                                                    if (repoPath != null) {
-                                                      CreateProjectDialog.show(
-                                                        context,
-                                                        repoPath,
-                                                      );
-                                                    }
-                                                    // Snap back to previous tab
-                                                    WidgetsBinding.instance
-                                                        .addPostFrameCallback((
-                                                          _,
-                                                        ) {
-                                                          final prevIndex =
-                                                              tabController
-                                                                  .previousIndex;
-                                                          tabController
-                                                              .animateTo(
-                                                                prevIndex,
-                                                              );
-                                                        });
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                    ),
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        dividerColor: Colors.transparent,
+                                      ),
+                                      child: TabBar(
+                                        controller: _tabController,
+                                        isScrollable: true,
+                                        tabAlignment: TabAlignment.start,
+                                        indicatorColor: AppColors.accent,
+                                        indicatorWeight: 3,
+                                        labelColor: AppColors.textPrimary,
+                                        unselectedLabelColor:
+                                            AppColors.textMuted,
+                                        labelStyle: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        onTap: (index) {
+                                          if (index == projects.length + 1) {
+                                            final repoPath =
+                                                repoProvider.selectedRepo?.path;
+                                            if (repoPath != null) {
+                                              CreateProjectDialog.show(
+                                                context,
+                                                repoPath,
+                                              );
+                                            }
+                                            WidgetsBinding.instance
+                                                .addPostFrameCallback((_) {
+                                                  if (mounted &&
+                                                      _tabController != null) {
+                                                    _tabController!.animateTo(
+                                                      _tabController!
+                                                          .previousIndex,
+                                                    );
                                                   }
+                                                });
+                                          }
+                                        },
+                                        tabs: [
+                                          const Tab(text: "Worktrees"),
+                                          ...projects.map(
+                                            (p) => Tab(
+                                              child: GestureDetector(
+                                                onSecondaryTapUp: (details) {
+                                                  _showProjectContextMenu(
+                                                    context,
+                                                    details.globalPosition,
+                                                    p.id,
+                                                    kanbanProvider,
+                                                  );
                                                 },
-                                                tabs: [
-                                                  const Tab(text: "Worktrees"),
-                                                  ...projects.map(
-                                                    (p) => Tab(
-                                                      child: GestureDetector(
-                                                        onSecondaryTapUp: (details) {
-                                                          _showProjectContextMenu(
-                                                            context,
-                                                            details
-                                                                .globalPosition,
-                                                            p.id,
-                                                            kanbanProvider,
-                                                          );
-                                                        },
-                                                        child: Text(p.name),
-                                                      ),
-                                                    ),
+                                                child: Text(p.name),
+                                              ),
+                                            ),
+                                          ),
+                                          const Tab(
+                                            icon: Icon(Icons.add, size: 20),
+                                          ),
+                                          ...allSessions.map(
+                                            (s) => Tab(
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.auto_awesome_rounded,
+                                                    size: 16,
                                                   ),
-                                                  const Tab(
-                                                    icon: Icon(
-                                                      Icons.add,
-                                                      size: 20,
-                                                    ),
-                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(s.name),
                                                 ],
                                               ),
                                             ),
                                           ),
-                                          Expanded(
-                                            child: TabBarView(
-                                              children: [
-                                                const WorktreeGrid(),
-                                                ...projects.map(
-                                                  (p) => KanbanBoard(
-                                                    projectId: p.id,
-                                                  ),
-                                                ),
-                                                // "+" tab placeholder (never really shown due to onTap)
-                                                Center(
-                                                  child: TextButton.icon(
-                                                    onPressed: () {
-                                                      final repoPath =
-                                                          repoProvider
-                                                              .selectedRepo
-                                                              ?.path;
-                                                      if (repoPath != null) {
-                                                        CreateProjectDialog.show(
-                                                          context,
-                                                          repoPath,
-                                                        );
-                                                      }
-                                                    },
-                                                    icon: Icon(
-                                                      Icons.add,
-                                                      color: AppColors.accent,
-                                                    ),
-                                                    label: Text(
-                                                      'Create a new project',
-                                                      style: TextStyle(
-                                                        color: AppColors.accent,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: TabBarView(
+                                      controller: _tabController,
+                                      children: [
+                                        const WorktreeGrid(),
+                                        ...projects.map(
+                                          (p) => KanbanBoard(projectId: p.id),
+                                        ),
+                                        Center(
+                                          child: TextButton.icon(
+                                            onPressed: () {
+                                              final repoPath = repoProvider
+                                                  .selectedRepo
+                                                  ?.path;
+                                              if (repoPath != null) {
+                                                CreateProjectDialog.show(
+                                                  context,
+                                                  repoPath,
+                                                );
+                                              }
+                                            },
+                                            icon: Icon(
+                                              Icons.add,
+                                              color: AppColors.accent,
+                                            ),
+                                            label: Text(
+                                              'Create a new project',
+                                              style: TextStyle(
+                                                color: AppColors.accent,
+                                              ),
                                             ),
                                           ),
-                                        ],
-                                      );
-                                    },
+                                        ),
+                                        ...allSessions.map(
+                                          (s) => CopilotTerminalView(
+                                            sessionId: s.id,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                              const RunningCommandsBar(),
-                              const TerminalPanel(),
-                            ],
+                            ),
+                            const RunningCommandsBar(),
+                            const TerminalPanel(),
                           ],
                         ),
                       ),

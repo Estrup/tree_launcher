@@ -9,14 +9,19 @@ import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 
 class CopilotTerminalView extends StatefulWidget {
-  const CopilotTerminalView({super.key});
+  final String sessionId;
+  const CopilotTerminalView({super.key, required this.sessionId});
 
   @override
   State<CopilotTerminalView> createState() => _CopilotTerminalViewState();
 }
 
-class _CopilotTerminalViewState extends State<CopilotTerminalView> {
+class _CopilotTerminalViewState extends State<CopilotTerminalView>
+    with AutomaticKeepAliveClientMixin {
   bool _isDragging = false;
+
+  @override
+  bool get wantKeepAlive => true;
   @override
   void initState() {
     super.initState();
@@ -31,7 +36,7 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView> {
 
   void _ensurePtyStarted() {
     final copilotProvider = context.read<CopilotProvider>();
-    final session = copilotProvider.activeTerminal;
+    final session = copilotProvider.terminalForSession(widget.sessionId);
     if (session != null && !session.isPtyStarted) {
       WidgetsBinding.instance.endOfFrame.then((_) {
         if (mounted && !session.isPtyStarted && !session.isDisposed) {
@@ -50,8 +55,9 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final copilotProvider = context.watch<CopilotProvider>();
-    final session = copilotProvider.activeTerminal;
+    final session = copilotProvider.terminalForSession(widget.sessionId);
     final settings = context.watch<SettingsProvider>().settings;
     final fontFamily = settings.terminalFontFamily ?? 'SF Mono';
     final fontSize = settings.terminalFontSize ?? 13.0;
@@ -81,7 +87,7 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView> {
         if (details.files.isNotEmpty) {
           final path = details.files.first.path;
           final copilot = context.read<CopilotProvider>();
-          copilot.activeTerminal?.writeInput(path);
+          copilot.terminalForSession(widget.sessionId)?.writeInput(path);
         }
         setState(() => _isDragging = false);
       },
