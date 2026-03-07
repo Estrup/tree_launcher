@@ -8,6 +8,8 @@ import '../providers/copilot_provider.dart';
 import '../providers/kanban_provider.dart';
 import '../providers/repo_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/markdown_checkbox.dart';
+import 'package:markdown/markdown.dart' as md;
 
 class IssueViewDialog extends StatefulWidget {
   final Issue issue;
@@ -165,7 +167,7 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                         children: [
                           _buildTitleArea(),
                           const SizedBox(height: 16),
-                          _buildQuickActionsRow(),
+                          _buildPropertiesRow(),
                           const SizedBox(height: 32),
                           _buildDescriptionArea(),
                         ],
@@ -192,8 +194,6 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildPropertiesSection(),
-                                  const SizedBox(height: 32),
                                   _buildWorktreeSection(),
                                   const SizedBox(height: 32),
                                   _buildCopilotSessionsSection(),
@@ -270,24 +270,27 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
     );
   }
 
-  Widget _buildQuickActionsRow() {
+  Widget _buildPropertiesRow() {
     return Padding(
       padding: const EdgeInsets.only(left: 36), // Align with title text
       child: Wrap(
-        spacing: 8,
+        spacing: 16,
         runSpacing: 8,
-        children: [
-          _buildActionButton(Icons.add, 'Add'),
-          _buildActionButton(Icons.label_outline, 'Labels'),
-          _buildActionButton(Icons.access_time, 'Dates'),
-          _buildActionButton(Icons.check_box_outlined, 'Checklist'),
-          _buildActionButton(Icons.person_outline, 'Members'),
-        ],
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [_buildStatusBadge(), _buildLabelsBadge()],
       ),
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label) {
+  Widget _buildStatusBadge() {
+    final statusLabel = _issue.status.name == 'todo'
+        ? 'To do'
+        : _issue.status.name == 'inProgress'
+        ? 'In progress'
+        : _issue.status.name == 'inReview'
+        ? 'In review'
+        : 'Done';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -298,18 +301,61 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.textMuted),
+          Icon(Icons.circle_outlined, size: 14, color: AppColors.textMuted),
           const SizedBox(width: 6),
           Text(
-            label,
+            statusLabel,
             style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLabelsBadge() {
+    if (_issue.tags.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: _issue.tags
+          .map(
+            (tag) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.surface1,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.amber,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    tag,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -398,6 +444,16 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
             MarkdownBody(
               data: markdownDescription,
               selectable: true,
+              checkboxBuilder: (bool value) => CustomCheckbox(isChecked: value),
+              builders: {'checkmark': CheckmarkBuilder()},
+              extensionSet: md.ExtensionSet(
+                md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+                <md.InlineSyntax>[
+                  md.EmojiSyntax(),
+                  CheckmarkSyntax(),
+                  ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
+                ],
+              ),
               styleSheet: MarkdownStyleSheet(
                 p: TextStyle(
                   color: AppColors.textPrimary,
@@ -420,6 +476,20 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                   fontWeight: FontWeight.bold,
                 ),
                 listBullet: TextStyle(color: AppColors.textPrimary),
+                blockquote: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontStyle: FontStyle.italic,
+                ),
+                blockquoteDecoration: BoxDecoration(
+                  color: AppColors.surface1,
+                  border: Border(
+                    left: BorderSide(color: AppColors.accent, width: 4),
+                  ),
+                ),
+                blockquotePadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 code: TextStyle(
                   backgroundColor: AppColors.surface2,
                   color: AppColors.textPrimary,
@@ -454,119 +524,6 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
           ),
         ),
         if (trailing != null) ...[const Spacer(), trailing],
-      ],
-    );
-  }
-
-  Widget _buildPropertiesSection() {
-    final statusLabel = _issue.status.name == 'todo'
-        ? 'To do'
-        : _issue.status.name == 'inProgress'
-        ? 'In progress'
-        : _issue.status.name == 'inReview'
-        ? 'In review'
-        : 'Done';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(Icons.settings_outlined, 'Properties'),
-        const SizedBox(height: 12),
-        _buildPropertyRow('Status', statusLabel, Icons.circle_outlined),
-        Divider(height: 24, color: AppColors.borderSubtle),
-        _buildLabelsRow(),
-      ],
-    );
-  }
-
-  Widget _buildPropertyRow(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-        ),
-        Icon(icon, size: 14, color: AppColors.textMuted),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLabelsRow() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 80,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              'Labels',
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              if (_issue.tags.isEmpty)
-                Text(
-                  'None',
-                  style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-                ),
-              ..._issue.tags.map(
-                (tag) => Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface1,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.borderSubtle),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.amber,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        tag,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -866,132 +823,137 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
     final isAgent = comment.authorType == CommentAuthorType.agent;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar stand-in
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: isAgent
-                  ? AppColors.accent.withValues(alpha: 0.2)
-                  : Colors.deepOrange,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: isAgent
-                ? Icon(
-                    Icons.smart_toy_outlined,
-                    size: 16,
-                    color: AppColors.accent,
-                  )
-                : Text(
-                    comment.authorName.isNotEmpty
-                        ? comment.authorName[0].toUpperCase()
-                        : 'U',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      comment.authorName,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _formatTime(comment.createdAt),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
+          Row(
+            children: [
+              if (isAgent) ...[
+                Icon(
+                  Icons.smart_toy_outlined,
+                  size: 14,
+                  color: AppColors.accent,
                 ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors
-                        .surface1, // lighter than surface0? Actually surface0 is the base.
-                    border: Border.all(color: AppColors.borderSubtle),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: MarkdownBody(
-                    data: comment.content,
-                    selectable: true,
-                    styleSheet: MarkdownStyleSheet(
-                      p: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
-                        height: 1.4,
-                      ),
-                      code: TextStyle(
-                        backgroundColor: AppColors.surface2,
-                        color: AppColors.textPrimary,
-                        fontFamily: 'monospace',
-                      ),
-                      codeblockDecoration: BoxDecoration(
-                        color: AppColors.surface2,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (comment.authorType == CommentAuthorType.user)
-                  Row(
-                    children: [
-                      _buildCommentAction('Edit', () {}),
-                      Text(
-                        ' • ',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 11,
-                        ),
-                      ),
-                      _buildCommentAction('Delete', () {
-                        context.read<KanbanProvider>().deleteComment(
-                          comment.id,
-                        );
-                      }),
-                    ],
-                  ),
+                const SizedBox(width: 6),
               ],
+              Text(
+                comment.authorName,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isAgent ? AppColors.accent : AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _formatTime(comment.createdAt),
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+              const Spacer(),
+              if (comment.authorType == CommentAuthorType.user)
+                IconButton(
+                  icon: Icon(Icons.close, size: 14, color: AppColors.textMuted),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: AppColors.surface0,
+                        title: Text(
+                          'Delete Comment',
+                          style: TextStyle(color: AppColors.textPrimary),
+                        ),
+                        content: Text(
+                          'Are you sure you want to delete this comment?',
+                          style: TextStyle(color: AppColors.textMuted),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () {
+                              context.read<KanbanProvider>().deleteComment(
+                                comment.id,
+                              );
+                              Navigator.of(ctx).pop();
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.error,
+                            ),
+                            child: const Text(
+                              'Delete',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  tooltip: 'Delete',
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.surface1,
+              border: Border.all(
+                color: isAgent
+                    ? AppColors.accent.withValues(alpha: 0.3)
+                    : AppColors.borderSubtle,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: MarkdownBody(
+              data: comment.content,
+              selectable: true,
+              checkboxBuilder: (bool value) => CustomCheckbox(isChecked: value),
+              builders: {'checkmark': CheckmarkBuilder()},
+              extensionSet: md.ExtensionSet(
+                md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+                <md.InlineSyntax>[
+                  md.EmojiSyntax(),
+                  CheckmarkSyntax(),
+                  ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
+                ],
+              ),
+              styleSheet: MarkdownStyleSheet(
+                p: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+                blockquote: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontStyle: FontStyle.italic,
+                ),
+                blockquoteDecoration: BoxDecoration(
+                  color: AppColors.surface0,
+                  border: Border(
+                    left: BorderSide(color: AppColors.accent, width: 4),
+                  ),
+                ),
+                blockquotePadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                code: TextStyle(
+                  backgroundColor: AppColors.surface2,
+                  color: AppColors.textPrimary,
+                  fontFamily: 'monospace',
+                ),
+                codeblockDecoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCommentAction(String label, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          color: AppColors.textMuted,
-          decoration: TextDecoration.underline,
-        ),
       ),
     );
   }
