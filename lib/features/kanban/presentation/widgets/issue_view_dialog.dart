@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
-import '../models/issue.dart';
-import '../models/comment.dart';
-import '../models/copilot_session.dart';
-import '../providers/copilot_provider.dart';
-import '../providers/kanban_provider.dart';
-import '../providers/repo_provider.dart';
-import '../theme/app_theme.dart';
-import '../utils/markdown_checkbox.dart';
-import 'add_worktree_dialog.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/utils/markdown_checkbox.dart';
+import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
+import 'package:tree_launcher/features/kanban/domain/comment.dart';
+import 'package:tree_launcher/features/kanban/domain/issue.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
+import 'package:tree_launcher/providers/copilot_provider.dart';
+import 'package:tree_launcher/providers/kanban_provider.dart';
+import 'package:tree_launcher/providers/repo_provider.dart';
 
 class IssueViewDialog extends StatefulWidget {
   final Issue issue;

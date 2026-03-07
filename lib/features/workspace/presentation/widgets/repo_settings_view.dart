@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/copilot_prompt.dart';
-import '../models/custom_command.dart';
-import '../models/command_style.dart';
-import '../models/vscode_config.dart';
-import '../providers/repo_provider.dart';
-import '../theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/workspace/domain/command_style.dart';
+import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
+import 'package:tree_launcher/providers/repo_provider.dart';
 
 enum _SettingsSection { general, vscodeConfigs, customCommands, copilotPrompts }
 

@@ -2,9 +2,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-
-import '../services/shortcut_overlay_controller.dart';
-import '../theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/services/shortcut_overlay_controller.dart';
 
 const _overlayCardKey = ValueKey('shortcut-overlay-card');
 const _overlayDetailScrollKey = ValueKey('shortcut-overlay-detail-scroll');

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/kanban_provider.dart';
-import '../theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/providers/kanban_provider.dart';
 
 class CreateIssueDialog extends StatefulWidget {
   final String projectId;

@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
-import '../models/app_settings.dart';
-import '../models/custom_command.dart';
-import '../models/worktree.dart';
-import '../providers/copilot_provider.dart';
-import '../providers/repo_provider.dart';
-import '../providers/settings_provider.dart';
-import '../providers/terminal_provider.dart';
-import '../services/launcher_service.dart';
-import '../theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
+import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/providers/copilot_provider.dart';
+import 'package:tree_launcher/providers/repo_provider.dart';
+import 'package:tree_launcher/providers/settings_provider.dart';
+import 'package:tree_launcher/providers/terminal_provider.dart';
 
 class WorktreeCard extends StatefulWidget {
   final Worktree worktree;
 
-  WorktreeCard({super.key, required this.worktree});
+  const WorktreeCard({super.key, required this.worktree});
 
   @override
   State<WorktreeCard> createState() => _WorktreeCardState();
@@ -320,7 +320,7 @@ class _TerminalSplitButton extends StatefulWidget {
   final String worktreeName;
   final LauncherService launcherService;
 
-  _TerminalSplitButton({
+  const _TerminalSplitButton({
     required this.worktreePath,
     required this.worktreeName,
     required this.launcherService,

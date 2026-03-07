@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/copilot_session.dart';
-import '../models/repo_config.dart';
-import '../providers/copilot_provider.dart';
-import '../providers/repo_provider.dart';
-import '../theme/app_theme.dart';
-import 'copilot_status_dot.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
+import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_status_dot.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/providers/copilot_provider.dart';
+import 'package:tree_launcher/providers/repo_provider.dart';
 
 class RepoSidebar extends StatelessWidget {
   final VoidCallback onAddRepo;

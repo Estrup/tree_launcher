@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../models/command_style.dart';
-import '../models/copilot_prompt.dart';
-import '../models/custom_command.dart';
-import '../providers/copilot_provider.dart';
-import '../providers/repo_provider.dart';
-import '../providers/settings_provider.dart';
-import '../providers/terminal_provider.dart';
-import '../theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/workspace/domain/command_style.dart';
+import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/providers/copilot_provider.dart';
+import 'package:tree_launcher/providers/repo_provider.dart';
+import 'package:tree_launcher/providers/settings_provider.dart';
+import 'package:tree_launcher/providers/terminal_provider.dart';
 import 'branch_search_dropdown.dart';
 
 class AddWorktreeResult {

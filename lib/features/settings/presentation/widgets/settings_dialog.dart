@@ -2,11 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../models/app_settings.dart';
-import '../providers/settings_provider.dart';
-import '../services/config_service.dart';
-import '../services/sound_service.dart';
-import '../theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/copilot/data/sound_service.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
+import 'package:tree_launcher/providers/settings_provider.dart';
+import 'package:tree_launcher/services/config_service.dart';
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});

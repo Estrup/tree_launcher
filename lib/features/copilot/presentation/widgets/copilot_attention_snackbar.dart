@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/copilot_session.dart';
-import '../providers/copilot_provider.dart';
-import '../theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
+import 'package:tree_launcher/providers/copilot_provider.dart';
 
 /// Floating notification that appears when a copilot session needs attention.
 /// Positioned in the bottom-right corner. Tapping navigates to the session.

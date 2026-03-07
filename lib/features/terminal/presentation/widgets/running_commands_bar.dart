@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/command_style.dart';
-import '../providers/repo_provider.dart';
-import '../providers/terminal_provider.dart';
-import '../theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/workspace/domain/command_style.dart';
+import 'package:tree_launcher/providers/repo_provider.dart';
+import 'package:tree_launcher/providers/terminal_provider.dart';
 
 /// A horizontal row of icon buttons for running command terminals,
 /// displayed just above the terminal panel.

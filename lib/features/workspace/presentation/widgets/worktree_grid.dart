@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/repo_provider.dart';
-import '../theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/providers/repo_provider.dart';
 import 'worktree_card.dart';
 
 class WorktreeGrid extends StatelessWidget {
@@ -115,7 +115,7 @@ class _EmptyState extends StatelessWidget {
   final String subtitle;
   final bool isCode;
 
-  _EmptyState({
+  const _EmptyState({
     required this.icon,
     required this.title,
     required this.subtitle,

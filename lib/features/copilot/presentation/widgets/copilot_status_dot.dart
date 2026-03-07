@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/copilot_session.dart';
-import '../theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
 
 /// Animated pulsing dot that indicates copilot activity status.
 /// Green for working, orange for needs-action, hidden for idle.

@@ -2,11 +2,11 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
-import '../providers/copilot_provider.dart';
-import '../providers/settings_provider.dart';
-import '../theme/app_theme.dart';
-import '../theme/terminal_theme.dart';
-import 'terminal_key_handler.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/design_system/terminal_theme.dart';
+import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_key_handler.dart';
+import 'package:tree_launcher/providers/copilot_provider.dart';
+import 'package:tree_launcher/providers/settings_provider.dart';
 
 class CopilotTerminalView extends StatefulWidget {
   const CopilotTerminalView({super.key});

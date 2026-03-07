@@ -14,7 +14,7 @@ import 'package:tree_launcher/services/git_service.dart';
 import 'package:tree_launcher/services/microphone_recording_service.dart';
 import 'package:tree_launcher/services/repo_action_tool_registry.dart';
 import 'package:tree_launcher/services/shortcut_overlay_controller.dart';
-import 'package:tree_launcher/widgets/shortcut_overlay.dart';
+import 'package:tree_launcher/features/voice_commands/presentation/widgets/shortcut_overlay.dart';
 
 void main() {
   group('ShortcutOverlayController', () {
