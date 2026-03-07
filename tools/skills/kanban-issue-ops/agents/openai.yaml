@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kanban Issue Ops"
+  short_description: "Operate local kanban issues via API"
+  default_prompt: "Use $kanban-issue-ops to inspect, create, update, archive, and comment on TreeLauncher kanban issues."
