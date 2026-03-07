@@ -2,12 +2,12 @@ import 'package:flutter/foundation.dart';
 import '../models/comment.dart';
 import '../models/issue.dart';
 import '../models/issue_copilot_link.dart';
+import '../models/issue_status.dart';
 import '../models/project.dart';
 import '../services/comment_repository.dart';
 import '../services/issue_copilot_repository.dart';
 import '../services/issue_repository.dart';
 import '../services/project_repository.dart';
-import '../widgets/kanban_board.dart';
 
 class KanbanProvider extends ChangeNotifier {
   final ProjectRepository _projectRepo;
@@ -18,6 +18,7 @@ class KanbanProvider extends ChangeNotifier {
   List<Project> _projects = [];
   // projectId -> list of issues
   final Map<String, List<Issue>> _issuesByProject = {};
+  String? _loadedRepoPath;
 
   KanbanProvider({
     ProjectRepository? projectRepo,
@@ -39,10 +40,10 @@ class KanbanProvider extends ChangeNotifier {
     return _issuesByProject[projectId] ?? [];
   }
 
-  Map<KanbanColumnStatus, List<Issue>> issuesByStatus(String projectId) {
+  Map<IssueStatus, List<Issue>> issuesByStatus(String projectId) {
     final issues = issuesForProject(projectId);
     return {
-      for (var status in KanbanColumnStatus.values)
+      for (var status in IssueStatus.values)
         status: issues.where((i) => i.status == status).toList(),
     };
   }
@@ -53,6 +54,7 @@ class KanbanProvider extends ChangeNotifier {
 
   /// Loads all non-archived projects for a repo. Call when repo is selected.
   void loadProjectsForRepo(String repoPath) {
+    _loadedRepoPath = repoPath;
     _projects = _projectRepo.getProjectsForRepo(repoPath);
     // Pre-load issues for each project
     for (final project in _projects) {
@@ -116,11 +118,7 @@ class KanbanProvider extends ChangeNotifier {
   }
 
   /// Moves an issue to a new status column.
-  void moveIssue(
-    String issueId,
-    String projectId,
-    KanbanColumnStatus newStatus,
-  ) {
+  void moveIssue(String issueId, String projectId, IssueStatus newStatus) {
     _issueRepo.moveIssue(issueId, newStatus);
     final list = _issuesByProject[projectId];
     if (list != null) {
@@ -213,5 +211,10 @@ class KanbanProvider extends ChangeNotifier {
   /// Gets all comments for an issue.
   List<Comment> getComments(String issueId) {
     return _commentRepo.getCommentsForIssue(issueId);
+  }
+
+  void refreshLoadedRepoIfMatches(String repoPath) {
+    if (_loadedRepoPath != repoPath) return;
+    loadProjectsForRepo(repoPath);
   }
 }

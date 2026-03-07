@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
-import '../widgets/kanban_board.dart';
+import 'issue_status.dart';
+
+const _unsetDescription = Object();
 
 class Issue {
   final String id;
@@ -13,7 +15,7 @@ class Issue {
   final String projectKey;
   final String title;
   final String? description;
-  final KanbanColumnStatus status;
+  final IssueStatus status;
   final List<String> tags;
   final bool isArchived;
   final int sortOrder;
@@ -27,7 +29,7 @@ class Issue {
     required this.projectKey,
     required this.title,
     this.description,
-    this.status = KanbanColumnStatus.todo,
+    this.status = IssueStatus.todo,
     this.tags = const [],
     this.isArchived = false,
     this.sortOrder = 0,
@@ -95,8 +97,8 @@ class Issue {
 
   Issue copyWith({
     String? title,
-    String? description,
-    KanbanColumnStatus? status,
+    Object? description = _unsetDescription,
+    IssueStatus? status,
     List<String>? tags,
     bool? isArchived,
     int? sortOrder,
@@ -108,7 +110,9 @@ class Issue {
       issueNumber: issueNumber,
       projectKey: projectKey,
       title: title ?? this.title,
-      description: description ?? this.description,
+      description: identical(description, _unsetDescription)
+          ? this.description
+          : description as String?,
       status: status ?? this.status,
       tags: tags ?? this.tags,
       isArchived: isArchived ?? this.isArchived,
@@ -118,10 +122,10 @@ class Issue {
     );
   }
 
-  static KanbanColumnStatus _statusFromString(String s) {
-    return KanbanColumnStatus.values.firstWhere(
+  static IssueStatus _statusFromString(String s) {
+    return IssueStatus.values.firstWhere(
       (e) => e.name == s,
-      orElse: () => KanbanColumnStatus.todo,
+      orElse: () => IssueStatus.todo,
     );
   }
 

@@ -6,6 +6,8 @@ import 'providers/kanban_provider.dart';
 import 'services/database_service.dart';
 import 'services/git_service.dart';
 import 'services/config_service.dart';
+import 'services/issue_api_controller.dart';
+import 'services/issue_api_service.dart';
 import 'services/remote_control_service.dart';
 import 'services/sound_service.dart';
 import 'providers/copilot_provider.dart';
@@ -135,6 +137,12 @@ class _RemoteControlManagerState extends State<_RemoteControlManager> {
     if (enabled) {
       _service ??= RemoteControlService(
         copilotProvider: context.read<CopilotProvider>(),
+        issueApiController: IssueApiController(
+          issueService: IssueApiService(),
+          onRepoMutated: (repoPath) async {
+            context.read<KanbanProvider>().refreshLoadedRepoIfMatches(repoPath);
+          },
+        ),
       );
       await _service!.restart(bindAddress: bindAddress, port: port);
     } else {

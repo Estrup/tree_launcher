@@ -1,6 +1,6 @@
 import 'package:sqlite3/sqlite3.dart';
 import '../models/issue.dart';
-import '../widgets/kanban_board.dart';
+import '../models/issue_status.dart';
 import 'database_service.dart';
 
 class IssueRepository {
@@ -62,10 +62,11 @@ class IssueRepository {
     final map = issue.toMap();
 
     _db.execute(
-      'UPDATE issues SET title = ?, description = ?, tags = ?, updated_at = ? WHERE id = ?',
+      'UPDATE issues SET title = ?, description = ?, status = ?, tags = ?, updated_at = ? WHERE id = ?',
       [
         map['title'],
         map['description'],
+        map['status'],
         map['tags'],
         now,
         map['id'],
@@ -74,7 +75,7 @@ class IssueRepository {
   }
 
   /// Moves an issue to a new status column.
-  void moveIssue(String issueId, KanbanColumnStatus newStatus) {
+  void moveIssue(String issueId, IssueStatus newStatus) {
     final now = DateTime.now().toIso8601String();
 
     _db.execute('UPDATE issues SET status = ?, updated_at = ? WHERE id = ?', [
@@ -96,8 +97,19 @@ class IssueRepository {
 
   /// Returns all non-archived issues for a project, grouped by the caller.
   List<Issue> getIssuesForProject(String projectId) {
+    return getIssuesForProjectIncludingArchived(
+      projectId,
+      includeArchived: false,
+    );
+  }
+
+  List<Issue> getIssuesForProjectIncludingArchived(
+    String projectId, {
+    required bool includeArchived,
+  }) {
+    final archivedClause = includeArchived ? '' : ' AND is_archived = 0';
     final result = _db.select(
-      'SELECT * FROM issues WHERE project_id = ? AND is_archived = 0 ORDER BY sort_order ASC, created_at ASC',
+      'SELECT * FROM issues WHERE project_id = ?$archivedClause ORDER BY sort_order ASC, created_at ASC',
       [projectId],
     );
 
@@ -110,5 +122,17 @@ class IssueRepository {
 
     if (result.isEmpty) return null;
     return Issue.fromMap(result.first);
+  }
+
+  List<Issue> findIssuesByDisplayId({
+    required String projectKey,
+    required int issueNumber,
+  }) {
+    final result = _db.select(
+      'SELECT * FROM issues WHERE project_key = ? AND issue_number = ?',
+      [projectKey, issueNumber],
+    );
+
+    return result.map((row) => Issue.fromMap(row)).toList();
   }
 }

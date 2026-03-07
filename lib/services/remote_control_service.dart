@@ -6,10 +6,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../providers/copilot_provider.dart';
+import 'issue_api_controller.dart';
 
 /// Embedded HTTP + WebSocket server for remote-controlling Copilot terminals.
 class RemoteControlService {
   final CopilotProvider _copilotProvider;
+  final IssueApiController _issueApiController;
 
   HttpServer? _server;
   bool _running = false;
@@ -17,12 +19,16 @@ class RemoteControlService {
   // Cached asset bytes (loaded once from Flutter asset bundle)
   final Map<String, List<int>> _assetCache = {};
 
-  RemoteControlService({required CopilotProvider copilotProvider})
-      : _copilotProvider = copilotProvider;
+  RemoteControlService({
+    required CopilotProvider copilotProvider,
+    required IssueApiController issueApiController,
+  }) : _copilotProvider = copilotProvider,
+       _issueApiController = issueApiController;
 
   bool get isRunning => _running;
-  String? get url =>
-      _server != null ? 'http://${_server!.address.host}:${_server!.port}' : null;
+  String? get url => _server != null
+      ? 'http://${_server!.address.host}:${_server!.port}'
+      : null;
 
   /// Start the HTTP server on the given address and port.
   Future<void> start({
@@ -36,9 +42,14 @@ class RemoteControlService {
       _server = await HttpServer.bind(bindAddress, port);
       _running = true;
       debugPrint('[RemoteControl] Server started on http://$bindAddress:$port');
-      _server!.listen(_handleRequest, onError: (e) {
-        debugPrint('[RemoteControl] Server error: $e');
-      });
+      _server!.listen(
+        (request) {
+          unawaited(_handleRequest(request));
+        },
+        onError: (e) {
+          debugPrint('[RemoteControl] Server error: $e');
+        },
+      );
     } catch (e) {
       debugPrint('[RemoteControl] Failed to start server: $e');
       _running = false;
@@ -56,10 +67,7 @@ class RemoteControlService {
   }
 
   /// Restart with new settings.
-  Future<void> restart({
-    required String bindAddress,
-    required int port,
-  }) async {
+  Future<void> restart({required String bindAddress, required int port}) async {
     await stop();
     await start(bindAddress: bindAddress, port: port);
   }
@@ -82,31 +90,56 @@ class RemoteControlService {
     }
   }
 
-  void _handleRequest(HttpRequest request) {
+  Future<void> _handleRequest(HttpRequest request) async {
     final path = request.uri.path;
 
     if (path.startsWith('/ws/')) {
-      _handleWebSocket(request);
+      await _handleWebSocket(request);
       return;
     }
 
-    switch (path) {
-      case '/':
-        _serveAsset(request, 'assets/remote/index.html', 'text/html');
-      case '/assets/xterm.min.js':
-        _serveAsset(request, 'assets/remote/xterm.min.js', 'application/javascript');
-      case '/assets/xterm.min.css':
-        _serveAsset(request, 'assets/remote/xterm.min.css', 'text/css');
-      case '/assets/addon-fit.min.js':
-        _serveAsset(request, 'assets/remote/addon-fit.min.js', 'application/javascript');
-      case '/api/sessions':
-        _handleSessionsApi(request);
-      default:
-        request.response
-          ..statusCode = HttpStatus.notFound
-          ..write('Not found')
-          ..close();
+    if (path == '/') {
+      _serveAsset(request, 'assets/remote/index.html', 'text/html');
+      return;
     }
+
+    if (path == '/assets/xterm.min.js') {
+      _serveAsset(
+        request,
+        'assets/remote/xterm.min.js',
+        'application/javascript',
+      );
+      return;
+    }
+
+    if (path == '/assets/xterm.min.css') {
+      _serveAsset(request, 'assets/remote/xterm.min.css', 'text/css');
+      return;
+    }
+
+    if (path == '/assets/addon-fit.min.js') {
+      _serveAsset(
+        request,
+        'assets/remote/addon-fit.min.js',
+        'application/javascript',
+      );
+      return;
+    }
+
+    if (path == '/api/sessions') {
+      _handleSessionsApi(request);
+      return;
+    }
+
+    if (path.startsWith('/api/projects') || path.startsWith('/api/issues')) {
+      await _handleIssueApi(request);
+      return;
+    }
+
+    request.response
+      ..statusCode = HttpStatus.notFound
+      ..write('Not found')
+      ..close();
   }
 
   void _serveAsset(HttpRequest request, String assetPath, String contentType) {
@@ -144,6 +177,47 @@ class RemoteControlService {
       ..headers.contentType = ContentType.json
       ..write(jsonEncode(jsonList))
       ..close();
+  }
+
+  Future<void> _handleIssueApi(HttpRequest request) async {
+    IssueApiResponse apiResponse;
+    try {
+      final body = await _readJsonBodyIfPresent(request);
+      apiResponse = await _issueApiController.handle(
+        IssueApiRequest(
+          method: request.method,
+          pathSegments: request.uri.pathSegments,
+          queryParameters: request.uri.queryParameters,
+          body: body,
+        ),
+      );
+    } on FormatException {
+      apiResponse = const IssueApiResponse(
+        statusCode: 400,
+        ok: false,
+        summary: 'Request body must be valid JSON.',
+        data: {},
+      );
+    }
+
+    request.response
+      ..statusCode = apiResponse.statusCode
+      ..headers.contentType = ContentType.json
+      ..write(jsonEncode(apiResponse.toJson()))
+      ..close();
+  }
+
+  Future<Object?> _readJsonBodyIfPresent(HttpRequest request) async {
+    if (!const {'POST', 'PATCH', 'PUT'}.contains(request.method)) {
+      return null;
+    }
+
+    final body = await utf8.decoder.bind(request).join();
+    if (body.trim().isEmpty) {
+      return null;
+    }
+
+    return jsonDecode(body);
   }
 
   Future<void> _handleWebSocket(HttpRequest request) async {
@@ -196,6 +270,7 @@ class RemoteControlService {
         ws.add(data);
       }
     }
+
     terminal.addOutputListener(outputListener);
 
     // Listen for input from the web client
@@ -222,7 +297,9 @@ class RemoteControlService {
       },
       onDone: () {
         terminal.removeOutputListener(outputListener);
-        debugPrint('[RemoteControl] WebSocket disconnected for session $sessionId');
+        debugPrint(
+          '[RemoteControl] WebSocket disconnected for session $sessionId',
+        );
       },
       onError: (e) {
         terminal.removeOutputListener(outputListener);

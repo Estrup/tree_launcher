@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/issue.dart';
+import '../models/issue_status.dart';
 import '../providers/kanban_provider.dart';
 import '../theme/app_theme.dart';
 import 'create_issue_dialog.dart';
 import 'issue_view_dialog.dart';
-
-enum KanbanColumnStatus { todo, inProgress, inReview, done }
 
 class KanbanBoard extends StatelessWidget {
   final String projectId;
@@ -26,29 +25,29 @@ class KanbanBoard extends StatelessWidget {
         children: [
           _KanbanColumn(
             title: 'To do',
-            status: KanbanColumnStatus.todo,
-            issues: columns[KanbanColumnStatus.todo] ?? [],
+            status: IssueStatus.todo,
+            issues: columns[IssueStatus.todo] ?? [],
             projectId: projectId,
           ),
           const SizedBox(width: 16),
           _KanbanColumn(
             title: 'In progress',
-            status: KanbanColumnStatus.inProgress,
-            issues: columns[KanbanColumnStatus.inProgress] ?? [],
+            status: IssueStatus.inProgress,
+            issues: columns[IssueStatus.inProgress] ?? [],
             projectId: projectId,
           ),
           const SizedBox(width: 16),
           _KanbanColumn(
             title: 'In review',
-            status: KanbanColumnStatus.inReview,
-            issues: columns[KanbanColumnStatus.inReview] ?? [],
+            status: IssueStatus.inReview,
+            issues: columns[IssueStatus.inReview] ?? [],
             projectId: projectId,
           ),
           const SizedBox(width: 16),
           _KanbanColumn(
             title: 'Done',
-            status: KanbanColumnStatus.done,
-            issues: columns[KanbanColumnStatus.done] ?? [],
+            status: IssueStatus.done,
+            issues: columns[IssueStatus.done] ?? [],
             projectId: projectId,
           ),
         ],
@@ -59,7 +58,7 @@ class KanbanBoard extends StatelessWidget {
 
 class _KanbanColumn extends StatelessWidget {
   final String title;
-  final KanbanColumnStatus status;
+  final IssueStatus status;
   final List<Issue> issues;
   final String projectId;
 

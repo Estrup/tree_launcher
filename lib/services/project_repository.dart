@@ -51,6 +51,16 @@ class ProjectRepository {
     return result.map((row) => Project.fromMap(row)).toList();
   }
 
+  /// Returns a single project by ID.
+  Project? getProjectById(String projectId) {
+    final result = _db.select('SELECT * FROM projects WHERE id = ?', [
+      projectId,
+    ]);
+
+    if (result.isEmpty) return null;
+    return Project.fromMap(result.first);
+  }
+
   /// Archives a project by setting is_archived = 1.
   void archiveProject(String projectId) {
     _db.execute('UPDATE projects SET is_archived = 1 WHERE id = ?', [

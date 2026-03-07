@@ -3,6 +3,15 @@ import 'package:uuid/uuid.dart';
 /// Represents who authored the comment.
 enum CommentAuthorType { user, agent }
 
+extension CommentAuthorTypeParsing on CommentAuthorType {
+  static CommentAuthorType fromName(String value) {
+    return CommentAuthorType.values.firstWhere(
+      (type) => type.name == value,
+      orElse: () => CommentAuthorType.user,
+    );
+  }
+}
+
 class Comment {
   final String id;
   final String issueId;
@@ -49,9 +58,9 @@ class Comment {
       id: map['id'] as String,
       issueId: map['issue_id'] as String,
       content: map['content'] as String,
-      authorType: map['author_type'] == 'agent'
-          ? CommentAuthorType.agent
-          : CommentAuthorType.user,
+      authorType: CommentAuthorTypeParsing.fromName(
+        map['author_type'] as String? ?? CommentAuthorType.user.name,
+      ),
       authorName: map['author_name'] as String,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
