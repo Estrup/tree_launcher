@@ -9,6 +9,7 @@ import '../providers/kanban_provider.dart';
 import '../providers/repo_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/markdown_checkbox.dart';
+import 'add_worktree_dialog.dart';
 import 'package:markdown/markdown.dart' as md;
 
 class IssueViewDialog extends StatefulWidget {
@@ -194,9 +195,7 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildWorktreeSection(),
-                                  const SizedBox(height: 32),
-                                  _buildCopilotSessionsSection(),
+                                  _buildDevelopmentSection(),
                                   const SizedBox(height: 32),
                                   _buildCommentsList(),
                                 ],
@@ -528,140 +527,49 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
     );
   }
 
-  Widget _buildWorktreeSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(Icons.code, 'Development'),
-        const SizedBox(height: 12),
-        _buildDevRow(
-          'Worktree',
-          _issue.worktreePath ?? 'None',
-          onAdd: _setWorktree,
-        ),
-        Divider(height: 16, color: AppColors.borderSubtle),
-        _buildDevRow('Branch', _issue.branch ?? 'None', onAdd: _setBranch),
-      ],
-    );
+  String _generateWorktreeName() {
+    final title = _issue.title.toLowerCase().replaceAll(' ', '-').replaceAll(RegExp(r'[^a-z0-9\-]'), '');
+    final truncated = title.length > 15 ? title.substring(0, 15) : title;
+    // Remove trailing dash
+    final cleaned = truncated.endsWith('-') ? truncated.substring(0, truncated.length - 1) : truncated;
+    return '$cleaned-${_issue.displayId.toLowerCase()}';
   }
 
-  void _setBranch() {
-    final controller = TextEditingController(text: _issue.branch ?? '');
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface0,
-        title: Text(
-          'Set Branch',
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        content: TextField(
-          controller: controller,
-          style: TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'feature/my-branch',
-            hintStyle: TextStyle(color: AppColors.textMuted),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              final updated = _issue.copyWith(
-                branch: value.isNotEmpty ? value : null,
-              );
-              setState(() => _issue = updated);
-              context.read<KanbanProvider>().updateIssue(updated);
-              Navigator.of(ctx).pop();
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _createWorktree() async {
+    final generatedName = _generateWorktreeName();
+    final result = await AddWorktreeDialog.show(context, initialName: generatedName);
+    if (result == null || !mounted) return;
+
+    final kanbanProvider = context.read<KanbanProvider>();
+    final copilotProvider = context.read<CopilotProvider>();
+
+    String? sessionId = result.copilotSessionId;
+
+    // If no copilot session was created by the dialog, create one
+    if (sessionId == null) {
+      final repoProvider = context.read<RepoProvider>();
+      final repo = repoProvider.selectedRepo;
+      if (repo != null) {
+        final session = await copilotProvider.createSession(
+          repo.path,
+          result.worktreePath,
+          generatedName,
+        );
+        sessionId = session.id;
+      }
+    }
+
+    if (sessionId != null) {
+      kanbanProvider.linkCopilotSession(
+        _issue.id,
+        sessionId,
+        worktreePath: result.worktreePath,
+        branch: result.branch,
+      );
+    }
   }
 
-  void _setWorktree() {
-    final controller = TextEditingController(text: _issue.worktreePath ?? '');
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface0,
-        title: Text(
-          'Set Worktree Path',
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        content: TextField(
-          controller: controller,
-          style: TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: '/path/to/worktree',
-            hintStyle: TextStyle(color: AppColors.textMuted),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              final updated = _issue.copyWith(
-                worktreePath: value.isNotEmpty ? value : null,
-              );
-              setState(() => _issue = updated);
-              context.read<KanbanProvider>().updateIssue(updated);
-              Navigator.of(ctx).pop();
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDevRow(
-    String label,
-    String value, {
-    required VoidCallback onAdd,
-  }) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
-          ),
-        ),
-        TextButton(
-          onPressed: onAdd,
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: Text(
-            '+ Set',
-            style: TextStyle(fontSize: 12, color: AppColors.accent),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCopilotSessionsSection() {
+  Widget _buildDevelopmentSection() {
     final kanbanProvider = context.watch<KanbanProvider>();
     final copilotProvider = context.watch<CopilotProvider>();
     final links = kanbanProvider.getLinkedSessions(_issue.id);
@@ -674,28 +582,12 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          Icons.smart_toy_outlined,
-          'Copilot Sessions',
+          Icons.code,
+          'Development',
           trailing: TextButton.icon(
-            onPressed: () {
-              if (repo == null) return;
-              final worktreePath = _issue.worktreePath ?? repo.path;
-              final worktreeName = _issue.branch ?? _issue.title;
-              copilotProvider.createSession(
-                repo.path,
-                worktreePath,
-                worktreeName,
-              );
-              final updatedSessions = repo.copilotSessions;
-              if (updatedSessions.isNotEmpty) {
-                kanbanProvider.linkCopilotSession(
-                  _issue.id,
-                  updatedSessions.last.id,
-                );
-              }
-            },
+            onPressed: _createWorktree,
             icon: const Icon(Icons.add, size: 14),
-            label: const Text('New'),
+            label: const Text('Create Worktree'),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.accent,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -707,7 +599,7 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
         const SizedBox(height: 12),
         links.isEmpty
             ? Text(
-                'No sessions linked',
+                'No worktrees linked',
                 style: TextStyle(fontSize: 13, color: AppColors.textMuted),
               )
             : Column(
@@ -741,7 +633,7 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Icon(
-                              Icons.chat_bubble_outline,
+                              Icons.account_tree_outlined,
                               size: 14,
                               color: AppColors.textMuted,
                             ),
@@ -760,6 +652,42 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                                       height: 1.2,
                                     ),
                                   ),
+                                  if (link.worktreePath != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      link.worktreePath!,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textMuted,
+                                        fontFamily: 'monospace',
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                  if (link.branch != null) ...[
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.merge_type_rounded,
+                                          size: 12,
+                                          color: AppColors.textMuted,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            link.branch!,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.textMuted,
+                                              fontFamily: 'monospace',
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                   const SizedBox(height: 4),
                                   Text(
                                     _formatTime(link.createdAt),

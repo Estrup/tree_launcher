@@ -15,8 +15,6 @@ class Issue {
   final String? description;
   final KanbanColumnStatus status;
   final List<String> tags;
-  final String? branch;
-  final String? worktreePath;
   final bool isArchived;
   final int sortOrder;
   final DateTime createdAt;
@@ -31,8 +29,6 @@ class Issue {
     this.description,
     this.status = KanbanColumnStatus.todo,
     this.tags = const [],
-    this.branch,
-    this.worktreePath,
     this.isArchived = false,
     this.sortOrder = 0,
     required this.createdAt,
@@ -75,8 +71,6 @@ class Issue {
       tags: map['tags'] != null
           ? List<String>.from(jsonDecode(map['tags'] as String) as List)
           : [],
-      branch: map['branch'] as String?,
-      worktreePath: map['worktree_path'] as String?,
       isArchived: (map['is_archived'] as int) == 1,
       sortOrder: map['sort_order'] as int,
       createdAt: DateTime.parse(map['created_at'] as String),
@@ -93,8 +87,6 @@ class Issue {
     'description': description,
     'status': status.name,
     'tags': tags.isNotEmpty ? jsonEncode(tags) : null,
-    'branch': branch,
-    'worktree_path': worktreePath,
     'is_archived': isArchived ? 1 : 0,
     'sort_order': sortOrder,
     'created_at': createdAt.toIso8601String(),
@@ -106,8 +98,6 @@ class Issue {
     String? description,
     KanbanColumnStatus? status,
     List<String>? tags,
-    String? branch,
-    String? worktreePath,
     bool? isArchived,
     int? sortOrder,
     DateTime? updatedAt,
@@ -121,8 +111,6 @@ class Issue {
       description: description ?? this.description,
       status: status ?? this.status,
       tags: tags ?? this.tags,
-      branch: branch ?? this.branch,
-      worktreePath: worktreePath ?? this.worktreePath,
       isArchived: isArchived ?? this.isArchived,
       sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt,

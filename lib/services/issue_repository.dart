@@ -35,8 +35,8 @@ class IssueRepository {
     final map = issue.toMap();
 
     _db.execute(
-      'INSERT INTO issues (id, project_id, issue_number, project_key, title, description, status, tags, branch, worktree_path, is_archived, sort_order, created_at, updated_at) '
-      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO issues (id, project_id, issue_number, project_key, title, description, status, tags, is_archived, sort_order, created_at, updated_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         map['id'],
         map['project_id'],
@@ -46,8 +46,6 @@ class IssueRepository {
         map['description'],
         map['status'],
         map['tags'],
-        map['branch'],
-        map['worktree_path'],
         map['is_archived'],
         map['sort_order'],
         map['created_at'],
@@ -58,19 +56,17 @@ class IssueRepository {
     return issue;
   }
 
-  /// Updates an existing issue (title, description, tags, branch, worktreePath).
+  /// Updates an existing issue (title, description, tags).
   void updateIssue(Issue issue) {
     final now = DateTime.now().toIso8601String();
     final map = issue.toMap();
 
     _db.execute(
-      'UPDATE issues SET title = ?, description = ?, tags = ?, branch = ?, worktree_path = ?, updated_at = ? WHERE id = ?',
+      'UPDATE issues SET title = ?, description = ?, tags = ?, updated_at = ? WHERE id = ?',
       [
         map['title'],
         map['description'],
         map['tags'],
-        map['branch'],
-        map['worktree_path'],
         now,
         map['id'],
       ],

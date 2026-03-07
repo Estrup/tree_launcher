@@ -98,7 +98,7 @@ class KanbanProvider extends ChangeNotifier {
     return issue;
   }
 
-  /// Updates an existing issue (title, description, tags, branch, worktree).
+  /// Updates an existing issue (title, description, tags).
   void updateIssue(Issue issue) {
     _issueRepo.updateIssue(issue);
     // Refresh from DB to get updated_at
@@ -144,10 +144,26 @@ class KanbanProvider extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   /// Links a copilot session to an issue.
-  IssueCopilotLink linkCopilotSession(String issueId, String copilotSessionId) {
-    final link = _copilotRepo.linkSession(issueId, copilotSessionId);
+  IssueCopilotLink linkCopilotSession(
+    String issueId,
+    String copilotSessionId, {
+    String? worktreePath,
+    String? branch,
+  }) {
+    final link = _copilotRepo.linkSession(
+      issueId,
+      copilotSessionId,
+      worktreePath: worktreePath,
+      branch: branch,
+    );
     notifyListeners();
     return link;
+  }
+
+  /// Updates worktree/branch on an existing copilot link.
+  void updateCopilotLink(IssueCopilotLink link) {
+    _copilotRepo.updateLink(link);
+    notifyListeners();
   }
 
   /// Unlinks a copilot session from an issue.

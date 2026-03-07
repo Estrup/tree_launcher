@@ -85,10 +85,16 @@ class DatabaseService {
         id TEXT PRIMARY KEY,
         issue_id TEXT NOT NULL,
         copilot_session_id TEXT NOT NULL,
+        worktree_path TEXT,
+        branch TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY (issue_id) REFERENCES issues(id)
       )
     ''');
+
+    // Migration: add columns for existing DBs
+    try { db.execute('ALTER TABLE issue_copilot_sessions ADD COLUMN worktree_path TEXT'); } catch (_) {}
+    try { db.execute('ALTER TABLE issue_copilot_sessions ADD COLUMN branch TEXT'); } catch (_) {}
 
     // Indexes for common queries
     db.execute('''

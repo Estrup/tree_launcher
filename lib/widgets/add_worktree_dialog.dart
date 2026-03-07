@@ -11,11 +11,28 @@ import '../providers/terminal_provider.dart';
 import '../theme/app_theme.dart';
 import 'branch_search_dropdown.dart';
 
-class AddWorktreeDialog extends StatefulWidget {
-  const AddWorktreeDialog({super.key});
+class AddWorktreeResult {
+  final String worktreePath;
+  final String? branch;
+  final String? copilotSessionId;
 
-  static Future<void> show(BuildContext context) {
-    return showDialog(
+  const AddWorktreeResult({
+    required this.worktreePath,
+    this.branch,
+    this.copilotSessionId,
+  });
+}
+
+class AddWorktreeDialog extends StatefulWidget {
+  final String? initialName;
+
+  const AddWorktreeDialog({super.key, this.initialName});
+
+  static Future<AddWorktreeResult?> show(
+    BuildContext context, {
+    String? initialName,
+  }) {
+    return showDialog<AddWorktreeResult>(
       context: context,
       builder: (_) => MultiProvider(
         providers: [
@@ -23,7 +40,7 @@ class AddWorktreeDialog extends StatefulWidget {
           ChangeNotifierProvider.value(value: context.read<TerminalProvider>()),
           ChangeNotifierProvider.value(value: context.read<CopilotProvider>()),
         ],
-        child: const AddWorktreeDialog(),
+        child: AddWorktreeDialog(initialName: initialName),
       ),
     );
   }
@@ -51,6 +68,12 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialName != null) {
+      _nameController.text = widget.initialName!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateAutoFillBranch();
+      });
+    }
     _loadBranches();
     _initRunCommandDefaults();
   }
@@ -189,6 +212,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         );
       }
 
+      String? copilotSessionId;
       if (_launchCopilot && worktreePath != null) {
         final repo = repoProvider.selectedRepo;
         String? prompt;
@@ -202,12 +226,13 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           prompt = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
           if (prompt.isEmpty) prompt = null;
         }
-        await copilotProvider.createSession(
+        final session = await copilotProvider.createSession(
           repo?.path ?? worktreePath,
           worktreePath,
           worktreeName,
           prompt: prompt,
         );
+        copilotSessionId = session.id;
       }
 
       // Launch selected run commands in the new worktree
@@ -236,7 +261,18 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         }
       }
 
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(
+          context,
+          worktreePath != null
+              ? AddWorktreeResult(
+                  worktreePath: worktreePath,
+                  branch: newBranch.isNotEmpty ? newBranch : null,
+                  copilotSessionId: copilotSessionId,
+                )
+              : null,
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
