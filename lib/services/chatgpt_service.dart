@@ -143,7 +143,9 @@ class ChatGptService {
           );
         }
 
-        _log('Tool call completed name=${toolCall.name} summary=${toolResult.summary}');
+        _log(
+          'Tool call completed name=${toolCall.name} summary=${toolResult.summary}',
+        );
         toolSummaries.add(toolResult.summary);
         messages.add({
           'role': 'tool',

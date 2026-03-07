@@ -78,6 +78,28 @@ The script replaces the existing `/Applications/tree_launcher.app` bundle with t
 - **Local Storage:** `path_provider` + standard JSON configs
 - **System Shell:** Dart `Process.run` and standard `Platform.environment` bindings
 
+## Codex Skills
+
+TreeLauncher-specific Codex skills live in `tools/skills/`. This repo is the source of truth for those skills; do not hand-edit the installed copies in `$CODEX_HOME/skills`.
+
+Validate checked-in skills with:
+
+```bash
+python3 tools/validate_codex_skills.py
+```
+
+Install all repo-managed skills into `$CODEX_HOME/skills` with:
+
+```bash
+python3 tools/install_codex_skills.py
+```
+
+Install a single skill with:
+
+```bash
+python3 tools/install_codex_skills.py --skill kanban-issue-ops
+```
+
 ## 🎨 Architecture & Code Structure
 
 - `lib/models/`: Data models for Repositories, Worktrees, Settings, and Terminal Sessions.
@@ -86,6 +108,7 @@ The script replaces the existing `/Applications/tree_launcher.app` bundle with t
 - `lib/services/`: Core business logic wrapping Git CLI (`git_service.dart`) and configuration storage (`config_service.dart`).
 - `lib/theme/`: Centralized design system (`app_theme.dart`).
 - `lib/widgets/`: Reusable UI components (Sidebar, Terminal Panel, Dialogs).
+- `tools/skills/`: Repo-managed Codex skills and their bundled scripts.
 
 
 ## 📄 License

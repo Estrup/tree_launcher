@@ -53,10 +53,7 @@ class IssueCopilotLink {
     'created_at': createdAt.toIso8601String(),
   };
 
-  IssueCopilotLink copyWith({
-    String? worktreePath,
-    String? branch,
-  }) {
+  IssueCopilotLink copyWith({String? worktreePath, String? branch}) {
     return IssueCopilotLink(
       id: id,
       issueId: issueId,

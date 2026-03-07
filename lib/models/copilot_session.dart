@@ -26,12 +26,12 @@ class CopilotSession {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'repoPath': repoPath,
-        'workingDirectory': workingDirectory,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'repoPath': repoPath,
+    'workingDirectory': workingDirectory,
+    'createdAt': createdAt.toIso8601String(),
+  };
 
   @override
   bool operator ==(Object other) =>

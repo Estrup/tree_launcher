@@ -11,8 +11,5 @@ class VscodeConfig {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'name': name,
-        'path': path,
-      };
+  Map<String, dynamic> toJson() => {'name': name, 'path': path};
 }

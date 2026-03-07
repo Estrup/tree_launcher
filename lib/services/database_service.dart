@@ -93,8 +93,14 @@ class DatabaseService {
     ''');
 
     // Migration: add columns for existing DBs
-    try { db.execute('ALTER TABLE issue_copilot_sessions ADD COLUMN worktree_path TEXT'); } catch (_) {}
-    try { db.execute('ALTER TABLE issue_copilot_sessions ADD COLUMN branch TEXT'); } catch (_) {}
+    try {
+      db.execute(
+        'ALTER TABLE issue_copilot_sessions ADD COLUMN worktree_path TEXT',
+      );
+    } catch (_) {}
+    try {
+      db.execute('ALTER TABLE issue_copilot_sessions ADD COLUMN branch TEXT');
+    } catch (_) {}
 
     // Indexes for common queries
     db.execute('''

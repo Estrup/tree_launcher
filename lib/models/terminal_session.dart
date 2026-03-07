@@ -75,11 +75,12 @@ class TerminalSession {
     };
 
     // Terminal resize (from TerminalView autoResize) → PTY resize
-    terminal.onResize = (int width, int height, int pixelWidth, int pixelHeight) {
-      if (!_disposed) {
-        pty.resize(height, width);
-      }
-    };
+    terminal.onResize =
+        (int width, int height, int pixelWidth, int pixelHeight) {
+          if (!_disposed) {
+            pty.resize(height, width);
+          }
+        };
 
     pty.exitCode.then((code) {
       if (!_exitCodeCompleter.isCompleted) {
@@ -163,14 +164,18 @@ class TerminalSession {
 
     // SIGINT (Ctrl+C)
     pty.kill(ProcessSignal.sigint);
-    final exited = await pty.exitCode
-        .timeout(const Duration(seconds: 2), onTimeout: () => -1);
+    final exited = await pty.exitCode.timeout(
+      const Duration(seconds: 2),
+      onTimeout: () => -1,
+    );
     if (exited != -1) return;
 
     // SIGTERM
     pty.kill(ProcessSignal.sigterm);
-    final exited2 = await pty.exitCode
-        .timeout(const Duration(seconds: 1), onTimeout: () => -1);
+    final exited2 = await pty.exitCode.timeout(
+      const Duration(seconds: 1),
+      onTimeout: () => -1,
+    );
     if (exited2 != -1) return;
 
     // SIGKILL as last resort
