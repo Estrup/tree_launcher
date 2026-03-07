@@ -139,36 +139,38 @@ class _KanbanColumn extends StatelessWidget {
                   ],
                 ),
               ),
-              ListView.separated(
-                padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: issues.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  return Draggable<Issue>(
-                    data: issues[index],
-                    dragAnchorStrategy: pointerDragAnchorStrategy,
-                    feedback: Material(
-                      color: Colors.transparent,
-                      child: SizedBox(
-                        width: 304,
-                        child: Transform.rotate(
-                          angle: 0.03,
-                          child: Opacity(
-                            opacity: 0.8,
-                            child: _KanbanCard(issue: issues[index]),
+              Flexible(
+                child: ListView.separated(
+                  padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
+                  shrinkWrap: true,
+                  itemCount: issues.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    return Draggable<Issue>(
+                      data: issues[index],
+                      dragAnchorStrategy: pointerDragAnchorStrategy,
+                      feedback: Material(
+                        color: Colors.transparent,
+                        child: SizedBox(
+                          width: 304,
+                          child: Transform.rotate(
+                            angle: 0.03,
+                            child: Opacity(
+                              opacity: 0.8,
+                              child: _KanbanCard(issue: issues[index]),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    childWhenDragging: Opacity(
-                      opacity: 0.3,
+                      childWhenDragging: Opacity(
+                        opacity: 0.3,
+                        child: _KanbanCard(issue: issues[index]),
+                      ),
                       child: _KanbanCard(issue: issues[index]),
-                    ),
-                    child: _KanbanCard(issue: issues[index]),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.all(8.0),
