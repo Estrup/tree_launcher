@@ -28,24 +28,29 @@ class RepoConfig {
     return RepoConfig(
       name: json['name'] as String,
       path: json['path'] as String,
-      vscodeConfigs: (json['vscodeConfigs'] as List<dynamic>?)
+      vscodeConfigs:
+          (json['vscodeConfigs'] as List<dynamic>?)
               ?.map((e) => VscodeConfig.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      customCommands: (json['customCommands'] as List<dynamic>?)
+      customCommands:
+          (json['customCommands'] as List<dynamic>?)
               ?.map((e) => CustomCommand.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       lastBaseBranch: json['lastBaseBranch'] as String?,
-      defaultRunCommands: (json['defaultRunCommands'] as List<dynamic>?)
+      defaultRunCommands:
+          (json['defaultRunCommands'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           [],
-      copilotSessions: (json['copilotSessions'] as List<dynamic>?)
+      copilotSessions:
+          (json['copilotSessions'] as List<dynamic>?)
               ?.map((e) => CopilotSession.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      copilotPrompts: (json['copilotPrompts'] as List<dynamic>?)
+      copilotPrompts:
+          (json['copilotPrompts'] as List<dynamic>?)
               ?.map((e) => CopilotPrompt.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -53,15 +58,15 @@ class RepoConfig {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'path': path,
-        'vscodeConfigs': vscodeConfigs.map((c) => c.toJson()).toList(),
-        'customCommands': customCommands.map((c) => c.toJson()).toList(),
-        'lastBaseBranch': lastBaseBranch,
-        'defaultRunCommands': defaultRunCommands,
-        'copilotSessions': copilotSessions.map((s) => s.toJson()).toList(),
-        'copilotPrompts': copilotPrompts.map((p) => p.toJson()).toList(),
-      };
+    'name': name,
+    'path': path,
+    'vscodeConfigs': vscodeConfigs.map((c) => c.toJson()).toList(),
+    'customCommands': customCommands.map((c) => c.toJson()).toList(),
+    'lastBaseBranch': lastBaseBranch,
+    'defaultRunCommands': defaultRunCommands,
+    'copilotSessions': copilotSessions.map((s) => s.toJson()).toList(),
+    'copilotPrompts': copilotPrompts.map((p) => p.toJson()).toList(),
+  };
 
   @override
   bool operator ==(Object other) =>

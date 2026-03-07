@@ -90,8 +90,7 @@ class WorktreeGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount =
-            (constraints.maxWidth / 340).floor().clamp(1, 4);
+        final crossAxisCount = (constraints.maxWidth / 340).floor().clamp(1, 4);
         return GridView.builder(
           padding: const EdgeInsets.all(20),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -169,10 +168,7 @@ class _EmptyState extends StatelessWidget {
           else
             Text(
               subtitle,
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textMuted,
-              ),
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
             ),
         ],
       ),
@@ -220,8 +216,7 @@ class _RetryButtonState extends State<_RetryButton> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color:
-                      _hovered ? AppColors.textPrimary : AppColors.textMuted,
+                  color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
                 ),
               ),
             ],

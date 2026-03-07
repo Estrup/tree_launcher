@@ -33,7 +33,7 @@ void main() {
 
       await controller.handleShortcut();
 
-      expect(controller.phase, ShortcutOverlayPhase.error);
+      expect(controller.phase, VoiceCommandPhase.error);
       expect(controller.detailLabel, contains('API key'));
     });
 
@@ -60,12 +60,12 @@ void main() {
       });
 
       await controller.handleShortcut();
-      expect(controller.phase, ShortcutOverlayPhase.recording);
+      expect(controller.phase, VoiceCommandPhase.recording);
 
       final submission = controller.handleShortcut();
       await Future<void>.delayed(Duration.zero);
 
-      expect(controller.phase, ShortcutOverlayPhase.routing);
+      expect(controller.phase, VoiceCommandPhase.routing);
       expect(controller.detailLabel, 'open storymap');
       expect(controller.statusLabel, 'Transcript');
 
@@ -77,7 +77,7 @@ void main() {
       );
 
       await submission;
-      expect(controller.phase, ShortcutOverlayPhase.success);
+      expect(controller.phase, VoiceCommandPhase.success);
       expect(controller.detailLabel, 'Selected repository storymap.');
       expect(controller.statusLabel, 'Response');
       expect(controller.transcript, 'open storymap');

@@ -176,8 +176,10 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
           ),
           filled: true,
           fillColor: AppColors.surface0,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
         ),
         onChanged: (value) {
           setState(() {
@@ -223,8 +225,8 @@ class _BranchItemState extends State<_BranchItem> {
           color: widget.isSelected
               ? AppColors.accentMuted
               : _hovered
-                  ? AppColors.surfaceHover
-                  : Colors.transparent,
+              ? AppColors.surfaceHover
+              : Colors.transparent,
           child: Text(
             widget.branch,
             style: TextStyle(

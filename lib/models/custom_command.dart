@@ -21,11 +21,11 @@ class CustomCommand {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'command': command,
-        if (iconName != null) 'iconName': iconName,
-        if (colorHex != null) 'colorHex': colorHex,
-      };
+    'name': name,
+    'command': command,
+    if (iconName != null) 'iconName': iconName,
+    if (colorHex != null) 'colorHex': colorHex,
+  };
 
   CustomCommand copyWith({
     String? name,

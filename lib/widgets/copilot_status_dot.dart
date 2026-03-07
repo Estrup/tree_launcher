@@ -8,11 +8,7 @@ class CopilotStatusDot extends StatefulWidget {
   final CopilotActivityStatus status;
   final double size;
 
-  const CopilotStatusDot({
-    super.key,
-    required this.status,
-    this.size = 8,
-  });
+  const CopilotStatusDot({super.key, required this.status, this.size = 8});
 
   @override
   State<CopilotStatusDot> createState() => _CopilotStatusDotState();
@@ -30,9 +26,10 @@ class _CopilotStatusDotState extends State<CopilotStatusDot>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    _opacity = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _opacity = Tween<double>(
+      begin: 0.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     _syncAnimation();
   }
 

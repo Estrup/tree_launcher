@@ -81,8 +81,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   void _initRunCommandDefaults() {
     final repo = context.read<RepoProvider>().selectedRepo;
     if (repo == null) return;
-    final commandNames =
-        repo.customCommands.map((c) => c.name).toSet();
+    final commandNames = repo.customCommands.map((c) => c.name).toSet();
     final validDefaults = repo.defaultRunCommands
         .where((name) => commandNames.contains(name))
         .toSet();
@@ -236,7 +235,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       }
 
       // Launch selected run commands in the new worktree
-      if (_runCommands && _selectedCommands.isNotEmpty && worktreePath != null) {
+      if (_runCommands &&
+          _selectedCommands.isNotEmpty &&
+          worktreePath != null) {
         final repo = repoProvider.selectedRepo!;
 
         // Persist selected commands as defaults
@@ -537,10 +538,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       actions: [
         TextButton(
           onPressed: _creating ? null : () => Navigator.pop(context),
-          child: Text(
-            'Cancel',
-            style: TextStyle(color: AppColors.textMuted),
-          ),
+          child: Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
         ),
         GestureDetector(
           onTap: _creating ? null : _submit,
@@ -659,16 +657,18 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                       ),
                     ),
                   ),
-                  ...prompts.map((p) => DropdownMenuItem<CopilotPrompt?>(
-                        value: p,
-                        child: Text(
-                          p.name,
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 13,
-                          ),
+                  ...prompts.map(
+                    (p) => DropdownMenuItem<CopilotPrompt?>(
+                      value: p,
+                      child: Text(
+                        p.name,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
                 ],
                 onChanged: _creating
                     ? null
@@ -809,10 +809,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               const SizedBox(width: 6),
               Text(
                 cmd.name,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -870,9 +867,6 @@ class _SpaceToDashFormatter extends TextInputFormatter {
   ) {
     final newText = newValue.text.replaceAll(' ', '-');
     if (newText == newValue.text) return newValue;
-    return newValue.copyWith(
-      text: newText,
-      selection: newValue.selection,
-    );
+    return newValue.copyWith(text: newText, selection: newValue.selection);
   }
 }

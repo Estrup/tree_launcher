@@ -314,23 +314,23 @@ class _OverlayIconButtonState extends State<_OverlayIconButton> {
 
 Widget _buildIndicator(ShortcutOverlayController controller) {
   switch (controller.phase) {
-    case ShortcutOverlayPhase.recording:
+    case VoiceCommandPhase.recording:
       return const _ListeningIndicator();
-    case ShortcutOverlayPhase.trimming:
-    case ShortcutOverlayPhase.transcribing:
-    case ShortcutOverlayPhase.routing:
+    case VoiceCommandPhase.trimming:
+    case VoiceCommandPhase.transcribing:
+    case VoiceCommandPhase.routing:
       return const _BusyIndicator();
-    case ShortcutOverlayPhase.success:
+    case VoiceCommandPhase.success:
       return const _StatusIconIndicator(
         icon: Icons.check_circle_rounded,
         color: Color(0xFF0F8A4B),
       );
-    case ShortcutOverlayPhase.error:
+    case VoiceCommandPhase.error:
       return const _StatusIconIndicator(
         icon: Icons.error_rounded,
         color: Color(0xFFB42318),
       );
-    case ShortcutOverlayPhase.closed:
+    case VoiceCommandPhase.closed:
       return const SizedBox.shrink();
   }
 }

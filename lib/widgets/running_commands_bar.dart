@@ -26,20 +26,23 @@ class RunningCommandsBar extends StatelessWidget {
       if (session.repoPath != repo.path) continue;
 
       // Match to a CustomCommand config for icon/color.
-      final matchIndex =
-          commands.indexWhere((c) => c.command == session.command);
+      final matchIndex = commands.indexWhere(
+        (c) => c.command == session.command,
+      );
       final matched = matchIndex != -1 ? commands[matchIndex] : null;
 
-      entries.add(_RunningEntry(
-        sessionIndex: i,
-        commandName: matched?.name ?? session.title,
-        icon: getCommandIcon(matched?.iconName),
-        color: getCommandColor(
-          matched?.colorHex,
-          matchIndex != -1 ? matchIndex : i,
+      entries.add(
+        _RunningEntry(
+          sessionIndex: i,
+          commandName: matched?.name ?? session.title,
+          icon: getCommandIcon(matched?.iconName),
+          color: getCommandColor(
+            matched?.colorHex,
+            matchIndex != -1 ? matchIndex : i,
+          ),
+          isActive: i == tp.activeIndex && tp.isVisible,
         ),
-        isActive: i == tp.activeIndex && tp.isVisible,
-      ));
+      );
     }
 
     if (entries.isEmpty) return const SizedBox.shrink();
@@ -70,13 +73,15 @@ class RunningCommandsBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          ...entries.map((e) => _CommandIconButton(
-                entry: e,
-                onTap: () {
-                  tp.setActive(e.sessionIndex);
-                  if (!tp.isVisible) tp.toggleVisibility();
-                },
-              )),
+          ...entries.map(
+            (e) => _CommandIconButton(
+              entry: e,
+              onTap: () {
+                tp.setActive(e.sessionIndex);
+                if (!tp.isVisible) tp.toggleVisibility();
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -134,11 +139,14 @@ class _CommandIconButtonState extends State<_CommandIconButton> {
                 color: e.isActive
                     ? e.color.withValues(alpha: 0.2)
                     : (_hovered
-                        ? e.color.withValues(alpha: 0.12)
-                        : Colors.transparent),
+                          ? e.color.withValues(alpha: 0.12)
+                          : Colors.transparent),
                 borderRadius: BorderRadius.circular(6),
                 border: e.isActive
-                    ? Border.all(color: e.color.withValues(alpha: 0.5), width: 1)
+                    ? Border.all(
+                        color: e.color.withValues(alpha: 0.5),
+                        width: 1,
+                      )
                     : null,
               ),
               child: Center(
@@ -148,8 +156,8 @@ class _CommandIconButtonState extends State<_CommandIconButton> {
                   color: e.isActive
                       ? e.color
                       : (_hovered
-                          ? e.color.withValues(alpha: 0.9)
-                          : e.color.withValues(alpha: 0.6)),
+                            ? e.color.withValues(alpha: 0.9)
+                            : e.color.withValues(alpha: 0.6)),
                 ),
               ),
             ),

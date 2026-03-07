@@ -2,10 +2,7 @@ class CopilotPrompt {
   final String name;
   final String prompt;
 
-  CopilotPrompt({
-    required this.name,
-    required this.prompt,
-  });
+  CopilotPrompt({required this.name, required this.prompt});
 
   factory CopilotPrompt.fromJson(Map<String, dynamic> json) {
     return CopilotPrompt(
@@ -14,15 +11,9 @@ class CopilotPrompt {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'name': name,
-        'prompt': prompt,
-      };
+  Map<String, dynamic> toJson() => {'name': name, 'prompt': prompt};
 
-  CopilotPrompt copyWith({
-    String? name,
-    String? prompt,
-  }) {
+  CopilotPrompt copyWith({String? name, String? prompt}) {
     return CopilotPrompt(
       name: name ?? this.name,
       prompt: prompt ?? this.prompt,

@@ -13,8 +13,7 @@ class AddRepoDialog extends StatelessWidget {
     final repoProvider = context.read<RepoProvider>();
     final messenger = ScaffoldMessenger.of(context);
 
-    final String? result =
-        await _channel.invokeMethod<String>('pickDirectory');
+    final String? result = await _channel.invokeMethod<String>('pickDirectory');
 
     if (result == null) return;
 
@@ -32,9 +31,7 @@ class AddRepoDialog extends StatelessWidget {
         SnackBar(content: Text('Added repository: ${result.split('/').last}')),
       );
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 

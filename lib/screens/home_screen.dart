@@ -8,11 +8,8 @@ import '../models/custom_command.dart';
 import '../providers/copilot_provider.dart';
 import '../providers/kanban_provider.dart';
 import '../providers/repo_provider.dart';
-import '../providers/settings_provider.dart';
 import '../providers/terminal_provider.dart';
-import '../services/chatgpt_service.dart';
 import '../services/launcher_service.dart';
-import '../services/microphone_recording_service.dart';
 import '../services/shortcut_overlay_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/repo_sidebar.dart';
@@ -39,41 +36,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   static const double _collapseBreakpoint = 800;
   bool _sidebarOpen = false;
-  late final ShortcutOverlayController _shortcutOverlayController;
-  String? _lastRepoPath;
-
-  @override
-  void initState() {
-    super.initState();
-    _shortcutOverlayController = ShortcutOverlayController(
-      microphoneRecordingService: MicrophoneRecordingService(),
-      chatGptService: ChatGptService(),
-      repoProvider: context.read<RepoProvider>(),
-      settingsProvider: context.read<SettingsProvider>(),
-    );
-  }
-
-  @override
-  void dispose() {
-    _shortcutOverlayController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final repoProvider = context.watch<RepoProvider>();
     final copilotProvider = context.watch<CopilotProvider>();
     final kanbanProvider = context.watch<KanbanProvider>();
+    final shortcutOverlayController = context.read<ShortcutOverlayController>();
     final isCopilotActive = copilotProvider.activeSession != null;
-
-    // Load projects when repo changes
-    final currentRepoPath = repoProvider.selectedRepo?.path;
-    if (currentRepoPath != null && currentRepoPath != _lastRepoPath) {
-      _lastRepoPath = currentRepoPath;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        kanbanProvider.loadProjectsForRepo(currentRepoPath);
-      });
-    }
 
     final projects = kanbanProvider.projects;
     final tabCount = projects.length + 2; // Worktrees + projects + "+"
@@ -87,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         },
         const SingleActivator(LogicalKeyboardKey.keyM, control: true): () {
-          unawaited(_shortcutOverlayController.handleShortcut());
+          unawaited(shortcutOverlayController.handleShortcut());
         },
       },
       child: Focus(
@@ -310,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   // Copilot attention notification
                   const CopilotAttentionSnackbar(),
-                  ShortcutOverlay(controller: _shortcutOverlayController),
+                  ShortcutOverlay(controller: shortcutOverlayController),
                 ],
               );
             },

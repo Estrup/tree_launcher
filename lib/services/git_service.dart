@@ -5,15 +5,16 @@ import '../models/worktree.dart';
 class GitService {
   /// Fetches worktrees for a given repo path using `git worktree list --porcelain`.
   Future<WorktreeListResult> getWorktrees(String repoPath) async {
-    final result = await Process.run(
-      '/usr/bin/git',
-      ['worktree', 'list', '--porcelain'],
-      workingDirectory: repoPath,
-    );
+    final result = await Process.run('/usr/bin/git', [
+      'worktree',
+      'list',
+      '--porcelain',
+    ], workingDirectory: repoPath);
 
     if (result.exitCode != 0) {
       throw Exception(
-          'Failed to list worktrees: ${result.stderr.toString().trim()}');
+        'Failed to list worktrees: ${result.stderr.toString().trim()}',
+      );
     }
 
     return _parsePorcelainOutput(result.stdout as String);
@@ -27,25 +28,26 @@ class GitService {
     if (await gitDir.exists() || await gitFile.exists()) return true;
 
     // Also check if the path itself is a bare repo
-    final result = await Process.run(
-      '/usr/bin/git',
-      ['rev-parse', '--git-dir'],
-      workingDirectory: path,
-    );
+    final result = await Process.run('/usr/bin/git', [
+      'rev-parse',
+      '--git-dir',
+    ], workingDirectory: path);
     return result.exitCode == 0;
   }
 
   /// Lists all branches (local and remote), sorted by most recent commit.
   Future<List<String>> listBranches(String repoPath) async {
-    final result = await Process.run(
-      '/usr/bin/git',
-      ['branch', '-a', '--sort=-committerdate', '--format=%(refname:short)'],
-      workingDirectory: repoPath,
-    );
+    final result = await Process.run('/usr/bin/git', [
+      'branch',
+      '-a',
+      '--sort=-committerdate',
+      '--format=%(refname:short)',
+    ], workingDirectory: repoPath);
 
     if (result.exitCode != 0) {
       throw Exception(
-          'Failed to list branches: ${result.stderr.toString().trim()}');
+        'Failed to list branches: ${result.stderr.toString().trim()}',
+      );
     }
 
     final lines = (result.stdout as String)
@@ -88,11 +90,11 @@ class GitService {
     // Fetch latest changes from origin for the base branch so the worktree
     // is created from the newest remote state.
     if (baseBranch != null && baseBranch.isNotEmpty) {
-      await Process.run(
-        '/usr/bin/git',
-        ['fetch', 'origin', baseBranch],
-        workingDirectory: repoPath,
-      );
+      await Process.run('/usr/bin/git', [
+        'fetch',
+        'origin',
+        baseBranch,
+      ], workingDirectory: repoPath);
     }
 
     final args = <String>['worktree', 'add'];
@@ -128,11 +130,12 @@ class GitService {
 
   /// Removes a worktree from disk and git.
   Future<void> removeWorktree(String repoPath, String worktreePath) async {
-    final result = await Process.run(
-      '/usr/bin/git',
-      ['worktree', 'remove', worktreePath, '--force'],
-      workingDirectory: repoPath,
-    );
+    final result = await Process.run('/usr/bin/git', [
+      'worktree',
+      'remove',
+      worktreePath,
+      '--force',
+    ], workingDirectory: repoPath);
 
     if (result.exitCode != 0) {
       throw Exception(result.stderr.toString().trim());
@@ -189,18 +192,17 @@ class GitService {
       // In bare layouts, no worktree is primary — all are equal peers.
       final isMain = !isBareLayout && worktrees.isEmpty;
 
-      worktrees.add(Worktree(
-        path: worktreePath,
-        branch: branch,
-        name: name,
-        isMain: isMain,
-        commitHash: commitHash,
-      ));
+      worktrees.add(
+        Worktree(
+          path: worktreePath,
+          branch: branch,
+          name: name,
+          isMain: isMain,
+          commitHash: commitHash,
+        ),
+      );
     }
 
-    return WorktreeListResult(
-      worktrees: worktrees,
-      isBareLayout: isBareLayout,
-    );
+    return WorktreeListResult(worktrees: worktrees, isBareLayout: isBareLayout);
   }
 }

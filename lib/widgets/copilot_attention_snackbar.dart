@@ -34,16 +34,14 @@ class _CopilotAttentionSnackbarState extends State<CopilotAttentionSnackbar>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
-    ));
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+        );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
   }
 
   @override
@@ -95,9 +93,9 @@ class _CopilotAttentionSnackbarState extends State<CopilotAttentionSnackbar>
     final candidate = newIds.isEmpty
         ? null
         : needsAction.cast<CopilotSession?>().firstWhere(
-              (s) => newIds.contains(s!.id) && s.id != activeSessionId,
-              orElse: () => null,
-            );
+            (s) => newIds.contains(s!.id) && s.id != activeSessionId,
+            orElse: () => null,
+          );
 
     if (candidate != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -122,16 +120,15 @@ class _CopilotAttentionSnackbarState extends State<CopilotAttentionSnackbar>
               cursor: SystemMouseCursors.click,
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 300),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.surface2,
                   borderRadius: BorderRadius.circular(10),
                   border: Border(
-                    left: BorderSide(
-                      color: const Color(0xFFF59E0B),
-                      width: 3,
-                    ),
+                    left: BorderSide(color: const Color(0xFFF59E0B), width: 3),
                   ),
                   boxShadow: [
                     BoxShadow(

@@ -110,8 +110,7 @@ class _TabBar extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 8),
-          Icon(Icons.terminal_rounded,
-              size: 14, color: AppColors.terminal),
+          Icon(Icons.terminal_rounded, size: 14, color: AppColors.terminal),
           const SizedBox(width: 6),
           Text(
             'TERMINAL',
@@ -199,8 +198,7 @@ class _TabState extends State<_Tab> {
                     : (_hovered ? AppColors.surface2 : Colors.transparent),
                 border: widget.isActive
                     ? Border(
-                        bottom:
-                            BorderSide(color: AppColors.terminal, width: 2),
+                        bottom: BorderSide(color: AppColors.terminal, width: 2),
                       )
                     : null,
               ),
@@ -212,8 +210,9 @@ class _TabState extends State<_Tab> {
                       widget.title,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight:
-                            widget.isActive ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: widget.isActive
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                         color: widget.isActive
                             ? AppColors.textPrimary
                             : AppColors.textMuted,
@@ -358,7 +357,11 @@ class _TerminalBodyState extends State<_TerminalBody> {
         autofocus: true,
         hardwareKeyboardOnly: true,
         onKeyEvent: (node, event) =>
-            terminalShiftEnterHandler(widget.session.terminal as Terminal, node, event) ??
+            terminalShiftEnterHandler(
+              widget.session.terminal as Terminal,
+              node,
+              event,
+            ) ??
             KeyEventResult.ignored,
       ),
     );

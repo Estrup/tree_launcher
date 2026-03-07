@@ -68,7 +68,9 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     if (wt.isMain)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.accentMuted,
                           borderRadius: BorderRadius.circular(4),
@@ -86,149 +88,168 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     if (!wt.isMain) const SizedBox(width: 24),
                   ],
                 ),
-            const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-            // Branch tag
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: () => _copyToClipboard(context, wt.branch, 'Branch'),
-                child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppColors.copilotBg,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: AppColors.copilot.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.call_split_rounded,
-                      size: 12, color: AppColors.copilot),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      wt.branch,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.copilot,
-                        fontFamily: 'monospace',
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-              ),
-            ),
-            SizedBox(height: 10),
-
-            // Commit + path
-            Row(
-              children: [
+                // Branch tag
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
-                    onTap: () => _copyToClipboard(context, wt.commitHash, 'Commit hash'),
+                    onTap: () => _copyToClipboard(context, wt.branch, 'Branch'),
                     child: Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface2,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    wt.commitHash,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () => _copyToClipboard(context, wt.path, 'Path'),
-                      child: Tooltip(
-                    message: wt.path,
-                    child: Text(
-                      wt.path.replaceFirst(RegExp(r'^/Users/[^/]+'), '~'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                        fontFamily: 'monospace',
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
                       ),
-                      overflow: TextOverflow.ellipsis,
+                      decoration: BoxDecoration(
+                        color: AppColors.copilotBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.copilot.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.call_split_rounded,
+                            size: 12,
+                            color: AppColors.copilot,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              wt.branch,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.copilot,
+                                fontFamily: 'monospace',
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+                ),
+                SizedBox(height: 10),
+
+                // Commit + path
+                Row(
+                  children: [
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => _copyToClipboard(
+                          context,
+                          wt.commitHash,
+                          'Commit hash',
+                        ),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface2,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            wt.commitHash,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () =>
+                              _copyToClipboard(context, wt.path, 'Path'),
+                          child: Tooltip(
+                            message: wt.path,
+                            child: Text(
+                              wt.path.replaceFirst(
+                                RegExp(r'^/Users/[^/]+'),
+                                '~',
+                              ),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                                fontFamily: 'monospace',
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                Spacer(),
+
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: _TerminalSplitButton(
+                        worktreePath: wt.path,
+                        worktreeName: wt.name,
+                        launcherService: _launcherService,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.auto_awesome_rounded,
+                        label: 'Copilot',
+                        color: AppColors.copilot,
+                        bgColor: AppColors.copilotBg,
+                        onPressed: () {
+                          if (settings.copilotButtonMode ==
+                              CopilotButtonMode.inApp) {
+                            final repo = context
+                                .read<RepoProvider>()
+                                .selectedRepo;
+                            context.read<CopilotProvider>().createSession(
+                              repo?.path ?? wt.path,
+                              wt.path,
+                              wt.name,
+                            );
+                          } else {
+                            _launcherService.openCopilotCli(wt.path, settings);
+                          }
+                        },
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: _VscodeSplitButton(
+                        worktreePath: wt.path,
+                        launcherService: _launcherService,
+                      ),
+                    ),
+                    if (customCommands.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      _CustomCommandsButton(
+                        worktreePath: wt.path,
+                        worktreeName: wt.name,
+                        commands: customCommands,
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
-
-            Spacer(),
-
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: _TerminalSplitButton(
-                    worktreePath: wt.path,
-                    worktreeName: wt.name,
-                    launcherService: _launcherService,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.auto_awesome_rounded,                    
-                    label: 'Copilot',
-                    color: AppColors.copilot,
-                    bgColor: AppColors.copilotBg,
-                    onPressed: () {
-                      if (settings.copilotButtonMode == CopilotButtonMode.inApp) {
-                        final repo = context.read<RepoProvider>().selectedRepo;
-                        context.read<CopilotProvider>().createSession(
-                          repo?.path ?? wt.path,
-                          wt.path,
-                          wt.name,
-                        );
-                      } else {
-                        _launcherService.openCopilotCli(wt.path, settings);
-                      }
-                    },
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _VscodeSplitButton(
-                    worktreePath: wt.path,
-                    launcherService: _launcherService,
-                  ),
-                ),
-                if (customCommands.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  _CustomCommandsButton(
-                    worktreePath: wt.path,
-                    worktreeName: wt.name,
-                    commands: customCommands,
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
             // Delete icon (upper-right, hover-only, non-primary only)
             if (!wt.isMain && _hovered)
               Positioned(
@@ -285,9 +306,9 @@ class _WorktreeCardState extends State<WorktreeCard> {
         await repoProvider.deleteWorktree(wt);
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
         }
       }
     }
@@ -339,8 +360,7 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
                   onExit: (_) => setState(() => _mainHovered = false),
                   child: GestureDetector(
                     onTap: () {
-                      final repo =
-                          context.read<RepoProvider>().selectedRepo;
+                      final repo = context.read<RepoProvider>().selectedRepo;
                       final tp = context.read<TerminalProvider>();
                       tp.openTerminal(
                         widget.worktreeName,
@@ -356,8 +376,11 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.terminal_rounded,
-                              size: 14, color: AppColors.terminal),
+                          Icon(
+                            Icons.terminal_rounded,
+                            size: 14,
+                            color: AppColors.terminal,
+                          ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -413,13 +436,11 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
   void _showDropdown(BuildContext context) {
     final settings = context.read<SettingsProvider>().settings;
     final RenderBox button = context.findRenderObject() as RenderBox;
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromRect(
       Rect.fromPoints(
         button.localToGlobal(Offset(0, button.size.height)),
-        button.localToGlobal(
-            Offset(button.size.width, button.size.height)),
+        button.localToGlobal(Offset(button.size.width, button.size.height)),
       ),
       Offset.zero & overlay.size,
     );
@@ -439,8 +460,11 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
           height: 36,
           child: Row(
             children: [
-              Icon(Icons.open_in_new_rounded,
-                  size: 13, color: AppColors.terminal),
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 13,
+                color: AppColors.terminal,
+              ),
               SizedBox(width: 8),
               Text(
                 'External Terminal',
@@ -528,8 +552,11 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.code_rounded,
-                              size: 14, color: AppColors.vscode),
+                          Icon(
+                            Icons.code_rounded,
+                            size: 14,
+                            color: AppColors.vscode,
+                          ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -582,16 +609,13 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
     );
   }
 
-  void _showDropdown(
-      BuildContext context, List<dynamic> configs) {
+  void _showDropdown(BuildContext context, List<dynamic> configs) {
     final RenderBox button = context.findRenderObject() as RenderBox;
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromRect(
       Rect.fromPoints(
         button.localToGlobal(Offset(0, button.size.height)),
-        button.localToGlobal(
-            Offset(button.size.width, button.size.height)),
+        button.localToGlobal(Offset(button.size.width, button.size.height)),
       ),
       Offset.zero & overlay.size,
     );
@@ -611,8 +635,7 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
           height: 36,
           child: Row(
             children: [
-              Icon(Icons.code_rounded,
-                  size: 13, color: AppColors.vscode),
+              Icon(Icons.code_rounded, size: 13, color: AppColors.vscode),
               const SizedBox(width: 8),
               Text(
                 config.name as String,
@@ -704,13 +727,11 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
     final repo = context.read<RepoProvider>().selectedRepo;
     final tp = context.read<TerminalProvider>();
     final RenderBox button = context.findRenderObject() as RenderBox;
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromRect(
       Rect.fromPoints(
         button.localToGlobal(Offset(0, button.size.height)),
-        button.localToGlobal(
-            Offset(button.size.width, button.size.height)),
+        button.localToGlobal(Offset(button.size.width, button.size.height)),
       ),
       Offset.zero & overlay.size,
     );
@@ -730,8 +751,11 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
           height: 36,
           child: Row(
             children: [
-              Icon(Icons.play_arrow_rounded,
-                  size: 13, color: AppColors.terminal),
+              Icon(
+                Icons.play_arrow_rounded,
+                size: 13,
+                color: AppColors.terminal,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

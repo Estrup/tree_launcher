@@ -69,7 +69,9 @@ class MicrophoneRecordingService {
       },
       cancelOnError: true,
     );
-    _log('Recording started in PCM stream mode path=$path sampleRate=${_sampleRate}Hz');
+    _log(
+      'Recording started in PCM stream mode path=$path sampleRate=${_sampleRate}Hz',
+    );
   }
 
   Future<String> stopRecordingAndTrim() async {
@@ -87,9 +89,7 @@ class MicrophoneRecordingService {
     if (pcmBytes.isEmpty) {
       throw StateError('Recording finished without returning any audio data.');
     }
-    _log(
-      'PCM capture finished path=$path size=${pcmBytes.length} bytes',
-    );
+    _log('PCM capture finished path=$path size=${pcmBytes.length} bytes');
     await _writePcmAsWav(path: path, pcmBytes: pcmBytes);
     final trimmedPath = await _trimWavSilence(path);
     if (trimmedPath != path) {
@@ -197,7 +197,8 @@ class MicrophoneRecordingService {
       );
     }
     final originalDataLength = dataLength;
-    final alignedDataLength = originalDataLength - (originalDataLength % frameSize);
+    final alignedDataLength =
+        originalDataLength - (originalDataLength % frameSize);
     if (alignedDataLength != originalDataLength) {
       _log(
         'Aligning data chunk length from $originalDataLength to $alignedDataLength for frame scanning.',
@@ -245,7 +246,9 @@ class MicrophoneRecordingService {
     final trimmedDataEnd = dataOffset + ((endFrame + 1) * frameSize);
     final trimmedDataLength = trimmedDataEnd - trimmedDataStart;
     if (trimmedDataLength == dataLength) {
-      _log('Trimming not needed after silence scan; keeping original recording.');
+      _log(
+        'Trimming not needed after silence scan; keeping original recording.',
+      );
       return path;
     }
     final dataChunkEnd = dataOffset + originalDataLength;

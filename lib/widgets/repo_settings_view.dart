@@ -39,9 +39,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
           ),
           child: Row(
             children: [
-              _BackButton(
-                onTap: () => repoProvider.closeSettings(),
-              ),
+              _BackButton(onTap: () => repoProvider.closeSettings()),
               const SizedBox(width: 12),
               Text(
                 repo != null ? repo.name : 'Repository Settings',
@@ -54,8 +52,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
               ),
               const SizedBox(width: 12),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.surface2,
                   borderRadius: BorderRadius.circular(6),
@@ -82,8 +79,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                 decoration: BoxDecoration(
                   color: AppColors.surface0,
                   border: Border(
-                    right:
-                        BorderSide(color: AppColors.borderSubtle, width: 1),
+                    right: BorderSide(color: AppColors.borderSubtle, width: 1),
                   ),
                 ),
                 child: Column(
@@ -104,42 +100,45 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                     _NavItem(
                       icon: Icons.info_outline_rounded,
                       label: 'General',
-                      isSelected:
-                          _selectedSection == _SettingsSection.general,
+                      isSelected: _selectedSection == _SettingsSection.general,
                       onTap: () => setState(
-                          () => _selectedSection = _SettingsSection.general),
+                        () => _selectedSection = _SettingsSection.general,
+                      ),
                     ),
                     _NavItem(
                       icon: Icons.code_rounded,
                       label: 'VS Code Configs',
                       isSelected:
                           _selectedSection == _SettingsSection.vscodeConfigs,
-                      onTap: () => setState(() =>
-                          _selectedSection = _SettingsSection.vscodeConfigs),
+                      onTap: () => setState(
+                        () => _selectedSection = _SettingsSection.vscodeConfigs,
+                      ),
                     ),
                     _NavItem(
                       icon: Icons.terminal_rounded,
                       label: 'Custom Commands',
                       isSelected:
                           _selectedSection == _SettingsSection.customCommands,
-                      onTap: () => setState(() =>
-                          _selectedSection = _SettingsSection.customCommands),
+                      onTap: () => setState(
+                        () =>
+                            _selectedSection = _SettingsSection.customCommands,
+                      ),
                     ),
                     _NavItem(
                       icon: Icons.auto_awesome_rounded,
                       label: 'Copilot Prompts',
                       isSelected:
                           _selectedSection == _SettingsSection.copilotPrompts,
-                      onTap: () => setState(() =>
-                          _selectedSection = _SettingsSection.copilotPrompts),
+                      onTap: () => setState(
+                        () =>
+                            _selectedSection = _SettingsSection.copilotPrompts,
+                      ),
                     ),
                   ],
                 ),
               ),
               // Right content area
-              Expanded(
-                child: _buildContent(context),
-              ),
+              Expanded(child: _buildContent(context)),
             ],
           ),
         ),
@@ -198,8 +197,8 @@ class _NavItemState extends State<_NavItem> {
             color: widget.isSelected
                 ? AppColors.surface2
                 : _hovered
-                    ? AppColors.surface1
-                    : Colors.transparent,
+                ? AppColors.surface1
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -216,8 +215,9 @@ class _NavItemState extends State<_NavItem> {
                 widget.label,
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight:
-                      widget.isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight: widget.isSelected
+                      ? FontWeight.w600
+                      : FontWeight.w500,
                   color: widget.isSelected
                       ? AppColors.textPrimary
                       : AppColors.textSecondary,
@@ -325,10 +325,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
             width: 400,
             child: TextField(
               controller: _nameController,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Repository name',
                 hintStyle: TextStyle(
@@ -521,10 +518,7 @@ class _VscodeConfigsSectionState extends State<_VscodeConfigsSection> {
                   const SizedBox(height: 4),
                   Text(
                     'The VS Code button will open the worktree root by default.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
                 ],
               ),
@@ -611,10 +605,7 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                 ),
                 const SizedBox(height: 6),
                 TextField(
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
                   decoration: InputDecoration(
                     hintText: 'e.g. Frontend',
                     hintStyle: TextStyle(
@@ -636,8 +627,9 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                     ),
                   ),
                   controller: _nameController,
-                  onChanged: (v) =>
-                      widget.onChanged(VscodeConfig(name: v, path: widget.config.path)),
+                  onChanged: (v) => widget.onChanged(
+                    VscodeConfig(name: v, path: widget.config.path),
+                  ),
                 ),
               ],
             ),
@@ -686,8 +678,9 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                     ),
                   ),
                   controller: _pathController,
-                  onChanged: (v) =>
-                      widget.onChanged(VscodeConfig(name: widget.config.name, path: v)),
+                  onChanged: (v) => widget.onChanged(
+                    VscodeConfig(name: widget.config.name, path: v),
+                  ),
                 ),
               ],
             ),
@@ -710,8 +703,7 @@ class _CustomCommandsSection extends StatefulWidget {
   const _CustomCommandsSection();
 
   @override
-  State<_CustomCommandsSection> createState() =>
-      _CustomCommandsSectionState();
+  State<_CustomCommandsSection> createState() => _CustomCommandsSectionState();
 }
 
 class _CustomCommandsSectionState extends State<_CustomCommandsSection> {
@@ -750,14 +742,15 @@ class _CustomCommandsSectionState extends State<_CustomCommandsSection> {
       final repo = provider.selectedRepo;
       if (repo == null) return;
       final cleaned = _commands
-          .where(
-              (c) => c.name.trim().isNotEmpty || c.command.trim().isNotEmpty)
-          .map((c) => CustomCommand(
-                name: c.name.trim(),
-                command: c.command.trim(),
-                iconName: c.iconName,
-                colorHex: c.colorHex,
-              ))
+          .where((c) => c.name.trim().isNotEmpty || c.command.trim().isNotEmpty)
+          .map(
+            (c) => CustomCommand(
+              name: c.name.trim(),
+              command: c.command.trim(),
+              iconName: c.iconName,
+              colorHex: c.colorHex,
+            ),
+          )
           .toList();
       provider.updateRepoCustomCommands(repo, cleaned);
     });
@@ -846,10 +839,7 @@ class _CustomCommandsSectionState extends State<_CustomCommandsSection> {
                   const SizedBox(height: 4),
                   Text(
                     'Add commands to run them directly from worktree cards.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
                 ],
               ),
@@ -912,7 +902,10 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
   @override
   Widget build(BuildContext context) {
     final effectiveIcon = getCommandIcon(widget.command.iconName);
-    final effectiveColor = getCommandColor(widget.command.colorHex, widget.index);
+    final effectiveColor = getCommandColor(
+      widget.command.colorHex,
+      widget.index,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -967,13 +960,11 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
-                            borderSide:
-                                BorderSide(color: AppColors.border),
+                            borderSide: BorderSide(color: AppColors.border),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
-                            borderSide:
-                                BorderSide(color: AppColors.terminal),
+                            borderSide: BorderSide(color: AppColors.terminal),
                           ),
                           filled: true,
                           fillColor: AppColors.surface1,
@@ -1087,12 +1078,10 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
       final repo = provider.selectedRepo;
       if (repo == null) return;
       final cleaned = _prompts
-          .where(
-              (p) => p.name.trim().isNotEmpty || p.prompt.trim().isNotEmpty)
-          .map((p) => CopilotPrompt(
-                name: p.name.trim(),
-                prompt: p.prompt.trim(),
-              ))
+          .where((p) => p.name.trim().isNotEmpty || p.prompt.trim().isNotEmpty)
+          .map(
+            (p) => CopilotPrompt(name: p.name.trim(), prompt: p.prompt.trim()),
+          )
           .toList();
       provider.updateRepoCopilotPrompts(repo, cleaned);
     });
@@ -1181,10 +1170,7 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
                   const SizedBox(height: 4),
                   Text(
                     'Add prompt templates to use when creating worktrees.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
                 ],
               ),
@@ -1556,15 +1542,19 @@ class _IconColorPickerDialogState extends State<_IconColorPickerDialog> {
                       color: color,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color:
-                            isSelected ? AppColors.textPrimary : Colors.transparent,
+                        color: isSelected
+                            ? AppColors.textPrimary
+                            : Colors.transparent,
                         width: 3,
                       ),
                     ),
                     child: isSelected
                         ? const Center(
-                            child: Icon(Icons.check_rounded,
-                                size: 16, color: Colors.white),
+                            child: Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            ),
                           )
                         : null,
                   ),
@@ -1577,10 +1567,7 @@ class _IconColorPickerDialogState extends State<_IconColorPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            'Done',
-            style: TextStyle(color: AppColors.accent),
-          ),
+          child: Text('Done', style: TextStyle(color: AppColors.accent)),
         ),
       ],
     );

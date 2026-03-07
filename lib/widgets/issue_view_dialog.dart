@@ -528,16 +528,24 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
   }
 
   String _generateWorktreeName() {
-    final title = _issue.title.toLowerCase().replaceAll(' ', '-').replaceAll(RegExp(r'[^a-z0-9\-]'), '');
+    final title = _issue.title
+        .toLowerCase()
+        .replaceAll(' ', '-')
+        .replaceAll(RegExp(r'[^a-z0-9\-]'), '');
     final truncated = title.length > 15 ? title.substring(0, 15) : title;
     // Remove trailing dash
-    final cleaned = truncated.endsWith('-') ? truncated.substring(0, truncated.length - 1) : truncated;
+    final cleaned = truncated.endsWith('-')
+        ? truncated.substring(0, truncated.length - 1)
+        : truncated;
     return '$cleaned-${_issue.displayId.toLowerCase()}';
   }
 
   Future<void> _createWorktree() async {
     final generatedName = _generateWorktreeName();
-    final result = await AddWorktreeDialog.show(context, initialName: generatedName);
+    final result = await AddWorktreeDialog.show(
+      context,
+      initialName: generatedName,
+    );
     if (result == null || !mounted) return;
 
     final kanbanProvider = context.read<KanbanProvider>();

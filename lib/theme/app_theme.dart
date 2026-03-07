@@ -369,14 +369,8 @@ class AppTheme {
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        bodyMedium: TextStyle(
-          fontSize: 13,
-          color: AppColors.textSecondary,
-        ),
-        bodySmall: TextStyle(
-          fontSize: 11,
-          color: AppColors.textMuted,
-        ),
+        bodyMedium: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        bodySmall: TextStyle(fontSize: 11, color: AppColors.textMuted),
         labelMedium: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,

@@ -57,9 +57,7 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView> {
     final fontSize = settings.terminalFontSize ?? 13.0;
 
     if (session == null) {
-      return const Center(
-        child: Text('No active copilot session'),
-      );
+      return const Center(child: Text('No active copilot session'));
     }
 
     // Re-check PTY after rebuild (e.g. switching sessions)
@@ -90,44 +88,44 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView> {
       onDragEntered: (_) => setState(() => _isDragging = true),
       onDragExited: (_) => setState(() => _isDragging = false),
       child: Container(
-      color: AppColors.base,
-      padding: const EdgeInsets.all(8),
-      child: Stack(
-        children: [
-          TerminalView(
-            session.terminal,
-            theme: appTerminalTheme,
-            textStyle: TerminalStyle(
-              fontFamily: fontFamily,
-              fontSize: fontSize,
-              height: 1.3,
-              fontFamilyFallback: [fontFamily, 'monospace'],
+        color: AppColors.base,
+        padding: const EdgeInsets.all(8),
+        child: Stack(
+          children: [
+            TerminalView(
+              session.terminal,
+              theme: appTerminalTheme,
+              textStyle: TerminalStyle(
+                fontFamily: fontFamily,
+                fontSize: fontSize,
+                height: 1.3,
+                fontFamilyFallback: [fontFamily, 'monospace'],
+              ),
+              textScaler: TextScaler.noScaling,
+              padding: EdgeInsets.zero,
+              autofocus: true,
+              hardwareKeyboardOnly: true,
+              onKeyEvent: (node, event) =>
+                  terminalShiftEnterHandler(session.terminal, node, event) ??
+                  KeyEventResult.ignored,
             ),
-            textScaler: TextScaler.noScaling,
-            padding: EdgeInsets.zero,
-            autofocus: true,
-            hardwareKeyboardOnly: true,
-            onKeyEvent: (node, event) =>
-                terminalShiftEnterHandler(session.terminal, node, event) ??
-                KeyEventResult.ignored,
-          ),
-          if (_isDragging)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.blueAccent.withValues(alpha: 0.7),
-                      width: 2,
+            if (_isDragging)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.blueAccent.withValues(alpha: 0.7),
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 }
