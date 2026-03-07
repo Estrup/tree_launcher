@@ -236,7 +236,7 @@ class _KanbanCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                issue.id.substring(0, 8),
+                issue.displayId,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,

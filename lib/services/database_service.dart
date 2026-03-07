@@ -54,6 +54,7 @@ class DatabaseService {
         id TEXT PRIMARY KEY,
         repo_path TEXT NOT NULL,
         name TEXT NOT NULL,
+        key TEXT NOT NULL,
         is_archived INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL
       )
@@ -63,6 +64,8 @@ class DatabaseService {
       CREATE TABLE IF NOT EXISTS issues (
         id TEXT PRIMARY KEY,
         project_id TEXT NOT NULL,
+        issue_number INTEGER NOT NULL,
+        project_key TEXT NOT NULL,
         title TEXT NOT NULL,
         description TEXT,
         status TEXT NOT NULL DEFAULT 'todo',
@@ -101,6 +104,24 @@ class DatabaseService {
     db.execute('''
       CREATE INDEX IF NOT EXISTS idx_issue_copilot_sessions_issue_id
       ON issue_copilot_sessions(issue_id)
+    ''');
+
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS issue_comments (
+        id TEXT PRIMARY KEY,
+        issue_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        author_type TEXT NOT NULL DEFAULT 'user',
+        author_name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (issue_id) REFERENCES issues(id)
+      )
+    ''');
+
+    db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_issue_comments_issue_id
+      ON issue_comments(issue_id)
     ''');
   }
 

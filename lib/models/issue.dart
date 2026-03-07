@@ -5,6 +5,12 @@ import '../widgets/kanban_board.dart';
 class Issue {
   final String id;
   final String projectId;
+
+  /// Sequential number within the project (1, 2, 3, ...).
+  final int issueNumber;
+
+  /// The project key prefix, e.g. "PRO". Stored for display convenience.
+  final String projectKey;
   final String title;
   final String? description;
   final KanbanColumnStatus status;
@@ -19,6 +25,8 @@ class Issue {
   const Issue({
     required this.id,
     required this.projectId,
+    required this.issueNumber,
+    required this.projectKey,
     required this.title,
     this.description,
     this.status = KanbanColumnStatus.todo,
@@ -31,8 +39,14 @@ class Issue {
     required this.updatedAt,
   });
 
+  /// Display ID like "PRO-001".
+  String get displayId =>
+      '$projectKey-${issueNumber.toString().padLeft(3, '0')}';
+
   factory Issue.create({
     required String projectId,
+    required int issueNumber,
+    required String projectKey,
     required String title,
     String? description,
   }) {
@@ -40,6 +54,8 @@ class Issue {
     return Issue(
       id: const Uuid().v4(),
       projectId: projectId,
+      issueNumber: issueNumber,
+      projectKey: projectKey,
       title: title,
       description: description,
       createdAt: now,
@@ -51,6 +67,8 @@ class Issue {
     return Issue(
       id: map['id'] as String,
       projectId: map['project_id'] as String,
+      issueNumber: map['issue_number'] as int,
+      projectKey: map['project_key'] as String,
       title: map['title'] as String,
       description: map['description'] as String?,
       status: _statusFromString(map['status'] as String),
@@ -69,6 +87,8 @@ class Issue {
   Map<String, dynamic> toMap() => {
     'id': id,
     'project_id': projectId,
+    'issue_number': issueNumber,
+    'project_key': projectKey,
     'title': title,
     'description': description,
     'status': status.name,
@@ -95,6 +115,8 @@ class Issue {
     return Issue(
       id: id,
       projectId: projectId,
+      issueNumber: issueNumber,
+      projectKey: projectKey,
       title: title ?? this.title,
       description: description ?? this.description,
       status: status ?? this.status,

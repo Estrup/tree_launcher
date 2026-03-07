@@ -11,17 +11,18 @@ class ProjectRepository {
   ProjectRepository.withDb(this._db);
 
   /// Creates a new project and returns it.
-  Project createProject(String repoPath, String name) {
-    final project = Project.create(repoPath: repoPath, name: name);
+  Project createProject(String repoPath, String name, String key) {
+    final project = Project.create(repoPath: repoPath, name: name, key: key);
     final map = project.toMap();
 
     _db.execute(
-      'INSERT INTO projects (id, repo_path, name, is_archived, created_at) '
-      'VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO projects (id, repo_path, name, key, is_archived, created_at) '
+      'VALUES (?, ?, ?, ?, ?, ?)',
       [
         map['id'],
         map['repo_path'],
         map['name'],
+        map['key'],
         map['is_archived'],
         map['created_at'],
       ],

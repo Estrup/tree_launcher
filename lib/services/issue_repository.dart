@@ -11,21 +11,37 @@ class IssueRepository {
   /// For testing with a custom database.
   IssueRepository.withDb(this._db);
 
-  /// Creates a new issue and returns it.
-  Issue createIssue(String projectId, String title, {String? description}) {
+  /// Creates a new issue with auto-incremented issue number and returns it.
+  Issue createIssue(
+    String projectId,
+    String projectKey,
+    String title, {
+    String? description,
+  }) {
+    // Get next issue number for this project (including archived issues)
+    final maxResult = _db.select(
+      'SELECT COALESCE(MAX(issue_number), 0) as max_num FROM issues WHERE project_id = ?',
+      [projectId],
+    );
+    final nextNumber = (maxResult.first['max_num'] as int) + 1;
+
     final issue = Issue.create(
       projectId: projectId,
+      issueNumber: nextNumber,
+      projectKey: projectKey,
       title: title,
       description: description,
     );
     final map = issue.toMap();
 
     _db.execute(
-      'INSERT INTO issues (id, project_id, title, description, status, tags, branch, worktree_path, is_archived, sort_order, created_at, updated_at) '
-      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO issues (id, project_id, issue_number, project_key, title, description, status, tags, branch, worktree_path, is_archived, sort_order, created_at, updated_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         map['id'],
         map['project_id'],
+        map['issue_number'],
+        map['project_key'],
         map['title'],
         map['description'],
         map['status'],

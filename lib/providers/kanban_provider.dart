@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
+import '../models/comment.dart';
 import '../models/issue.dart';
 import '../models/issue_copilot_link.dart';
 import '../models/project.dart';
+import '../services/comment_repository.dart';
 import '../services/issue_copilot_repository.dart';
 import '../services/issue_repository.dart';
 import '../services/project_repository.dart';
@@ -11,6 +13,7 @@ class KanbanProvider extends ChangeNotifier {
   final ProjectRepository _projectRepo;
   final IssueRepository _issueRepo;
   final IssueCopilotRepository _copilotRepo;
+  final CommentRepository _commentRepo;
 
   List<Project> _projects = [];
   // projectId -> list of issues
@@ -20,9 +23,11 @@ class KanbanProvider extends ChangeNotifier {
     ProjectRepository? projectRepo,
     IssueRepository? issueRepo,
     IssueCopilotRepository? copilotRepo,
+    CommentRepository? commentRepo,
   }) : _projectRepo = projectRepo ?? ProjectRepository(),
        _issueRepo = issueRepo ?? IssueRepository(),
-       _copilotRepo = copilotRepo ?? IssueCopilotRepository();
+       _copilotRepo = copilotRepo ?? IssueCopilotRepository(),
+       _commentRepo = commentRepo ?? CommentRepository();
 
   // ---------------------------------------------------------------------------
   // Getters
@@ -57,8 +62,8 @@ class KanbanProvider extends ChangeNotifier {
   }
 
   /// Creates a new project and refreshes the list.
-  Project createProject(String repoPath, String name) {
-    final project = _projectRepo.createProject(repoPath, name);
+  Project createProject(String repoPath, String name, String key) {
+    final project = _projectRepo.createProject(repoPath, name, key);
     _projects.add(project);
     _issuesByProject[project.id] = [];
     notifyListeners();
@@ -79,8 +84,11 @@ class KanbanProvider extends ChangeNotifier {
 
   /// Creates a new issue in the given project.
   Issue createIssue(String projectId, String title, {String? description}) {
+    // Look up the project key
+    final project = _projects.firstWhere((p) => p.id == projectId);
     final issue = _issueRepo.createIssue(
       projectId,
+      project.key,
       title,
       description: description,
     );
@@ -151,5 +159,43 @@ class KanbanProvider extends ChangeNotifier {
   /// Gets all copilot session links for an issue.
   List<IssueCopilotLink> getLinkedSessions(String issueId) {
     return _copilotRepo.getLinksForIssue(issueId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Comments
+  // ---------------------------------------------------------------------------
+
+  /// Adds a comment to an issue.
+  Comment addComment({
+    required String issueId,
+    required String content,
+    required CommentAuthorType authorType,
+    required String authorName,
+  }) {
+    final comment = _commentRepo.createComment(
+      issueId: issueId,
+      content: content,
+      authorType: authorType,
+      authorName: authorName,
+    );
+    notifyListeners();
+    return comment;
+  }
+
+  /// Updates a comment's content.
+  void updateComment(String commentId, String newContent) {
+    _commentRepo.updateComment(commentId, newContent);
+    notifyListeners();
+  }
+
+  /// Deletes a comment.
+  void deleteComment(String commentId) {
+    _commentRepo.deleteComment(commentId);
+    notifyListeners();
+  }
+
+  /// Gets all comments for an issue.
+  List<Comment> getComments(String issueId) {
+    return _commentRepo.getCommentsForIssue(issueId);
   }
 }

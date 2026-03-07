@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/kanban_provider.dart';
 import '../theme/app_theme.dart';
@@ -20,8 +21,10 @@ class CreateProjectDialog extends StatefulWidget {
 }
 
 class _CreateProjectDialogState extends State<CreateProjectDialog> {
-  final _controller = TextEditingController();
+  final _nameController = TextEditingController();
+  final _keyController = TextEditingController();
   final _focusNode = FocusNode();
+  bool _keyManuallyEdited = false;
 
   @override
   void initState() {
@@ -29,20 +32,39 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
+    _nameController.addListener(_autoGenerateKey);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _nameController.dispose();
+    _keyController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  void _create() {
-    final name = _controller.text.trim();
-    if (name.isEmpty) return;
+  /// Auto-generate a 3-letter key from the project name unless the user
+  /// has manually edited the key field.
+  void _autoGenerateKey() {
+    if (_keyManuallyEdited) return;
+    final name = _nameController.text.trim().toUpperCase();
+    final key = name.length <= 3
+        ? name.replaceAll(RegExp(r'[^A-Z]'), '')
+        : name
+              .split(RegExp(r'\s+'))
+              .where((w) => w.isNotEmpty)
+              .map((w) => w[0])
+              .take(3)
+              .join();
+    _keyController.text = key.padRight(0).substring(0, key.length.clamp(0, 3));
+  }
 
-    context.read<KanbanProvider>().createProject(widget.repoPath, name);
+  void _create() {
+    final name = _nameController.text.trim();
+    final key = _keyController.text.trim().toUpperCase();
+    if (name.isEmpty || key.isEmpty || key.length > 3) return;
+
+    context.read<KanbanProvider>().createProject(widget.repoPath, name, key);
     Navigator.of(context).pop(true);
   }
 
@@ -69,7 +91,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _controller,
+              controller: _nameController,
               focusNode: _focusNode,
               style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: InputDecoration(
@@ -94,6 +116,50 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                   vertical: 12,
                 ),
               ),
+              onSubmitted: (_) => _create(),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _keyController,
+              maxLength: 3,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
+                LengthLimitingTextInputFormatter(3),
+              ],
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 2,
+              ),
+              decoration: InputDecoration(
+                hintText: 'KEY',
+                hintStyle: TextStyle(color: AppColors.textMuted),
+                labelText: 'Project key (max 3 letters)',
+                labelStyle: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                filled: true,
+                fillColor: AppColors.surface1,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.borderSubtle),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.borderSubtle),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.accent),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+              ),
+              onChanged: (_) {
+                _keyManuallyEdited = true;
+              },
               onSubmitted: (_) => _create(),
             ),
             const SizedBox(height: 20),
