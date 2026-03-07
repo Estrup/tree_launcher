@@ -16,6 +16,7 @@ import '../services/shortcut_overlay_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/repo_sidebar.dart';
 import '../widgets/worktree_grid.dart';
+import '../widgets/kanban_board.dart';
 import '../widgets/repo_settings_view.dart';
 import '../widgets/terminal_panel.dart';
 import '../widgets/running_commands_bar.dart';
@@ -113,7 +114,63 @@ class _HomeScreenState extends State<HomeScreen> {
                             if (isCopilotActive)
                               const Expanded(child: CopilotTerminalView())
                             else ...[
-                              Expanded(child: const WorktreeGrid()),
+                              Expanded(
+                                child: DefaultTabController(
+                                  length: 3,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                        ),
+                                        child: Theme(
+                                          data: Theme.of(context).copyWith(
+                                            dividerColor: Colors.transparent,
+                                          ),
+                                          child: TabBar(
+                                            isScrollable: true,
+                                            tabAlignment: TabAlignment.start,
+                                            indicatorColor: AppColors.accent,
+                                            indicatorWeight: 3,
+                                            labelColor: AppColors.textPrimary,
+                                            unselectedLabelColor:
+                                                AppColors.textMuted,
+                                            labelStyle: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            tabs: const [
+                                              Tab(text: "Worktrees"),
+                                              Tab(text: "Project 1"),
+                                              Tab(
+                                                icon: Icon(Icons.add, size: 20),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: TabBarView(
+                                          children: [
+                                            const WorktreeGrid(),
+                                            const KanbanBoard(),
+                                            Center(
+                                              child: Text(
+                                                "Create a new project",
+                                                style: TextStyle(
+                                                  color: AppColors.textMuted,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                               const RunningCommandsBar(),
                               const TerminalPanel(),
                             ],
