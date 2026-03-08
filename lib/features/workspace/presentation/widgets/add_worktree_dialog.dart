@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
@@ -320,11 +321,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                 controller: _nameController,
                 autofocus: true,
                 enabled: !_creating,
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                  fontFamily: 'monospace',
-                ),
+                style: appFormFieldTextStyle(context, monospace: true),
                 inputFormatters: [
                   _SpaceToDashFormatter(),
                   FilteringTextInputFormatter.deny(
@@ -333,6 +330,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                   ),
                 ],
                 decoration: _inputDecoration(
+                  context: context,
                   hint: 'e.g. feature-auth',
                   hasError: hasError,
                 ),
@@ -358,13 +356,10 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               TextField(
                 controller: _jiraController,
                 enabled: !_creating,
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                  fontFamily: 'monospace',
-                ),
+                style: appFormFieldTextStyle(context, monospace: true),
                 textCapitalization: TextCapitalization.characters,
                 decoration: _inputDecoration(
+                  context: context,
                   hint: 'e.g. AU2-0001',
                   hasError: jiraError != null,
                 ),
@@ -496,12 +491,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                 TextField(
                   controller: _newBranchController,
                   enabled: !_creating,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                    fontFamily: 'monospace',
-                  ),
+                  style: appFormFieldTextStyle(context, monospace: true),
                   decoration: _inputDecoration(
+                    context: context,
                     hint: 'Auto-filled from worktree name',
                     hasError: false,
                   ),
@@ -624,15 +616,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           const SizedBox(height: 12),
           _sectionLabel('COPILOT PROMPT (OPTIONAL)'),
           const SizedBox(height: 8),
-          DropdownButtonFormField<CopilotPrompt?>(
+          AppDropdownField<CopilotPrompt?>(
             initialValue: _selectedPrompt,
-            isExpanded: true,
-            dropdownColor: AppColors.surface1,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 14,
-              fontFamily: 'monospace',
-            ),
+            style: appFormFieldTextStyle(context, monospace: true),
             icon: Icon(
               Icons.expand_more_rounded,
               color: AppColors.textMuted,
@@ -643,7 +629,10 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                 value: null,
                 child: Text(
                   'None',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  style: appFormFieldTextStyle(
+                    context,
+                    monospace: true,
+                  ).copyWith(color: AppColors.textMuted),
                 ),
               ),
               ...prompts.map(
@@ -651,10 +640,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                   value: p,
                   child: Text(
                     p.name,
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                    ),
+                    style: appFormFieldTextStyle(context, monospace: true),
                   ),
                 ),
               ),
@@ -818,27 +804,30 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   }
 
   InputDecoration _inputDecoration({
+    required BuildContext context,
     required String hint,
     required bool hasError,
   }) {
-    return InputDecoration(
+    final decoration = InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(
-        color: AppColors.textMuted.withValues(alpha: 0.4),
-        fontFamily: 'monospace',
+      hintStyle: appFormFieldHintStyle(context, monospace: true),
+    );
+    if (!hasError) return decoration;
+
+    OutlineInputBorder? withErrorBorder(InputBorder? border) {
+      if (border is! OutlineInputBorder) return null;
+      return border.copyWith(borderSide: BorderSide(color: AppColors.error));
+    }
+
+    final theme = Theme.of(context).inputDecorationTheme;
+    return decoration.copyWith(
+      border: withErrorBorder(theme.border),
+      enabledBorder: withErrorBorder(theme.enabledBorder ?? theme.border),
+      focusedBorder: withErrorBorder(theme.focusedBorder ?? theme.border),
+      errorBorder: withErrorBorder(theme.errorBorder ?? theme.border),
+      focusedErrorBorder: withErrorBorder(
+        theme.focusedErrorBorder ?? theme.focusedBorder ?? theme.border,
       ),
-      enabledBorder: hasError
-          ? OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: AppColors.error),
-            )
-          : null,
-      focusedBorder: hasError
-          ? OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: AppColors.error),
-            )
-          : null,
     );
   }
 }

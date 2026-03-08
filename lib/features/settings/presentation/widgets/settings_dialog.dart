@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/copilot/data/sound_service.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
@@ -470,18 +471,11 @@ class _TerminalsSectionState extends State<_TerminalsSection> {
           if (settings.terminalApp == TerminalApp.custom) ...[
             const SizedBox(height: 16),
             TextField(
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                fontFamily: 'monospace',
-              ),
+              style: appFormFieldTextStyle(context, monospace: true),
               decoration: InputDecoration(
                 labelText: 'Command path',
-                labelStyle: TextStyle(color: AppColors.textMuted),
                 hintText: 'shortcuts run "My Shortcut" --input-path "{path}"',
-                hintStyle: TextStyle(
-                  color: AppColors.textMuted.withValues(alpha: 0.5),
-                ),
+                hintStyle: appFormFieldHintStyle(context, monospace: true),
               ),
               controller: _customTerminalController,
               onChanged: (value) => settingsProvider
@@ -752,16 +746,10 @@ class _CopilotSectionState extends State<_CopilotSection> {
           ),
           const SizedBox(height: 8),
           TextField(
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontFamily: 'monospace',
-            ),
+            style: appFormFieldTextStyle(context, monospace: true),
             decoration: InputDecoration(
               hintText: 'e.g. feature, fix, username',
-              hintStyle: TextStyle(
-                color: AppColors.textMuted.withValues(alpha: 0.5),
-              ),
+              hintStyle: appFormFieldHintStyle(context, monospace: true),
             ),
             controller: _branchPrefixController,
             onChanged: (value) => settingsProvider.updateDefaultBranchPrefix(
@@ -879,16 +867,10 @@ class _AiAssistantSectionState extends State<_AiAssistantSection> {
             obscureText: true,
             enableSuggestions: false,
             autocorrect: false,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontFamily: 'monospace',
-            ),
+            style: appFormFieldTextStyle(context, monospace: true),
             decoration: InputDecoration(
               hintText: 'sk-...',
-              hintStyle: TextStyle(
-                color: AppColors.textMuted.withValues(alpha: 0.5),
-              ),
+              hintStyle: appFormFieldHintStyle(context, monospace: true),
             ),
             onChanged: (value) => settingsProvider.updateOpenAiApiKey(value),
           ),
@@ -913,16 +895,10 @@ class _AiAssistantSectionState extends State<_AiAssistantSection> {
           const SizedBox(height: 8),
           TextField(
             controller: _openAiTranscriptionModelController,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontFamily: 'monospace',
-            ),
+            style: appFormFieldTextStyle(context, monospace: true),
             decoration: InputDecoration(
               hintText: 'e.g. whisper-1',
-              hintStyle: TextStyle(
-                color: AppColors.textMuted.withValues(alpha: 0.5),
-              ),
+              hintStyle: appFormFieldHintStyle(context, monospace: true),
             ),
             onChanged: (value) {
               if (value.trim().isNotEmpty) {
@@ -943,16 +919,10 @@ class _AiAssistantSectionState extends State<_AiAssistantSection> {
           const SizedBox(height: 8),
           TextField(
             controller: _openAiResponseModelController,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontFamily: 'monospace',
-            ),
+            style: appFormFieldTextStyle(context, monospace: true),
             decoration: InputDecoration(
               hintText: 'e.g. gpt-4o',
-              hintStyle: TextStyle(
-                color: AppColors.textMuted.withValues(alpha: 0.5),
-              ),
+              hintStyle: appFormFieldHintStyle(context, monospace: true),
             ),
             onChanged: (value) {
               if (value.trim().isNotEmpty) {
@@ -1340,12 +1310,8 @@ class _DropdownField<T> extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        DropdownButtonFormField<T>(
+        AppDropdownField<T>(
           initialValue: value,
-          isExpanded: true,
-          dropdownColor: AppColors.surface1,
-          style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
-          icon: Icon(Icons.expand_more, size: 16, color: AppColors.textMuted),
           items: items,
           onChanged: onChanged,
         ),

@@ -514,15 +514,23 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
       children: [
         Icon(icon, size: 16, color: AppColors.textMuted),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+        Expanded(
+          child: Text(
+            title,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
-        if (trailing != null) ...[const Spacer(), trailing],
+        if (trailing != null) ...[
+          const SizedBox(width: 12),
+          Flexible(
+            child: Align(alignment: Alignment.centerRight, child: trailing),
+          ),
+        ],
       ],
     );
   }
