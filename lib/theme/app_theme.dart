@@ -389,7 +389,7 @@ class AppTheme {
         fillColor: AppColors.surface0,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
-          vertical: 12,
+          vertical: 14,
         ),
         isDense: true,
         border: OutlineInputBorder(
