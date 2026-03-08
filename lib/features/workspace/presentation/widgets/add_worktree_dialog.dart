@@ -624,57 +624,44 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           const SizedBox(height: 12),
           _sectionLabel('COPILOT PROMPT (OPTIONAL)'),
           const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface0,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
+          DropdownButtonFormField<CopilotPrompt?>(
+            initialValue: _selectedPrompt,
+            isExpanded: true,
+            dropdownColor: AppColors.surface1,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontFamily: 'monospace',
             ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<CopilotPrompt?>(
-                value: _selectedPrompt,
-                isExpanded: true,
-                dropdownColor: AppColors.surface1,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                  fontFamily: 'monospace',
+            icon: Icon(
+              Icons.expand_more_rounded,
+              color: AppColors.textMuted,
+              size: 18,
+            ),
+            items: [
+              DropdownMenuItem<CopilotPrompt?>(
+                value: null,
+                child: Text(
+                  'None',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
-                icon: Icon(
-                  Icons.expand_more_rounded,
-                  color: AppColors.textMuted,
-                  size: 18,
-                ),
-                items: [
-                  DropdownMenuItem<CopilotPrompt?>(
-                    value: null,
-                    child: Text(
-                      'None',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  ...prompts.map(
-                    (p) => DropdownMenuItem<CopilotPrompt?>(
-                      value: p,
-                      child: Text(
-                        p.name,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-                onChanged: _creating
-                    ? null
-                    : (value) => setState(() => _selectedPrompt = value),
               ),
-            ),
+              ...prompts.map(
+                (p) => DropdownMenuItem<CopilotPrompt?>(
+                  value: p,
+                  child: Text(
+                    p.name,
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            onChanged: _creating
+                ? null
+                : (value) => setState(() => _selectedPrompt = value),
           ),
           if (_selectedPrompt != null) ...[
             const SizedBox(height: 6),

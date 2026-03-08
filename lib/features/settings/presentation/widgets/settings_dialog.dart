@@ -706,8 +706,9 @@ class _CopilotSectionState extends State<_CopilotSection> {
                           )
                           .toList(),
                       onChanged: (value) {
-                        if (value != null)
+                        if (value != null) {
                           settingsProvider.updateCopilotAttentionSound(value);
+                        }
                       },
                     ),
                   ),
@@ -924,8 +925,9 @@ class _AiAssistantSectionState extends State<_AiAssistantSection> {
               ),
             ),
             onChanged: (value) {
-              if (value.trim().isNotEmpty)
+              if (value.trim().isNotEmpty) {
                 settingsProvider.updateOpenAiTranscriptionModel(value.trim());
+              }
             },
           ),
           const SizedBox(height: 24),
@@ -953,8 +955,9 @@ class _AiAssistantSectionState extends State<_AiAssistantSection> {
               ),
             ),
             onChanged: (value) {
-              if (value.trim().isNotEmpty)
+              if (value.trim().isNotEmpty) {
                 settingsProvider.updateOpenAiResponseModel(value.trim());
+              }
             },
           ),
         ],
@@ -1079,8 +1082,9 @@ class _RemoteControlSectionState extends State<_RemoteControlSection> {
                       ),
                     ],
                     onChanged: (v) {
-                      if (v != null)
+                      if (v != null) {
                         settingsProvider.updateRemoteControlBindAddress(v);
+                      }
                     },
                   ),
                 ),
@@ -1107,12 +1111,6 @@ class _RemoteControlSectionState extends State<_RemoteControlSection> {
                           fontFamily: 'monospace',
                         ),
                         keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 10,
-                          ),
-                        ),
                         onChanged: (value) {
                           final parsed = int.tryParse(value);
                           if (parsed != null && parsed > 0 && parsed < 65536) {
@@ -1342,28 +1340,14 @@ class _DropdownField<T> extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-          decoration: BoxDecoration(
-            color: AppColors.surface0,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<T>(
-              value: value,
-              isExpanded: true,
-              dropdownColor: AppColors.surface1,
-              style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
-              icon: Icon(
-                Icons.expand_more,
-                size: 16,
-                color: AppColors.textMuted,
-              ),
-              items: items,
-              onChanged: onChanged,
-            ),
-          ),
+        DropdownButtonFormField<T>(
+          initialValue: value,
+          isExpanded: true,
+          dropdownColor: AppColors.surface1,
+          style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+          icon: Icon(Icons.expand_more, size: 16, color: AppColors.textMuted),
+          items: items,
+          onChanged: onChanged,
         ),
       ],
     );
