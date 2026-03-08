@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/providers/kanban_provider.dart';
 
@@ -78,57 +79,17 @@ class _CreateIssueDialogState extends State<CreateIssueDialog> {
             TextField(
               controller: _titleController,
               focusNode: _focusNode,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Issue title',
-                hintStyle: TextStyle(color: AppColors.textMuted),
-                filled: true,
-                fillColor: AppColors.surface1,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.accent),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-              ),
+              style: appFormFieldTextStyle(context),
+              decoration: const InputDecoration(hintText: 'Issue title'),
               onSubmitted: (_) => _create(),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _descController,
               maxLines: 4,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              decoration: InputDecoration(
+              style: appFormFieldTextStyle(context),
+              decoration: const InputDecoration(
                 hintText: 'Description (optional)',
-                hintStyle: TextStyle(color: AppColors.textMuted),
-                filled: true,
-                fillColor: AppColors.surface1,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.accent),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
               ),
             ),
             const SizedBox(height: 20),

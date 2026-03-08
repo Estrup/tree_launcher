@@ -92,7 +92,7 @@ class WorktreeGrid extends StatelessWidget {
       builder: (context, constraints) {
         final crossAxisCount = (constraints.maxWidth / 340).floor().clamp(1, 4);
         return GridView.builder(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             mainAxisExtent: 200,
@@ -138,7 +138,7 @@ class _EmptyState extends StatelessWidget {
             ),
             child: Icon(icon, size: 24, color: AppColors.textMuted),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 0),
           Text(
             title,
             style: TextStyle(

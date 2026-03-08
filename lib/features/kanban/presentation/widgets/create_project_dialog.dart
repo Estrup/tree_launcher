@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/providers/kanban_provider.dart';
 
@@ -93,29 +94,8 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
             TextField(
               controller: _nameController,
               focusNode: _focusNode,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Project name',
-                hintStyle: TextStyle(color: AppColors.textMuted),
-                filled: true,
-                fillColor: AppColors.surface1,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.accent),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-              ),
+              style: appFormFieldTextStyle(context),
+              decoration: const InputDecoration(hintText: 'Project name'),
               onSubmitted: (_) => _create(),
             ),
             const SizedBox(height: 12),
@@ -128,34 +108,12 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                 LengthLimitingTextInputFormatter(3),
               ],
               style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 2,
-              ),
-              decoration: InputDecoration(
+              ).merge(appFormFieldTextStyle(context)),
+              decoration: const InputDecoration(
                 hintText: 'KEY',
-                hintStyle: TextStyle(color: AppColors.textMuted),
                 labelText: 'Project key (max 3 letters)',
-                labelStyle: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                filled: true,
-                fillColor: AppColors.surface1,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.accent),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
               ),
               onChanged: (_) {
                 _keyManuallyEdited = true;

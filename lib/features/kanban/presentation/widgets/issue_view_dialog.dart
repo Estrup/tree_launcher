@@ -101,58 +101,78 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
     return Dialog(
       backgroundColor: AppColors.surface0,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.borderSubtle),
+      ),
       clipBehavior: Clip.antiAlias,
-      child: Container(
+      child: SizedBox(
         width: 1100,
         height: 750,
-        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // Top Header Bar (ID + Actions)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface1,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    _issue.displayId,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
+            // Header
+            Container(
+              height: 64,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              decoration: BoxDecoration(
+                color: AppColors.surface0,
+                border: Border(
+                  bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
                 ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.archive_outlined,
-                        color: AppColors.textMuted,
-                        size: 18,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface1,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.borderSubtle),
+                    ),
+                    child: Text(
+                      _issue.displayId,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
                       ),
-                      onPressed: _archiveIssue,
-                      tooltip: 'Archive',
                     ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: Icon(Icons.close, color: AppColors.textMuted),
-                      onPressed: () => Navigator.of(context).pop(),
-                      tooltip: 'Close',
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildTitleArea()),
+                  const SizedBox(width: 16),
+                  IconButton(
+                    icon: Icon(
+                      Icons.archive_outlined,
+                      color: AppColors.textSecondary,
+                      size: 20,
                     ),
-                  ],
-                ),
-              ],
+                    onPressed: _archiveIssue,
+                    tooltip: 'Archive',
+                    splashRadius: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: AppColors.textSecondary,
+                      size: 20,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                    tooltip: 'Close',
+                    splashRadius: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
             // Body Area
             Expanded(
               child: Row(
@@ -161,37 +181,40 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                   // --- LEFT COLUMN ---
                   Expanded(
                     flex: 6,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.only(right: 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildTitleArea(),
-                          const SizedBox(height: 16),
-                          _buildPropertiesRow(),
-                          const SizedBox(height: 32),
-                          _buildDescriptionArea(),
-                        ],
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface0,
+                        border: Border(
+                          right: BorderSide(
+                            color: AppColors.borderSubtle,
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildPropertiesRow(),
+                            const SizedBox(height: 32),
+                            _buildDescriptionArea(),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-
-                  // --- VERTICAL DIVIDER ---
-                  Container(
-                    width: 1,
-                    color: AppColors.borderSubtle,
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
                   ),
 
                   // --- RIGHT COLUMN ---
                   Expanded(
                     flex: 4,
                     child: Container(
-                      padding: const EdgeInsets.only(left: 24),
+                      color: AppColors.surface0,
                       child: Column(
                         children: [
                           Expanded(
                             child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(32),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -202,7 +225,6 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
                           _buildCommentInput(),
                         ],
                       ),
@@ -225,21 +247,16 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(
-          Icons.radio_button_unchecked,
-          color: AppColors.textMuted,
-          size: 24,
-        ),
-        const SizedBox(width: 12),
         Expanded(
           child: _isEditingTitle
               ? TextField(
                   controller: _titleController,
                   autofocus: true,
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
                   ),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
@@ -258,10 +275,13 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
                   child: Text(
                     _currentTitle,
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
+                      letterSpacing: -0.3,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
         ),
@@ -270,14 +290,11 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
   }
 
   Widget _buildPropertiesRow() {
-    return Padding(
-      padding: const EdgeInsets.only(left: 36), // Align with title text
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [_buildStatusBadge(), _buildLabelsBadge()],
-      ),
+    return Wrap(
+      spacing: 16,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [_buildStatusBadge(), _buildLabelsBadge()],
     );
   }
 
@@ -364,7 +381,7 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
         : '*No description provided.*';
 
     return Padding(
-      padding: const EdgeInsets.only(left: 36),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -514,15 +531,23 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
       children: [
         Icon(icon, size: 16, color: AppColors.textMuted),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+        Expanded(
+          child: Text(
+            title,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
-        if (trailing != null) ...[const Spacer(), trailing],
+        if (trailing != null) ...[
+          const SizedBox(width: 12),
+          Flexible(
+            child: Align(alignment: Alignment.centerRight, child: trailing),
+          ),
+        ],
       ],
     );
   }
@@ -896,48 +921,90 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
 
   Widget _buildCommentInput() {
     return Container(
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: AppColors.surface0, // Matches dialog background
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.borderSubtle),
+        color: AppColors.surface0,
+        border: Border(
+          top: BorderSide(color: AppColors.borderSubtle, width: 1),
+        ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            controller: _commentController,
-            maxLines: 4,
-            minLines: 1,
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
-            decoration: InputDecoration(
-              hintText: 'Write a comment...',
-              hintStyle: TextStyle(color: AppColors.textMuted),
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface1,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.borderSubtle),
             ),
-            onSubmitted: (_) => _submitComment(),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              FilledButton(
-                onPressed: _submitComment,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.surface2,
-                  foregroundColor: AppColors.textPrimary,
+            child: Column(
+              children: [
+                TextField(
+                  controller: _commentController,
+                  maxLines: 4,
+                  minLines: 3,
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Add a comment...',
+                    hintStyle: TextStyle(color: AppColors.textMuted),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                ),
+                Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 12,
                     vertical: 8,
                   ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface2,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(7),
+                      bottomRight: Radius.circular(7),
+                    ),
+                    border: Border(
+                      top: BorderSide(color: AppColors.borderSubtle),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Markdown is supported',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      FilledButton(
+                        onPressed: _submitComment,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: AppColors.surface0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        child: const Text(
+                          'Comment',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: const Text('Save', style: TextStyle(fontSize: 12)),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 
 class BranchSearchDropdown extends StatefulWidget {
@@ -20,9 +21,13 @@ class BranchSearchDropdown extends StatefulWidget {
 }
 
 class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
+  static const double _fallbackFieldWidth = 360;
+  static const double _fallbackFieldHeight = 44;
+
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   final _layerLink = LayerLink();
+  final _fieldKey = GlobalKey();
   OverlayEntry? _overlayEntry;
   List<String> _filtered = [];
 
@@ -82,13 +87,22 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
     _overlayEntry = null;
   }
 
+  Size _getFieldSize() {
+    final renderObject = _fieldKey.currentContext?.findRenderObject();
+    if (renderObject is RenderBox && renderObject.hasSize) {
+      return renderObject.size;
+    }
+    return const Size(_fallbackFieldWidth, _fallbackFieldHeight);
+  }
+
   Widget _buildOverlay() {
+    final fieldSize = _getFieldSize();
     return Positioned(
-      width: 360,
+      width: fieldSize.width,
       child: CompositedTransformFollower(
         link: _layerLink,
         showWhenUnlinked: false,
-        offset: const Offset(0, 44),
+        offset: Offset(0, fieldSize.height + 4),
         child: Material(
           color: Colors.transparent,
           child: Container(
@@ -147,38 +161,18 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
     return CompositedTransformTarget(
       link: _layerLink,
       child: TextField(
+        key: _fieldKey,
         controller: _controller,
         focusNode: _focusNode,
         enabled: widget.enabled,
-        style: TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 14,
-          fontFamily: 'monospace',
-        ),
+        style: appFormFieldTextStyle(context, monospace: true),
         decoration: InputDecoration(
           hintText: 'Search branches...',
-          hintStyle: TextStyle(
-            color: AppColors.textMuted.withValues(alpha: 0.4),
-            fontFamily: 'monospace',
-          ),
+          hintStyle: appFormFieldHintStyle(context, monospace: true),
           suffixIcon: Icon(
             Icons.unfold_more_rounded,
             size: 18,
             color: AppColors.textMuted,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppColors.accent),
-          ),
-          filled: true,
-          fillColor: AppColors.surface0,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
           ),
         ),
         onChanged: (value) {

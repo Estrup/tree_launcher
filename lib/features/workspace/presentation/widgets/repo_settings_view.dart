@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
@@ -325,27 +326,8 @@ class _GeneralSectionState extends State<_GeneralSection> {
             width: 400,
             child: TextField(
               controller: _nameController,
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Repository name',
-                hintStyle: TextStyle(
-                  color: AppColors.textMuted.withValues(alpha: 0.5),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.accent),
-                ),
-                filled: true,
-                fillColor: AppColors.surface0,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-              ),
+              style: appFormFieldTextStyle(context),
+              decoration: const InputDecoration(hintText: 'Repository name'),
               onChanged: _onNameChanged,
             ),
           ),
@@ -605,27 +587,8 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                 ),
                 const SizedBox(height: 6),
                 TextField(
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: 'e.g. Frontend',
-                    hintStyle: TextStyle(
-                      color: AppColors.textMuted.withValues(alpha: 0.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: AppColors.vscode),
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface1,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 10,
-                    ),
-                  ),
+                  style: appFormFieldTextStyle(context),
+                  decoration: const InputDecoration(hintText: 'e.g. Frontend'),
                   controller: _nameController,
                   onChanged: (v) => widget.onChanged(
                     VscodeConfig(name: v, path: widget.config.path),
@@ -651,31 +614,10 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                 ),
                 const SizedBox(height: 6),
                 TextField(
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 13,
-                    fontFamily: 'monospace',
-                  ),
+                  style: appFormFieldTextStyle(context, monospace: true),
                   decoration: InputDecoration(
                     hintText: 'Relative path (e.g. frontend/)',
-                    hintStyle: TextStyle(
-                      color: AppColors.textMuted.withValues(alpha: 0.5),
-                      fontFamily: 'monospace',
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: AppColors.vscode),
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface1,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 10,
-                    ),
+                    hintStyle: appFormFieldHintStyle(context, monospace: true),
                   ),
                   controller: _pathController,
                   onChanged: (v) => widget.onChanged(
@@ -949,29 +891,9 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
                     SizedBox(
                       width: 300,
                       child: TextField(
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                        ),
-                        decoration: InputDecoration(
+                        style: appFormFieldTextStyle(context),
+                        decoration: const InputDecoration(
                           hintText: 'e.g. Start Dev Server',
-                          hintStyle: TextStyle(
-                            color: AppColors.textMuted.withValues(alpha: 0.5),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: AppColors.border),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: AppColors.terminal),
-                          ),
-                          filled: true,
-                          fillColor: AppColors.surface1,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 10,
-                          ),
                         ),
                         controller: _nameController,
                         onChanged: (v) =>
@@ -996,32 +918,13 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
           ),
           const SizedBox(height: 6),
           TextField(
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontFamily: 'monospace',
-              height: 1.5,
-            ),
+            style: appFormFieldTextStyle(context, monospace: true, height: 1.5),
             maxLines: 6,
             minLines: 3,
             decoration: InputDecoration(
               hintText:
                   'e.g. dotnet run --project ./src\nor a multi-line script...',
-              hintStyle: TextStyle(
-                color: AppColors.textMuted.withValues(alpha: 0.5),
-                fontFamily: 'monospace',
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: AppColors.terminal),
-              ),
-              filled: true,
-              fillColor: AppColors.surface1,
-              contentPadding: const EdgeInsets.all(12),
+              hintStyle: appFormFieldHintStyle(context, monospace: true),
             ),
             controller: _commandController,
             onChanged: (v) =>
@@ -1259,29 +1162,9 @@ class _CopilotPromptCardState extends State<_CopilotPromptCard> {
                     SizedBox(
                       width: 300,
                       child: TextField(
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                        ),
-                        decoration: InputDecoration(
+                        style: appFormFieldTextStyle(context),
+                        decoration: const InputDecoration(
                           hintText: 'e.g. Analyse Jira Issue',
-                          hintStyle: TextStyle(
-                            color: AppColors.textMuted.withValues(alpha: 0.5),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: AppColors.border),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: AppColors.copilot),
-                          ),
-                          filled: true,
-                          fillColor: AppColors.surface1,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 10,
-                          ),
                         ),
                         controller: _nameController,
                         onChanged: (v) =>
@@ -1306,33 +1189,14 @@ class _CopilotPromptCardState extends State<_CopilotPromptCard> {
           ),
           const SizedBox(height: 6),
           TextField(
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontFamily: 'monospace',
-              height: 1.5,
-            ),
+            style: appFormFieldTextStyle(context, monospace: true, height: 1.5),
             maxLines: 6,
             minLines: 3,
             decoration: InputDecoration(
               hintText:
                   'e.g. Retrieve the jira issue {issue} with comments and files.\n'
                   'Analyse the issue and find a solution.',
-              hintStyle: TextStyle(
-                color: AppColors.textMuted.withValues(alpha: 0.5),
-                fontFamily: 'monospace',
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: AppColors.copilot),
-              ),
-              filled: true,
-              fillColor: AppColors.surface1,
-              contentPadding: const EdgeInsets.all(12),
+              hintStyle: appFormFieldHintStyle(context, monospace: true),
             ),
             controller: _promptController,
             onChanged: (v) =>

@@ -19,7 +19,7 @@ class KanbanBoard extends StatelessWidget {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -272,12 +272,6 @@ class _KanbanCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(
-                    Icons.circle_outlined,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 8),
                   if (issue.tags.isNotEmpty)
                     ...issue.tags.map(
                       (tag) => Padding(
