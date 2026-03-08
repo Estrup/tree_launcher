@@ -99,7 +99,7 @@ class _IssueViewDialogState extends State<IssueViewDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.surface0,
+      backgroundColor: AppColors.base,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       clipBehavior: Clip.antiAlias,
