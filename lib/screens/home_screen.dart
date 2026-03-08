@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final copilotProvider = context.read<CopilotProvider>();
     final kanbanProvider = context.read<KanbanProvider>();
     final projects = kanbanProvider.projects;
-    final sessionsStartIdx = projects.length + 2;
+    final sessionsStartIdx = projects.length + 1;
 
     if (_tabController!.index >= sessionsStartIdx) {
       final sessionIdx = _tabController!.index - sessionsStartIdx;
@@ -67,8 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }
     } else {
-      if (copilotProvider.activeSession != null &&
-          _tabController!.index != projects.length + 1) {
+      if (copilotProvider.activeSession != null) {
         copilotProvider.deselectSession();
       }
     }
@@ -87,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final allSessions = copilotProvider.allSessions
         .where((s) => s.repoPath == repoPath)
         .toList();
-    final tabCount = projects.length + 2 + allSessions.length;
+    final tabCount = projects.length + 1 + allSessions.length;
 
     if (_tabController == null || _lastTabCount != tabCount) {
       final oldIndex = _tabController?.index ?? 0;
@@ -108,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         (s) => s.id == copilotProvider.activeSession!.id,
       );
       if (sessionIndex != -1) {
-        final targetIndex = projects.length + 2 + sessionIndex;
+        final targetIndex = projects.length + 1 + sessionIndex;
         if (_tabController!.index != targetIndex) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && _tabController!.index != targetIndex) {
@@ -118,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }
     } else {
-      if (_tabController!.index >= projects.length + 2) {
+      if (_tabController!.index >= projects.length + 1) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _tabController!.animateTo(0);
         });
@@ -179,119 +178,143 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
+                                    padding: const EdgeInsets.only(
+                                      left: 24,
+                                      right: 24,
+                                      top: 16,
+                                      bottom: 0,
                                     ),
-                                    child: Theme(
-                                      data: Theme.of(context).copyWith(
-                                        dividerColor: Colors.transparent,
-                                      ),
-                                      child: TabBar(
-                                        controller: _tabController,
-                                        isScrollable: true,
-                                        tabAlignment: TabAlignment.start,
-                                        indicatorColor: AppColors.accent,
-                                        indicatorWeight: 3,
-                                        labelColor: AppColors.textPrimary,
-                                        unselectedLabelColor:
-                                            AppColors.textMuted,
-                                        labelStyle: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        onTap: (index) {
-                                          if (index == projects.length + 1) {
-                                            final repoPath =
-                                                repoProvider.selectedRepo?.path;
-                                            if (repoPath != null) {
-                                              CreateProjectDialog.show(
-                                                context,
-                                                repoPath,
-                                              );
-                                            }
-                                            WidgetsBinding.instance
-                                                .addPostFrameCallback((_) {
-                                                  if (mounted &&
-                                                      _tabController != null) {
-                                                    _tabController!.animateTo(
-                                                      _tabController!
-                                                          .previousIndex,
-                                                    );
-                                                  }
-                                                });
-                                          }
-                                        },
-                                        tabs: [
-                                          const Tab(text: "Worktrees"),
-                                          ...projects.map(
-                                            (p) => Tab(
-                                              child: GestureDetector(
-                                                onSecondaryTapUp: (details) {
-                                                  _showProjectContextMenu(
-                                                    context,
-                                                    details.globalPosition,
-                                                    p.id,
-                                                    kanbanProvider,
-                                                  );
-                                                },
-                                                child: Text(p.name),
+                                    child: AnimatedBuilder(
+                                      animation: _tabController!,
+                                      builder: (context, _) {
+                                        final currentIndex =
+                                            _tabController!.index;
+                                        return SingleChildScrollView(
+                                          scrollDirection: Axis.horizontal,
+                                          child: Row(
+                                            children: [
+                                              // Worktrees & Projects Segmented Control
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  4,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.surface0,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    _buildSegmentTab(
+                                                      text: "Worktrees",
+                                                      index: 0,
+                                                      currentIndex:
+                                                          currentIndex,
+                                                      onTap: () =>
+                                                          _tabController!
+                                                              .animateTo(0),
+                                                    ),
+                                                    for (
+                                                      int i = 0;
+                                                      i < projects.length;
+                                                      i++
+                                                    )
+                                                      _buildSegmentTab(
+                                                        text: projects[i].name,
+                                                        index: i + 1,
+                                                        currentIndex:
+                                                            currentIndex,
+                                                        onTap: () =>
+                                                            _tabController!
+                                                                .animateTo(
+                                                                  i + 1,
+                                                                ),
+                                                        onSecondaryTapUp:
+                                                            (
+                                                              details,
+                                                            ) => _showProjectContextMenu(
+                                                              context,
+                                                              details
+                                                                  .globalPosition,
+                                                              projects[i].id,
+                                                              kanbanProvider,
+                                                            ),
+                                                      ),
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                          const Tab(
-                                            icon: Icon(Icons.add, size: 20),
-                                          ),
-                                          ...allSessions.map(
-                                            (s) => Tab(
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(
-                                                    Icons.auto_awesome_rounded,
-                                                    size: 16,
+                                              // Copilot Sessions Group
+                                              if (allSessions.isNotEmpty) ...[
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    4,
                                                   ),
-                                                  const SizedBox(width: 6),
-                                                  Text(s.name),
-                                                ],
-                                              ),
-                                            ),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.surface0,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: AppColors.copilot
+                                                          .withValues(
+                                                            alpha: 0.2,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      for (
+                                                        int i = 0;
+                                                        i < allSessions.length;
+                                                        i++
+                                                      )
+                                                        _buildSegmentTab(
+                                                          text: allSessions[i]
+                                                              .name,
+                                                          index:
+                                                              projects.length +
+                                                              1 +
+                                                              i,
+                                                          currentIndex:
+                                                              currentIndex,
+                                                          icon: Icons
+                                                              .auto_awesome_rounded,
+                                                          activeColor:
+                                                              AppColors.copilot,
+                                                          onTap: () =>
+                                                              _tabController!
+                                                                  .animateTo(
+                                                                    projects.length +
+                                                                        1 +
+                                                                        i,
+                                                                  ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
                                           ),
-                                        ],
-                                      ),
+                                        );
+                                      },
                                     ),
                                   ),
+                                  const SizedBox(height: 16),
                                   Expanded(
                                     child: TabBarView(
                                       controller: _tabController,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
                                       children: [
                                         const WorktreeGrid(),
                                         ...projects.map(
                                           (p) => KanbanBoard(projectId: p.id),
-                                        ),
-                                        Center(
-                                          child: TextButton.icon(
-                                            onPressed: () {
-                                              final repoPath = repoProvider
-                                                  .selectedRepo
-                                                  ?.path;
-                                              if (repoPath != null) {
-                                                CreateProjectDialog.show(
-                                                  context,
-                                                  repoPath,
-                                                );
-                                              }
-                                            },
-                                            icon: Icon(
-                                              Icons.add,
-                                              color: AppColors.accent,
-                                            ),
-                                            label: Text(
-                                              'Create a new project',
-                                              style: TextStyle(
-                                                color: AppColors.accent,
-                                              ),
-                                            ),
-                                          ),
                                         ),
                                         ...allSessions.map(
                                           (s) => CopilotTerminalView(
@@ -405,6 +428,56 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         kanbanProvider.archiveProject(projectId);
       }
     });
+  }
+
+  Widget _buildSegmentTab({
+    required String text,
+    required int index,
+    required int currentIndex,
+    required VoidCallback onTap,
+    GestureTapUpCallback? onSecondaryTapUp,
+    IconData? icon,
+    Color? activeColor,
+  }) {
+    final isSelected = index == currentIndex;
+    final color = activeColor ?? AppColors.textPrimary;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        onSecondaryTapUp: onSecondaryTapUp,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.surface2 : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 14,
+                  color: isSelected ? color : AppColors.textMuted,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? color : AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildHeader(
@@ -530,6 +603,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           if (selectedRepo != null && activeCopilot == null) ...[
             _AddWorktreeButton(
               onPressed: () => AddWorktreeDialog.show(context),
+            ),
+            const SizedBox(width: 8),
+            _AddProjectButton(
+              onPressed: () =>
+                  CreateProjectDialog.show(context, selectedRepo.path),
             ),
             const SizedBox(width: 8),
             _TerminalToggleButton(),
@@ -681,6 +759,57 @@ class _AddWorktreeButtonState extends State<_AddWorktreeButton> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.terminal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddProjectButton extends StatefulWidget {
+  final VoidCallback onPressed;
+
+  const _AddProjectButton({required this.onPressed});
+
+  @override
+  State<_AddProjectButton> createState() => _AddProjectButtonState();
+}
+
+class _AddProjectButtonState extends State<_AddProjectButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: _hovered ? AppColors.surface2 : AppColors.surface1,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _hovered ? AppColors.border : AppColors.borderSubtle,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_rounded, size: 15, color: AppColors.textPrimary),
+              SizedBox(width: 5),
+              Text(
+                'New Project',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
