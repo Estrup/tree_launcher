@@ -89,6 +89,35 @@ void main() {
         ),
       );
     });
+
+    test('scopes issue lookup and preserves orphan diagnostics', () {
+      final project = harness.createProject(
+        repoPath: '/repos/kanban',
+        name: 'Platform',
+        key: 'PLT',
+      );
+      final valid = harness.service.createIssue(
+        project.repoPath,
+        project.key,
+        'Real issue',
+      );
+      harness.issueRepository.createIssue(
+        'missing-project',
+        'PLT',
+        'Orphaned copy',
+      );
+
+      final resolved = harness.service.getIssue(
+        valid.issue.displayId,
+        repoPath: project.repoPath,
+      );
+
+      expect(resolved.issue.id, valid.issue.id);
+      expect(
+        resolved.diagnostics['orphanedMatches'],
+        isA<List<dynamic>>().having((matches) => matches.length, 'length', 1),
+      );
+    });
   });
 
   group('IssueApiController', () {
@@ -191,6 +220,131 @@ void main() {
       expect(response.ok, isTrue);
       expect(response.data['issue']['displayId'], 'PLT-001');
       expect(mutatedRepoPaths, [project.repoPath]);
+    });
+
+    test('creates issue with initial status', () async {
+      final project = harness.createProject(
+        repoPath: '/repos/kanban',
+        name: 'Platform',
+        key: 'PLT',
+      );
+
+      final response = await controller.handle(
+        IssueApiRequest(
+          method: 'POST',
+          pathSegments: const ['api', 'issues'],
+          queryParameters: const {},
+          body: {
+            'repoPath': project.repoPath,
+            'project': project.key,
+            'title': 'Expose local API',
+            'status': 'inReview',
+          },
+        ),
+      );
+
+      expect(response.statusCode, 201);
+      expect(response.data['issue']['status'], 'inReview');
+    });
+
+    test('scopes issue lookups by repo path', () async {
+      final projectOne = harness.createProject(
+        repoPath: '/repos/one',
+        name: 'Platform',
+        key: 'PLT',
+      );
+      final projectTwo = harness.createProject(
+        repoPath: '/repos/two',
+        name: 'Platform',
+        key: 'PLT',
+      );
+      harness.issueRepository.createIssue(projectOne.id, 'PLT', 'A');
+      harness.issueRepository.createIssue(projectTwo.id, 'PLT', 'B');
+
+      final response = await controller.handle(
+        const IssueApiRequest(
+          method: 'GET',
+          pathSegments: ['api', 'issues', 'PLT-001'],
+          queryParameters: {'repoPath': '/repos/two'},
+        ),
+      );
+
+      expect(response.statusCode, 200);
+      expect(response.data['issue']['repoPath'], '/repos/two');
+      expect(response.data['issue']['title'], 'B');
+    });
+
+    test('syncs issues in bulk by title', () async {
+      final project = harness.createProject(
+        repoPath: '/repos/kanban',
+        name: 'Platform',
+        key: 'PLT',
+      );
+      harness.service.createIssue(
+        project.repoPath,
+        project.key,
+        'Existing issue',
+      );
+
+      final response = await controller.handle(
+        IssueApiRequest(
+          method: 'POST',
+          pathSegments: const ['api', 'issues', 'sync'],
+          queryParameters: const {},
+          body: {
+            'repoPath': project.repoPath,
+            'project': project.key,
+            'issues': [
+              {
+                'title': 'Existing issue',
+                'description': 'Updated',
+                'status': 'done',
+                'tags': ['synced'],
+              },
+              {
+                'title': 'New issue',
+                'description': 'Created',
+                'status': 'inProgress',
+              },
+            ],
+          },
+        ),
+      );
+
+      expect(response.statusCode, 200);
+      expect(response.data['operations'], hasLength(2));
+      expect(response.data['operations'][0]['action'], 'updated');
+      expect(response.data['operations'][0]['issue']['status'], 'done');
+      expect(response.data['operations'][1]['action'], 'created');
+      expect(response.data['operations'][1]['issue']['displayId'], 'PLT-002');
+    });
+
+    test('lists diagnostics for orphaned and duplicate issues', () async {
+      final projectOne = harness.createProject(
+        repoPath: '/repos/one',
+        name: 'Platform',
+        key: 'PLT',
+      );
+      final projectTwo = harness.createProject(
+        repoPath: '/repos/two',
+        name: 'Platform',
+        key: 'PLT',
+      );
+      harness.issueRepository.createIssue(projectOne.id, 'PLT', 'A');
+      harness.issueRepository.createIssue(projectTwo.id, 'PLT', 'B');
+      harness.issueRepository.createIssue('missing-project', 'PLT', 'Orphan');
+
+      final response = await controller.handle(
+        const IssueApiRequest(
+          method: 'GET',
+          pathSegments: ['api', 'issues', 'diagnostics'],
+          queryParameters: {'displayId': 'PLT-001'},
+        ),
+      );
+
+      expect(response.statusCode, 200);
+      expect(response.data['orphanedIssues'], hasLength(1));
+      expect(response.data['duplicateDisplayIds'], hasLength(1));
     });
   });
 }

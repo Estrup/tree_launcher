@@ -47,6 +47,8 @@ class Issue {
     required String projectKey,
     required String title,
     String? description,
+    IssueStatus status = IssueStatus.todo,
+    List<String> tags = const [],
   }) {
     final now = DateTime.now();
     return Issue(
@@ -56,6 +58,8 @@ class Issue {
       projectKey: projectKey,
       title: title,
       description: description,
+      status: status,
+      tags: tags,
       createdAt: now,
       updatedAt: now,
     );

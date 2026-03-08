@@ -7,20 +7,16 @@ from kanban_issue_api import emit, request_json
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("issue_id")
-    parser.add_argument("--repo-path")
-    parser.add_argument("--project")
+    parser.add_argument("--issue-id")
     args = parser.parse_args()
 
     query = {}
-    if args.repo_path is not None:
-        query["repoPath"] = args.repo_path
-    if args.project is not None:
-        query["project"] = args.project
+    if args.issue_id is not None:
+        query["displayId"] = args.issue_id
 
     status_code, payload = request_json(
         "GET",
-        f"/api/issues/{args.issue_id}",
+        "/api/issues/diagnostics",
         query=query or None,
     )
     emit(status_code, payload)

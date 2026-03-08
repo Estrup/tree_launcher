@@ -8,6 +8,8 @@ from kanban_issue_api import emit, request_json
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("issue_id")
+    parser.add_argument("--repo-path")
+    parser.add_argument("--project")
     parser.add_argument("--title")
     parser.add_argument("--description")
     parser.add_argument("--clear-description", action="store_true")
@@ -33,9 +35,16 @@ def main():
     if not payload:
         parser.error("at least one field must be provided")
 
+    query = {}
+    if args.repo_path is not None:
+        query["repoPath"] = args.repo_path
+    if args.project is not None:
+        query["project"] = args.project
+
     status_code, response = request_json(
         "PATCH",
         f"/api/issues/{args.issue_id}",
+        query=query or None,
         payload=payload,
     )
     emit(status_code, response)

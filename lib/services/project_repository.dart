@@ -51,6 +51,24 @@ class ProjectRepository {
     return result.map((row) => Project.fromMap(row)).toList();
   }
 
+  /// Returns all non-archived projects across repos.
+  List<Project> getAllProjects() {
+    final result = _db.select(
+      'SELECT * FROM projects WHERE is_archived = 0 ORDER BY repo_path ASC, created_at ASC',
+    );
+
+    return result.map((row) => Project.fromMap(row)).toList();
+  }
+
+  /// Returns every project across repos, including archived projects.
+  List<Project> getAllProjectsIncludingArchived() {
+    final result = _db.select(
+      'SELECT * FROM projects ORDER BY repo_path ASC, created_at ASC',
+    );
+
+    return result.map((row) => Project.fromMap(row)).toList();
+  }
+
   /// Returns a single project by ID.
   Project? getProjectById(String projectId) {
     final result = _db.select('SELECT * FROM projects WHERE id = ?', [

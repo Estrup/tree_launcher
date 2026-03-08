@@ -78,9 +78,11 @@ The script replaces the existing `/Applications/tree_launcher.app` bundle with t
 - **Local Storage:** `path_provider` + standard JSON configs
 - **System Shell:** Dart `Process.run` and standard `Platform.environment` bindings
 
-## Codex Skills
+## Copilot Skills
 
-TreeLauncher-specific Codex skills live in `tools/skills/`. This repo is the source of truth for those skills; do not hand-edit the installed copies in `$CODEX_HOME/skills`.
+TreeLauncher-specific Copilot skills live in `tools/skills/`. This repo is the source of truth for those skills; do not hand-edit the installed copies in your global skills directory.
+
+The helper scripts prefer `COPILOT_HOME/skills` when available, fall back to `CODEX_HOME/skills`, and otherwise default to `~/.copilot/skills`.
 
 Validate checked-in skills with:
 
@@ -88,7 +90,7 @@ Validate checked-in skills with:
 python3 tools/validate_codex_skills.py
 ```
 
-Install all repo-managed skills into `$CODEX_HOME/skills` with:
+Install all repo-managed skills into the active global skills directory with:
 
 ```bash
 python3 tools/install_codex_skills.py

@@ -17,6 +17,8 @@ class IssueRepository {
     String projectKey,
     String title, {
     String? description,
+    IssueStatus status = IssueStatus.todo,
+    List<String> tags = const [],
   }) {
     // Get next issue number for this project (including archived issues)
     final maxResult = _db.select(
@@ -31,6 +33,8 @@ class IssueRepository {
       projectKey: projectKey,
       title: title,
       description: description,
+      status: status,
+      tags: tags,
     );
     final map = issue.toMap();
 
@@ -62,12 +66,14 @@ class IssueRepository {
     final map = issue.toMap();
 
     _db.execute(
-      'UPDATE issues SET title = ?, description = ?, status = ?, tags = ?, updated_at = ? WHERE id = ?',
+      'UPDATE issues SET title = ?, description = ?, status = ?, tags = ?, is_archived = ?, sort_order = ?, updated_at = ? WHERE id = ?',
       [
         map['title'],
         map['description'],
         map['status'],
         map['tags'],
+        map['is_archived'],
+        map['sort_order'],
         now,
         map['id'],
       ],
@@ -131,6 +137,14 @@ class IssueRepository {
     final result = _db.select(
       'SELECT * FROM issues WHERE project_key = ? AND issue_number = ?',
       [projectKey, issueNumber],
+    );
+
+    return result.map((row) => Issue.fromMap(row)).toList();
+  }
+
+  List<Issue> getAllIssues() {
+    final result = _db.select(
+      'SELECT * FROM issues ORDER BY project_key ASC, issue_number ASC, created_at ASC',
     );
 
     return result.map((row) => Issue.fromMap(row)).toList();

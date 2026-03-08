@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from skill_paths import default_skills_dir
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_ROOT = REPO_ROOT / "tools" / "skills"
-DEFAULT_DEST = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")) / "skills"
+DEFAULT_DEST = default_skills_dir()
 VALIDATOR_SCRIPT = REPO_ROOT / "tools" / "validate_codex_skills.py"
 IGNORE_PATTERNS = shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Install repo-managed Codex skills into $CODEX_HOME/skills.",
+        description="Install repo-managed Copilot/Codex skills into the active skills directory.",
     )
     parser.add_argument(
         "--skill",
@@ -28,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dest",
         default=str(DEFAULT_DEST),
-        help="Destination skills directory. Defaults to $CODEX_HOME/skills.",
+        help="Destination skills directory. Defaults to COPILOT_HOME/CODEX_HOME if set, otherwise ~/.copilot/skills.",
     )
     parser.add_argument(
         "--skip-validate",

@@ -94,25 +94,59 @@ class IssueApiController {
   }
 
   Future<IssueApiResponse> _handleProjects(IssueApiRequest request) async {
-    if (request.method != 'GET') {
-      throw const IssueApiException(405, 'Method not allowed.');
+    switch (request.method) {
+      case 'GET':
+        final repoPath = _readOptionalQuery(
+          request.queryParameters,
+          'repoPath',
+        );
+        final query = _readOptionalQuery(request.queryParameters, 'query');
+        final includeArchived = _parseBool(
+          request.queryParameters['includeArchived'],
+          defaultValue: false,
+        );
+        final projects = _issueService.listProjects(
+          repoPath: repoPath,
+          query: query,
+          includeArchived: includeArchived,
+        );
+        return IssueApiResponse(
+          statusCode: 200,
+          summary: projects.isEmpty
+              ? 'No projects found.'
+              : 'Loaded ${projects.length} projects.',
+          data: {'projects': projects.map(_serializeProject).toList()},
+        );
+      case 'POST':
+        final body = _requireBodyMap(request.body);
+        final project = _issueService.createProject(
+          _requireString(body, 'repoPath'),
+          _requireString(body, 'name'),
+          _requireString(body, 'key'),
+        );
+        await _notifyRepoMutation(project.repoPath);
+        return IssueApiResponse(
+          statusCode: 201,
+          summary: 'Created project ${project.key}.',
+          data: {'project': _serializeProject(project)},
+        );
+      default:
+        throw const IssueApiException(405, 'Method not allowed.');
     }
-
-    final repoPath = _requireQuery(request.queryParameters, 'repoPath');
-    final projects = _issueService.listProjects(repoPath);
-    return IssueApiResponse(
-      statusCode: 200,
-      summary: projects.isEmpty
-          ? 'No projects found.'
-          : 'Loaded ${projects.length} projects.',
-      data: {'projects': projects.map(_serializeProject).toList()},
-    );
   }
 
   Future<IssueApiResponse> _handleIssues(IssueApiRequest request) async {
     final segments = request.pathSegments;
     if (segments.length == 2) {
       return _handleIssueCollection(request);
+    }
+
+    if (segments.length == 3 && segments[2] == 'sync') {
+      return _handleIssueSync(request);
+    }
+
+    if (segments.length == 3 && segments[2] == 'diagnostics') {
+      return _handleIssueDiagnostics(request);
     }
 
     final displayId = segments[2];
@@ -170,12 +204,16 @@ class IssueApiController {
           project,
           title,
           description: description,
+          tags: body.containsKey('tags') ? _parseTags(body['tags']) : null,
+          status: body.containsKey('status')
+              ? _parseStatus(body['status'])
+              : IssueStatus.todo,
         );
         await _notifyRepoMutation(result.project.repoPath);
         return IssueApiResponse(
           statusCode: 201,
           summary: 'Created issue ${result.issue.displayId}.',
-          data: {'issue': _serializeIssue(result.project, result.issue)},
+          data: _serializeResolvedIssueData(result),
         );
       default:
         throw const IssueApiException(405, 'Method not allowed.');
@@ -186,13 +224,20 @@ class IssueApiController {
     IssueApiRequest request,
     String displayId,
   ) async {
+    final repoPath = _readOptionalQuery(request.queryParameters, 'repoPath');
+    final project = _readOptionalQuery(request.queryParameters, 'project');
+
     switch (request.method) {
       case 'GET':
-        final result = _issueService.getIssue(displayId);
+        final result = _issueService.getIssue(
+          displayId,
+          repoPath: repoPath,
+          projectKeyOrName: project,
+        );
         return IssueApiResponse(
           statusCode: 200,
           summary: 'Loaded issue ${result.issue.displayId}.',
-          data: {'issue': _serializeIssue(result.project, result.issue)},
+          data: _serializeResolvedIssueData(result),
         );
       case 'PATCH':
         final body = _requireBodyMap(request.body);
@@ -209,6 +254,8 @@ class IssueApiController {
 
         final result = _issueService.updateIssue(
           displayId,
+          repoPath: repoPath,
+          projectKeyOrName: project,
           title: hasTitle ? _requireString(body, 'title') : null,
           description: hasDescription
               ? _readNullableString(body, 'description')
@@ -220,7 +267,7 @@ class IssueApiController {
         return IssueApiResponse(
           statusCode: 200,
           summary: 'Updated issue ${result.issue.displayId}.',
-          data: {'issue': _serializeIssue(result.project, result.issue)},
+          data: _serializeResolvedIssueData(result),
         );
       default:
         throw const IssueApiException(405, 'Method not allowed.');
@@ -235,12 +282,16 @@ class IssueApiController {
       throw const IssueApiException(405, 'Method not allowed.');
     }
 
-    final result = _issueService.archiveIssue(displayId);
+    final result = _issueService.archiveIssue(
+      displayId,
+      repoPath: _readOptionalQuery(request.queryParameters, 'repoPath'),
+      projectKeyOrName: _readOptionalQuery(request.queryParameters, 'project'),
+    );
     await _notifyRepoMutation(result.project.repoPath);
     return IssueApiResponse(
       statusCode: 200,
       summary: 'Archived issue ${result.issue.displayId}.',
-      data: {'issue': _serializeIssue(result.project, result.issue)},
+      data: _serializeResolvedIssueData(result),
     );
   }
 
@@ -248,19 +299,23 @@ class IssueApiController {
     IssueApiRequest request,
     String displayId,
   ) async {
+    final repoPath = _readOptionalQuery(request.queryParameters, 'repoPath');
+    final project = _readOptionalQuery(request.queryParameters, 'project');
+
     switch (request.method) {
       case 'GET':
-        final result = _issueService.listComments(displayId);
+        final result = _issueService.listComments(
+          displayId,
+          repoPath: repoPath,
+          projectKeyOrName: project,
+        );
         return IssueApiResponse(
           statusCode: 200,
           summary: result.comments.isEmpty
               ? 'No comments found.'
               : 'Loaded ${result.comments.length} comments.',
           data: {
-            'issue': _serializeIssue(
-              result.issueRecord.project,
-              result.issueRecord.issue,
-            ),
+            ..._serializeResolvedIssueData(result.issueRecord),
             'comments': result.comments.map(_serializeComment).toList(),
           },
         );
@@ -273,6 +328,8 @@ class IssueApiController {
             : CommentAuthorType.agent;
         final result = _issueService.addComment(
           displayId,
+          repoPath: repoPath,
+          projectKeyOrName: project,
           content: content,
           authorName: authorName,
           authorType: authorType,
@@ -283,10 +340,7 @@ class IssueApiController {
           summary:
               'Added comment to issue ${result.issueRecord.issue.displayId}.',
           data: {
-            'issue': _serializeIssue(
-              result.issueRecord.project,
-              result.issueRecord.issue,
-            ),
+            ..._serializeResolvedIssueData(result.issueRecord),
             'comment': _serializeComment(result.comment),
           },
         );
@@ -295,12 +349,72 @@ class IssueApiController {
     }
   }
 
+  Future<IssueApiResponse> _handleIssueSync(IssueApiRequest request) async {
+    if (request.method != 'POST') {
+      throw const IssueApiException(405, 'Method not allowed.');
+    }
+
+    final body = _requireBodyMap(request.body);
+    final result = _issueService.syncIssues(
+      _requireString(body, 'repoPath'),
+      _requireString(body, 'project'),
+      _parseSyncInputs(body['issues']),
+    );
+    await _notifyRepoMutation(result.project.repoPath);
+    return IssueApiResponse(
+      statusCode: 200,
+      summary: result.operations.isEmpty
+          ? 'No issues were synced.'
+          : 'Synced ${result.operations.length} issues.',
+      data: {
+        'project': _serializeProject(result.project),
+        'operations': result.operations.map((operation) {
+          return {
+            'action': operation.action,
+            ..._serializeResolvedIssueData(operation.issueRecord),
+          };
+        }).toList(),
+      },
+    );
+  }
+
+  Future<IssueApiResponse> _handleIssueDiagnostics(
+    IssueApiRequest request,
+  ) async {
+    if (request.method != 'GET') {
+      throw const IssueApiException(405, 'Method not allowed.');
+    }
+
+    final diagnostics = _issueService.getDiagnostics(
+      displayId: _readOptionalQuery(request.queryParameters, 'displayId'),
+    );
+    final orphanedCount = (diagnostics['orphanedIssues'] as List).length;
+    final duplicateCount = (diagnostics['duplicateDisplayIds'] as List).length;
+    final summary = orphanedCount == 0 && duplicateCount == 0
+        ? 'No issue diagnostics found.'
+        : 'Loaded $orphanedCount orphaned issue(s) and $duplicateCount duplicate display id(s).';
+    return IssueApiResponse(
+      statusCode: 200,
+      summary: summary,
+      data: diagnostics,
+    );
+  }
+
   Future<void> _notifyRepoMutation(String repoPath) async {
     if (_onRepoMutated == null) return;
     await _onRepoMutated(repoPath);
   }
 
   String _requireQuery(Map<String, String> query, String key) {
+    final value = query[key]?.trim();
+    if (value == null || value.isEmpty) {
+      throw IssueApiException(400, '$key is required.');
+    }
+    return value;
+  }
+
+  String? _readOptionalQuery(Map<String, String> query, String key) {
+    if (!query.containsKey(key)) return null;
     final value = query[key]?.trim();
     if (value == null || value.isEmpty) {
       throw IssueApiException(400, '$key is required.');
@@ -387,6 +501,42 @@ class IssueApiController {
     );
   }
 
+  List<IssueSyncInput> _parseSyncInputs(Object? value) {
+    if (value is! List || value.isEmpty) {
+      throw const IssueApiException(
+        400,
+        'issues must be a non-empty list of sync payloads.',
+      );
+    }
+
+    return value.map((item) {
+      if (item is! Map<String, dynamic>) {
+        throw const IssueApiException(
+          400,
+          'Each sync issue must be a JSON object.',
+        );
+      }
+      return IssueSyncInput(
+        title: _requireString(item, 'title'),
+        description: _readNullableString(item, 'description'),
+        status: item.containsKey('status')
+            ? _parseStatus(item['status'])
+            : IssueStatus.todo,
+        tags: item.containsKey('tags') ? _parseTags(item['tags']) : const [],
+        archive: item.containsKey('archive')
+            ? _parseJsonBool(item['archive'], fieldName: 'archive')
+            : false,
+      );
+    }).toList();
+  }
+
+  bool _parseJsonBool(Object? value, {required String fieldName}) {
+    if (value is bool) {
+      return value;
+    }
+    throw IssueApiException(400, '$fieldName must be a boolean.');
+  }
+
   CommentAuthorType _parseAuthorType(Object? value) {
     if (value is! String) {
       throw const IssueApiException(400, 'authorType must be a string.');
@@ -398,6 +548,13 @@ class IssueApiController {
         'authorType must be one of user or agent.',
       ),
     );
+  }
+
+  Map<String, dynamic> _serializeResolvedIssueData(ResolvedIssueRecord result) {
+    return {
+      'issue': _serializeIssue(result.project, result.issue),
+      if (result.diagnostics.isNotEmpty) 'diagnostics': result.diagnostics,
+    };
   }
 
   Map<String, dynamic> _serializeProject(Project project) => {

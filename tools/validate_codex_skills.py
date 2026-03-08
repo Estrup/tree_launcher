@@ -1,28 +1,22 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
 import subprocess
 import sys
 from pathlib import Path
 
+from skill_paths import default_validator_path
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_ROOT = REPO_ROOT / "tools" / "skills"
-DEFAULT_VALIDATOR = (
-    Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
-    / "skills"
-    / ".system"
-    / "skill-creator"
-    / "scripts"
-    / "quick_validate.py"
-)
+DEFAULT_VALIDATOR = default_validator_path()
 REQUIRED_FILES = ("SKILL.md", "agents/openai.yaml")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate repo-managed Codex skills.",
+        description="Validate repo-managed Copilot/Codex skills.",
     )
     parser.add_argument(
         "--skill",
@@ -33,7 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--validator",
         default=str(DEFAULT_VALIDATOR),
-        help="Path to skill-creator quick_validate.py.",
+        help="Path to skill-creator quick_validate.py. Defaults to COPILOT_HOME/CODEX_HOME if set, otherwise ~/.copilot/skills.",
     )
     return parser.parse_args()
 
