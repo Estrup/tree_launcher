@@ -97,24 +97,6 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
               decoration: InputDecoration(
                 hintText: 'Project name',
                 hintStyle: TextStyle(color: AppColors.textMuted),
-                filled: true,
-                fillColor: AppColors.surface1,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.accent),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
               ),
               onSubmitted: (_) => _create(),
             ),
@@ -138,24 +120,6 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
                 hintStyle: TextStyle(color: AppColors.textMuted),
                 labelText: 'Project key (max 3 letters)',
                 labelStyle: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                filled: true,
-                fillColor: AppColors.surface1,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.accent),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
               ),
               onChanged: (_) {
                 _keyManuallyEdited = true;

@@ -138,16 +138,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     hintStyle: TextStyle(
                       color: AppColors.textMuted.withValues(alpha: 0.5),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppColors.accent),
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface0,
                   ),
                   controller: _customTerminalController,
                   onChanged: (value) {
@@ -225,16 +215,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   hintStyle: TextStyle(
                     color: AppColors.textMuted.withValues(alpha: 0.5),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: AppColors.accent),
-                  ),
-                  filled: true,
-                  fillColor: AppColors.surface0,
                 ),
                 controller: _branchPrefixController,
                 onChanged: (value) {
@@ -473,16 +453,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
             hintStyle: TextStyle(
               color: AppColors.textMuted.withValues(alpha: 0.5),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: AppColors.accent),
-            ),
-            filled: true,
-            fillColor: AppColors.surface0,
           ),
           onChanged: (value) {
             provider.updateOpenAiApiKey(value);
@@ -507,16 +477,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
           decoration: InputDecoration(
             labelText: 'Transcription model',
             labelStyle: TextStyle(color: AppColors.textMuted),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: AppColors.accent),
-            ),
-            filled: true,
-            fillColor: AppColors.surface0,
           ),
           onChanged: (value) {
             if (value.trim().isEmpty) {
@@ -536,16 +496,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
           decoration: InputDecoration(
             labelText: 'Response model',
             labelStyle: TextStyle(color: AppColors.textMuted),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: AppColors.accent),
-            ),
-            filled: true,
-            fillColor: AppColors.surface0,
           ),
           onChanged: (value) {
             if (value.trim().isEmpty) {
@@ -641,16 +591,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 10,
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: AppColors.border),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: AppColors.accent),
-                          ),
-                          filled: true,
-                          fillColor: AppColors.surface0,
                         ),
                         onChanged: (value) {
                           final parsed = int.tryParse(value);

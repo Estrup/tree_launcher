@@ -82,24 +82,6 @@ class _CreateIssueDialogState extends State<CreateIssueDialog> {
               decoration: InputDecoration(
                 hintText: 'Issue title',
                 hintStyle: TextStyle(color: AppColors.textMuted),
-                filled: true,
-                fillColor: AppColors.surface1,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.accent),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
               ),
               onSubmitted: (_) => _create(),
             ),
@@ -111,24 +93,6 @@ class _CreateIssueDialogState extends State<CreateIssueDialog> {
               decoration: InputDecoration(
                 hintText: 'Description (optional)',
                 hintStyle: TextStyle(color: AppColors.textMuted),
-                filled: true,
-                fillColor: AppColors.surface1,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.accent),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
               ),
             ),
             const SizedBox(height: 20),

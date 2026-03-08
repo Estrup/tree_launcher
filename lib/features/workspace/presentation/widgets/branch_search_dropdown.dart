@@ -166,20 +166,6 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
             size: 18,
             color: AppColors.textMuted,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppColors.accent),
-          ),
-          filled: true,
-          fillColor: AppColors.surface0,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
-          ),
         ),
         onChanged: (value) {
           setState(() {

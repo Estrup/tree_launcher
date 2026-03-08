@@ -840,21 +840,18 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         color: AppColors.textMuted.withValues(alpha: 0.4),
         fontFamily: 'monospace',
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(
-          color: hasError ? AppColors.error : AppColors.border,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(
-          color: hasError ? AppColors.error : AppColors.accent,
-        ),
-      ),
-      filled: true,
-      fillColor: AppColors.surface0,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      enabledBorder: hasError
+          ? OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: AppColors.error),
+            )
+          : null,
+      focusedBorder: hasError
+          ? OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: AppColors.error),
+            )
+          : null,
     );
   }
 }

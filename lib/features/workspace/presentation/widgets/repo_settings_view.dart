@@ -331,20 +331,6 @@ class _GeneralSectionState extends State<_GeneralSection> {
                 hintStyle: TextStyle(
                   color: AppColors.textMuted.withValues(alpha: 0.5),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.accent),
-                ),
-                filled: true,
-                fillColor: AppColors.surface0,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
               ),
               onChanged: _onNameChanged,
             ),
@@ -611,20 +597,6 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                     hintStyle: TextStyle(
                       color: AppColors.textMuted.withValues(alpha: 0.5),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: AppColors.vscode),
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface1,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 10,
-                    ),
                   ),
                   controller: _nameController,
                   onChanged: (v) => widget.onChanged(
@@ -661,20 +633,6 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
                     hintStyle: TextStyle(
                       color: AppColors.textMuted.withValues(alpha: 0.5),
                       fontFamily: 'monospace',
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: AppColors.vscode),
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface1,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 10,
                     ),
                   ),
                   controller: _pathController,
@@ -958,20 +916,6 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
                           hintStyle: TextStyle(
                             color: AppColors.textMuted.withValues(alpha: 0.5),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: AppColors.border),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: AppColors.terminal),
-                          ),
-                          filled: true,
-                          fillColor: AppColors.surface1,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 10,
-                          ),
                         ),
                         controller: _nameController,
                         onChanged: (v) =>
@@ -1011,17 +955,6 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
                 color: AppColors.textMuted.withValues(alpha: 0.5),
                 fontFamily: 'monospace',
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: AppColors.terminal),
-              ),
-              filled: true,
-              fillColor: AppColors.surface1,
-              contentPadding: const EdgeInsets.all(12),
             ),
             controller: _commandController,
             onChanged: (v) =>
@@ -1268,20 +1201,6 @@ class _CopilotPromptCardState extends State<_CopilotPromptCard> {
                           hintStyle: TextStyle(
                             color: AppColors.textMuted.withValues(alpha: 0.5),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: AppColors.border),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: AppColors.copilot),
-                          ),
-                          filled: true,
-                          fillColor: AppColors.surface1,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 10,
-                          ),
                         ),
                         controller: _nameController,
                         onChanged: (v) =>
@@ -1322,17 +1241,6 @@ class _CopilotPromptCardState extends State<_CopilotPromptCard> {
                 color: AppColors.textMuted.withValues(alpha: 0.5),
                 fontFamily: 'monospace',
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: AppColors.copilot),
-              ),
-              filled: true,
-              fillColor: AppColors.surface1,
-              contentPadding: const EdgeInsets.all(12),
             ),
             controller: _promptController,
             onChanged: (v) =>

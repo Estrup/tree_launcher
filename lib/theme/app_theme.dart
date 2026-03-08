@@ -254,6 +254,44 @@ const palettes = <String, AppColorPalette>{
     ansiBrightCyan: Color(0xFF89DCEB),
     ansiBrightWhite: Color(0xFFCDD6F4),
   ),
+  'minimal': AppColorPalette(
+    base: Color(0xFF191919),
+    surface0: Color(0xFF222222),
+    surface1: Color(0xFF2A2A2A),
+    surface2: Color(0xFF333333),
+    surfaceHover: Color(0xFF3A3A3A),
+    border: Color(0xFF3E3E3E),
+    borderSubtle: Color(0xFF2D2D2D),
+    textPrimary: Color(0xFFEBEBEB),
+    textSecondary: Color(0xFFA1A1A1),
+    textMuted: Color(0xFF737373),
+    accent: Color(0xFFD97A5E),
+    accentMuted: Color(0x33D97A5E),
+    terminal: Color(0xFF7EAE82),
+    terminalBg: Color(0x1A7EAE82),
+    copilot: Color(0xFF9E82B8),
+    copilotBg: Color(0x1A9E82B8),
+    vscode: Color(0xFF6E9ECF),
+    vscodeBg: Color(0x1A6E9ECF),
+    error: Color(0xFFCF6A6A),
+    success: Color(0xFF7EAE82),
+    ansiBlack: Color(0xFF191919),
+    ansiRed: Color(0xFFCF6A6A),
+    ansiGreen: Color(0xFF7EAE82),
+    ansiYellow: Color(0xFFD4A054),
+    ansiBlue: Color(0xFF6E9ECF),
+    ansiMagenta: Color(0xFF9E82B8),
+    ansiCyan: Color(0xFF5DA5A5),
+    ansiWhite: Color(0xFFEBEBEB),
+    ansiBrightBlack: Color(0xFF737373),
+    ansiBrightRed: Color(0xFFCF8A8A),
+    ansiBrightGreen: Color(0xFF98C49B),
+    ansiBrightYellow: Color(0xFFDEB877),
+    ansiBrightBlue: Color(0xFF8DB8DE),
+    ansiBrightMagenta: Color(0xFFB69ECC),
+    ansiBrightCyan: Color(0xFF7FBFBF),
+    ansiBrightWhite: Color(0xFFFFFFFF),
+  ),
 };
 
 /// Human-readable names for the theme picker UI.
@@ -262,6 +300,7 @@ const paletteDisplayNames = <String, String>{
   'muted': 'Muted',
   'nord': 'Nord',
   'catppuccin': 'Catppuccin',
+  'minimal': 'Minimal',
 };
 
 // ---------------------------------------------------------------------------
@@ -269,10 +308,10 @@ const paletteDisplayNames = <String, String>{
 // ---------------------------------------------------------------------------
 
 class AppColors {
-  static AppColorPalette _current = palettes['muted']!;
+  static AppColorPalette _current = palettes['minimal']!;
 
   static void setTheme(String name) {
-    _current = palettes[name] ?? palettes['muted']!;
+    _current = palettes[name] ?? palettes['minimal']!;
   }
 
   static AppColorPalette get current => _current;
@@ -344,6 +383,34 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: AppColors.border),
         ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.surface0,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: AppColors.borderSubtle),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: AppColors.borderSubtle),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: AppColors.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: AppColors.error),
+        ),
+        hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
+        labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.surface2,
