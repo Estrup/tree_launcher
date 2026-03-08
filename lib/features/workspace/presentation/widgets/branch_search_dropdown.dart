@@ -21,6 +21,9 @@ class BranchSearchDropdown extends StatefulWidget {
 }
 
 class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
+  static const double _fallbackFieldWidth = 360;
+  static const double _fallbackFieldHeight = 44;
+
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   final _layerLink = LayerLink();
@@ -84,13 +87,22 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
     _overlayEntry = null;
   }
 
+  Size _getFieldSize() {
+    final renderObject = _fieldKey.currentContext?.findRenderObject();
+    if (renderObject is RenderBox && renderObject.hasSize) {
+      return renderObject.size;
+    }
+    return const Size(_fallbackFieldWidth, _fallbackFieldHeight);
+  }
+
   Widget _buildOverlay() {
+    final fieldSize = _getFieldSize();
     return Positioned(
-      width: 360,
+      width: fieldSize.width,
       child: CompositedTransformFollower(
         link: _layerLink,
         showWhenUnlinked: false,
-        offset: Offset(0, (_fieldKey.currentContext?.size?.height ?? 44) + 4),
+        offset: Offset(0, fieldSize.height + 4),
         child: Material(
           color: Colors.transparent,
           child: Container(
