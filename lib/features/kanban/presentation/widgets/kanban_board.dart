@@ -272,12 +272,6 @@ class _KanbanCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(
-                    Icons.circle_outlined,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 8),
                   if (issue.tags.isNotEmpty)
                     ...issue.tags.map(
                       (tag) => Padding(
