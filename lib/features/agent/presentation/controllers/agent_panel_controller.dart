@@ -130,7 +130,7 @@ class AgentPanelController extends ChangeNotifier {
         return;
       }
 
-      _playSystemSound('Tink');
+      _playSystemSound('Funk');
       // Brief delay so the sound plays before the mic captures audio.
       await Future<void>.delayed(const Duration(milliseconds: 250));
       await _microphoneRecordingService.startRecording();
@@ -148,7 +148,7 @@ class AgentPanelController extends ChangeNotifier {
 
     String? audioPath;
     try {
-      _playSystemSound('Pop');
+      _playSystemSound('Submarine');
       _phase = AgentPanelPhase.processing;
       _notify();
 
