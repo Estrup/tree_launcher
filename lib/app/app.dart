@@ -6,11 +6,11 @@ import 'package:tree_launcher/app/coordinators/workspace_flow_coordinator.dart';
 import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/app/shell/workspace_shell.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/agent/presentation/controllers/agent_panel_controller.dart';
 import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
 import 'package:tree_launcher/features/kanban/presentation/controllers/kanban_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
-import 'package:tree_launcher/features/voice_commands/presentation/controllers/voice_command_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 class TreeLauncherApp extends StatelessWidget {
@@ -58,29 +58,34 @@ class TreeLauncherApp extends StatelessWidget {
                 );
           },
         ),
-        ChangeNotifierProxyProvider2<
+        ChangeNotifierProxyProvider3<
           WorkspaceController,
           SettingsController,
-          VoiceCommandController
+          CopilotController,
+          AgentPanelController
         >(
-          create: (context) => VoiceCommandController(
+          create: (context) => AgentPanelController(
             microphoneRecordingService: dependencies.microphoneRecordingService,
             chatGptService: dependencies.chatGptService,
             workspaceController: context.read<WorkspaceController>(),
             settingsController: context.read<SettingsController>(),
+            copilotController: context.read<CopilotController>(),
           ),
-          update: (context, workspaceController, settingsController, previous) {
+          update: (context, workspaceController, settingsController,
+              copilotController, previous) {
             previous?.updateDependencies(
               workspaceController: workspaceController,
               settingsController: settingsController,
+              copilotController: copilotController,
             );
             return previous ??
-                VoiceCommandController(
+                AgentPanelController(
                   microphoneRecordingService:
                       dependencies.microphoneRecordingService,
                   chatGptService: dependencies.chatGptService,
                   workspaceController: workspaceController,
                   settingsController: settingsController,
+                  copilotController: copilotController,
                 );
           },
         ),

@@ -121,4 +121,16 @@ class SettingsController extends ChangeNotifier {
     await _store.save(_settings);
     notifyListeners();
   }
+
+  Future<void> updateOpenAiTtsModel(String model) async {
+    _settings = _settings.copyWith(openAiTtsModel: model);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateOpenAiTtsVoice(TtsVoice voice) async {
+    _settings = _settings.copyWith(openAiTtsVoice: voice);
+    await _store.save(_settings);
+    notifyListeners();
+  }
 }

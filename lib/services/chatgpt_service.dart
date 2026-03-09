@@ -5,8 +5,87 @@ import '../models/chatgpt_processing_result.dart';
 import 'repo_action_tool_registry.dart';
 import 'voice_logging.dart';
 
+/// Abstraction for any tool registry that can provide OpenAI function
+/// definitions, execute tools, and describe the current context.
+abstract class ToolRegistryInterface {
+  List<Map<String, dynamic>> buildToolDefinitions();
+  Map<String, dynamic> describeContext();
+  Future<RepoActionToolResult> executeTool(
+    String name,
+    Map<String, dynamic> arguments,
+  );
+}
+
 class ChatGptService {
   static const int _maxToolRounds = 3;
+
+  /// Send a conversation (with full history) to the OpenAI chat API.
+  /// [messages] is a list of OpenAI-format message maps
+  /// (role + content). A system prompt is prepended automatically.
+  Future<ChatGptProcessingResult> chatWithHistory({
+    required String apiKey,
+    required List<Map<String, dynamic>> messages,
+    required String model,
+    required ToolRegistryInterface toolRegistry,
+    required String systemPrompt,
+  }) async {
+    _log(
+      'Chat with history model=$model messages=${messages.length}',
+    );
+    final chatMessages = <Map<String, dynamic>>[
+      {'role': 'system', 'content': systemPrompt},
+      ...messages,
+    ];
+    final toolSummaries = <String>[];
+    final toolDefinitions = toolRegistry.buildToolDefinitions();
+
+    for (var round = 0; round < _maxToolRounds; round++) {
+      _log('Chat history completion round ${round + 1} of $_maxToolRounds');
+      final completion = await _createChatCompletion(
+        apiKey: apiKey,
+        model: model,
+        messages: chatMessages,
+        tools: toolDefinitions,
+      );
+      chatMessages.add(completion.requestMessage);
+
+      if (completion.toolCalls.isEmpty) {
+        return ChatGptProcessingResult(
+          transcript: '',
+          responseText: completion.content.trim(),
+          toolSummaries: toolSummaries,
+        );
+      }
+
+      for (final toolCall in completion.toolCalls) {
+        _log('Executing tool call name=${toolCall.name}');
+        RepoActionToolResult toolResult;
+        try {
+          toolResult = await toolRegistry.executeTool(
+            toolCall.name,
+            toolCall.arguments,
+          );
+        } catch (error) {
+          _log('Tool call failed name=${toolCall.name} error=$error');
+          toolResult = RepoActionToolResult(
+            payload: {'ok': false, 'error': error.toString()},
+            summary: '${toolCall.name} failed: $error',
+          );
+        }
+
+        toolSummaries.add(toolResult.summary);
+        chatMessages.add({
+          'role': 'tool',
+          'tool_call_id': toolCall.id,
+          'content': jsonEncode(toolResult.payload),
+        });
+      }
+    }
+
+    throw Exception(
+      'The OpenAI chat flow exceeded $_maxToolRounds tool rounds.',
+    );
+  }
 
   Future<ChatGptProcessingResult> processAudioCommand({
     required String apiKey,

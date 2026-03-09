@@ -2,6 +2,22 @@ enum TerminalApp { terminal, ghostty, custom }
 
 enum CopilotButtonMode { inApp, external }
 
+enum TtsVoice {
+  alloy('alloy'),
+  echo('echo'),
+  fable('fable'),
+  onyx('onyx'),
+  nova('nova'),
+  shimmer('shimmer');
+
+  const TtsVoice(this.apiName);
+
+  final String apiName;
+
+  String get displayName =>
+      '${apiName[0].toUpperCase()}${apiName.substring(1)}';
+}
+
 enum CopilotAttentionSound {
   basso('Basso'),
   blow('Blow'),
@@ -38,6 +54,8 @@ class AppSettings {
   final CopilotButtonMode copilotButtonMode;
   final bool copilotAttentionSoundEnabled;
   final CopilotAttentionSound copilotAttentionSound;
+  final String openAiTtsModel;
+  final TtsVoice openAiTtsVoice;
   final bool remoteControlEnabled;
   final int remoteControlPort;
   final String remoteControlBindAddress;
@@ -55,6 +73,8 @@ class AppSettings {
     this.copilotButtonMode = CopilotButtonMode.inApp,
     this.copilotAttentionSoundEnabled = false,
     this.copilotAttentionSound = CopilotAttentionSound.ping,
+    this.openAiTtsModel = 'tts-1',
+    this.openAiTtsVoice = TtsVoice.nova,
     this.remoteControlEnabled = false,
     this.remoteControlPort = 8422,
     this.remoteControlBindAddress = '127.0.0.1',
@@ -89,6 +109,11 @@ class AppSettings {
         (e) => e.name == (json['copilotAttentionSound'] as String?),
         orElse: () => CopilotAttentionSound.ping,
       ),
+      openAiTtsModel: json['openAiTtsModel'] as String? ?? 'tts-1',
+      openAiTtsVoice: TtsVoice.values.firstWhere(
+        (e) => e.name == (json['openAiTtsVoice'] as String?),
+        orElse: () => TtsVoice.nova,
+      ),
       remoteControlEnabled: json['remoteControlEnabled'] as bool? ?? false,
       remoteControlPort: json['remoteControlPort'] as int? ?? 8422,
       remoteControlBindAddress:
@@ -109,6 +134,8 @@ class AppSettings {
     'copilotButtonMode': copilotButtonMode.name,
     'copilotAttentionSoundEnabled': copilotAttentionSoundEnabled,
     'copilotAttentionSound': copilotAttentionSound.name,
+    'openAiTtsModel': openAiTtsModel,
+    'openAiTtsVoice': openAiTtsVoice.name,
     'remoteControlEnabled': remoteControlEnabled,
     'remoteControlPort': remoteControlPort,
     'remoteControlBindAddress': remoteControlBindAddress,
@@ -130,6 +157,8 @@ class AppSettings {
     CopilotButtonMode? copilotButtonMode,
     bool? copilotAttentionSoundEnabled,
     CopilotAttentionSound? copilotAttentionSound,
+    String? openAiTtsModel,
+    TtsVoice? openAiTtsVoice,
     bool? remoteControlEnabled,
     int? remoteControlPort,
     String? remoteControlBindAddress,
@@ -157,6 +186,8 @@ class AppSettings {
           copilotAttentionSoundEnabled ?? this.copilotAttentionSoundEnabled,
       copilotAttentionSound:
           copilotAttentionSound ?? this.copilotAttentionSound,
+      openAiTtsModel: openAiTtsModel ?? this.openAiTtsModel,
+      openAiTtsVoice: openAiTtsVoice ?? this.openAiTtsVoice,
       remoteControlEnabled: remoteControlEnabled ?? this.remoteControlEnabled,
       remoteControlPort: remoteControlPort ?? this.remoteControlPort,
       remoteControlBindAddress:

@@ -12,7 +12,8 @@ import 'package:tree_launcher/features/kanban/presentation/widgets/kanban_board.
 import 'package:tree_launcher/features/settings/presentation/widgets/settings_dialog.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/running_commands_bar.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_panel.dart';
-import 'package:tree_launcher/features/voice_commands/presentation/widgets/shortcut_overlay.dart';
+import 'package:tree_launcher/features/agent/presentation/controllers/agent_panel_controller.dart';
+import 'package:tree_launcher/features/agent/presentation/widgets/agent_panel.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_repo_dialog.dart';
@@ -24,7 +25,6 @@ import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/kanban_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
-import 'package:tree_launcher/services/shortcut_overlay_controller.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -78,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final repoProvider = context.watch<RepoProvider>();
     final copilotProvider = context.watch<CopilotProvider>();
     final kanbanProvider = context.watch<KanbanProvider>();
-    final shortcutOverlayController = context.read<ShortcutOverlayController>();
+    final agentController = context.read<AgentPanelController>();
     final isCopilotActive = copilotProvider.activeSession != null;
 
     final projects = kanbanProvider.projects;
@@ -133,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           }
         },
         const SingleActivator(LogicalKeyboardKey.keyM, control: true): () {
-          unawaited(shortcutOverlayController.handleShortcut());
+          unawaited(agentController.handleVoiceShortcut());
         },
       },
       child: Focus(
@@ -370,7 +370,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   // Copilot attention notification
                   const CopilotAttentionSnackbar(),
-                  ShortcutOverlay(controller: shortcutOverlayController),
+                  AgentPanel(controller: agentController),
                 ],
               );
             },
