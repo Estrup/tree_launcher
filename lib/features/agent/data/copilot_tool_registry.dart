@@ -224,10 +224,12 @@ class CopilotToolRegistry {
       );
     }
 
-    // Use the Terminal's input API so the keytab handler maps Enter correctly
-    // for whatever mode the TUI app is in (lineFeedMode, CSI u, etc.).
+    // Send the text, then schedule Enter on a separate event loop turn so the
+    // TUI processes them as distinct inputs (avoids being batched in one PTY read).
     terminalSession.terminal.textInput(text);
-    terminalSession.terminal.keyInput(TerminalKey.enter);
+    Future.delayed(const Duration(milliseconds: 80), () {
+      terminalSession.terminal.keyInput(TerminalKey.enter);
+    });
     return CopilotToolResult(
       payload: {'sessionName': session.name, 'sent': true},
       summary: 'Sent input to copilot "${session.name}".',
