@@ -10,11 +10,13 @@ import 'package:tree_launcher/providers/repo_provider.dart';
 class RepoSidebar extends StatelessWidget {
   final VoidCallback onAddRepo;
   final VoidCallback onOpenSettings;
+  final VoidCallback onOpenAgent;
 
   const RepoSidebar({
     super.key,
     required this.onAddRepo,
     required this.onOpenSettings,
+    required this.onOpenAgent,
   });
 
   @override
@@ -149,6 +151,8 @@ class RepoSidebar extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(child: _AddRepoButton(onPressed: onAddRepo)),
+                const SizedBox(width: 8),
+                _AgentChatButton(onPressed: onOpenAgent),
                 const SizedBox(width: 8),
                 _SettingsButton(onPressed: onOpenSettings),
               ],
@@ -420,6 +424,44 @@ class _AddRepoButtonState extends State<_AddRepoButton> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AgentChatButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  const _AgentChatButton({required this.onPressed});
+
+  @override
+  State<_AgentChatButton> createState() => _AgentChatButtonState();
+}
+
+class _AgentChatButtonState extends State<_AgentChatButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: _hovered ? AppColors.surface2 : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Icon(
+            Icons.chat_rounded,
+            size: 16,
+            color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
           ),
         ),
       ),

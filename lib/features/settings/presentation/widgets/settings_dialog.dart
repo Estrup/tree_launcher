@@ -930,6 +930,62 @@ class _AiAssistantSectionState extends State<_AiAssistantSection> {
               }
             },
           ),
+          const SizedBox(height: 24),
+          Text(
+            'TTS MODEL',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _DropdownField<String>(
+            label: '',
+            value: settingsProvider.settings.openAiTtsModel,
+            items: const [
+              DropdownMenuItem(value: 'tts-1', child: Text('tts-1')),
+              DropdownMenuItem(value: 'tts-1-hd', child: Text('tts-1-hd')),
+              DropdownMenuItem(
+                value: 'gpt-4o-mini-tts',
+                child: Text('gpt-4o-mini-tts'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                settingsProvider.updateOpenAiTtsModel(value);
+              }
+            },
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'TTS VOICE',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _DropdownField<TtsVoice>(
+            label: '',
+            value: settingsProvider.settings.openAiTtsVoice,
+            items: TtsVoice.values
+                .map(
+                  (v) => DropdownMenuItem(
+                    value: v,
+                    child: Text(v.displayName),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) {
+                settingsProvider.updateOpenAiTtsVoice(value);
+              }
+            },
+          ),
         ],
       ),
     );

@@ -163,6 +163,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         RepoSidebar(
                           onAddRepo: () => AddRepoDialog.show(context),
                           onOpenSettings: () => SettingsDialog.show(context),
+                          onOpenAgent: () => agentController.openPanel(),
                         ),
                       Expanded(
                         child: Column(
@@ -364,6 +365,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           onOpenSettings: () {
                             setState(() => _sidebarOpen = false);
                             SettingsDialog.show(context);
+                          },
+                          onOpenAgent: () {
+                            setState(() => _sidebarOpen = false);
+                            agentController.openPanel();
                           },
                         ),
                       ),
