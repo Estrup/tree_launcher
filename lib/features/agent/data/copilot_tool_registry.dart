@@ -220,7 +220,7 @@ class CopilotToolRegistry {
       );
     }
 
-    terminalSession.writeInput(text);
+    terminalSession.writeInput('$text\n');
     return CopilotToolResult(
       payload: {'sessionName': session.name, 'sent': true},
       summary: 'Sent input to copilot "${session.name}".',
