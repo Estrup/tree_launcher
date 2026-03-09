@@ -6,7 +6,7 @@ import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 
 /// Floating notification that appears when a copilot session needs attention.
-/// Positioned in the bottom-right corner. Tapping navigates to the session.
+/// Positioned in the bottom-center. Tapping navigates to the session.
 class CopilotAttentionSnackbar extends StatefulWidget {
   const CopilotAttentionSnackbar({super.key});
 
@@ -35,7 +35,7 @@ class _CopilotAttentionSnackbarState extends State<CopilotAttentionSnackbar>
       duration: const Duration(milliseconds: 300),
     );
     _slideAnimation =
-        Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero).animate(
+        Tween<Offset>(begin: const Offset(0.0, 0.2), end: Offset.zero).animate(
           CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
         );
     _fadeAnimation = Tween<double>(
@@ -108,77 +108,80 @@ class _CopilotAttentionSnackbarState extends State<CopilotAttentionSnackbar>
     if (_currentSession == null) return const SizedBox.shrink();
 
     return Positioned(
-      right: 16,
+      left: 0,
+      right: 0,
       bottom: 16,
       child: SlideTransition(
         position: _slideAnimation,
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: GestureDetector(
-            onTap: _onTap,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 300),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.surface2,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border(
-                    left: BorderSide(color: const Color(0xFFF59E0B), width: 3),
+          child: Center(
+            child: GestureDetector(
+              onTap: _onTap,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 300),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface2,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border(
+                      left: BorderSide(color: const Color(0xFFF59E0B), width: 3),
                     ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.notifications_rounded,
-                      size: 18,
-                      color: Color(0xFFF59E0B),
-                    ),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _currentSession!.name,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Needs your attention',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 18,
-                      color: AppColors.textMuted,
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.notifications_rounded,
+                        size: 18,
+                        color: Color(0xFFF59E0B),
+                      ),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _currentSession!.name,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Needs your attention',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: AppColors.textMuted,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
