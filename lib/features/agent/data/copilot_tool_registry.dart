@@ -227,6 +227,10 @@ class CopilotToolRegistry {
     );
   }
 
+  static final _ansiEscapePattern = RegExp(
+    r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07\x1B]*(?:\x07|\x1B\\))',
+  );
+
   String _readTerminalBuffer(TerminalSession terminalSession, int lineCount) {
     final buf = terminalSession.terminal.buffer;
     final totalLines = buf.lines.length;
@@ -241,7 +245,14 @@ class CopilotToolRegistry {
       }
       sb.write(line.getText());
     }
-    return sb.toString();
+
+    // Strip ANSI escape sequences and trim trailing blank lines.
+    var text = sb.toString().replaceAll(_ansiEscapePattern, '');
+    final lines = text.split('\n');
+    while (lines.isNotEmpty && lines.last.trim().isEmpty) {
+      lines.removeLast();
+    }
+    return lines.join('\n');
   }
 
   CopilotSession _findSessionByName(String name) {

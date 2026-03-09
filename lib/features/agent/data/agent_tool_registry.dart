@@ -61,8 +61,13 @@ class AgentToolRegistry implements ToolRegistryInterface {
     throw ArgumentError('Unknown tool: $name');
   }
 
-  String buildSystemPrompt() {
+  String buildSystemPrompt({String? lastAttentionSessionName}) {
     final context = describeContext();
+    final attentionClause = lastAttentionSessionName != null
+        ? '\nThe copilot session "$lastAttentionSessionName" recently triggered an attention alert — '
+            'if the user says "the copilot" or "what happened" without specifying a name, '
+            'they almost certainly mean this one.\n'
+        : '';
     return '''
 You are TreeLauncher's voice agent — a helpful assistant embedded in a developer desktop tool.
 
@@ -77,10 +82,15 @@ Behavior guidelines:
 - When asked what a copilot returned or said, use read_copilot_output.
 - When the user wants to respond to a copilot prompt, use send_to_copilot.
 - When asked to focus on a copilot, use focus_copilot_session.
-- Keep responses concise and action-oriented.
-- If you read copilot output, summarize the key information rather than repeating everything verbatim.
 - If a tool fails, explain the failure plainly.
-- If the user asks you to read something aloud or speak, just provide the text response — TTS is handled by the app.
+$attentionClause
+**When reading copilot output for the user:**
+- Your response will be spoken aloud via text-to-speech.
+- Produce a concise, natural-sounding summary that is easy to listen to.
+- Focus on the last meaningful paragraphs of prose — the copilot's final message, question, or result.
+- Skip boilerplate, progress bars, file listings, and noise. Summarize those briefly if relevant.
+- If the copilot is asking the user a question or presenting choices, read the question and the options clearly.
+- Keep it digestible: aim for 2–4 spoken sentences unless the content is complex.
 
 Current app context:
 ${jsonEncode(context)}

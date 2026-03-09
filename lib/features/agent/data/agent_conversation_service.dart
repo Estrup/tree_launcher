@@ -18,6 +18,7 @@ class AgentConversationService {
     required String apiKey,
     required String model,
     required AgentToolRegistry toolRegistry,
+    String? lastAttentionSessionName,
   }) async {
     final userMessage = AgentMessage(
       role: AgentMessageRole.user,
@@ -37,7 +38,9 @@ class AgentConversationService {
       messages: openAiMessages,
       model: model,
       toolRegistry: toolRegistry,
-      systemPrompt: toolRegistry.buildSystemPrompt(),
+      systemPrompt: toolRegistry.buildSystemPrompt(
+        lastAttentionSessionName: lastAttentionSessionName,
+      ),
     );
 
     final assistantMessage = AgentMessage(
@@ -56,12 +59,14 @@ class AgentConversationService {
     required String apiKey,
     required String model,
     required AgentToolRegistry toolRegistry,
+    String? lastAttentionSessionName,
   }) {
     return sendMessage(
       text: transcript,
       apiKey: apiKey,
       model: model,
       toolRegistry: toolRegistry,
+      lastAttentionSessionName: lastAttentionSessionName,
     );
   }
 

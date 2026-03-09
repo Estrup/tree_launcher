@@ -33,7 +33,10 @@ class AgentPanelController extends ChangeNotifier {
        _conversationService = AgentConversationService(
          chatGptService: chatGptService,
        ),
-       _ttsService = TtsService();
+       _ttsService = TtsService() {
+    _copilotController.addListener(_onCopilotChanged);
+    _snapshotAttentionSessions();
+  }
 
   final MicrophoneRecordingService _microphoneRecordingService;
   final ChatGptService _chatGptService;
@@ -48,6 +51,12 @@ class AgentPanelController extends ChangeNotifier {
   AgentPanelPhase _phase = AgentPanelPhase.idle;
   String? _errorMessage;
   String? _speakingMessageId;
+
+  /// The name of the copilot session that most recently triggered attention.
+  String? _lastAttentionSessionName;
+
+  /// Previous set of session IDs needing action (for detecting transitions).
+  Set<String> _prevNeedingActionIds = {};
 
   // --- Public getters ---
 
@@ -67,7 +76,12 @@ class AgentPanelController extends ChangeNotifier {
   }) {
     _workspaceController = workspaceController;
     _settingsController = settingsController;
-    _copilotController = copilotController;
+    if (!identical(_copilotController, copilotController)) {
+      _copilotController.removeListener(_onCopilotChanged);
+      _copilotController = copilotController;
+      _copilotController.addListener(_onCopilotChanged);
+      _snapshotAttentionSessions();
+    }
   }
 
   // --- Panel visibility ---
@@ -255,15 +269,27 @@ class AgentPanelController extends ChangeNotifier {
   Future<void> _processTranscript(String transcript) async {
     try {
       final toolRegistry = _buildToolRegistry();
-      await _conversationService.sendVoiceTranscript(
+      final assistantMessage = await _conversationService.sendVoiceTranscript(
         transcript: transcript,
         apiKey: _settingsController.openAiApiKey.trim(),
         model: _settingsController.settings.openAiResponseModel,
         toolRegistry: toolRegistry,
+        lastAttentionSessionName: _lastAttentionSessionName,
       );
-    } finally {
+
       _phase = AgentPanelPhase.idle;
       _notify();
+
+      // Auto-TTS: if the voice response used read_copilot_output, speak it.
+      final usedCopilotRead = assistantMessage.toolSummaries
+          .any((s) => s.contains('lines from copilot'));
+      if (usedCopilotRead && assistantMessage.content.trim().isNotEmpty) {
+        unawaited(speakMessage(assistantMessage.id));
+      }
+    } catch (_) {
+      _phase = AgentPanelPhase.idle;
+      _notify();
+      rethrow;
     }
   }
 
@@ -274,6 +300,7 @@ class AgentPanelController extends ChangeNotifier {
       apiKey: _settingsController.openAiApiKey.trim(),
       model: _settingsController.settings.openAiResponseModel,
       toolRegistry: toolRegistry,
+      lastAttentionSessionName: _lastAttentionSessionName,
     );
   }
 
@@ -304,6 +331,26 @@ class AgentPanelController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
+  /// Detect when a copilot session newly transitions to needsAction.
+  void _onCopilotChanged() {
+    final currentNeeding = _copilotController.sessionsNeedingAction;
+    final currentIds = currentNeeding.map((s) => s.id).toSet();
+    final newIds = currentIds.difference(_prevNeedingActionIds);
+    _prevNeedingActionIds = currentIds;
+
+    if (newIds.isNotEmpty) {
+      // Pick the first newly-needing session as the attention target.
+      final session = currentNeeding.firstWhere((s) => newIds.contains(s.id));
+      _lastAttentionSessionName = session.name;
+      _log('Copilot attention: "${session.name}" needs action');
+    }
+  }
+
+  void _snapshotAttentionSessions() {
+    _prevNeedingActionIds =
+        _copilotController.sessionsNeedingAction.map((s) => s.id).toSet();
+  }
+
   void _log(String message, {Object? error, StackTrace? stackTrace}) {
     logVoice('AgentPanel', message, error: error, stackTrace: stackTrace);
   }
@@ -311,6 +358,7 @@ class AgentPanelController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _copilotController.removeListener(_onCopilotChanged);
     _ttsService.dispose();
     super.dispose();
   }
