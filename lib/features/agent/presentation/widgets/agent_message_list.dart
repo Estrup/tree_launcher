@@ -15,16 +15,40 @@ class AgentMessageList extends StatefulWidget {
 
 class _AgentMessageListState extends State<AgentMessageList> {
   final ScrollController _scrollController = ScrollController();
-  int _lastMessageCount = 0;
+  int _prevItemCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onControllerChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant AgentMessageList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onControllerChanged);
+      widget.controller.addListener(_onControllerChanged);
+    }
+  }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
     _scrollController.dispose();
     super.dispose();
   }
 
+  void _onControllerChanged() {
+    final itemCount = widget.controller.messages.length +
+        (widget.controller.isProcessing ? 1 : 0);
+    if (itemCount != _prevItemCount) {
+      _prevItemCount = itemCount;
+      _scrollToBottom();
+    }
+  }
+
   void _scrollToBottom() {
-    if (!_scrollController.hasClients) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -39,11 +63,6 @@ class _AgentMessageListState extends State<AgentMessageList> {
   @override
   Widget build(BuildContext context) {
     final messages = widget.controller.messages;
-
-    if (messages.length != _lastMessageCount) {
-      _lastMessageCount = messages.length;
-      _scrollToBottom();
-    }
 
     if (messages.isEmpty && !widget.controller.isProcessing) {
       return Center(

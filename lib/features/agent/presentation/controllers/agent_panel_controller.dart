@@ -280,10 +280,8 @@ class AgentPanelController extends ChangeNotifier {
       _phase = AgentPanelPhase.idle;
       _notify();
 
-      // Auto-TTS: if the voice response used read_copilot_output, speak it.
-      final usedCopilotRead = assistantMessage.toolSummaries
-          .any((s) => s.contains('lines from copilot'));
-      if (usedCopilotRead && assistantMessage.content.trim().isNotEmpty) {
+      // Auto-TTS: always speak assistant responses to voice input.
+      if (assistantMessage.content.trim().isNotEmpty) {
         unawaited(speakMessage(assistantMessage.id));
       }
     } catch (_) {
