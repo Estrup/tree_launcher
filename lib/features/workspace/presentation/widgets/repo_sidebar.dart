@@ -84,9 +84,8 @@ class RepoSidebar extends StatelessWidget {
             ),
           ),
 
-          // Repo list
+          // Repo list (with nested copilot sessions)
           Expanded(
-            flex: 3,
             child: repoProvider.repos.isEmpty
                 ? Padding(
                     padding: const EdgeInsets.all(20),
@@ -119,6 +118,7 @@ class RepoSidebar extends StatelessWidget {
                       return _RepoTile(
                         repo: repo,
                         isSelected: isSelected,
+                        sessions: repo.copilotSessions,
                         onTap: () {
                           final copilotProvider = context
                               .read<CopilotProvider>();
@@ -137,9 +137,6 @@ class RepoSidebar extends StatelessWidget {
                     },
                   ),
           ),
-
-          // Copilots section
-          _CopilotsSidebarSection(),
 
           // Bottom bar
           Container(
@@ -196,6 +193,7 @@ class RepoSidebar extends StatelessWidget {
 class _RepoTile extends StatefulWidget {
   final RepoConfig repo;
   final bool isSelected;
+  final List<CopilotSession> sessions;
   final VoidCallback onTap;
   final VoidCallback onRemove;
   final VoidCallback onSettings;
@@ -203,6 +201,7 @@ class _RepoTile extends StatefulWidget {
   const _RepoTile({
     required this.repo,
     required this.isSelected,
+    required this.sessions,
     required this.onTap,
     required this.onRemove,
     required this.onSettings,
@@ -217,96 +216,118 @@ class _RepoTileState extends State<_RepoTile> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          margin: const EdgeInsets.only(bottom: 2),
-          decoration: BoxDecoration(
-            color: widget.isSelected
-                ? AppColors.surface2
-                : _hovered
-                ? AppColors.surface1
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
-                // Left accent bar
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 3,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: widget.isSelected
-                        ? AppColors.accent
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Content
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.repo.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: widget.isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: widget.isSelected
-                                ? AppColors.textPrimary
-                                : AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.repo.path.replaceFirst(
-                            RegExp(r'^/Users/[^/]+'),
-                            '~',
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ],
+    final copilotProvider = context.watch<CopilotProvider>();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Repo header
+        MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              margin: const EdgeInsets.only(bottom: 2),
+              decoration: BoxDecoration(
+                color: widget.isSelected
+                    ? AppColors.surface2
+                    : _hovered
+                    ? AppColors.surface1
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  children: [
+                    // Left accent bar
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 3,
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: widget.isSelected
+                            ? AppColors.accent
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    // Content
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.repo.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: widget.isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: widget.isSelected
+                                    ? AppColors.textPrimary
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.repo.path.replaceFirst(
+                                RegExp(r'^/Users/[^/]+'),
+                                '~',
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textMuted,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Action icons (only on hover)
+                    if (_hovered || widget.isSelected)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _TinyIconButton(
+                            icon: Icons.edit_rounded,
+                            onTap: widget.onSettings,
+                          ),
+                          _TinyIconButton(
+                            icon: Icons.close_rounded,
+                            onTap: widget.onRemove,
+                          ),
+                        ],
+                      ),
+                    const SizedBox(width: 4),
+                  ],
                 ),
-                // Action icons (only on hover)
-                if (_hovered || widget.isSelected)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _TinyIconButton(
-                        icon: Icons.edit_rounded,
-                        onTap: widget.onSettings,
-                      ),
-                      _TinyIconButton(
-                        icon: Icons.close_rounded,
-                        onTap: widget.onRemove,
-                      ),
-                    ],
-                  ),
-                const SizedBox(width: 4),
-              ],
+              ),
             ),
           ),
         ),
-      ),
+        // Nested copilot sessions
+        ...widget.sessions.map((session) {
+          final isActive = copilotProvider.activeSession?.id == session.id;
+          return Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: _CopilotTile(
+              session: session,
+              isActive: isActive,
+              activityStatus: copilotProvider.statusForSession(session.id),
+              onTap: () => copilotProvider.selectSession(session),
+              onRemove: () => copilotProvider.removeSession(session),
+            ),
+          );
+        }),
+      ],
     );
   }
 }
@@ -444,101 +465,10 @@ class _SettingsButtonState extends State<_SettingsButton> {
   }
 }
 
-// --- Copilots sidebar section ---
-
-class _CopilotsSidebarSection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final repoProvider = context.watch<RepoProvider>();
-    final copilotProvider = context.watch<CopilotProvider>();
-    final sessions = repoProvider.allCopilotSessions;
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: AppColors.borderSubtle, width: 1),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 12,
-                  color: AppColors.copilot.withValues(alpha: 0.7),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'COPILOTS',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textMuted.withValues(alpha: 0.7),
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                if (copilotProvider.hasAnyActivity) ...[
-                  const SizedBox(width: 6),
-                  CopilotStatusDot(
-                    status: copilotProvider.aggregateStatus,
-                    size: 6,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (sessions.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text(
-                'No copilot sessions',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textMuted.withValues(alpha: 0.5),
-                ),
-              ),
-            )
-          else
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200),
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: sessions.length,
-                itemBuilder: (context, index) {
-                  final session = sessions[index];
-                  final isActive =
-                      copilotProvider.activeSession?.id == session.id;
-                  final repoName = repoProvider.repos
-                      .where((r) => r.path == session.repoPath)
-                      .map((r) => r.name)
-                      .firstOrNull;
-                  return _CopilotTile(
-                    session: session,
-                    repoName: repoName,
-                    isActive: isActive,
-                    activityStatus: copilotProvider.statusForSession(
-                      session.id,
-                    ),
-                    onTap: () => copilotProvider.selectSession(session),
-                    onRemove: () => copilotProvider.removeSession(session),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
+// --- Copilot session tile ---
 
 class _CopilotTile extends StatefulWidget {
   final CopilotSession session;
-  final String? repoName;
   final bool isActive;
   final CopilotActivityStatus activityStatus;
   final VoidCallback onTap;
@@ -546,7 +476,6 @@ class _CopilotTile extends StatefulWidget {
 
   const _CopilotTile({
     required this.session,
-    this.repoName,
     required this.isActive,
     required this.activityStatus,
     required this.onTap,
@@ -605,9 +534,7 @@ class _CopilotTileState extends State<_CopilotTile> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      widget.repoName != null
-                          ? '${_repoAbbreviation(widget.repoName!)}:${widget.session.name}'
-                          : widget.session.name,
+                      widget.session.name,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
@@ -640,14 +567,3 @@ class _CopilotTileState extends State<_CopilotTile> {
   }
 }
 
-String _repoAbbreviation(String repoName) {
-  if (repoName.contains('_') || repoName.contains('.')) {
-    final parts = repoName.split(RegExp(r'[_.]'));
-    return parts
-        .where((p) => p.isNotEmpty)
-        .take(3)
-        .map((p) => p[0].toUpperCase())
-        .join();
-  }
-  return repoName.substring(0, repoName.length.clamp(0, 3)).toUpperCase();
-}
