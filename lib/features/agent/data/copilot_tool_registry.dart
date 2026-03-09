@@ -127,8 +127,10 @@ class CopilotToolRegistry {
     const _CopilotToolDefinition(
       name: 'send_to_copilot',
       description:
-          'Send text input to a copilot session terminal. Use this to answer prompts, '
-          'make selections, or provide input the copilot is waiting for.',
+          'Send the user\'s prose response to a copilot session. The copilot sessions are TUI apps. '
+          'Use this ONLY to relay what the user said — answer prompts, make selections, or '
+          'provide input the copilot is waiting for. NEVER send shell commands, code, or '
+          'anything the user did not explicitly ask to send. A carriage return is appended automatically.',
       parameters: {
         'type': 'object',
         'properties': {
@@ -140,7 +142,7 @@ class CopilotToolRegistry {
           'text': {
             'type': 'string',
             'description':
-                'The text to type into the copilot terminal. Include a trailing newline if you want to press Enter.',
+                'The exact user prose to send. Do not add shell commands or escape sequences.',
           },
         },
         'required': ['sessionName', 'text'],
@@ -220,7 +222,7 @@ class CopilotToolRegistry {
       );
     }
 
-    terminalSession.writeInput('$text\n');
+    terminalSession.writeInput('$text\r');
     return CopilotToolResult(
       payload: {'sessionName': session.name, 'sent': true},
       summary: 'Sent input to copilot "${session.name}".',
