@@ -1,3 +1,5 @@
+import 'package:xterm/xterm.dart';
+
 import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
 import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
 import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
@@ -222,7 +224,10 @@ class CopilotToolRegistry {
       );
     }
 
-    terminalSession.writeInput('$text\r');
+    // Use the Terminal's input API so the keytab handler maps Enter correctly
+    // for whatever mode the TUI app is in (lineFeedMode, CSI u, etc.).
+    terminalSession.terminal.textInput(text);
+    terminalSession.terminal.keyInput(TerminalKey.enter);
     return CopilotToolResult(
       payload: {'sessionName': session.name, 'sent': true},
       summary: 'Sent input to copilot "${session.name}".',
