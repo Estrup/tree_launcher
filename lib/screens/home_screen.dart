@@ -38,11 +38,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _sidebarOpen = false;
   TabController? _tabController;
   int _lastTabCount = 0;
+  AgentPanelController? _agentController;
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleGlobalKeyEvent);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _agentController = context.read<AgentPanelController>();
+  }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleGlobalKeyEvent);
     _tabController?.dispose();
     super.dispose();
+  }
+
+  bool _handleGlobalKeyEvent(KeyEvent event) {
+    if (!mounted || event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.keyM) return false;
+
+    final keyboard = HardwareKeyboard.instance;
+    if (!keyboard.isControlPressed ||
+        keyboard.isAltPressed ||
+        keyboard.isMetaPressed ||
+        keyboard.isShiftPressed) {
+      return false;
+    }
+
+    final agentController = _agentController;
+    if (agentController == null) return false;
+
+    unawaited(agentController.handleVoiceShortcut());
+    return true;
   }
 
   void _onTabChanged() {
@@ -125,17 +158,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.backquote, meta: true): () {
-          final tp = context.read<TerminalProvider>();
-          if (tp.sessions.isNotEmpty) {
-            tp.toggleVisibility();
-          }
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.backquote, meta: true): () {
+            final tp = context.read<TerminalProvider>();
+            if (tp.sessions.isNotEmpty) {
+              tp.toggleVisibility();
+            }
+          },
         },
-        const SingleActivator(LogicalKeyboardKey.keyM, control: true): () {
-          unawaited(agentController.handleVoiceShortcut());
-        },
-      },
       child: Focus(
         autofocus: true,
         child: Scaffold(
