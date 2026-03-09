@@ -227,8 +227,8 @@ class CopilotToolRegistry {
     // Send the text, then schedule Enter on a separate event loop turn so the
     // TUI processes them as distinct inputs (avoids being batched in one PTY read).
     terminalSession.terminal.textInput(text);
-    Future.delayed(const Duration(milliseconds: 80), () {
-      terminalSession.terminal.keyInput(TerminalKey.enter);
+    Future.delayed(const Duration(milliseconds: 500), () {
+      terminalSession.terminal.keyInput(TerminalKey.returnKey);
     });
     return CopilotToolResult(
       payload: {'sessionName': session.name, 'sent': true},
