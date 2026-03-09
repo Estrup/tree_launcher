@@ -131,6 +131,7 @@ class AgentPanelController extends ChangeNotifier {
       }
 
       await _microphoneRecordingService.startRecording();
+      _playSystemSound('Tink');
       _phase = AgentPanelPhase.recording;
       _notify();
     } catch (error) {
@@ -145,6 +146,7 @@ class AgentPanelController extends ChangeNotifier {
 
     String? audioPath;
     try {
+      _playSystemSound('Pop');
       _phase = AgentPanelPhase.processing;
       _notify();
 
@@ -323,6 +325,14 @@ class AgentPanelController extends ChangeNotifier {
     if (file.existsSync()) {
       file.deleteSync();
     }
+  }
+
+  /// Play a short macOS system sound (fire-and-forget).
+  void _playSystemSound(String name) {
+    Process.start('afplay', ['/System/Library/Sounds/$name.aiff']).then(
+      (p) => p.exitCode, // let it finish on its own
+      onError: (_) {},
+    );
   }
 
   void _notify() {

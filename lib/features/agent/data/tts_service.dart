@@ -6,6 +6,7 @@ import 'package:tree_launcher/features/voice_commands/data/voice_logging.dart';
 class TtsService {
   Process? _playbackProcess;
   bool _disposed = false;
+  bool _cancelled = false;
 
   /// Synthesize speech from text using the OpenAI TTS API.
   /// Returns the path to the generated audio file.
@@ -75,18 +76,26 @@ class TtsService {
     String model = 'tts-1',
     String voice = 'nova',
   }) async {
+    _cancelled = false;
     final path = await synthesize(
       apiKey: apiKey,
       text: text,
       model: model,
       voice: voice,
     );
+    if (_cancelled || _disposed) {
+      // Cancelled during synthesis — clean up and bail.
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+      return;
+    }
     await play(path);
   }
 
   bool get isPlaying => _playbackProcess != null;
 
   Future<void> stopPlayback() async {
+    _cancelled = true;
     final process = _playbackProcess;
     if (process != null) {
       _log('Stopping TTS playback');
