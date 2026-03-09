@@ -491,23 +491,22 @@ class _CopilotTileState extends State<_CopilotTile> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            decoration: BoxDecoration(
-              color: widget.isActive
-                  ? AppColors.copilot.withValues(alpha: 0.12)
-                  : _hovered
-                  ? AppColors.surface1
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          margin: const EdgeInsets.only(bottom: 2),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? AppColors.copilot.withValues(alpha: 0.12)
+                : _hovered
+                ? AppColors.surface1
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: IntrinsicHeight(
             child: Row(
               children: [
@@ -564,8 +563,6 @@ class _CopilotTileState extends State<_CopilotTile> {
           ),
         ),
       ),
-      ),
     );
   }
 }
-
