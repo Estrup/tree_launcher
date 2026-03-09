@@ -132,7 +132,7 @@ class AgentPanelController extends ChangeNotifier {
 
       _playSystemSound('Funk');
       // Brief delay so the sound plays before the mic captures audio.
-      await Future<void>.delayed(const Duration(milliseconds: 250));
+      await Future<void>.delayed(const Duration(milliseconds: 1000));
       await _microphoneRecordingService.startRecording();
       _phase = AgentPanelPhase.recording;
       _notify();
