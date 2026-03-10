@@ -125,11 +125,34 @@ class CopilotSessionController extends ChangeNotifier {
 
     if (!_terminals.containsKey(session.id) ||
         _terminals[session.id]!.isDisposed) {
-      var command = 'copilot --resume ${session.id}';
+      final cliSettings = _settingsController.settings;
+      final parts = <String>['copilot'];
+
+      if (cliSettings.copilotModel != null &&
+          cliSettings.copilotModel!.isNotEmpty) {
+        parts.add('--model "${cliSettings.copilotModel}"');
+      }
+      if (cliSettings.copilotAllowAll) {
+        parts.add('--allow-all');
+      } else {
+        if (cliSettings.copilotAllowAllTools) parts.add('--allow-all-tools');
+        if (cliSettings.copilotAllowAllUrls) parts.add('--allow-all-urls');
+        if (cliSettings.copilotAllowAllPaths) parts.add('--allow-all-paths');
+      }
+      for (final dir in cliSettings.copilotAddDirs) {
+        parts.add("--add-dir '${dir.replaceAll("'", "'\\''")}'");
+      }
+      if (cliSettings.copilotAutopilot) {
+        parts.add('--autopilot');
+      }
+
       if (initialPrompt != null && initialPrompt.isNotEmpty) {
         final escapedPrompt = initialPrompt.replaceAll("'", "'\\''");
-        command = "copilot -i '$escapedPrompt' --resume ${session.id}";
+        parts.add("-i '$escapedPrompt'");
       }
+      parts.add('--resume ${session.id}');
+
+      final command = parts.join(' ');
 
       final terminal = TerminalSession(
         title: session.name,

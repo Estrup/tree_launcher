@@ -133,4 +133,50 @@ class SettingsController extends ChangeNotifier {
     await _store.save(_settings);
     notifyListeners();
   }
+
+  Future<void> updateCopilotModel(String? model) async {
+    final normalized = model?.trim();
+    _settings = _settings.copyWith(
+      copilotModel: normalized,
+      clearCopilotModel: normalized == null || normalized.isEmpty,
+    );
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateCopilotAllowAll(bool value) async {
+    _settings = _settings.copyWith(copilotAllowAll: value);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateCopilotAllowAllTools(bool value) async {
+    _settings = _settings.copyWith(copilotAllowAllTools: value);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateCopilotAllowAllUrls(bool value) async {
+    _settings = _settings.copyWith(copilotAllowAllUrls: value);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateCopilotAllowAllPaths(bool value) async {
+    _settings = _settings.copyWith(copilotAllowAllPaths: value);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateCopilotAddDirs(List<String> dirs) async {
+    _settings = _settings.copyWith(copilotAddDirs: dirs);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateCopilotAutopilot(bool value) async {
+    _settings = _settings.copyWith(copilotAutopilot: value);
+    await _store.save(_settings);
+    notifyListeners();
+  }
 }

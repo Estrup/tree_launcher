@@ -59,6 +59,13 @@ class AppSettings {
   final bool remoteControlEnabled;
   final int remoteControlPort;
   final String remoteControlBindAddress;
+  final String? copilotModel;
+  final bool copilotAllowAll;
+  final bool copilotAllowAllTools;
+  final bool copilotAllowAllUrls;
+  final bool copilotAllowAllPaths;
+  final List<String> copilotAddDirs;
+  final bool copilotAutopilot;
 
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
@@ -78,6 +85,13 @@ class AppSettings {
     this.remoteControlEnabled = false,
     this.remoteControlPort = 8422,
     this.remoteControlBindAddress = '127.0.0.1',
+    this.copilotModel,
+    this.copilotAllowAll = false,
+    this.copilotAllowAllTools = false,
+    this.copilotAllowAllUrls = false,
+    this.copilotAllowAllPaths = false,
+    this.copilotAddDirs = const [],
+    this.copilotAutopilot = false,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -118,6 +132,15 @@ class AppSettings {
       remoteControlPort: json['remoteControlPort'] as int? ?? 8422,
       remoteControlBindAddress:
           json['remoteControlBindAddress'] as String? ?? '127.0.0.1',
+      copilotModel: json['copilotModel'] as String?,
+      copilotAllowAll: json['copilotAllowAll'] as bool? ?? false,
+      copilotAllowAllTools: json['copilotAllowAllTools'] as bool? ?? false,
+      copilotAllowAllUrls: json['copilotAllowAllUrls'] as bool? ?? false,
+      copilotAllowAllPaths: json['copilotAllowAllPaths'] as bool? ?? false,
+      copilotAddDirs: (json['copilotAddDirs'] as List<dynamic>?)
+              ?.cast<String>() ??
+          const [],
+      copilotAutopilot: json['copilotAutopilot'] as bool? ?? false,
     );
   }
 
@@ -139,6 +162,13 @@ class AppSettings {
     'remoteControlEnabled': remoteControlEnabled,
     'remoteControlPort': remoteControlPort,
     'remoteControlBindAddress': remoteControlBindAddress,
+    'copilotModel': copilotModel,
+    'copilotAllowAll': copilotAllowAll,
+    'copilotAllowAllTools': copilotAllowAllTools,
+    'copilotAllowAllUrls': copilotAllowAllUrls,
+    'copilotAllowAllPaths': copilotAllowAllPaths,
+    'copilotAddDirs': copilotAddDirs,
+    'copilotAutopilot': copilotAutopilot,
   };
 
   AppSettings copyWith({
@@ -162,6 +192,14 @@ class AppSettings {
     bool? remoteControlEnabled,
     int? remoteControlPort,
     String? remoteControlBindAddress,
+    String? copilotModel,
+    bool clearCopilotModel = false,
+    bool? copilotAllowAll,
+    bool? copilotAllowAllTools,
+    bool? copilotAllowAllUrls,
+    bool? copilotAllowAllPaths,
+    List<String>? copilotAddDirs,
+    bool? copilotAutopilot,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -192,6 +230,15 @@ class AppSettings {
       remoteControlPort: remoteControlPort ?? this.remoteControlPort,
       remoteControlBindAddress:
           remoteControlBindAddress ?? this.remoteControlBindAddress,
+      copilotModel: clearCopilotModel
+          ? null
+          : (copilotModel ?? this.copilotModel),
+      copilotAllowAll: copilotAllowAll ?? this.copilotAllowAll,
+      copilotAllowAllTools: copilotAllowAllTools ?? this.copilotAllowAllTools,
+      copilotAllowAllUrls: copilotAllowAllUrls ?? this.copilotAllowAllUrls,
+      copilotAllowAllPaths: copilotAllowAllPaths ?? this.copilotAllowAllPaths,
+      copilotAddDirs: copilotAddDirs ?? this.copilotAddDirs,
+      copilotAutopilot: copilotAutopilot ?? this.copilotAutopilot,
     );
   }
 }

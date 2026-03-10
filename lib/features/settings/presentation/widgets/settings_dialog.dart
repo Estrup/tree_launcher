@@ -558,8 +558,11 @@ class _CopilotSection extends StatefulWidget {
 }
 
 class _CopilotSectionState extends State<_CopilotSection> {
+  static const _dirPickerChannel =
+      MethodChannel('tree_launcher/directory_picker');
   final SoundService _soundService = SoundService();
   late final TextEditingController _branchPrefixController;
+  late final TextEditingController _copilotModelController;
 
   @override
   void initState() {
@@ -568,11 +571,15 @@ class _CopilotSectionState extends State<_CopilotSection> {
     _branchPrefixController = TextEditingController(
       text: settings.defaultBranchPrefix ?? '',
     );
+    _copilotModelController = TextEditingController(
+      text: settings.copilotModel ?? '',
+    );
   }
 
   @override
   void dispose() {
     _branchPrefixController.dispose();
+    _copilotModelController.dispose();
     super.dispose();
   }
 
@@ -764,9 +771,200 @@ class _CopilotSectionState extends State<_CopilotSection> {
               color: AppColors.textMuted.withValues(alpha: 0.6),
             ),
           ),
+          const SizedBox(height: 32),
+          Text(
+            'COPILOT CLI',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            style: appFormFieldTextStyle(context, monospace: true),
+            decoration: InputDecoration(
+              hintText: 'e.g. claude-sonnet-4-20250514',
+              hintStyle: appFormFieldHintStyle(context, monospace: true),
+            ),
+            controller: _copilotModelController,
+            onChanged: (value) => settingsProvider.updateCopilotModel(
+              value.isEmpty ? null : value,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Override the default AI model. Leave empty for default.',
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.textMuted.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildCliToggle(
+            label: 'Allow all (bypass all permission prompts)',
+            value: settings.copilotAllowAll,
+            onChanged: (value) =>
+                settingsProvider.updateCopilotAllowAll(value),
+          ),
+          _buildCliToggle(
+            label: 'Allow all tools',
+            value: settings.copilotAllowAllTools,
+            enabled: !settings.copilotAllowAll,
+            onChanged: (value) =>
+                settingsProvider.updateCopilotAllowAllTools(value),
+          ),
+          _buildCliToggle(
+            label: 'Allow all URLs',
+            value: settings.copilotAllowAllUrls,
+            enabled: !settings.copilotAllowAll,
+            onChanged: (value) =>
+                settingsProvider.updateCopilotAllowAllUrls(value),
+          ),
+          _buildCliToggle(
+            label: 'Allow all paths',
+            value: settings.copilotAllowAllPaths,
+            enabled: !settings.copilotAllowAll,
+            onChanged: (value) =>
+                settingsProvider.updateCopilotAllowAllPaths(value),
+          ),
+          const SizedBox(height: 8),
+          _buildCliToggle(
+            label: 'Autopilot mode',
+            value: settings.copilotAutopilot,
+            onChanged: (value) =>
+                settingsProvider.updateCopilotAutopilot(value),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'ADDITIONAL DIRECTORIES',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...settings.copilotAddDirs.asMap().entries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      entry.value,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                        color: AppColors.textSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 14,
+                      color: AppColors.textMuted,
+                    ),
+                    onPressed: () {
+                      final dirs = List<String>.from(settings.copilotAddDirs)
+                        ..removeAt(entry.key);
+                      settingsProvider.updateCopilotAddDirs(dirs);
+                    },
+                    splashRadius: 14,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: () => _pickAddDir(settingsProvider, settings),
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.surface0,
+              foregroundColor: AppColors.textPrimary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: AppColors.border),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+            ),
+            icon: const Icon(Icons.add_rounded, size: 16),
+            label: const Text(
+              'Add Directory',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Include extra directories in Copilot\'s context via --add-dir',
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.textMuted.withValues(alpha: 0.6),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildCliToggle({
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    bool enabled = true,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: enabled
+                    ? AppColors.textSecondary
+                    : AppColors.textMuted.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          Transform.scale(
+            scale: 0.75,
+            child: Switch(
+              value: value,
+              activeTrackColor: AppColors.accent,
+              onChanged: enabled ? onChanged : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickAddDir(
+    SettingsProvider provider,
+    AppSettings settings,
+  ) async {
+    try {
+      final result =
+          await _dirPickerChannel.invokeMethod<String>('pickDirectory');
+      if (result != null) {
+        final dirs = [...settings.copilotAddDirs, result];
+        provider.updateCopilotAddDirs(dirs);
+      }
+    } on PlatformException {
+      // Picker cancelled or unavailable
+    }
   }
 
   Future<void> _previewCopilotAttentionSound(AppSettings settings) async {
