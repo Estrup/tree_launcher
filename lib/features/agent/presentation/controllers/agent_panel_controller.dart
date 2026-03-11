@@ -8,6 +8,7 @@ import 'package:tree_launcher/features/agent/data/agent_tool_registry.dart';
 import 'package:tree_launcher/features/agent/data/copilot_tool_registry.dart';
 import 'package:tree_launcher/features/agent/data/tts_service.dart';
 import 'package:tree_launcher/features/agent/domain/agent_message.dart';
+import 'package:tree_launcher/features/copilot/data/copilot_terminal_output.dart';
 import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/voice_commands/data/chatgpt_service.dart';
@@ -19,21 +20,28 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/worksp
 enum AgentPanelPhase { idle, recording, processing }
 
 class AgentPanelController extends ChangeNotifier {
+  static const int _copilotSummaryLineCount = 100;
+
   AgentPanelController({
     required MicrophoneRecordingService microphoneRecordingService,
     required ChatGptService chatGptService,
     required WorkspaceController workspaceController,
     required SettingsController settingsController,
     required CopilotController copilotController,
+    Duration recordingStartDelay = const Duration(milliseconds: 1000),
+    void Function(String name)? playSystemSound,
+    TtsService? ttsService,
   }) : _microphoneRecordingService = microphoneRecordingService,
        _chatGptService = chatGptService,
        _workspaceController = workspaceController,
        _settingsController = settingsController,
        _copilotController = copilotController,
+       _recordingStartDelay = recordingStartDelay,
+       _playSystemSoundEffect = playSystemSound ?? _defaultPlaySystemSound,
        _conversationService = AgentConversationService(
          chatGptService: chatGptService,
        ),
-       _ttsService = TtsService() {
+       _ttsService = ttsService ?? TtsService() {
     _copilotController.addListener(_onCopilotChanged);
     _snapshotAttentionSessions();
   }
@@ -43,6 +51,8 @@ class AgentPanelController extends ChangeNotifier {
   WorkspaceController _workspaceController;
   SettingsController _settingsController;
   CopilotController _copilotController;
+  final Duration _recordingStartDelay;
+  final void Function(String name) _playSystemSoundEffect;
   final AgentConversationService _conversationService;
   final TtsService _ttsService;
 
@@ -68,6 +78,9 @@ class AgentPanelController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get speakingMessageId => _speakingMessageId;
   List<AgentMessage> get messages => _conversationService.messages;
+
+  @visibleForTesting
+  CopilotController get debugCopilotController => _copilotController;
 
   void updateDependencies({
     required WorkspaceController workspaceController,
@@ -102,7 +115,7 @@ class AgentPanelController extends ChangeNotifier {
     if (_panelOpen) {
       _panelOpen = false;
       if (_phase == AgentPanelPhase.recording) {
-        unawaited(_cancelRecording());
+        unawaited(cancelRecording());
       }
       _notify();
     }
@@ -121,8 +134,8 @@ class AgentPanelController extends ChangeNotifier {
     }
 
     try {
-      final accessGranted =
-          await _microphoneRecordingService.requestMicrophoneAccess();
+      final accessGranted = await _microphoneRecordingService
+          .requestMicrophoneAccess();
       if (!accessGranted) {
         _errorMessage =
             'Microphone access was denied. Enable it in macOS System Settings.';
@@ -130,9 +143,9 @@ class AgentPanelController extends ChangeNotifier {
         return;
       }
 
-      _playSystemSound('Funk');
+      _playSystemSoundEffect('Funk');
       // Brief delay so the sound plays before the mic captures audio.
-      await Future<void>.delayed(const Duration(milliseconds: 1000));
+      await Future<void>.delayed(_recordingStartDelay);
       await _microphoneRecordingService.startRecording();
       _phase = AgentPanelPhase.recording;
       _notify();
@@ -148,7 +161,7 @@ class AgentPanelController extends ChangeNotifier {
 
     String? audioPath;
     try {
-      _playSystemSound('Submarine');
+      _playSystemSoundEffect('Submarine');
       _phase = AgentPanelPhase.processing;
       _notify();
 
@@ -194,6 +207,95 @@ class AgentPanelController extends ChangeNotifier {
         await stopRecordingAndSubmit();
       case AgentPanelPhase.processing:
         break; // no-op while processing
+    }
+  }
+
+  Future<void> handleCopilotSummaryShortcut() async {
+    if (_phase != AgentPanelPhase.idle) return;
+
+    _errorMessage = null;
+    final apiKey = _settingsController.openAiApiKey.trim();
+    if (apiKey.isEmpty) {
+      _errorMessage = 'Add your OpenAI API key in Settings.';
+      openPanel();
+      _notify();
+      return;
+    }
+
+    final activeSession = _copilotController.activeSession;
+    if (activeSession == null) {
+      _errorMessage =
+          'Select a Copilot session before asking for a spoken summary.';
+      openPanel();
+      _notify();
+      return;
+    }
+
+    final terminalSession = _copilotController.terminalForSession(
+      activeSession.id,
+    );
+    if (terminalSession == null) {
+      _errorMessage =
+          'No terminal is attached to the selected Copilot session.';
+      openPanel();
+      _notify();
+      return;
+    }
+
+    final output = readCopilotTerminalOutput(
+      terminalSession,
+      lineCount: _copilotSummaryLineCount,
+    ).trim();
+    if (output.isEmpty) {
+      _errorMessage =
+          'The selected Copilot session does not have enough output to summarize yet.';
+      openPanel();
+      _notify();
+      return;
+    }
+
+    _phase = AgentPanelPhase.processing;
+    _notify();
+
+    try {
+      await _ttsService.stopPlayback();
+      final summary = await _chatGptService.summarizeCopilotSessionOutput(
+        apiKey: apiKey,
+        sessionName: activeSession.name,
+        output: output,
+        model: _settingsController.settings.openAiResponseModel,
+      );
+      final summaryMessage = _conversationService.addAssistantMessage(summary);
+
+      _phase = AgentPanelPhase.idle;
+      _notify();
+      await speakMessage(summaryMessage.id);
+    } catch (error, stackTrace) {
+      _log(
+        'Copilot summary shortcut failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = error.toString();
+      _phase = AgentPanelPhase.idle;
+      openPanel();
+      _notify();
+    }
+  }
+
+  Future<void> cancelRecording() async {
+    if (_phase != AgentPanelPhase.recording) return;
+
+    _errorMessage = null;
+    _phase = AgentPanelPhase.idle;
+    _notify();
+
+    try {
+      await _microphoneRecordingService.cancelRecording();
+    } catch (error, stackTrace) {
+      _log('Failed to cancel recording', error: error, stackTrace: stackTrace);
+      _errorMessage = error.toString();
+      _notify();
     }
   }
 
@@ -317,11 +419,6 @@ class AgentPanelController extends ChangeNotifier {
     );
   }
 
-  Future<void> _cancelRecording() async {
-    await _microphoneRecordingService.cancelRecording();
-    _phase = AgentPanelPhase.idle;
-  }
-
   void _deleteFileIfPresent(String path) {
     final file = File(path);
     if (file.existsSync()) {
@@ -330,7 +427,7 @@ class AgentPanelController extends ChangeNotifier {
   }
 
   /// Play a short macOS system sound (fire-and-forget).
-  void _playSystemSound(String name) {
+  static void _defaultPlaySystemSound(String name) {
     Process.start('afplay', ['/System/Library/Sounds/$name.aiff']).then(
       (p) => p.exitCode, // let it finish on its own
       onError: (_) {},
@@ -357,8 +454,9 @@ class AgentPanelController extends ChangeNotifier {
   }
 
   void _snapshotAttentionSessions() {
-    _prevNeedingActionIds =
-        _copilotController.sessionsNeedingAction.map((s) => s.id).toSet();
+    _prevNeedingActionIds = _copilotController.sessionsNeedingAction
+        .map((s) => s.id)
+        .toSet();
   }
 
   void _log(String message, {Object? error, StackTrace? stackTrace}) {
@@ -368,6 +466,9 @@ class AgentPanelController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    if (_phase == AgentPanelPhase.recording) {
+      unawaited(cancelRecording());
+    }
     _copilotController.removeListener(_onCopilotChanged);
     _ttsService.dispose();
     super.dispose();

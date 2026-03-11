@@ -29,9 +29,7 @@ class ChatGptService {
     required ToolRegistryInterface toolRegistry,
     required String systemPrompt,
   }) async {
-    _log(
-      'Chat with history model=$model messages=${messages.length}',
-    );
+    _log('Chat with history model=$model messages=${messages.length}');
     final chatMessages = <Map<String, dynamic>>[
       {'role': 'system', 'content': systemPrompt},
       ...messages,
@@ -165,6 +163,52 @@ class ChatGptService {
     _log('Transcription completed textLength=${transcript.length}');
 
     return transcript;
+  }
+
+  Future<String> summarizeCopilotSessionOutput({
+    required String apiKey,
+    required String sessionName,
+    required String output,
+    required String model,
+  }) async {
+    final trimmedOutput = output.trim();
+    if (trimmedOutput.isEmpty) {
+      throw Exception('There is no Copilot output available to summarize.');
+    }
+
+    _log(
+      'Summarizing copilot output model=$model '
+      'session=$sessionName textLength=${trimmedOutput.length}',
+    );
+    final completion = await _createChatCompletion(
+      apiKey: apiKey,
+      model: model,
+      messages: [
+        {
+          'role': 'system',
+          'content': '''
+You summarize the end of a GitHub Copilot session for Tree Launcher voice playback.
+
+- Focus on the outcome, current status, blockers, and the next concrete step if there is one.
+- Use plain spoken prose rather than bullets or markdown.
+- Keep it concise and easy to read aloud in at most three sentences.
+- Ignore terminal boilerplate unless it materially changes the result.
+''',
+        },
+        {
+          'role': 'user',
+          'content':
+              'Session: $sessionName\n\nSummarize the end of this Copilot session output for speech:\n\n$trimmedOutput',
+        },
+      ],
+      tools: const [],
+    );
+
+    final summary = completion.content.trim();
+    if (summary.isEmpty) {
+      throw Exception('OpenAI did not return a spoken session summary.');
+    }
+    return summary;
   }
 
   Future<_ChatRoutingResult> _routeTranscript({

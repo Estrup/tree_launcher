@@ -42,7 +42,7 @@ class AgentPanelHeader extends StatelessWidget {
           if (controller.messages.isNotEmpty)
             _HeaderButton(
               icon: Icons.delete_outline_rounded,
-              tooltip: 'Clear history',
+              tooltip: 'Clear history (Command+L)',
               onPressed: controller.clearHistory,
             ),
           _HeaderButton(
