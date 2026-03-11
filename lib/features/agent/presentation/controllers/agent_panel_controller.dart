@@ -213,6 +213,7 @@ class AgentPanelController extends ChangeNotifier {
   Future<void> handleCopilotSummaryShortcut() async {
     if (_phase != AgentPanelPhase.idle) return;
 
+    _playSystemSoundEffect('Glass');
     _errorMessage = null;
     final apiKey = _settingsController.openAiApiKey.trim();
     if (apiKey.isEmpty) {
@@ -254,6 +255,7 @@ class AgentPanelController extends ChangeNotifier {
       return;
     }
 
+    openPanel();
     _phase = AgentPanelPhase.processing;
     _notify();
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/agent/presentation/controllers/agent_panel_controller.dart';
 import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_status_dot.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
@@ -139,6 +140,9 @@ class RepoSidebar extends StatelessWidget {
                     },
                   ),
           ),
+
+          // Agent activity indicator (above bottom bar)
+          const _AgentActivityIndicator(),
 
           // Bottom bar
           Container(
@@ -605,6 +609,149 @@ class _CopilotTileState extends State<_CopilotTile> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// --- Agent activity indicator (above bottom bar) ---
+
+class _AgentActivityIndicator extends StatefulWidget {
+  const _AgentActivityIndicator();
+
+  @override
+  State<_AgentActivityIndicator> createState() =>
+      _AgentActivityIndicatorState();
+}
+
+class _AgentActivityIndicatorState extends State<_AgentActivityIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _opacity = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  void _syncAnimation(AgentPanelPhase phase, bool isSpeaking) {
+    final active =
+        phase == AgentPanelPhase.recording ||
+        phase == AgentPanelPhase.processing ||
+        isSpeaking;
+    if (active && !_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    } else if (!active && _pulseController.isAnimating) {
+      _pulseController.stop();
+      _pulseController.value = 0;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<AgentPanelController>();
+    final phase = controller.phase;
+    final speaking = controller.isSpeaking;
+
+    _syncAnimation(phase, speaking);
+
+    if (phase == AgentPanelPhase.idle && !speaking) {
+      return const SizedBox.shrink();
+    }
+
+    final Color color;
+    final String label;
+    final IconData icon;
+
+    if (phase == AgentPanelPhase.recording) {
+      color = AppColors.error;
+      label = 'Vocalizing…';
+      icon = Icons.mic_rounded;
+    } else if (phase == AgentPanelPhase.processing) {
+      color = AppColors.accent;
+      label = 'Processing…';
+      icon = Icons.auto_awesome_rounded;
+    } else {
+      // idle + speaking
+      color = AppColors.accent;
+      label = 'Playing…';
+      icon = Icons.volume_up_rounded;
+    }
+
+    return AnimatedBuilder(
+      animation: _opacity,
+      builder: (context, _) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: _opacity.value * 0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  icon,
+                  size: 12,
+                  color: color.withValues(alpha: _opacity.value),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: color.withValues(alpha: _opacity.value),
+                    letterSpacing: -0.1,
+                  ),
+                ),
+              ),
+              // Cancel / stop button
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  iconSize: 12,
+                  tooltip: phase == AgentPanelPhase.recording
+                      ? 'Cancel recording'
+                      : speaking
+                          ? 'Stop playback'
+                          : 'Cancel',
+                  onPressed: () {
+                    if (phase == AgentPanelPhase.recording) {
+                      controller.cancelRecording();
+                    } else if (speaking) {
+                      controller.stopSpeaking();
+                    }
+                  },
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 12,
+                    color: color.withValues(alpha: _opacity.value),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
