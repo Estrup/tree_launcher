@@ -376,6 +376,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         ),
                                         ...allSessions.map(
                                           (s) => CopilotTerminalView(
+                                            key: ValueKey(s.id),
                                             sessionId: s.id,
                                           ),
                                         ),

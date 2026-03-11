@@ -32,6 +32,8 @@ class CopilotSessionController extends ChangeNotifier {
 
   CopilotSession? _activeSession;
   final Map<String, TerminalSession> _terminals = {};
+  final Map<String, int> _focusRequestVersions = {};
+  int _focusRequestSerial = 0;
 
   CopilotSession? get activeSession => _activeSession;
 
@@ -40,6 +42,9 @@ class CopilotSessionController extends ChangeNotifier {
 
   TerminalSession? terminalForSession(String sessionId) =>
       _terminals[sessionId];
+
+  int focusRequestVersionForSession(String sessionId) =>
+      _focusRequestVersions[sessionId] ?? 0;
 
   List<CopilotSession> get allSessions =>
       _workspaceController.allCopilotSessions;
@@ -97,6 +102,7 @@ class CopilotSessionController extends ChangeNotifier {
     final terminal = _terminals.remove(session.id);
     terminal?.dispose();
     _attentionController.removeStatus(session.id);
+    _focusRequestVersions.remove(session.id);
 
     if (_activeSession == session) {
       _activeSession = null;
@@ -117,6 +123,7 @@ class CopilotSessionController extends ChangeNotifier {
 
   void _activateSession(CopilotSession session, {String? initialPrompt}) {
     _activeSession = session;
+    _focusRequestVersions[session.id] = ++_focusRequestSerial;
 
     if (_attentionController.statusForSession(session.id) ==
         CopilotActivityStatus.needsAction) {
@@ -197,6 +204,7 @@ class CopilotSessionController extends ChangeNotifier {
       terminal.dispose();
     }
     _terminals.clear();
+    _focusRequestVersions.clear();
     _attentionController.clearAll();
     _activeSession = null;
     notifyListeners();
@@ -247,6 +255,7 @@ class CopilotSessionController extends ChangeNotifier {
       terminal.dispose();
     }
     _terminals.clear();
+    _focusRequestVersions.clear();
     super.dispose();
   }
 }
