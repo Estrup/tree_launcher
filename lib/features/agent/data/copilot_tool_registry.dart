@@ -49,6 +49,7 @@ class CopilotToolRegistry {
         return {
           'id': s.id,
           'name': s.name,
+          'worktreeName': s.worktreeName,
           'repoPath': s.repoPath,
           'status': status.name,
         };
@@ -160,6 +161,7 @@ class CopilotToolRegistry {
       return {
         'id': s.id,
         'name': s.name,
+        'worktreeName': s.worktreeName,
         'repoPath': s.repoPath,
         'status': status.name,
         'isActive': _copilotController.activeSession?.id == s.id,
@@ -245,10 +247,18 @@ class CopilotToolRegistry {
       if (session.name.trim().toLowerCase() == normalizedTarget) {
         return session;
       }
+      if (session.worktreeName.trim().toLowerCase() == normalizedTarget) {
+        return session;
+      }
     }
     // Fallback: partial match
     for (final session in sessions) {
       if (session.name.trim().toLowerCase().contains(normalizedTarget)) {
+        return session;
+      }
+      if (session.worktreeName.trim().toLowerCase().contains(
+        normalizedTarget,
+      )) {
         return session;
       }
     }
