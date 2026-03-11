@@ -61,6 +61,7 @@ class CopilotSessionController extends ChangeNotifier {
     final session = CopilotSession(
       id: _uuid.v4(),
       name: worktreeName,
+      worktreeName: worktreeName,
       repoPath: repoPath,
       workingDirectory: workingDirectory,
     );
@@ -166,6 +167,7 @@ class CopilotSessionController extends ChangeNotifier {
           session.id,
           CopilotAttentionController.parseStatus(title),
         );
+        unawaited(_handleTerminalTitleChange(session.id, title));
       };
 
       terminal.onBell = () {
@@ -190,6 +192,84 @@ class CopilotSessionController extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  Future<void> _handleTerminalTitleChange(
+    String sessionId,
+    String title,
+  ) async {
+    final session = _sessionById(sessionId);
+    if (session == null) {
+      return;
+    }
+
+    final promotedTitle = _normalizePromotedTitle(session, title);
+    if (promotedTitle == null || promotedTitle == session.name) {
+      return;
+    }
+
+    final updatedSession = session.copyWith(name: promotedTitle);
+    await _replaceSession(updatedSession);
+  }
+
+  String? _normalizePromotedTitle(CopilotSession session, String title) {
+    final normalized = title.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    if (normalized.contains('\u{1F916}')) {
+      return null;
+    }
+
+    final lower = normalized.toLowerCase();
+    if (lower == 'zsh' || lower == 'bash' || lower == 'shell') {
+      return null;
+    }
+
+    if (normalized == session.workingDirectory ||
+        normalized == session.repoPath) {
+      return null;
+    }
+
+    if (normalized == session.worktreeName) {
+      return null;
+    }
+
+    return normalized;
+  }
+
+  CopilotSession? _sessionById(String sessionId) {
+    for (final session in _workspaceController.allCopilotSessions) {
+      if (session.id == sessionId) {
+        return session;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _replaceSession(CopilotSession updatedSession) async {
+    for (final repo in _workspaceController.repos) {
+      if (repo.path != updatedSession.repoPath) {
+        continue;
+      }
+
+      final index = repo.copilotSessions.indexWhere(
+        (session) => session.id == updatedSession.id,
+      );
+      if (index == -1) {
+        return;
+      }
+
+      final sessions = [...repo.copilotSessions];
+      sessions[index] = updatedSession;
+      await _workspaceController.updateRepoCopilotSessions(repo, sessions);
+      if (_activeSession?.id == updatedSession.id) {
+        _activeSession = updatedSession;
+      }
+      notifyListeners();
+      return;
+    }
   }
 
   void disposeAllTerminals() {
