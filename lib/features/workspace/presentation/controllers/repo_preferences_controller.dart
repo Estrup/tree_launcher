@@ -23,6 +23,7 @@ class RepoPreferencesController extends ChangeNotifier {
       defaultRunCommands: repo.defaultRunCommands,
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
+      slotAssignments: repo.slotAssignments,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -42,6 +43,7 @@ class RepoPreferencesController extends ChangeNotifier {
       defaultRunCommands: repo.defaultRunCommands,
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
+      slotAssignments: repo.slotAssignments,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -61,6 +63,7 @@ class RepoPreferencesController extends ChangeNotifier {
       defaultRunCommands: repo.defaultRunCommands,
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
+      slotAssignments: repo.slotAssignments,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -80,6 +83,7 @@ class RepoPreferencesController extends ChangeNotifier {
       defaultRunCommands: repo.defaultRunCommands,
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
+      slotAssignments: repo.slotAssignments,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -99,6 +103,7 @@ class RepoPreferencesController extends ChangeNotifier {
       defaultRunCommands: commandNames,
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
+      slotAssignments: repo.slotAssignments,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -118,6 +123,7 @@ class RepoPreferencesController extends ChangeNotifier {
       defaultRunCommands: repo.defaultRunCommands,
       copilotSessions: sessions,
       copilotPrompts: repo.copilotPrompts,
+      slotAssignments: repo.slotAssignments,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -137,6 +143,27 @@ class RepoPreferencesController extends ChangeNotifier {
       defaultRunCommands: repo.defaultRunCommands,
       copilotSessions: repo.copilotSessions,
       copilotPrompts: prompts,
+      slotAssignments: repo.slotAssignments,
+    );
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  Future<RepoConfig?> updateSlotAssignments(
+    RepoConfig repo,
+    Map<String, String> slotAssignments,
+  ) async {
+    final updated = RepoConfig(
+      name: repo.name,
+      path: repo.path,
+      vscodeConfigs: repo.vscodeConfigs,
+      customCommands: repo.customCommands,
+      lastBaseBranch: repo.lastBaseBranch,
+      defaultRunCommands: repo.defaultRunCommands,
+      copilotSessions: repo.copilotSessions,
+      copilotPrompts: repo.copilotPrompts,
+      slotAssignments: slotAssignments,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();

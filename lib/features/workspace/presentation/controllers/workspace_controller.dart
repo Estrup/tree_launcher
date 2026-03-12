@@ -12,6 +12,7 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/repo_p
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_registry_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_selection_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/worktree_controller.dart';
+import 'package:tree_launcher/models/worktree_slot.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
 class WorkspaceController extends ChangeNotifier {
@@ -92,6 +93,7 @@ class WorkspaceController extends ChangeNotifier {
     await registry.loadRepos();
     if (repos.isNotEmpty && selectedRepo == null) {
       selection.selectRepo(repos.first);
+      _syncSlotAssignments(repos.first);
       await worktreesController.refreshForRepo(repos.first.path);
     }
     notifyListeners();
@@ -119,6 +121,7 @@ class WorkspaceController extends ChangeNotifier {
   Future<void> selectRepo(RepoConfig repo) async {
     if (selectedRepo == repo) return;
     selection.selectRepo(repo);
+    _syncSlotAssignments(repo);
     await worktreesController.refreshForRepo(repo.path);
   }
 
@@ -193,21 +196,90 @@ class WorkspaceController extends ChangeNotifier {
     String name, {
     String? baseBranch,
     String? newBranch,
-  }) {
-    return worktreesController.addWorktree(
+  }) async {
+    final worktreePath = await worktreesController.addWorktree(
       selectedRepo?.path,
       name,
       baseBranch: baseBranch,
       newBranch: newBranch,
     );
+
+    // Auto-assign next available slot to the new worktree
+    if (worktreePath != null && selectedRepo != null) {
+      final repo = selectedRepo!;
+      final usedSlots = repo.slotAssignments.values.toSet();
+      final slot = nextAvailableSlot(usedSlots);
+      final updated = Map<String, String>.from(repo.slotAssignments);
+      updated[worktreePath] = slot;
+      final newRepo = await preferences.updateSlotAssignments(repo, updated);
+      _replaceSelection(repo, newRepo);
+      worktreesController.setSlotAssignments(
+        newRepo?.slotAssignments ?? updated,
+      );
+    }
+
+    return worktreePath;
   }
 
-  Future<void> deleteWorktree(Worktree worktree) {
-    return worktreesController.deleteWorktree(selectedRepo?.path, worktree);
+  Future<void> deleteWorktree(Worktree worktree) async {
+    await worktreesController.deleteWorktree(selectedRepo?.path, worktree);
+
+    // Remove slot assignment for the deleted worktree
+    if (selectedRepo != null) {
+      final repo = selectedRepo!;
+      final updated = Map<String, String>.from(repo.slotAssignments);
+      updated.remove(worktree.path);
+      final newRepo = await preferences.updateSlotAssignments(repo, updated);
+      _replaceSelection(repo, newRepo);
+      worktreesController.setSlotAssignments(
+        newRepo?.slotAssignments ?? updated,
+      );
+    }
   }
 
-  Future<void> refreshWorktrees() {
-    return worktreesController.refreshForRepo(selectedRepo?.path);
+  Future<void> refreshWorktrees() async {
+    _syncSlotAssignments(selectedRepo);
+    await worktreesController.refreshForRepo(selectedRepo?.path);
+    _pruneStaleSlotAssignments();
+  }
+
+  Future<void> updateSlotAssignment(String worktreePath, String slot) async {
+    if (selectedRepo == null) return;
+    final repo = selectedRepo!;
+    final updated = Map<String, String>.from(repo.slotAssignments);
+    updated[worktreePath] = slot;
+    final newRepo = await preferences.updateSlotAssignments(repo, updated);
+    _replaceSelection(repo, newRepo);
+    worktreesController.setSlotAssignments(
+      newRepo?.slotAssignments ?? updated,
+    );
+  }
+
+  void _syncSlotAssignments(RepoConfig? repo) {
+    worktreesController.setSlotAssignments(
+      repo?.slotAssignments ?? {},
+    );
+  }
+
+  /// Removes slot assignments for worktree paths that no longer exist.
+  Future<void> _pruneStaleSlotAssignments() async {
+    if (selectedRepo == null) return;
+    final repo = selectedRepo!;
+    final activePaths = worktreesController.worktrees.map((w) => w.path).toSet();
+    final staleKeys = repo.slotAssignments.keys
+        .where((path) => !activePaths.contains(path))
+        .toList();
+    if (staleKeys.isEmpty) return;
+
+    final updated = Map<String, String>.from(repo.slotAssignments);
+    for (final key in staleKeys) {
+      updated.remove(key);
+    }
+    final newRepo = await preferences.updateSlotAssignments(repo, updated);
+    _replaceSelection(repo, newRepo);
+    worktreesController.setSlotAssignments(
+      newRepo?.slotAssignments ?? updated,
+    );
   }
 
   void _replaceSelection(RepoConfig previous, RepoConfig? updated) {

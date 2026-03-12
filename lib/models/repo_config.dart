@@ -12,6 +12,7 @@ class RepoConfig {
   final List<String> defaultRunCommands;
   final List<CopilotSession> copilotSessions;
   final List<CopilotPrompt> copilotPrompts;
+  final Map<String, String> slotAssignments;
 
   RepoConfig({
     required this.name,
@@ -22,6 +23,7 @@ class RepoConfig {
     this.defaultRunCommands = const [],
     this.copilotSessions = const [],
     this.copilotPrompts = const [],
+    this.slotAssignments = const {},
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -54,6 +56,10 @@ class RepoConfig {
               ?.map((e) => CopilotPrompt.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      slotAssignments:
+          (json['slotAssignments'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v as String)) ??
+          {},
     );
   }
 
@@ -66,6 +72,7 @@ class RepoConfig {
     'defaultRunCommands': defaultRunCommands,
     'copilotSessions': copilotSessions.map((s) => s.toJson()).toList(),
     'copilotPrompts': copilotPrompts.map((p) => p.toJson()).toList(),
+    'slotAssignments': slotAssignments,
   };
 
   @override

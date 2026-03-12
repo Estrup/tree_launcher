@@ -251,13 +251,15 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         await terminalProvider.gracefulCloseCommandSessionsForRepo(repo.path);
 
         // Launch each selected command
+        final slot = repo.slotAssignments[worktreePath] ?? 'alpha';
         for (final cmd in repo.customCommands) {
           if (_selectedCommands.contains(cmd.name)) {
+            final command = cmd.command.replaceAll('{{SLOT}}', slot);
             terminalProvider.openTerminalWithCommand(
               cmd.name,
               worktreePath,
               repo.path,
-              cmd.command,
+              command,
             );
           }
         }

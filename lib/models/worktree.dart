@@ -4,6 +4,7 @@ class Worktree {
   final String name;
   final bool isMain;
   final String commitHash;
+  final String slot;
 
   Worktree({
     required this.path,
@@ -11,7 +12,26 @@ class Worktree {
     required this.name,
     required this.isMain,
     required this.commitHash,
+    this.slot = 'alpha',
   });
+
+  Worktree copyWith({
+    String? path,
+    String? branch,
+    String? name,
+    bool? isMain,
+    String? commitHash,
+    String? slot,
+  }) {
+    return Worktree(
+      path: path ?? this.path,
+      branch: branch ?? this.branch,
+      name: name ?? this.name,
+      isMain: isMain ?? this.isMain,
+      commitHash: commitHash ?? this.commitHash,
+      slot: slot ?? this.slot,
+    );
+  }
 }
 
 class WorktreeListResult {

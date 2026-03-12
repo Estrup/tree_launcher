@@ -1156,11 +1156,13 @@ class _HeaderCommandsButtonState extends State<_HeaderCommandsButton> {
       }).toList(),
     ).then((selected) {
       if (selected != null) {
+        final slot = repo?.slotAssignments[widget.worktreePath] ?? 'alpha';
+        final command = selected.command.replaceAll('{{SLOT}}', slot);
         tp.openTerminalWithCommand(
           '${widget.worktreeName}: ${selected.name}',
           widget.worktreePath,
           repo?.path ?? widget.worktreePath,
-          selected.command,
+          command,
         );
       }
     });

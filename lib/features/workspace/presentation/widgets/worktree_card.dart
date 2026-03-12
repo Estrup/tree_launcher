@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/models/worktree_slot.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
@@ -50,7 +51,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top row: name + badge
+                // Top row: name + slot badge + primary badge
                 Row(
                   children: [
                     Expanded(
@@ -65,6 +66,8 @@ class _WorktreeCardState extends State<WorktreeCard> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    _SlotBadge(worktree: wt),
+                    const SizedBox(width: 6),
                     if (wt.isMain)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -244,6 +247,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                         worktreePath: wt.path,
                         worktreeName: wt.name,
                         commands: customCommands,
+                        slot: wt.slot,
                       ),
                     ],
                   ],
@@ -675,11 +679,13 @@ class _CustomCommandsButton extends StatefulWidget {
   final String worktreePath;
   final String worktreeName;
   final List<CustomCommand> commands;
+  final String slot;
 
   const _CustomCommandsButton({
     required this.worktreePath,
     required this.worktreeName,
     required this.commands,
+    required this.slot,
   });
 
   @override
@@ -774,11 +780,12 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
       }).toList(),
     ).then((selected) {
       if (selected != null) {
+        final command = selected.command.replaceAll('{{SLOT}}', widget.slot);
         tp.openTerminalWithCommand(
           '${widget.worktreeName}: ${selected.name}',
           widget.worktreePath,
           repo?.path ?? widget.worktreePath,
-          selected.command,
+          command,
         );
       }
     });
@@ -884,6 +891,78 @@ class _ActionButtonState extends State<_ActionButton> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SlotBadge extends StatelessWidget {
+  final Worktree worktree;
+
+  const _SlotBadge({required this.worktree});
+
+  @override
+  Widget build(BuildContext context) {
+    final rp = context.read<RepoProvider>();
+    final repo = rp.selectedRepo;
+    if (repo == null) return const SizedBox.shrink();
+
+    // Collect slots already used by other worktrees in this repo
+    final allWorktrees = rp.worktrees;
+    final usedSlots = <String>{};
+    for (final wt in allWorktrees) {
+      if (wt.path != worktree.path) {
+        usedSlots.add(wt.slot);
+      }
+    }
+    final availableSlots =
+        greekSlots.where((s) => !usedSlots.contains(s)).toList();
+
+    return PopupMenuButton<String>(
+      tooltip: 'Change slot',
+      offset: const Offset(0, 28),
+      color: AppColors.surface2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.border),
+      ),
+      onSelected: (slot) {
+        rp.updateSlotAssignment(worktree.path, slot);
+      },
+      itemBuilder: (_) => availableSlots.map((slot) {
+        final isCurrent = slot == worktree.slot;
+        return PopupMenuItem<String>(
+          value: slot,
+          height: 32,
+          child: Text(
+            slot.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+              color: isCurrent ? AppColors.accent : AppColors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+        );
+      }).toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.terminalBg,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: AppColors.terminal.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Text(
+          worktree.slot.toUpperCase(),
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            color: AppColors.terminal,
+            letterSpacing: 0.8,
           ),
         ),
       ),
