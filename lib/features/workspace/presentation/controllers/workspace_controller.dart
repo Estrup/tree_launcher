@@ -5,6 +5,7 @@ import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
@@ -145,6 +146,15 @@ class WorkspaceController extends ChangeNotifier {
     List<CustomCommand> commands,
   ) async {
     final updated = await preferences.updateRepoCustomCommands(repo, commands);
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
+  Future<RepoConfig?> updateRepoCustomLinks(
+    RepoConfig repo,
+    List<CustomLink> links,
+  ) async {
+    final updated = await preferences.updateRepoCustomLinks(repo, links);
     _replaceSelection(repo, updated);
     return updated;
   }

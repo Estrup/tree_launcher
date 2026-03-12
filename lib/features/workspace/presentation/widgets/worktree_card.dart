@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -6,6 +8,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/models/worktree_slot.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
@@ -31,6 +34,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
     final settings = context.watch<SettingsProvider>().settings;
     final repo = context.watch<RepoProvider>().selectedRepo;
     final customCommands = repo?.customCommands ?? [];
+    final customLinks = repo?.customLinks ?? [];
     final wt = widget.worktree;
 
     return MouseRegion(
@@ -247,6 +251,13 @@ class _WorktreeCardState extends State<WorktreeCard> {
                         worktreePath: wt.path,
                         worktreeName: wt.name,
                         commands: customCommands,
+                        slot: wt.slot,
+                      ),
+                    ],
+                    if (customLinks.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      _CustomLinksButton(
+                        links: customLinks,
                         slot: wt.slot,
                       ),
                     ],
@@ -787,6 +798,112 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
           repo?.path ?? widget.worktreePath,
           command,
         );
+      }
+    });
+  }
+}
+
+class _CustomLinksButton extends StatefulWidget {
+  final List<CustomLink> links;
+  final String slot;
+
+  const _CustomLinksButton({
+    required this.links,
+    required this.slot,
+  });
+
+  @override
+  State<_CustomLinksButton> createState() => _CustomLinksButtonState();
+}
+
+class _CustomLinksButtonState extends State<_CustomLinksButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => _showDropdown(context),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: _hovered
+                ? AppColors.accent.withValues(alpha: 0.2)
+                : AppColors.accentMuted,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _hovered
+                  ? AppColors.accent.withValues(alpha: 0.4)
+                  : AppColors.accent.withValues(alpha: 0.15),
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.link_rounded,
+              size: 18,
+              color: AppColors.accent,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDropdown(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height)),
+        button.localToGlobal(Offset(button.size.width, button.size.height)),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<CustomLink>(
+      context: context,
+      position: position,
+      color: AppColors.surface1,
+      constraints: const BoxConstraints(minWidth: 220),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.border),
+      ),
+      items: widget.links.map((link) {
+        return PopupMenuItem<CustomLink>(
+          value: link,
+          height: 36,
+          child: Row(
+            children: [
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 13,
+                color: AppColors.accent,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  link.name,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((selected) {
+      if (selected != null) {
+        final url = selected.url.replaceAll('{{SLOT}}', widget.slot);
+        Process.run('open', [url]);
       }
     });
   }
