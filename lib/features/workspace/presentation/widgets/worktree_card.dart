@@ -216,34 +216,31 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     ),
                     SizedBox(width: 8),
                     Expanded(
-                      child: _ActionButton(
-                        icon: Icons.auto_awesome_rounded,
-                        label: 'Copilot',
-                        color: AppColors.copilot,
-                        bgColor: AppColors.copilotBg,
-                        onPressed: () {
-                          if (settings.copilotButtonMode ==
-                              CopilotButtonMode.inApp) {
-                            final repo = context
-                                .read<RepoProvider>()
-                                .selectedRepo;
-                            context.read<CopilotProvider>().createSession(
-                              repo?.path ?? wt.path,
-                              wt.path,
-                              wt.name,
-                            );
-                          } else {
-                            _launcherService.openCopilotCli(wt.path, settings);
-                          }
-                        },
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
                       child: _VscodeSplitButton(
                         worktreePath: wt.path,
                         launcherService: _launcherService,
                       ),
+                    ),
+                    SizedBox(width: 8),
+                    _ActionButton(
+                      icon: Icons.auto_awesome_rounded,
+                      color: AppColors.copilot,
+                      bgColor: AppColors.copilotBg,
+                      onPressed: () {
+                        if (settings.copilotButtonMode ==
+                            CopilotButtonMode.inApp) {
+                          final repo = context
+                              .read<RepoProvider>()
+                              .selectedRepo;
+                          context.read<CopilotProvider>().createSession(
+                            repo?.path ?? wt.path,
+                            wt.path,
+                            wt.name,
+                          );
+                        } else {
+                          _launcherService.openCopilotCli(wt.path, settings);
+                        }
+                      },
                     ),
                     if (customCommands.isNotEmpty) ...[
                       const SizedBox(width: 8),
@@ -950,14 +947,14 @@ class _DeleteIconState extends State<_DeleteIcon> {
 
 class _ActionButton extends StatefulWidget {
   final IconData icon;
-  final String label;
+  final String? label;
   final Color color;
   final Color bgColor;
   final VoidCallback onPressed;
 
   const _ActionButton({
     required this.icon,
-    required this.label,
+    this.label,
     required this.color,
     required this.bgColor,
     required this.onPressed,
@@ -979,6 +976,7 @@ class _ActionButtonState extends State<_ActionButton> {
         onTap: widget.onPressed,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
+          width: widget.label == null ? 36 : null,
           height: 36,
           decoration: BoxDecoration(
             color: _hovered
@@ -995,18 +993,20 @@ class _ActionButtonState extends State<_ActionButton> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(widget.icon, size: 14, color: widget.color),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: widget.color,
+              if (widget.label != null) ...[
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    widget.label!,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: widget.color,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
+              ],
             ],
           ),
         ),
