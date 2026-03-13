@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/terminal_theme.dart';
+import 'package:tree_launcher/features/terminal/presentation/terminal_text_style_resolver.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_key_handler.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
@@ -59,8 +60,11 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView>
     final copilotProvider = context.watch<CopilotProvider>();
     final session = copilotProvider.terminalForSession(widget.sessionId);
     final settings = context.watch<SettingsProvider>().settings;
-    final fontFamily = settings.terminalFontFamily ?? 'SF Mono';
-    final fontSize = settings.terminalFontSize ?? 13.0;
+    final terminalTextStyle = buildTerminalTextStyle(
+      fontFamily: settings.terminalFontFamily,
+      fontSize: settings.terminalFontSize,
+      lineHeight: 1.3,
+    );
 
     if (session == null) {
       return const Center(child: Text('No active copilot session'));
@@ -101,12 +105,7 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView>
             TerminalView(
               session.terminal,
               theme: appTerminalTheme,
-              textStyle: TerminalStyle(
-                fontFamily: fontFamily,
-                fontSize: fontSize,
-                height: 1.3,
-                fontFamilyFallback: [fontFamily, 'monospace'],
-              ),
+              textStyle: terminalTextStyle,
               textScaler: TextScaler.noScaling,
               padding: EdgeInsets.zero,
               autofocus: true,

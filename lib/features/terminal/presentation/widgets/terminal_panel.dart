@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/terminal_theme.dart';
+import 'package:tree_launcher/features/terminal/presentation/terminal_text_style_resolver.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
 import 'terminal_key_handler.dart';
@@ -337,8 +338,11 @@ class _TerminalBodyState extends State<_TerminalBody> {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>().settings;
-    final fontFamily = settings.terminalFontFamily ?? 'SF Mono';
-    final fontSize = settings.terminalFontSize ?? 13.0;
+    final terminalTextStyle = buildTerminalTextStyle(
+      fontFamily: settings.terminalFontFamily,
+      fontSize: settings.terminalFontSize,
+      lineHeight: 1.9,
+    );
 
     return Container(
       padding: const EdgeInsets.all(8),
@@ -346,12 +350,7 @@ class _TerminalBodyState extends State<_TerminalBody> {
       child: TerminalView(
         widget.session.terminal as Terminal,
         theme: appTerminalTheme,
-        textStyle: TerminalStyle(
-          fontFamily: fontFamily,
-          fontSize: fontSize,
-          height: 1.9,
-          fontFamilyFallback: [fontFamily, 'monospace'],
-        ),
+        textStyle: terminalTextStyle,
         textScaler: TextScaler.noScaling,
         padding: EdgeInsets.zero,
         autofocus: true,

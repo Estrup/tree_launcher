@@ -6,6 +6,7 @@ import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/copilot/data/sound_service.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
+import 'package:tree_launcher/features/terminal/presentation/terminal_text_style_resolver.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
@@ -395,18 +396,10 @@ class _TerminalsSectionState extends State<_TerminalsSection> {
   Widget build(BuildContext context) {
     final settingsProvider = context.watch<SettingsProvider>();
     final settings = settingsProvider.settings;
-
-    const fonts = [
-      'SF Mono',
-      'Menlo',
-      'Monaco',
-      'JetBrains Mono',
-      'Fira Code',
-      'monospace',
-    ];
+    final fonts = terminalFontOptions();
     const sizes = [11.0, 12.0, 13.0, 14.0, 15.0, 16.0];
-    final currentFont = settings.terminalFontFamily ?? 'SF Mono';
-    final currentSize = settings.terminalFontSize ?? 13.0;
+    final currentFont = resolveTerminalFontFamily(settings.terminalFontFamily);
+    final currentSize = settings.terminalFontSize ?? kDefaultTerminalFontSize;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
@@ -502,14 +495,15 @@ class _TerminalsSectionState extends State<_TerminalsSection> {
                   value: currentFont,
                   items: fonts
                       .map(
-                        (f) => DropdownMenuItem(
-                          value: f,
-                          child: Text(
+                         (f) => DropdownMenuItem<String>(
+                           value: f,
+                           child: Text(
                             f,
                             style: TextStyle(
                               fontSize: 12,
                               color: AppColors.textPrimary,
-                              fontFamily: f,
+                              fontFamily: resolveTerminalFontFamily(f),
+                              fontFamilyFallback: terminalFontFallbacks(f),
                             ),
                           ),
                         ),
@@ -527,9 +521,9 @@ class _TerminalsSectionState extends State<_TerminalsSection> {
                   value: currentSize,
                   items: sizes
                       .map(
-                        (s) => DropdownMenuItem(
-                          value: s,
-                          child: Text(
+                         (s) => DropdownMenuItem<double>(
+                           value: s,
+                           child: Text(
                             '${s.toInt()} px',
                             style: TextStyle(
                               fontSize: 12,
