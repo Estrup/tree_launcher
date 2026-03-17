@@ -214,7 +214,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
         if (!snapshot.hasData) return const SizedBox.shrink();
         final path = snapshot.data!;
         return GestureDetector(
-          onTap: () => Process.run('open', [path]),
+          onTap: () => Process.run(
+            Platform.isWindows ? 'cmd' : 'open',
+            Platform.isWindows ? ['/c', 'start', '', path] : [path],
+          ),
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: Text(

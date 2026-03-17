@@ -178,7 +178,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                             message: wt.path,
                             child: Text(
                               wt.path.replaceFirst(
-                                RegExp(r'^/Users/[^/]+'),
+                                RegExp(r'^(/Users/[^/]+|[A-Za-z]:\\Users\\[^\\]+)'),
                                 '~',
                               ),
                               style: TextStyle(

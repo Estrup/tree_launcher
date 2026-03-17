@@ -5,7 +5,7 @@ import '../models/worktree.dart';
 class GitService {
   /// Fetches worktrees for a given repo path using `git worktree list --porcelain`.
   Future<WorktreeListResult> getWorktrees(String repoPath) async {
-    final result = await Process.run('/usr/bin/git', [
+    final result = await Process.run('git', [
       'worktree',
       'list',
       '--porcelain',
@@ -28,7 +28,7 @@ class GitService {
     if (await gitDir.exists() || await gitFile.exists()) return true;
 
     // Also check if the path itself is a bare repo
-    final result = await Process.run('/usr/bin/git', [
+    final result = await Process.run('git', [
       'rev-parse',
       '--git-dir',
     ], workingDirectory: path);
@@ -37,7 +37,7 @@ class GitService {
 
   /// Lists all branches (local and remote), sorted by most recent commit.
   Future<List<String>> listBranches(String repoPath) async {
-    final result = await Process.run('/usr/bin/git', [
+    final result = await Process.run('git', [
       'branch',
       '-a',
       '--sort=-committerdate',
@@ -90,7 +90,7 @@ class GitService {
     // Fetch latest changes from origin for the base branch so the worktree
     // is created from the newest remote state.
     if (baseBranch != null && baseBranch.isNotEmpty) {
-      await Process.run('/usr/bin/git', [
+      await Process.run('git', [
         'fetch',
         'origin',
         baseBranch,
@@ -116,7 +116,7 @@ class GitService {
     }
 
     final result = await Process.run(
-      '/usr/bin/git',
+      'git',
       args,
       workingDirectory: repoPath,
     );
@@ -130,7 +130,7 @@ class GitService {
 
   /// Removes a worktree from disk and git.
   Future<void> removeWorktree(String repoPath, String worktreePath) async {
-    final result = await Process.run('/usr/bin/git', [
+    final result = await Process.run('git', [
       'worktree',
       'remove',
       worktreePath,

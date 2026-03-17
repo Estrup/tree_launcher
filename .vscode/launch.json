@@ -21,6 +21,27 @@
       "type": "dart",
       "deviceId": "macos",
       "flutterMode": "release"
+    },
+    {
+      "name": "tree_launcher (Windows, debug)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "windows",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "tree_launcher (Windows, profile)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "windows",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "tree_launcher (Windows, release)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "windows",
+      "flutterMode": "release"
     }
   ]
 }

@@ -43,9 +43,12 @@ class TerminalSession {
     env['TERM'] = 'xterm-256color';
     env['COLORTERM'] = 'truecolor';
 
+    final shell = Platform.isWindows ? 'powershell.exe' : '/bin/zsh';
+    final shellArgs = Platform.isWindows ? <String>[] : <String>['-l'];
+
     final pty = Pty.start(
-      '/bin/zsh',
-      arguments: ['-l'],
+      shell,
+      arguments: shellArgs,
       workingDirectory: workingDirectory,
       environment: env,
       columns: terminal.viewWidth,
@@ -170,16 +173,21 @@ class TerminalSession {
     );
     if (exited != -1) return;
 
-    // SIGTERM
-    pty.kill(ProcessSignal.sigterm);
-    final exited2 = await pty.exitCode.timeout(
-      const Duration(seconds: 1),
-      onTimeout: () => -1,
-    );
-    if (exited2 != -1) return;
+    // SIGTERM (not available on Windows, skip)
+    if (!Platform.isWindows) {
+      pty.kill(ProcessSignal.sigterm);
+      final exited2 = await pty.exitCode.timeout(
+        const Duration(seconds: 1),
+        onTimeout: () => -1,
+      );
+      if (exited2 != -1) return;
 
-    // SIGKILL as last resort
-    pty.kill(ProcessSignal.sigkill);
+      // SIGKILL as last resort
+      pty.kill(ProcessSignal.sigkill);
+    } else {
+      // On Windows, kill the process directly
+      pty.kill();
+    }
   }
 
   void dispose() {
