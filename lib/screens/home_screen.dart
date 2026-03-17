@@ -946,6 +946,32 @@ class _HeaderVscodeButtonState extends State<_HeaderVscodeButton> {
   bool _hovered = false;
   final LauncherService _launcherService = LauncherService();
 
+  void _openVSCode(String path) {
+    unawaited(_openVSCodeAsync(path));
+  }
+
+  Future<void> _openVSCodeAsync(String path) async {
+    try {
+      await _launcherService.openVSCode(path);
+    } on ProcessException catch (error) {
+      _showLaunchError(
+        error.message.isEmpty
+            ? 'Failed to open VS Code.'
+            : 'Failed to open VS Code: ${error.message}',
+      );
+    } on StateError catch (error) {
+      _showLaunchError(error.message);
+    }
+  }
+
+  void _showLaunchError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
@@ -954,7 +980,7 @@ class _HeaderVscodeButtonState extends State<_HeaderVscodeButton> {
       child: GestureDetector(
         onTap: () {
           if (widget.vscodeConfigs.isEmpty) {
-            _launcherService.openVSCode(widget.worktreePath);
+            _openVSCode(widget.worktreePath);
           } else {
             _showDropdown(context);
           }
@@ -1057,10 +1083,10 @@ class _HeaderVscodeButtonState extends State<_HeaderVscodeButton> {
     ).then((selectedPath) {
       if (selectedPath != null) {
         if (selectedPath.isEmpty) {
-          _launcherService.openVSCode(widget.worktreePath);
+          _openVSCode(widget.worktreePath);
         } else {
           final resolved = p.join(widget.worktreePath, selectedPath);
-          _launcherService.openVSCode(resolved);
+          _openVSCode(resolved);
         }
       }
     });

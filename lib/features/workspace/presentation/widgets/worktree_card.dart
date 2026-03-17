@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -185,7 +186,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                             message: wt.path,
                             child: Text(
                               wt.path.replaceFirst(
-                                RegExp(r'^/Users/[^/]+'),
+                                RegExp(r'^(/Users/[^/]+|[A-Za-z]:\\Users\\[^\\]+)'),
                                 '~',
                               ),
                               style: TextStyle(
@@ -515,6 +516,32 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
   bool _mainHovered = false;
   bool _dropHovered = false;
 
+  void _openVSCode(String path) {
+    unawaited(_openVSCodeAsync(path));
+  }
+
+  Future<void> _openVSCodeAsync(String path) async {
+    try {
+      await widget.launcherService.openVSCode(path);
+    } on ProcessException catch (error) {
+      _showLaunchError(
+        error.message.isEmpty
+            ? 'Failed to open VS Code.'
+            : 'Failed to open VS Code: ${error.message}',
+      );
+    } on StateError catch (error) {
+      _showLaunchError(error.message);
+    }
+  }
+
+  void _showLaunchError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final repo = context.watch<RepoProvider>().selectedRepo;
@@ -522,14 +549,14 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
     final hasConfigs = configs.isNotEmpty;
 
     if (!hasConfigs) {
-      return _ActionButton(
-        icon: Icons.code_rounded,
-        label: 'VS Code',
-        color: AppColors.vscode,
-        bgColor: AppColors.vscodeBg,
-        onPressed: () => widget.launcherService.openVSCode(widget.worktreePath),
-      );
-    }
+        return _ActionButton(
+          icon: Icons.code_rounded,
+          label: 'VS Code',
+          color: AppColors.vscode,
+          bgColor: AppColors.vscodeBg,
+          onPressed: () => _openVSCode(widget.worktreePath),
+        );
+      }
 
     return SizedBox(
       height: 36,
@@ -554,8 +581,7 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
                   onEnter: (_) => setState(() => _mainHovered = true),
                   onExit: (_) => setState(() => _mainHovered = false),
                   child: GestureDetector(
-                    onTap: () =>
-                        widget.launcherService.openVSCode(widget.worktreePath),
+                    onTap: () => _openVSCode(widget.worktreePath),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 120),
                       color: _mainHovered
@@ -677,7 +703,7 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
     ).then((selectedPath) {
       if (selectedPath != null) {
         final resolved = p.join(widget.worktreePath, selectedPath);
-        widget.launcherService.openVSCode(resolved);
+        _openVSCode(resolved);
       }
     });
   }

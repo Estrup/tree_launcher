@@ -285,7 +285,7 @@ class _RepoTileState extends State<_RepoTile> {
                             const SizedBox(height: 2),
                             Text(
                               widget.repo.path.replaceFirst(
-                                RegExp(r'^/Users/[^/]+'),
+                                RegExp(r'^(/Users/[^/]+|[A-Za-z]:\\Users\\[^\\]+)'),
                                 '~',
                               ),
                               overflow: TextOverflow.ellipsis,

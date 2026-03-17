@@ -13,9 +13,7 @@ class SoundService {
 
   Future<void> playSystemSound(CopilotAttentionSound sound) async {
     if (defaultTargetPlatform != TargetPlatform.macOS) {
-      throw UnsupportedError(
-        'Copilot attention sounds are only supported on macOS.',
-      );
+      return;
     }
 
     await _channel.invokeMethod<void>('playSystemSound', {
