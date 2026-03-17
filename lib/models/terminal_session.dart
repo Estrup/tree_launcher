@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_pty/flutter_pty.dart';
 import 'package:xterm/xterm.dart';
 
@@ -139,10 +140,24 @@ class TerminalSession {
     _pty!.write(utf8.encode(data));
   }
 
+  @visibleForTesting
+  static String buildQueuedCommandInput(String command, {bool? isWindows}) {
+    final windows = isWindows ?? Platform.isWindows;
+    final lineEnding = windows ? '\r' : '\n';
+    return '$command$lineEnding';
+  }
+
+  @visibleForTesting
+  static const String interruptInput = '\x03';
+
   /// Writes an initial command to the PTY (e.g., for custom commands).
   void sendCommand(String command) {
-    if (_disposed || _pty == null) return;
-    _pty!.write(utf8.encode('$command\n'));
+    writeInput(buildQueuedCommandInput(command));
+  }
+
+  /// Sends an interrupt request to the active PTY process (Ctrl+C).
+  void sendInterrupt() {
+    writeInput(interruptInput);
   }
 
   /// Future that completes when the shell process exits.

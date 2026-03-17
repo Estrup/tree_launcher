@@ -123,8 +123,7 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView>
                 autofocus: true,
                 hardwareKeyboardOnly: true,
                 onKeyEvent: (node, event) =>
-                    terminalShiftEnterHandler(session.terminal, node, event) ??
-                    KeyEventResult.ignored,
+                    terminalKeyHandler(session, node, event),
               ),
               if (_isDragging)
                 Positioned.fill(

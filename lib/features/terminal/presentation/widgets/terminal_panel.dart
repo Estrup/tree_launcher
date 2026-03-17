@@ -356,12 +356,7 @@ class _TerminalBodyState extends State<_TerminalBody> {
         autofocus: true,
         hardwareKeyboardOnly: true,
         onKeyEvent: (node, event) =>
-            terminalShiftEnterHandler(
-              widget.session.terminal as Terminal,
-              node,
-              event,
-            ) ??
-            KeyEventResult.ignored,
+            terminalKeyHandler(widget.session, node, event),
       ),
     );
   }
