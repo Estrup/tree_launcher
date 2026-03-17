@@ -45,7 +45,7 @@ class _AgentInputBarState extends State<AgentInputBar> {
       ),
       child: Row(
         children: [
-          // Mic button
+          // Start / stop-and-submit button
           _InputIconButton(
             icon: widget.controller.isRecording
                 ? Icons.stop_rounded
@@ -65,6 +65,16 @@ class _AgentInputBarState extends State<AgentInputBar> {
                   }
                 : null,
           ),
+          if (widget.controller.isRecording) ...[
+            const SizedBox(width: 8),
+            _InputIconButton(
+              icon: Icons.close_rounded,
+              tooltip: 'Cancel recording',
+              onPressed: () {
+                unawaited(widget.controller.cancelRecording());
+              },
+            ),
+          ],
           const SizedBox(width: 8),
           // Text field
           Expanded(
@@ -83,10 +93,7 @@ class _AgentInputBarState extends State<AgentInputBar> {
                 enabled: isIdle,
                 maxLines: 3,
                 minLines: 1,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: AppColors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 12.5, color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Type a message…',
                   hintStyle: TextStyle(
@@ -173,9 +180,7 @@ class _InputIconButtonState extends State<_InputIconButton> {
             decoration: BoxDecoration(
               color: widget.isActive
                   ? color.withValues(alpha: 0.15)
-                  : (_hovered
-                      ? AppColors.surfaceHover
-                      : Colors.transparent),
+                  : (_hovered ? AppColors.surfaceHover : Colors.transparent),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(

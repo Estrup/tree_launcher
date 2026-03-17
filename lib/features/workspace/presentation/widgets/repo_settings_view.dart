@@ -6,10 +6,11 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 
-enum _SettingsSection { general, vscodeConfigs, customCommands, copilotPrompts }
+enum _SettingsSection { general, vscodeConfigs, customCommands, customLinks, copilotPrompts }
 
 class RepoSettingsView extends StatefulWidget {
   const RepoSettingsView({super.key});
@@ -126,6 +127,16 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                       ),
                     ),
                     _NavItem(
+                      icon: Icons.link_rounded,
+                      label: 'Custom Links',
+                      isSelected:
+                          _selectedSection == _SettingsSection.customLinks,
+                      onTap: () => setState(
+                        () =>
+                            _selectedSection = _SettingsSection.customLinks,
+                      ),
+                    ),
+                    _NavItem(
                       icon: Icons.auto_awesome_rounded,
                       label: 'Copilot Prompts',
                       isSelected:
@@ -155,6 +166,8 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
         return const _VscodeConfigsSection();
       case _SettingsSection.customCommands:
         return const _CustomCommandsSection();
+      case _SettingsSection.customLinks:
+        return const _CustomLinksSection();
       case _SettingsSection.copilotPrompts:
         return const _CopilotPromptsSection();
     }
@@ -929,6 +942,301 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
             controller: _commandController,
             onChanged: (v) =>
                 widget.onChanged(widget.command.copyWith(command: v)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Custom Links Section ---
+
+class _CustomLinksSection extends StatefulWidget {
+  const _CustomLinksSection();
+
+  @override
+  State<_CustomLinksSection> createState() => _CustomLinksSectionState();
+}
+
+class _CustomLinksSectionState extends State<_CustomLinksSection> {
+  late List<CustomLink> _links;
+  String? _lastRepoPath;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    final repo = context.read<RepoProvider>().selectedRepo;
+    _lastRepoPath = repo?.path;
+    _links = List.from(repo?.customLinks ?? []);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repo = context.read<RepoProvider>().selectedRepo;
+    if (repo != null && repo.path != _lastRepoPath) {
+      _lastRepoPath = repo.path;
+      _links = List.from(repo.customLinks);
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _save() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      final provider = context.read<RepoProvider>();
+      final repo = provider.selectedRepo;
+      if (repo == null) return;
+      final cleaned = _links
+          .where((l) => l.name.trim().isNotEmpty || l.url.trim().isNotEmpty)
+          .map(
+            (l) => CustomLink(
+              name: l.name.trim(),
+              url: l.url.trim(),
+              iconName: l.iconName,
+              colorHex: l.colorHex,
+            ),
+          )
+          .toList();
+      provider.updateRepoCustomLinks(repo, cleaned);
+    });
+  }
+
+  void _addLink() {
+    setState(() {
+      _links.add(CustomLink(name: '', url: ''));
+    });
+  }
+
+  void _removeLink(int index) {
+    setState(() {
+      _links.removeAt(index);
+    });
+    _save();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Custom Links',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'URLs that open in your browser with {{SLOT}} substitution',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _AddButton(
+                label: 'Add Link',
+                color: AppColors.accent,
+                bgColor: AppColors.accentMuted,
+                onTap: _addLink,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          if (_links.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.surface0,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.link_rounded,
+                    size: 32,
+                    color: AppColors.textMuted.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No custom links',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Add links to open them directly from worktree cards.',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...List.generate(_links.length, (index) {
+              return _CustomLinkCard(
+                key: ValueKey('link_$index'),
+                link: _links[index],
+                index: index,
+                onChanged: (link) {
+                  setState(() => _links[index] = link);
+                  _save();
+                },
+                onRemove: () => _removeLink(index),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomLinkCard extends StatefulWidget {
+  final CustomLink link;
+  final int index;
+  final ValueChanged<CustomLink> onChanged;
+  final VoidCallback onRemove;
+
+  const _CustomLinkCard({
+    super.key,
+    required this.link,
+    required this.index,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  @override
+  State<_CustomLinkCard> createState() => _CustomLinkCardState();
+}
+
+class _CustomLinkCardState extends State<_CustomLinkCard> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _urlController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.link.name);
+    _urlController = TextEditingController(text: widget.link.url);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveIcon = getCommandIcon(widget.link.iconName);
+    final effectiveColor = getCommandColor(
+      widget.link.colorHex,
+      widget.index,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface0,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _IconColorPicker(
+                icon: effectiveIcon,
+                color: effectiveColor,
+                iconName: widget.link.iconName,
+                colorHex: widget.link.colorHex,
+                onIconChanged: (name) =>
+                    widget.onChanged(widget.link.copyWith(iconName: name)),
+                onColorChanged: (hex) =>
+                    widget.onChanged(widget.link.copyWith(colorHex: hex)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NAME',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: 300,
+                      child: TextField(
+                        style: appFormFieldTextStyle(context),
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. Dashboard',
+                        ),
+                        controller: _nameController,
+                        onChanged: (v) =>
+                            widget.onChanged(widget.link.copyWith(name: v)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _RemoveButton(onTap: widget.onRemove),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'URL',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            style: appFormFieldTextStyle(context, monospace: true, height: 1.5),
+            maxLines: 2,
+            minLines: 1,
+            decoration: InputDecoration(
+              hintText: 'e.g. https://example.com/{{SLOT}}/dashboard',
+              hintStyle: appFormFieldHintStyle(context, monospace: true),
+            ),
+            controller: _urlController,
+            onChanged: (v) =>
+                widget.onChanged(widget.link.copyWith(url: v)),
           ),
         ],
       ),

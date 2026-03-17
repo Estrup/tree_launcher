@@ -1,8 +1,8 @@
 import 'package:xterm/xterm.dart';
 
-import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
+import 'package:tree_launcher/features/copilot/data/copilot_terminal_output.dart';
 import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
-import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
+import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
 
 class CopilotToolResult {
   const CopilotToolResult({required this.payload, required this.summary});
@@ -49,6 +49,7 @@ class CopilotToolRegistry {
         return {
           'id': s.id,
           'name': s.name,
+          'worktreeName': s.worktreeName,
           'repoPath': s.repoPath,
           'status': status.name,
         };
@@ -91,7 +92,8 @@ class CopilotToolRegistry {
       name: 'read_copilot_output',
       description:
           'Read the last N lines of terminal output from a specific copilot session. '
-          'Use this when the user asks what a copilot returned or wants to know what happened.',
+          'Use this when the user asks what a copilot returned or wants to know what happened. '
+          'Summaries should focus on the copilot\'s prose, user-facing outcome, next steps, and open questions rather than raw terminal mechanics.',
       parameters: {
         'type': 'object',
         'properties': {
@@ -138,8 +140,7 @@ class CopilotToolRegistry {
         'properties': {
           'sessionName': {
             'type': 'string',
-            'description':
-                'The name of the copilot session to send input to.',
+            'description': 'The name of the copilot session to send input to.',
           },
           'text': {
             'type': 'string',
@@ -160,10 +161,10 @@ class CopilotToolRegistry {
       return {
         'id': s.id,
         'name': s.name,
+        'worktreeName': s.worktreeName,
         'repoPath': s.repoPath,
         'status': status.name,
-        'isActive':
-            _copilotController.activeSession?.id == s.id,
+        'isActive': _copilotController.activeSession?.id == s.id,
       };
     }).toList();
 
@@ -188,7 +189,10 @@ class CopilotToolRegistry {
       );
     }
 
-    final output = _readTerminalBuffer(terminalSession, lineCount);
+    final output = readCopilotTerminalOutput(
+      terminalSession,
+      lineCount: lineCount,
+    );
     return CopilotToolResult(
       payload: {
         'sessionName': session.name,
@@ -236,34 +240,6 @@ class CopilotToolRegistry {
     );
   }
 
-  static final _ansiEscapePattern = RegExp(
-    r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07\x1B]*(?:\x07|\x1B\\))',
-  );
-
-  String _readTerminalBuffer(TerminalSession terminalSession, int lineCount) {
-    final buf = terminalSession.terminal.buffer;
-    final totalLines = buf.lines.length;
-    final startLine =
-        totalLines > lineCount ? totalLines - lineCount : 0;
-
-    final sb = StringBuffer();
-    for (var i = startLine; i < totalLines; i++) {
-      final line = buf.lines[i];
-      if (i > startLine && !line.isWrapped) {
-        sb.write('\n');
-      }
-      sb.write(line.getText());
-    }
-
-    // Strip ANSI escape sequences and trim trailing blank lines.
-    var text = sb.toString().replaceAll(_ansiEscapePattern, '');
-    final lines = text.split('\n');
-    while (lines.isNotEmpty && lines.last.trim().isEmpty) {
-      lines.removeLast();
-    }
-    return lines.join('\n');
-  }
-
   CopilotSession _findSessionByName(String name) {
     final normalizedTarget = name.trim().toLowerCase();
     final sessions = _copilotController.allSessions;
@@ -271,10 +247,18 @@ class CopilotToolRegistry {
       if (session.name.trim().toLowerCase() == normalizedTarget) {
         return session;
       }
+      if (session.worktreeName.trim().toLowerCase() == normalizedTarget) {
+        return session;
+      }
     }
     // Fallback: partial match
     for (final session in sessions) {
       if (session.name.trim().toLowerCase().contains(normalizedTarget)) {
+        return session;
+      }
+      if (session.worktreeName.trim().toLowerCase().contains(
+        normalizedTarget,
+      )) {
         return session;
       }
     }

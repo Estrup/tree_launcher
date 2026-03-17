@@ -1,6 +1,7 @@
 import 'copilot_prompt.dart';
 import 'copilot_session.dart';
 import 'custom_command.dart';
+import 'custom_link.dart';
 import 'vscode_config.dart';
 
 class RepoConfig {
@@ -8,20 +9,24 @@ class RepoConfig {
   final String path;
   final List<VscodeConfig> vscodeConfigs;
   final List<CustomCommand> customCommands;
+  final List<CustomLink> customLinks;
   final String? lastBaseBranch;
   final List<String> defaultRunCommands;
   final List<CopilotSession> copilotSessions;
   final List<CopilotPrompt> copilotPrompts;
+  final Map<String, String> slotAssignments;
 
   RepoConfig({
     required this.name,
     required this.path,
     this.vscodeConfigs = const [],
     this.customCommands = const [],
+    this.customLinks = const [],
     this.lastBaseBranch,
     this.defaultRunCommands = const [],
     this.copilotSessions = const [],
     this.copilotPrompts = const [],
+    this.slotAssignments = const {},
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -36,6 +41,11 @@ class RepoConfig {
       customCommands:
           (json['customCommands'] as List<dynamic>?)
               ?.map((e) => CustomCommand.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      customLinks:
+          (json['customLinks'] as List<dynamic>?)
+              ?.map((e) => CustomLink.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       lastBaseBranch: json['lastBaseBranch'] as String?,
@@ -54,6 +64,10 @@ class RepoConfig {
               ?.map((e) => CopilotPrompt.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      slotAssignments:
+          (json['slotAssignments'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v as String)) ??
+          {},
     );
   }
 
@@ -62,10 +76,12 @@ class RepoConfig {
     'path': path,
     'vscodeConfigs': vscodeConfigs.map((c) => c.toJson()).toList(),
     'customCommands': customCommands.map((c) => c.toJson()).toList(),
+    'customLinks': customLinks.map((l) => l.toJson()).toList(),
     'lastBaseBranch': lastBaseBranch,
     'defaultRunCommands': defaultRunCommands,
     'copilotSessions': copilotSessions.map((s) => s.toJson()).toList(),
     'copilotPrompts': copilotPrompts.map((p) => p.toJson()).toList(),
+    'slotAssignments': slotAssignments,
   };
 
   @override

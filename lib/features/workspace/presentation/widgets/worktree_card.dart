@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -6,7 +8,9 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/models/worktree_slot.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
@@ -30,6 +34,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
     final settings = context.watch<SettingsProvider>().settings;
     final repo = context.watch<RepoProvider>().selectedRepo;
     final customCommands = repo?.customCommands ?? [];
+    final customLinks = repo?.customLinks ?? [];
     final wt = widget.worktree;
 
     return MouseRegion(
@@ -50,7 +55,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top row: name + badge
+                // Top row: name + slot badge + primary badge
                 Row(
                   children: [
                     Expanded(
@@ -65,6 +70,8 @@ class _WorktreeCardState extends State<WorktreeCard> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    _SlotBadge(worktree: wt),
+                    const SizedBox(width: 6),
                     if (wt.isMain)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -209,34 +216,31 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     ),
                     SizedBox(width: 8),
                     Expanded(
-                      child: _ActionButton(
-                        icon: Icons.auto_awesome_rounded,
-                        label: 'Copilot',
-                        color: AppColors.copilot,
-                        bgColor: AppColors.copilotBg,
-                        onPressed: () {
-                          if (settings.copilotButtonMode ==
-                              CopilotButtonMode.inApp) {
-                            final repo = context
-                                .read<RepoProvider>()
-                                .selectedRepo;
-                            context.read<CopilotProvider>().createSession(
-                              repo?.path ?? wt.path,
-                              wt.path,
-                              wt.name,
-                            );
-                          } else {
-                            _launcherService.openCopilotCli(wt.path, settings);
-                          }
-                        },
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
                       child: _VscodeSplitButton(
                         worktreePath: wt.path,
                         launcherService: _launcherService,
                       ),
+                    ),
+                    SizedBox(width: 8),
+                    _ActionButton(
+                      icon: Icons.auto_awesome_rounded,
+                      color: AppColors.copilot,
+                      bgColor: AppColors.copilotBg,
+                      onPressed: () {
+                        if (settings.copilotButtonMode ==
+                            CopilotButtonMode.inApp) {
+                          final repo = context
+                              .read<RepoProvider>()
+                              .selectedRepo;
+                          context.read<CopilotProvider>().createSession(
+                            repo?.path ?? wt.path,
+                            wt.path,
+                            wt.name,
+                          );
+                        } else {
+                          _launcherService.openCopilotCli(wt.path, settings);
+                        }
+                      },
                     ),
                     if (customCommands.isNotEmpty) ...[
                       const SizedBox(width: 8),
@@ -244,6 +248,14 @@ class _WorktreeCardState extends State<WorktreeCard> {
                         worktreePath: wt.path,
                         worktreeName: wt.name,
                         commands: customCommands,
+                        slot: wt.slot,
+                      ),
+                    ],
+                    if (customLinks.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      _CustomLinksButton(
+                        links: customLinks,
+                        slot: wt.slot,
                       ),
                     ],
                   ],
@@ -675,11 +687,13 @@ class _CustomCommandsButton extends StatefulWidget {
   final String worktreePath;
   final String worktreeName;
   final List<CustomCommand> commands;
+  final String slot;
 
   const _CustomCommandsButton({
     required this.worktreePath,
     required this.worktreeName,
     required this.commands,
+    required this.slot,
   });
 
   @override
@@ -774,12 +788,119 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
       }).toList(),
     ).then((selected) {
       if (selected != null) {
+        final command = selected.command.replaceAll('{{SLOT}}', widget.slot);
         tp.openTerminalWithCommand(
           '${widget.worktreeName}: ${selected.name}',
           widget.worktreePath,
           repo?.path ?? widget.worktreePath,
-          selected.command,
+          command,
         );
+      }
+    });
+  }
+}
+
+class _CustomLinksButton extends StatefulWidget {
+  final List<CustomLink> links;
+  final String slot;
+
+  const _CustomLinksButton({
+    required this.links,
+    required this.slot,
+  });
+
+  @override
+  State<_CustomLinksButton> createState() => _CustomLinksButtonState();
+}
+
+class _CustomLinksButtonState extends State<_CustomLinksButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => _showDropdown(context),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: _hovered
+                ? AppColors.accent.withValues(alpha: 0.2)
+                : AppColors.accentMuted,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _hovered
+                  ? AppColors.accent.withValues(alpha: 0.4)
+                  : AppColors.accent.withValues(alpha: 0.15),
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.link_rounded,
+              size: 18,
+              color: AppColors.accent,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDropdown(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height)),
+        button.localToGlobal(Offset(button.size.width, button.size.height)),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<CustomLink>(
+      context: context,
+      position: position,
+      color: AppColors.surface1,
+      constraints: const BoxConstraints(minWidth: 220),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.border),
+      ),
+      items: widget.links.map((link) {
+        return PopupMenuItem<CustomLink>(
+          value: link,
+          height: 36,
+          child: Row(
+            children: [
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 13,
+                color: AppColors.accent,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  link.name,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((selected) {
+      if (selected != null) {
+        final url = selected.url.replaceAll('{{SLOT}}', widget.slot);
+        Process.run('open', [url]);
       }
     });
   }
@@ -826,14 +947,14 @@ class _DeleteIconState extends State<_DeleteIcon> {
 
 class _ActionButton extends StatefulWidget {
   final IconData icon;
-  final String label;
+  final String? label;
   final Color color;
   final Color bgColor;
   final VoidCallback onPressed;
 
   const _ActionButton({
     required this.icon,
-    required this.label,
+    this.label,
     required this.color,
     required this.bgColor,
     required this.onPressed,
@@ -855,6 +976,7 @@ class _ActionButtonState extends State<_ActionButton> {
         onTap: widget.onPressed,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
+          width: widget.label == null ? 36 : null,
           height: 36,
           decoration: BoxDecoration(
             color: _hovered
@@ -871,19 +993,93 @@ class _ActionButtonState extends State<_ActionButton> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(widget.icon, size: 14, color: widget.color),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: widget.color,
+              if (widget.label != null) ...[
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    widget.label!,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: widget.color,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
+              ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SlotBadge extends StatelessWidget {
+  final Worktree worktree;
+
+  const _SlotBadge({required this.worktree});
+
+  @override
+  Widget build(BuildContext context) {
+    final rp = context.read<RepoProvider>();
+    final repo = rp.selectedRepo;
+    if (repo == null) return const SizedBox.shrink();
+
+    // Collect slots already used by other worktrees in this repo
+    final allWorktrees = rp.worktrees;
+    final usedSlots = <String>{};
+    for (final wt in allWorktrees) {
+      if (wt.path != worktree.path) {
+        usedSlots.add(wt.slot);
+      }
+    }
+    final availableSlots =
+        greekSlots.where((s) => !usedSlots.contains(s)).toList();
+
+    return PopupMenuButton<String>(
+      tooltip: 'Change slot',
+      offset: const Offset(0, 28),
+      color: AppColors.surface2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.border),
+      ),
+      onSelected: (slot) {
+        rp.updateSlotAssignment(worktree.path, slot);
+      },
+      itemBuilder: (_) => availableSlots.map((slot) {
+        final isCurrent = slot == worktree.slot;
+        return PopupMenuItem<String>(
+          value: slot,
+          height: 32,
+          child: Text(
+            slot.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+              color: isCurrent ? AppColors.accent : AppColors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+        );
+      }).toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.terminalBg,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: AppColors.terminal.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Text(
+          worktree.slot.toUpperCase(),
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            color: AppColors.terminal,
+            letterSpacing: 0.8,
           ),
         ),
       ),

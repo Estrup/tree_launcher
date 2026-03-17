@@ -3,9 +3,8 @@ import 'package:tree_launcher/features/agent/domain/agent_message.dart';
 import 'package:tree_launcher/features/voice_commands/data/chatgpt_service.dart';
 
 class AgentConversationService {
-  AgentConversationService({
-    required ChatGptService chatGptService,
-  }) : _chatGptService = chatGptService;
+  AgentConversationService({required ChatGptService chatGptService})
+    : _chatGptService = chatGptService;
 
   final ChatGptService _chatGptService;
   final List<AgentMessage> _messages = [];
@@ -27,9 +26,11 @@ class AgentConversationService {
     _messages.add(userMessage);
 
     final openAiMessages = _messages
-        .where((m) =>
-            m.role == AgentMessageRole.user ||
-            m.role == AgentMessageRole.assistant)
+        .where(
+          (m) =>
+              m.role == AgentMessageRole.user ||
+              m.role == AgentMessageRole.assistant,
+        )
         .map((m) => m.toOpenAiMessage())
         .toList();
 
@@ -68,6 +69,19 @@ class AgentConversationService {
       toolRegistry: toolRegistry,
       lastAttentionSessionName: lastAttentionSessionName,
     );
+  }
+
+  AgentMessage addAssistantMessage(
+    String text, {
+    List<String> toolSummaries = const [],
+  }) {
+    final message = AgentMessage(
+      role: AgentMessageRole.assistant,
+      content: text,
+      toolSummaries: toolSummaries,
+    );
+    _messages.add(message);
+    return message;
   }
 
   void clearHistory() {

@@ -87,9 +87,12 @@ $attentionClause
 **When reading copilot output for the user:**
 - Your response will be spoken aloud via text-to-speech.
 - Produce a concise, natural-sounding summary that is easy to listen to.
-- Focus on the last meaningful paragraphs of prose — the copilot's final message, question, or result.
-- Skip boilerplate, progress bars, file listings, and noise. Summarize those briefly if relevant.
-- If the copilot is asking the user a question or presenting choices, read the question and the options clearly.
+- Focus on the copilot's human-readable prose — the final explanation, conclusion, question, or result in plain language.
+- Summarize what happened semantically, not mechanically. Do not narrate tool calls, file insertions, patches, command echoes, or terminal bookkeeping unless they are the only meaningful content.
+- Skip boilerplate, progress bars, file listings, and other noise. Mention operational details only briefly when they materially affect the outcome.
+- If the copilot is asking the user a question, requesting input, waiting on approval, or presenting choices, say that clearly and include the relevant options.
+- Always call out any concrete next step the user needs to take, and any unresolved question, blocker, or decision the copilot left open.
+- If there is no user action needed, make that clear in the summary.
 - Keep it digestible: aim for 2–4 spoken sentences unless the content is complex.
 
 Current app context:

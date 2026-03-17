@@ -19,6 +19,17 @@ class WorktreeController extends ChangeNotifier {
   String? get error => _error;
   bool get isBareLayout => _isBareLayout;
 
+  /// Slot assignments from config, keyed by worktree path.
+  Map<String, String> _slotAssignments = {};
+  Map<String, String> get slotAssignments =>
+      Map.unmodifiable(_slotAssignments);
+
+  void setSlotAssignments(Map<String, String> assignments) {
+    _slotAssignments = Map.of(assignments);
+    _hydrateSlots();
+    notifyListeners();
+  }
+
   Future<void> refreshForRepo(String? repoPath) async {
     if (repoPath == null) {
       _worktrees = [];
@@ -37,6 +48,7 @@ class WorktreeController extends ChangeNotifier {
       final result = await _gitService.getWorktrees(repoPath);
       _worktrees = result.worktrees;
       _isBareLayout = result.isBareLayout;
+      _hydrateSlots();
       _error = null;
     } catch (error) {
       _worktrees = [];
@@ -45,6 +57,15 @@ class WorktreeController extends ChangeNotifier {
 
     _loading = false;
     notifyListeners();
+  }
+
+  /// Assigns slots from [_slotAssignments] to worktrees.
+  /// Unassigned worktrees get 'alpha' as default.
+  void _hydrateSlots() {
+    _worktrees = _worktrees.map((wt) {
+      final slot = _slotAssignments[wt.path] ?? 'alpha';
+      return wt.copyWith(slot: slot);
+    }).toList();
   }
 
   Future<List<String>> listBranches(String? repoPath) async {

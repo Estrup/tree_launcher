@@ -5,6 +5,7 @@ import 'package:xterm/xterm.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/terminal_theme.dart';
 import 'package:tree_launcher/features/terminal/presentation/terminal_text_style_resolver.dart';
+import 'package:tree_launcher/core/widgets/focus_on_request.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_key_handler.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
@@ -20,12 +21,16 @@ class CopilotTerminalView extends StatefulWidget {
 class _CopilotTerminalViewState extends State<CopilotTerminalView>
     with AutomaticKeepAliveClientMixin {
   bool _isDragging = false;
+  late final FocusNode _terminalFocusNode;
 
   @override
   bool get wantKeepAlive => true;
   @override
   void initState() {
     super.initState();
+    _terminalFocusNode = FocusNode(
+      debugLabel: 'copilot-terminal-${widget.sessionId}',
+    );
     _ensurePtyStarted();
   }
 
@@ -86,51 +91,65 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView>
       });
     }
 
-    return DropTarget(
-      onDragDone: (details) {
-        if (details.files.isNotEmpty) {
-          final path = details.files.first.path;
-          final copilot = context.read<CopilotProvider>();
-          copilot.terminalForSession(widget.sessionId)?.writeInput(path);
-        }
-        setState(() => _isDragging = false);
-      },
-      onDragEntered: (_) => setState(() => _isDragging = true),
-      onDragExited: (_) => setState(() => _isDragging = false),
-      child: Container(
-        color: AppColors.base,
-        padding: const EdgeInsets.all(8),
-        child: Stack(
-          children: [
-            TerminalView(
-              session.terminal,
-              theme: appTerminalTheme,
-              textStyle: terminalTextStyle,
-              textScaler: TextScaler.noScaling,
-              padding: EdgeInsets.zero,
-              autofocus: true,
-              hardwareKeyboardOnly: true,
-              onKeyEvent: (node, event) =>
-                  terminalShiftEnterHandler(session.terminal, node, event) ??
-                  KeyEventResult.ignored,
-            ),
-            if (_isDragging)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Colors.blueAccent.withValues(alpha: 0.7),
-                        width: 2,
+    return FocusOnRequest(
+      focusNode: _terminalFocusNode,
+      isActive: copilotProvider.activeSession?.id == widget.sessionId,
+      requestVersion: copilotProvider.focusRequestVersionForSession(
+        widget.sessionId,
+      ),
+      child: DropTarget(
+        onDragDone: (details) {
+          if (details.files.isNotEmpty) {
+            final path = details.files.first.path;
+            final copilot = context.read<CopilotProvider>();
+            copilot.terminalForSession(widget.sessionId)?.writeInput(path);
+          }
+          setState(() => _isDragging = false);
+        },
+        onDragEntered: (_) => setState(() => _isDragging = true),
+        onDragExited: (_) => setState(() => _isDragging = false),
+        child: Container(
+          color: AppColors.base,
+          padding: const EdgeInsets.all(8),
+          child: Stack(
+            children: [
+              TerminalView(
+                session.terminal,
+                theme: appTerminalTheme,
+                textStyle: terminalTextStyle,
+                textScaler: TextScaler.noScaling,
+                padding: EdgeInsets.zero,
+                focusNode: _terminalFocusNode,
+                autofocus: true,
+                hardwareKeyboardOnly: true,
+                onKeyEvent: (node, event) =>
+                    terminalShiftEnterHandler(session.terminal, node, event) ??
+                    KeyEventResult.ignored,
+              ),
+              if (_isDragging)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.blueAccent.withValues(alpha: 0.7),
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _terminalFocusNode.dispose();
+    super.dispose();
   }
 }

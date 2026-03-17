@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +16,7 @@ import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_pa
 import 'package:tree_launcher/features/agent/presentation/controllers/agent_panel_controller.dart';
 import 'package:tree_launcher/features/agent/presentation/widgets/agent_panel.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_repo_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
@@ -61,21 +63,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   bool _handleGlobalKeyEvent(KeyEvent event) {
     if (!mounted || event is! KeyDownEvent) return false;
-    if (event.logicalKey != LogicalKeyboardKey.keyM) return false;
-
-    final keyboard = HardwareKeyboard.instance;
-    if (!keyboard.isControlPressed ||
-        keyboard.isAltPressed ||
-        keyboard.isMetaPressed ||
-        keyboard.isShiftPressed) {
-      return false;
-    }
-
     final agentController = _agentController;
     if (agentController == null) return false;
 
-    unawaited(agentController.handleVoiceShortcut());
-    return true;
+    final keyboard = HardwareKeyboard.instance;
+    if (event.logicalKey == LogicalKeyboardKey.keyM) {
+      if (!keyboard.isControlPressed ||
+          keyboard.isAltPressed ||
+          keyboard.isMetaPressed ||
+          keyboard.isShiftPressed) {
+        return false;
+      }
+
+      unawaited(agentController.handleVoiceShortcut());
+      return true;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.keyL) {
+      if (!keyboard.isMetaPressed ||
+          keyboard.isAltPressed ||
+          keyboard.isControlPressed ||
+          keyboard.isShiftPressed ||
+          !agentController.panelOpen) {
+        return false;
+      }
+
+      agentController.clearHistory();
+      return true;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.keyI) {
+      if (!keyboard.isMetaPressed ||
+          !keyboard.isAltPressed ||
+          keyboard.isControlPressed ||
+          keyboard.isShiftPressed) {
+        return false;
+      }
+
+      unawaited(agentController.handleCopilotSummaryShortcut());
+      return true;
+    }
+
+    return false;
   }
 
   void _onTabChanged() {
@@ -158,14 +187,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     return CallbackShortcuts(
-        bindings: {
-          const SingleActivator(LogicalKeyboardKey.backquote, meta: true): () {
-            final tp = context.read<TerminalProvider>();
-            if (tp.sessions.isNotEmpty) {
-              tp.toggleVisibility();
-            }
-          },
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.backquote, meta: true): () {
+          final tp = context.read<TerminalProvider>();
+          if (tp.sessions.isNotEmpty) {
+            tp.toggleVisibility();
+          }
         },
+      },
       child: Focus(
         autofocus: true,
         child: Scaffold(
@@ -349,6 +378,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         ),
                                         ...allSessions.map(
                                           (s) => CopilotTerminalView(
+                                            key: ValueKey(s.id),
                                             sessionId: s.id,
                                           ),
                                         ),
@@ -632,6 +662,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 worktreePath: activeCopilot.workingDirectory,
                 worktreeName: activeCopilot.name,
                 commands: selectedRepo.customCommands,
+              ),
+            ],
+            if (selectedRepo.customLinks.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              _HeaderLinksButton(
+                worktreePath: activeCopilot.workingDirectory,
+                links: selectedRepo.customLinks,
               ),
             ],
           ],
@@ -1128,12 +1165,117 @@ class _HeaderCommandsButtonState extends State<_HeaderCommandsButton> {
       }).toList(),
     ).then((selected) {
       if (selected != null) {
+        final slot = repo?.slotAssignments[widget.worktreePath] ?? 'alpha';
+        final command = selected.command.replaceAll('{{SLOT}}', slot);
         tp.openTerminalWithCommand(
           '${widget.worktreeName}: ${selected.name}',
           widget.worktreePath,
           repo?.path ?? widget.worktreePath,
-          selected.command,
+          command,
         );
+      }
+    });
+  }
+}
+
+class _HeaderLinksButton extends StatefulWidget {
+  final String worktreePath;
+  final List<CustomLink> links;
+
+  const _HeaderLinksButton({
+    required this.worktreePath,
+    required this.links,
+  });
+
+  @override
+  State<_HeaderLinksButton> createState() => _HeaderLinksButtonState();
+}
+
+class _HeaderLinksButtonState extends State<_HeaderLinksButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => _showDropdown(context),
+        child: Tooltip(
+          message: 'Open Link',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _hovered
+                  ? AppColors.accent.withValues(alpha: 0.15)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.link_rounded,
+              size: 20,
+              color: _hovered ? AppColors.accent : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDropdown(BuildContext context) {
+    final repo = context.read<RepoProvider>().selectedRepo;
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height)),
+        button.localToGlobal(Offset(button.size.width, button.size.height)),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<CustomLink>(
+      context: context,
+      position: position,
+      color: AppColors.surface1,
+      constraints: const BoxConstraints(minWidth: 220),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.border),
+      ),
+      items: widget.links.map((link) {
+        return PopupMenuItem<CustomLink>(
+          value: link,
+          height: 36,
+          child: Row(
+            children: [
+              Icon(
+                Icons.open_in_new_rounded,
+                size: 13,
+                color: AppColors.accent,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  link.name,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((selected) {
+      if (selected != null) {
+        final slot = repo?.slotAssignments[widget.worktreePath] ?? 'alpha';
+        final url = selected.url.replaceAll('{{SLOT}}', slot);
+        Process.run('open', [url]);
       }
     });
   }

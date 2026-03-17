@@ -52,6 +52,10 @@ class CopilotController extends ChangeNotifier {
     return session.terminalForSession(sessionId);
   }
 
+  int focusRequestVersionForSession(String sessionId) {
+    return session.focusRequestVersionForSession(sessionId);
+  }
+
   List<CopilotSession> get allSessions => session.allSessions;
 
   CopilotActivityStatus statusForSession(String id) =>
