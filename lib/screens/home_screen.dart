@@ -130,7 +130,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final activeWorktree = copilotProvider.activeSession?.workingDirectory;
     final activeSessionId = copilotProvider.activeSession?.id;
     if (isCopilotActive) {
-      if (editorController.activeWorktreeKey != activeWorktree) {
+      if (editorController.activeWorktreeKey != activeWorktree ||
+          editorController.activeCopilotSessionId != activeSessionId) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             editorController.setActiveWorktree(

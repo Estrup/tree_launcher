@@ -57,7 +57,7 @@ class _MarkdownEditorViewState extends State<MarkdownEditorView> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Creates in session files folder',
+                  'Unsaved until you choose to save',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textMuted,
@@ -148,6 +148,7 @@ class _MarkdownEditorViewState extends State<MarkdownEditorView> {
     final controller = context.watch<MarkdownEditorController>();
     final doc = controller.activeDocument;
     final hasCopilot = controller.hasCopilotSession;
+    final openDocs = controller.openDocuments;
 
     return Column(
       children: [
@@ -155,6 +156,8 @@ class _MarkdownEditorViewState extends State<MarkdownEditorView> {
           fileName: doc?.fileName,
           isModified: doc?.isModified ?? false,
           hasCopilotSession: hasCopilot,
+          openDocuments: openDocs,
+          activeDocumentIndex: controller.activeDocumentIndex,
           onOpen: () => controller.openFile(),
           onSave: () => controller.saveDocument(),
           onClose: () => controller.closeDocument(),
@@ -164,17 +167,19 @@ class _MarkdownEditorViewState extends State<MarkdownEditorView> {
           onOpenPlan: hasCopilot
               ? () => controller.openPlanMd()
               : null,
-          onSendToCopilot: hasCopilot && doc != null
+          onSendToCopilot: hasCopilot && doc != null && !doc.isUntitled
               ? () => controller.sendContentToCopilot()
               : null,
-          onInsertPath: hasCopilot && doc != null
+          onInsertPath: hasCopilot && doc != null && !doc.isUntitled
               ? () => controller.insertFilePathInCopilot()
               : null,
+          onSwitchDocument: (index) => controller.switchToDocument(index),
+          onCloseDocument: (index) => controller.closeDocument(index),
         ),
         Expanded(
           child: doc != null
               ? MarkdownTextField(
-                  key: ValueKey(doc.path),
+                  key: ValueKey('${doc.path}_${doc.isUntitled}'),
                   initialContent: doc.content,
                   onChanged: controller.updateContent,
                   focusNode: _editorFocusNode,

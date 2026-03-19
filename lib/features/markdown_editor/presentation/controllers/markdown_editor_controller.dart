@@ -19,8 +19,11 @@ class MarkdownEditorController extends ChangeNotifier {
   final SettingsController _settingsController;
   final CopilotController _copilotController;
 
-  /// Documents keyed by worktree path (or [_globalKey] for standalone tab).
-  final Map<String, MarkdownDocument?> _documents = {};
+  /// Open documents keyed by worktree path (or [_globalKey] for standalone).
+  final Map<String, List<MarkdownDocument>> _documents = {};
+
+  /// Index of the active document within each key's list.
+  final Map<String, int> _activeDocIndex = {};
 
   /// Current worktree key — null means the standalone Notes tab.
   String? _activeWorktreeKey;
@@ -33,8 +36,20 @@ class MarkdownEditorController extends ChangeNotifier {
 
   String get _currentKey => _activeWorktreeKey ?? _globalKey;
 
-  MarkdownDocument? get activeDocument => _documents[_currentKey];
+  List<MarkdownDocument> get openDocuments =>
+      _documents[_currentKey] ?? const [];
+
+  int get activeDocumentIndex => _activeDocIndex[_currentKey] ?? 0;
+
+  MarkdownDocument? get activeDocument {
+    final docs = _documents[_currentKey];
+    if (docs == null || docs.isEmpty) return null;
+    final idx = (_activeDocIndex[_currentKey] ?? 0).clamp(0, docs.length - 1);
+    return docs[idx];
+  }
+
   String? get activeWorktreeKey => _activeWorktreeKey;
+  String? get activeCopilotSessionId => _activeCopilotSessionId;
   bool get isSidePanelOpen => _isSidePanelOpen;
   double get sidePanelRatio => _sidePanelRatio;
   bool get hasDocument => activeDocument != null;
@@ -58,6 +73,12 @@ class MarkdownEditorController extends ChangeNotifier {
     return '$folder/files';
   }
 
+  /// Default directory for file dialogs (configured documents folder).
+  String? get _defaultDialogDir =>
+      _settingsController.settings.markdownDocumentsFolder ??
+      sessionFilesFolder ??
+      sessionFolder;
+
   /// Switch which worktree's notes are active.
   /// Pass null to switch to the standalone Notes tab.
   void setActiveWorktree({
@@ -69,14 +90,18 @@ class MarkdownEditorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Switch to a document by index within the current key's list.
+  void switchToDocument(int index) {
+    final docs = _documents[_currentKey];
+    if (docs == null || index < 0 || index >= docs.length) return;
+    _activeDocIndex[_currentKey] = index;
+    notifyListeners();
+  }
+
   Future<void> openFile([String? path]) async {
     String? filePath = path;
 
     if (filePath == null) {
-      // Default to session files folder, then documents folder
-      final initialDir = sessionFilesFolder ??
-          sessionFolder ??
-          _settingsController.settings.markdownDocumentsFolder;
       final result = await file_selector.openFile(
         acceptedTypeGroups: [
           const file_selector.XTypeGroup(
@@ -85,7 +110,7 @@ class MarkdownEditorController extends ChangeNotifier {
           ),
           const file_selector.XTypeGroup(label: 'All files'),
         ],
-        initialDirectory: initialDir,
+        initialDirectory: _defaultDialogDir,
       );
       if (result == null) return;
       filePath = result.path;
@@ -95,12 +120,23 @@ class MarkdownEditorController extends ChangeNotifier {
       final resolvedPath = filePath;
       final file = File(resolvedPath);
       if (!await file.exists()) return;
+
+      // If already open, just switch to it
+      final docs = _documents[_currentKey] ?? [];
+      final existingIdx = docs.indexWhere((d) => d.path == resolvedPath);
+      if (existingIdx != -1) {
+        _activeDocIndex[_currentKey] = existingIdx;
+        notifyListeners();
+        return;
+      }
+
       final content = await file.readAsString();
-      _documents[_currentKey] = MarkdownDocument(
+      final doc = MarkdownDocument(
         path: resolvedPath,
         content: content,
         savedContent: content,
       );
+      _addDocument(doc);
       await _settingsController.addRecentMarkdownFile(resolvedPath);
       notifyListeners();
     } catch (e) {
@@ -108,31 +144,19 @@ class MarkdownEditorController extends ChangeNotifier {
     }
   }
 
-  /// Create a new markdown file in the session files folder.
-  Future<void> createNewDocument(String fileName) async {
-    final filesFolder = sessionFilesFolder;
-    if (filesFolder == null) return;
+  /// Create a new in-memory document. Not written to disk until saved.
+  void createNewDocument(String fileName) {
+    var name = fileName.trim();
+    if (!name.endsWith('.md')) name = '$name.md';
 
-    try {
-      final dir = Directory(filesFolder);
-      if (!await dir.exists()) await dir.create(recursive: true);
-
-      var name = fileName.trim();
-      if (!name.endsWith('.md')) name = '$name.md';
-
-      final filePath = '$filesFolder/$name';
-      final file = File(filePath);
-      if (await file.exists()) {
-        // Open existing file instead of overwriting
-        await openFile(filePath);
-        return;
-      }
-
-      await file.writeAsString('# $name\n\n');
-      await openFile(filePath);
-    } catch (e) {
-      debugPrint('Failed to create document: $e');
-    }
+    final doc = MarkdownDocument(
+      path: name,
+      content: '# ${name.replaceAll('.md', '')}\n\n',
+      savedContent: '',
+      isUntitled: true,
+    );
+    _addDocument(doc);
+    notifyListeners();
   }
 
   /// Open the active copilot session's plan.md.
@@ -142,7 +166,6 @@ class MarkdownEditorController extends ChangeNotifier {
     final planPath = '$folder/plan.md';
     final file = File(planPath);
     if (!await file.exists()) {
-      // Create it if it doesn't exist
       await file.parent.create(recursive: true);
       await file.writeAsString('');
     }
@@ -161,7 +184,7 @@ class MarkdownEditorController extends ChangeNotifier {
   /// Type the file's absolute path into the active copilot terminal.
   void insertFilePathInCopilot() {
     final doc = activeDocument;
-    if (doc == null) return;
+    if (doc == null || doc.isUntitled) return;
     final terminal = _copilotController.activeTerminal;
     if (terminal == null) return;
     terminal.writeInput(doc.path);
@@ -170,10 +193,48 @@ class MarkdownEditorController extends ChangeNotifier {
   Future<void> saveDocument() async {
     final doc = activeDocument;
     if (doc == null) return;
+
+    if (doc.isUntitled) {
+      await _saveAs(doc);
+      return;
+    }
+
     try {
       final file = File(doc.path);
       await file.writeAsString(doc.content);
-      _documents[_currentKey] = doc.copyWith(savedContent: doc.content);
+      _replaceActiveDoc(doc.copyWith(savedContent: doc.content));
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to save file: $e');
+    }
+  }
+
+  /// Prompt the user for a save location and write the document.
+  Future<void> _saveAs(MarkdownDocument doc) async {
+    final result = await file_selector.getSaveLocation(
+      acceptedTypeGroups: [
+        const file_selector.XTypeGroup(
+          label: 'Markdown',
+          extensions: ['md', 'markdown', 'txt', 'mdx'],
+        ),
+        const file_selector.XTypeGroup(label: 'All files'),
+      ],
+      initialDirectory: _defaultDialogDir,
+      suggestedName: doc.fileName,
+    );
+    if (result == null) return;
+
+    try {
+      final savePath = result.path;
+      final file = File(savePath);
+      await file.parent.create(recursive: true);
+      await file.writeAsString(doc.content);
+      _replaceActiveDoc(doc.copyWith(
+        path: savePath,
+        savedContent: doc.content,
+        isUntitled: false,
+      ));
+      await _settingsController.addRecentMarkdownFile(savePath);
       notifyListeners();
     } catch (e) {
       debugPrint('Failed to save file: $e');
@@ -183,18 +244,34 @@ class MarkdownEditorController extends ChangeNotifier {
   void updateContent(String content) {
     final doc = activeDocument;
     if (doc == null) return;
-    _documents[_currentKey] = doc.copyWith(content: content);
+    _replaceActiveDoc(doc.copyWith(content: content));
     notifyListeners();
   }
 
   void updateCursorOffset(int offset) {
     final doc = activeDocument;
     if (doc == null) return;
-    _documents[_currentKey] = doc.copyWith(cursorOffset: offset);
+    _replaceActiveDoc(doc.copyWith(cursorOffset: offset));
   }
 
-  void closeDocument() {
-    _documents.remove(_currentKey);
+  void closeDocument([int? index]) {
+    final docs = _documents[_currentKey];
+    if (docs == null || docs.isEmpty) return;
+    final idx = index ?? (_activeDocIndex[_currentKey] ?? 0);
+    if (idx < 0 || idx >= docs.length) return;
+
+    docs.removeAt(idx);
+    if (docs.isEmpty) {
+      _documents.remove(_currentKey);
+      _activeDocIndex.remove(_currentKey);
+    } else {
+      final activeIdx = _activeDocIndex[_currentKey] ?? 0;
+      if (activeIdx >= docs.length) {
+        _activeDocIndex[_currentKey] = docs.length - 1;
+      } else if (idx < activeIdx) {
+        _activeDocIndex[_currentKey] = activeIdx - 1;
+      }
+    }
     notifyListeners();
   }
 
@@ -225,5 +302,20 @@ class MarkdownEditorController extends ChangeNotifier {
   void setSidePanelRatio(double ratio) {
     _sidePanelRatio = ratio.clamp(0.2, 0.8);
     notifyListeners();
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────
+
+  void _addDocument(MarkdownDocument doc) {
+    final docs = _documents.putIfAbsent(_currentKey, () => []);
+    docs.add(doc);
+    _activeDocIndex[_currentKey] = docs.length - 1;
+  }
+
+  void _replaceActiveDoc(MarkdownDocument doc) {
+    final docs = _documents[_currentKey];
+    if (docs == null || docs.isEmpty) return;
+    final idx = (_activeDocIndex[_currentKey] ?? 0).clamp(0, docs.length - 1);
+    docs[idx] = doc;
   }
 }
