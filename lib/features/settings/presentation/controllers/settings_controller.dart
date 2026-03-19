@@ -179,4 +179,32 @@ class SettingsController extends ChangeNotifier {
     await _store.save(_settings);
     notifyListeners();
   }
+
+  Future<void> updateMarkdownDocumentsFolder(String? folder) async {
+    final normalized = folder?.trim();
+    _settings = _settings.copyWith(
+      markdownDocumentsFolder: normalized,
+      clearMarkdownDocumentsFolder: normalized == null || normalized.isEmpty,
+    );
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> addRecentMarkdownFile(String path) async {
+    final recents = List<String>.from(_settings.markdownRecentFiles);
+    recents.remove(path);
+    recents.insert(0, path);
+    if (recents.length > 20) recents.removeRange(20, recents.length);
+    _settings = _settings.copyWith(markdownRecentFiles: recents);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> removeRecentMarkdownFile(String path) async {
+    final recents = List<String>.from(_settings.markdownRecentFiles);
+    recents.remove(path);
+    _settings = _settings.copyWith(markdownRecentFiles: recents);
+    await _store.save(_settings);
+    notifyListeners();
+  }
 }

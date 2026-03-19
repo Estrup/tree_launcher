@@ -9,7 +9,7 @@ import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
-enum _SettingsSection { theme, terminals, copilot, aiAssistant, remoteControl, help }
+enum _SettingsSection { theme, terminals, copilot, aiAssistant, markdownEditor, remoteControl, help }
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -157,6 +157,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           ),
                         ),
                         _NavItem(
+                          icon: Icons.edit_note_rounded,
+                          label: 'Markdown Editor',
+                          isSelected:
+                              _selectedSection == _SettingsSection.markdownEditor,
+                          onTap: () => setState(
+                            () =>
+                                _selectedSection = _SettingsSection.markdownEditor,
+                          ),
+                        ),
+                        _NavItem(
                           icon: Icons.cast_connected_rounded,
                           label: 'Remote Control',
                           isSelected:
@@ -210,6 +220,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         return const _CopilotSection();
       case _SettingsSection.aiAssistant:
         return const _AiAssistantSection();
+      case _SettingsSection.markdownEditor:
+        return const _MarkdownEditorSection();
       case _SettingsSection.remoteControl:
         return const _RemoteControlSection();
       case _SettingsSection.help:
@@ -1581,6 +1593,240 @@ class _DropdownField<T> extends StatelessWidget {
           onChanged: onChanged,
         ),
       ],
+    );
+  }
+}
+
+class _MarkdownEditorSection extends StatefulWidget {
+  const _MarkdownEditorSection();
+
+  @override
+  State<_MarkdownEditorSection> createState() => _MarkdownEditorSectionState();
+}
+
+class _MarkdownEditorSectionState extends State<_MarkdownEditorSection> {
+  late final TextEditingController _folderController;
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = context.read<SettingsProvider>().settings;
+    _folderController = TextEditingController(
+      text: settings.markdownDocumentsFolder ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _folderController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickFolder() async {
+    final result = await Process.run('osascript', [
+      '-e',
+      'set theFolder to POSIX path of (choose folder with prompt "Select Documents Folder")',
+    ]);
+    if (result.exitCode == 0) {
+      var folder = (result.stdout as String).trim();
+      if (folder.endsWith('/')) folder = folder.substring(0, folder.length - 1);
+      _folderController.text = folder;
+      if (mounted) {
+        context.read<SettingsProvider>().updateMarkdownDocumentsFolder(folder);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settingsProvider = context.watch<SettingsProvider>();
+    final settings = settingsProvider.settings;
+    final folder = settings.markdownDocumentsFolder;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Markdown Editor',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Configure the built-in markdown editor',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'DOCUMENTS FOLDER',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Default folder for opening and browsing markdown files',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _folderController,
+                  style: appFormFieldTextStyle(context, monospace: true),
+                  decoration: InputDecoration(
+                    hintText: 'No folder selected',
+                    hintStyle: appFormFieldHintStyle(context, monospace: true),
+                  ),
+                  onChanged: (v) {
+                    settingsProvider.updateMarkdownDocumentsFolder(
+                      v.isEmpty ? null : v,
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              _SmallButton(
+                label: 'Browse',
+                icon: Icons.folder_open_rounded,
+                onTap: _pickFolder,
+              ),
+              if (folder != null && folder.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                _SmallButton(
+                  label: 'Clear',
+                  icon: Icons.clear_rounded,
+                  onTap: () {
+                    _folderController.clear();
+                    settingsProvider.updateMarkdownDocumentsFolder(null);
+                  },
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'RECENT FILES',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (settings.markdownRecentFiles.isEmpty)
+            Text(
+              'No recently opened files',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            )
+          else
+            ...settings.markdownRecentFiles.map(
+              (path) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.description_outlined,
+                      size: 14,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        path,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'monospace',
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => settingsProvider.removeRecentMarkdownFile(path),
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SmallButton extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _SmallButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  State<_SmallButton> createState() => _SmallButtonState();
+}
+
+class _SmallButtonState extends State<_SmallButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: _hovered ? AppColors.surface2 : AppColors.surface1,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.borderSubtle),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 13, color: AppColors.textSecondary),
+              const SizedBox(width: 6),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

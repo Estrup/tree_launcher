@@ -9,6 +9,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agent/presentation/controllers/agent_panel_controller.dart';
 import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
 import 'package:tree_launcher/features/kanban/presentation/controllers/kanban_controller.dart';
+import 'package:tree_launcher/features/markdown_editor/presentation/controllers/markdown_editor_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
@@ -55,6 +56,23 @@ class TreeLauncherApp extends StatelessWidget {
                   workspaceController: workspaceController,
                   settingsController: settingsController,
                   soundService: dependencies.soundService,
+                );
+          },
+        ),
+        ChangeNotifierProxyProvider2<
+          SettingsController,
+          CopilotController,
+          MarkdownEditorController
+        >(
+          create: (context) => MarkdownEditorController(
+            settingsController: context.read<SettingsController>(),
+            copilotController: context.read<CopilotController>(),
+          ),
+          update: (context, settingsController, copilotController, previous) {
+            return previous ??
+                MarkdownEditorController(
+                  settingsController: settingsController,
+                  copilotController: copilotController,
                 );
           },
         ),
