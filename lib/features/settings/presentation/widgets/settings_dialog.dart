@@ -9,7 +9,7 @@ import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
-enum _SettingsSection { theme, terminals, copilot, aiAssistant, remoteControl }
+enum _SettingsSection { theme, terminals, copilot, aiAssistant, remoteControl, help }
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -168,6 +168,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           ),
                         ),
                         const Spacer(),
+                        _NavItem(
+                          icon: Icons.help_outline_rounded,
+                          label: 'Help',
+                          isSelected:
+                              _selectedSection == _SettingsSection.help,
+                          onTap: () => setState(
+                            () => _selectedSection = _SettingsSection.help,
+                          ),
+                        ),
                         Padding(
                           padding: const EdgeInsets.all(16),
                           child: _buildConfigFileLink(),
@@ -203,6 +212,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         return const _AiAssistantSection();
       case _SettingsSection.remoteControl:
         return const _RemoteControlSection();
+      case _SettingsSection.help:
+        return const _HelpSection();
     }
   }
 
@@ -1570,6 +1581,125 @@ class _DropdownField<T> extends StatelessWidget {
           onChanged: onChanged,
         ),
       ],
+    );
+  }
+}
+
+class _HelpSection extends StatelessWidget {
+  const _HelpSection();
+
+  @override
+  Widget build(BuildContext context) {
+    const shortcuts = [
+      (
+        keys: ['Ctrl', 'M'],
+        description: 'Start / Stop voice recording',
+      ),
+      (
+        keys: ['⌘', 'L'],
+        description: 'Clear agent history (when agent panel is open)',
+      ),
+      (
+        keys: ['⌘', '⌥', 'I'],
+        description: 'Copilot summary',
+      ),
+      (
+        keys: ['⌘', '`'],
+        description: 'Toggle terminal visibility',
+      ),
+      (
+        keys: ['Enter'],
+        description: 'Submit agent message',
+      ),
+      (
+        keys: ['⇧', 'Enter'],
+        description: 'Multi-line input in terminal',
+      ),
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Keyboard Shortcuts',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Available shortcuts in Tree Launcher.',
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 24),
+          ...shortcuts.map(
+            (s) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _ShortcutRow(keys: s.keys, description: s.description),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShortcutRow extends StatelessWidget {
+  final List<String> keys;
+  final String description;
+
+  const _ShortcutRow({required this.keys, required this.description});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              description,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Row(
+            children: keys
+                .map(
+                  (k) => Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface2,
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        k,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
     );
   }
 }
