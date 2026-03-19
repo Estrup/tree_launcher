@@ -27,6 +27,9 @@ import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/kanban_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
+import 'package:tree_launcher/features/markdown_editor/presentation/controllers/markdown_editor_controller.dart';
+import 'package:tree_launcher/features/markdown_editor/presentation/widgets/markdown_editor_view.dart';
+import 'package:tree_launcher/features/markdown_editor/presentation/widgets/editor_split_panel.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -108,31 +111,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _onTabChanged() {
-    if (!mounted || _tabController == null) return;
-    if (_tabController!.indexIsChanging) return;
-
-    final repoProvider = context.read<RepoProvider>();
-    final copilotProvider = context.read<CopilotProvider>();
-    final kanbanProvider = context.read<KanbanProvider>();
-    final projects = kanbanProvider.projects;
-    final sessionsStartIdx = projects.length + 1;
-
-    if (_tabController!.index >= sessionsStartIdx) {
-      final sessionIdx = _tabController!.index - sessionsStartIdx;
-      final allSessions = copilotProvider.allSessions
-          .where((s) => s.repoPath == repoProvider.selectedRepo?.path)
-          .toList();
-      if (sessionIdx >= 0 && sessionIdx < allSessions.length) {
-        final session = allSessions[sessionIdx];
-        if (copilotProvider.activeSession?.id != session.id) {
-          copilotProvider.selectSession(session);
-        }
-      }
-    } else {
-      if (copilotProvider.activeSession != null) {
-        copilotProvider.deselectSession();
-      }
-    }
+    // Tab changes only affect Worktrees/Projects/Notes tabs.
+    // Copilot sessions are selected from the sidebar.
   }
 
   @override
@@ -144,11 +124,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final isCopilotActive = copilotProvider.activeSession != null;
 
     final projects = kanbanProvider.projects;
-    final repoPath = repoProvider.selectedRepo?.path;
-    final allSessions = copilotProvider.allSessions
-        .where((s) => s.repoPath == repoPath)
-        .toList();
-    final tabCount = projects.length + 1 + allSessions.length;
+    final tabCount = projects.length + 2;
 
     if (_tabController == null || _lastTabCount != tabCount) {
       final oldIndex = _tabController?.index ?? 0;
@@ -164,28 +140,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _lastTabCount = tabCount;
     }
 
-    if (isCopilotActive) {
-      final sessionIndex = allSessions.indexWhere(
-        (s) => s.id == copilotProvider.activeSession!.id,
-      );
-      if (sessionIndex != -1) {
-        final targetIndex = projects.length + 1 + sessionIndex;
-        if (_tabController!.index != targetIndex) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _tabController!.index != targetIndex) {
-              _tabController!.animateTo(targetIndex);
-            }
-          });
-        }
-      }
-    } else {
-      if (_tabController!.index >= projects.length + 1) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _tabController!.animateTo(0);
-        });
-      }
-    }
-
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.backquote, meta: true): () {
@@ -193,6 +147,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           if (tp.sessions.isNotEmpty) {
             tp.toggleVisibility();
           }
+        },
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () {
+          final editor = context.read<MarkdownEditorController>();
+          if (editor.hasDocument) {
+            editor.saveDocument();
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.keyO, meta: true): () {
+          final editor = context.read<MarkdownEditorController>();
+          editor.openFile();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyE, meta: true, shift: true): () {
+          final editor = context.read<MarkdownEditorController>();
+          editor.toggleSidePanel();
         },
       },
       child: Focus(
@@ -237,77 +205,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 24,
-                                      right: 24,
-                                      top: 16,
-                                      bottom: 0,
-                                    ),
-                                    child: AnimatedBuilder(
-                                      animation: _tabController!,
-                                      builder: (context, _) {
-                                        final currentIndex =
-                                            _tabController!.index;
-                                        return SingleChildScrollView(
-                                          scrollDirection: Axis.horizontal,
-                                          child: Row(
-                                            children: [
-                                              // Worktrees & Projects Segmented Control
-                                              Container(
-                                                padding: const EdgeInsets.all(
-                                                  4,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.surface0,
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    _buildSegmentTab(
-                                                      text: "Worktrees",
-                                                      index: 0,
-                                                      currentIndex:
-                                                          currentIndex,
-                                                      onTap: () =>
-                                                          _tabController!
-                                                              .animateTo(0),
-                                                    ),
-                                                    for (
-                                                      int i = 0;
-                                                      i < projects.length;
-                                                      i++
-                                                    )
-                                                      _buildSegmentTab(
-                                                        text: projects[i].name,
-                                                        index: i + 1,
-                                                        currentIndex:
-                                                            currentIndex,
-                                                        onTap: () =>
-                                                            _tabController!
-                                                                .animateTo(
-                                                                  i + 1,
-                                                                ),
-                                                        onSecondaryTapUp:
-                                                            (
-                                                              details,
-                                                            ) => _showProjectContextMenu(
-                                                              context,
-                                                              details
-                                                                  .globalPosition,
-                                                              projects[i].id,
-                                                              kanbanProvider,
-                                                            ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ),
-                                              // Copilot Sessions Group
-                                              if (allSessions.isNotEmpty) ...[
-                                                const SizedBox(width: 8),
+                                  if (!isCopilotActive)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 24,
+                                        right: 24,
+                                        top: 16,
+                                        bottom: 0,
+                                      ),
+                                      child: AnimatedBuilder(
+                                        animation: _tabController!,
+                                        builder: (context, _) {
+                                          final currentIndex =
+                                              _tabController!.index;
+                                          return SingleChildScrollView(
+                                            scrollDirection: Axis.horizontal,
+                                            child: Row(
+                                              children: [
+                                                // Worktrees & Projects & Notes
                                                 Container(
                                                   padding: const EdgeInsets.all(
                                                     4,
@@ -315,75 +230,96 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   decoration: BoxDecoration(
                                                     color: AppColors.surface0,
                                                     borderRadius:
-                                                        BorderRadius.circular(
-                                                          10,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: AppColors.copilot
-                                                          .withValues(
-                                                            alpha: 0.2,
-                                                          ),
-                                                    ),
+                                                        BorderRadius.circular(10),
                                                   ),
                                                   child: Row(
                                                     mainAxisSize:
                                                         MainAxisSize.min,
                                                     children: [
+                                                      _buildSegmentTab(
+                                                        text: "Worktrees",
+                                                        index: 0,
+                                                        currentIndex:
+                                                            currentIndex,
+                                                        onTap: () =>
+                                                            _tabController!
+                                                                .animateTo(0),
+                                                      ),
                                                       for (
                                                         int i = 0;
-                                                        i < allSessions.length;
+                                                        i < projects.length;
                                                         i++
                                                       )
                                                         _buildSegmentTab(
-                                                          text: allSessions[i]
-                                                              .name,
-                                                          index:
-                                                              projects.length +
-                                                              1 +
-                                                              i,
+                                                          text: projects[i].name,
+                                                          index: i + 1,
                                                           currentIndex:
                                                               currentIndex,
-                                                          icon: Icons
-                                                              .auto_awesome_rounded,
-                                                          activeColor:
-                                                              AppColors.copilot,
                                                           onTap: () =>
                                                               _tabController!
                                                                   .animateTo(
-                                                                    projects.length +
-                                                                        1 +
-                                                                        i,
+                                                                    i + 1,
                                                                   ),
+                                                          onSecondaryTapUp:
+                                                              (
+                                                                details,
+                                                              ) => _showProjectContextMenu(
+                                                                context,
+                                                                details
+                                                                    .globalPosition,
+                                                                projects[i].id,
+                                                                kanbanProvider,
+                                                              ),
                                                         ),
+                                                      _buildSegmentTab(
+                                                        text: "Notes",
+                                                        index: projects.length + 1,
+                                                        currentIndex:
+                                                            currentIndex,
+                                                        icon: Icons.edit_note_rounded,
+                                                        onTap: () =>
+                                                            _tabController!
+                                                                .animateTo(
+                                                                  projects.length + 1,
+                                                                ),
+                                                      ),
                                                     ],
                                                   ),
                                                 ),
                                               ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  if (!isCopilotActive)
+                                    const SizedBox(height: 16),
+                                  Expanded(
+                                    child: isCopilotActive
+                                        ? EditorSplitPanel(
+                                            child: CopilotTerminalView(
+                                              key: ValueKey(
+                                                copilotProvider
+                                                    .activeSession!.id,
+                                              ),
+                                              sessionId: copilotProvider
+                                                  .activeSession!.id,
+                                            ),
+                                          )
+                                        : TabBarView(
+                                            controller: _tabController,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            children: [
+                                              const WorktreeGrid(),
+                                              ...projects.map(
+                                                (p) => KanbanBoard(
+                                                  projectId: p.id,
+                                                ),
+                                              ),
+                                              const MarkdownEditorView(),
                                             ],
                                           ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Expanded(
-                                    child: TabBarView(
-                                      controller: _tabController,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      children: [
-                                        const WorktreeGrid(),
-                                        ...projects.map(
-                                          (p) => KanbanBoard(projectId: p.id),
-                                        ),
-                                        ...allSessions.map(
-                                          (s) => CopilotTerminalView(
-                                            key: ValueKey(s.id),
-                                            sessionId: s.id,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
                                   ),
                                 ],
                               ),
@@ -652,6 +588,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           const Spacer(),
           if (selectedRepo != null && activeCopilot != null) ...[
+            _HeaderEditorToggleButton(),
+            const SizedBox(width: 8),
             _HeaderVscodeButton(
               worktreePath: activeCopilot.workingDirectory,
               vscodeConfigs: selectedRepo.vscodeConfigs,
@@ -736,6 +674,55 @@ class _RefreshButtonState extends State<_RefreshButton> {
                   size: 20,
                   color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderEditorToggleButton extends StatefulWidget {
+  @override
+  State<_HeaderEditorToggleButton> createState() =>
+      _HeaderEditorToggleButtonState();
+}
+
+class _HeaderEditorToggleButtonState extends State<_HeaderEditorToggleButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final editor = context.watch<MarkdownEditorController>();
+    final isActive = editor.isSidePanelOpen;
+
+    return Tooltip(
+      message: isActive ? 'Close editor panel (⇧⌘E)' : 'Open editor panel (⇧⌘E)',
+      waitDuration: const Duration(milliseconds: 600),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: () => editor.toggleSidePanel(),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? AppColors.accent.withValues(alpha: 0.15)
+                  : _hovered
+                      ? AppColors.surface2
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.edit_note_rounded,
+              size: 20,
+              color: isActive
+                  ? AppColors.accent
+                  : _hovered
+                      ? AppColors.textPrimary
+                      : AppColors.textMuted,
+            ),
+          ),
         ),
       ),
     );

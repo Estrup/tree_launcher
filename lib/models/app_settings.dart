@@ -66,6 +66,8 @@ class AppSettings {
   final bool copilotAllowAllPaths;
   final List<String> copilotAddDirs;
   final bool copilotAutopilot;
+  final String? markdownDocumentsFolder;
+  final List<String> markdownRecentFiles;
 
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
@@ -92,6 +94,8 @@ class AppSettings {
     this.copilotAllowAllPaths = false,
     this.copilotAddDirs = const [],
     this.copilotAutopilot = false,
+    this.markdownDocumentsFolder,
+    this.markdownRecentFiles = const [],
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -141,6 +145,10 @@ class AppSettings {
               ?.cast<String>() ??
           const [],
       copilotAutopilot: json['copilotAutopilot'] as bool? ?? false,
+      markdownDocumentsFolder: json['markdownDocumentsFolder'] as String?,
+      markdownRecentFiles: (json['markdownRecentFiles'] as List<dynamic>?)
+              ?.cast<String>() ??
+          const [],
     );
   }
 
@@ -169,6 +177,8 @@ class AppSettings {
     'copilotAllowAllPaths': copilotAllowAllPaths,
     'copilotAddDirs': copilotAddDirs,
     'copilotAutopilot': copilotAutopilot,
+    'markdownDocumentsFolder': markdownDocumentsFolder,
+    'markdownRecentFiles': markdownRecentFiles,
   };
 
   AppSettings copyWith({
@@ -200,6 +210,9 @@ class AppSettings {
     bool? copilotAllowAllPaths,
     List<String>? copilotAddDirs,
     bool? copilotAutopilot,
+    String? markdownDocumentsFolder,
+    bool clearMarkdownDocumentsFolder = false,
+    List<String>? markdownRecentFiles,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -239,6 +252,10 @@ class AppSettings {
       copilotAllowAllPaths: copilotAllowAllPaths ?? this.copilotAllowAllPaths,
       copilotAddDirs: copilotAddDirs ?? this.copilotAddDirs,
       copilotAutopilot: copilotAutopilot ?? this.copilotAutopilot,
+      markdownDocumentsFolder: clearMarkdownDocumentsFolder
+          ? null
+          : (markdownDocumentsFolder ?? this.markdownDocumentsFolder),
+      markdownRecentFiles: markdownRecentFiles ?? this.markdownRecentFiles,
     );
   }
 }
