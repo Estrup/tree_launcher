@@ -41,7 +41,7 @@ class _EditorSplitPanelState extends State<EditorSplitPanel> {
             ),
             _ResizeDivider(
               onDrag: (dx) {
-                final newRatio = controller.sidePanelRatio + (dx / totalWidth);
+                final newRatio = controller.sidePanelRatio - (dx / totalWidth);
                 controller.setSidePanelRatio(newRatio);
               },
             ),

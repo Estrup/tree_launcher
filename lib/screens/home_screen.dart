@@ -121,7 +121,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final copilotProvider = context.watch<CopilotProvider>();
     final kanbanProvider = context.watch<KanbanProvider>();
     final agentController = context.read<AgentPanelController>();
+    final editorController = context.read<MarkdownEditorController>();
     final isCopilotActive = copilotProvider.activeSession != null;
+
+    // Sync editor worktree context with active copilot session
+    final activeWorktree = copilotProvider.activeSession?.workingDirectory;
+    if (isCopilotActive) {
+      if (editorController.activeWorktreeKey != activeWorktree) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) editorController.setActiveWorktree(activeWorktree);
+        });
+      }
+    } else if (editorController.activeWorktreeKey != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) editorController.setActiveWorktree(null);
+      });
+    }
 
     final projects = kanbanProvider.projects;
     final tabCount = projects.length + 2;
