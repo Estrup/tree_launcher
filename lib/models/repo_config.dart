@@ -1,4 +1,5 @@
 import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
+import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 
 import 'copilot_prompt.dart';
 import 'copilot_session.dart';
@@ -19,6 +20,7 @@ class RepoConfig {
   final Map<String, String> slotAssignments;
   final AzureDevopsConfig? azureDevopsConfig;
   final String? lastAzureDevopsBranch;
+  final GithubConfig? githubConfig;
 
   RepoConfig({
     required this.name,
@@ -33,6 +35,7 @@ class RepoConfig {
     this.slotAssignments = const {},
     this.azureDevopsConfig,
     this.lastAzureDevopsBranch,
+    this.githubConfig,
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -79,6 +82,10 @@ class RepoConfig {
               json['azureDevopsConfig'] as Map<String, dynamic>)
           : null,
       lastAzureDevopsBranch: json['lastAzureDevopsBranch'] as String?,
+      githubConfig: json['githubConfig'] != null
+          ? GithubConfig.fromJson(
+              json['githubConfig'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -97,6 +104,8 @@ class RepoConfig {
       'azureDevopsConfig': azureDevopsConfig!.toJson(),
     if (lastAzureDevopsBranch != null)
       'lastAzureDevopsBranch': lastAzureDevopsBranch,
+    if (githubConfig != null)
+      'githubConfig': githubConfig!.toJson(),
   };
 
   @override

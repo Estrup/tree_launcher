@@ -9,6 +9,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/builds/presentation/widgets/builds_tab.dart';
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_attention_snackbar.dart';
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_terminal_view.dart';
+import 'package:tree_launcher/features/github_prs/presentation/widgets/github_prs_tab.dart';
 import 'package:tree_launcher/features/kanban/presentation/widgets/create_project_dialog.dart';
 import 'package:tree_launcher/features/kanban/presentation/widgets/kanban_board.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/settings_dialog.dart';
@@ -149,7 +150,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final hasBuildsTab = repoProvider.selectedRepo?.azureDevopsConfig != null &&
         (repoProvider.selectedRepo!.azureDevopsConfig!.selectedPipelines.isNotEmpty);
     final buildsTabCount = hasBuildsTab ? 1 : 0;
-    final tabCount = projects.length + 2 + buildsTabCount;
+    final hasGithubPrsTab = repoProvider.selectedRepo?.githubConfig != null &&
+        repoProvider.selectedRepo!.githubConfig!.isConfigured;
+    final githubPrsTabCount = hasGithubPrsTab ? 1 : 0;
+    final tabCount = projects.length + 2 + buildsTabCount + githubPrsTabCount;
 
     if (_tabController == null || _lastTabCount != tabCount) {
       final oldIndex = _tabController?.index ?? 0;
@@ -313,16 +317,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                                       1,
                                                                 ),
                                                       ),
+                                                      if (hasGithubPrsTab)
+                                                        _buildSegmentTab(
+                                                          text: 'PRs',
+                                                          index: projects.length + 1 + buildsTabCount,
+                                                          currentIndex:
+                                                              currentIndex,
+                                                          icon: Icons
+                                                              .merge_type_rounded,
+                                                          onTap: () =>
+                                                              _tabController!
+                                                                  .animateTo(
+                                                                    projects.length + 1 + buildsTabCount,
+                                                                  ),
+                                                        ),
                                                       _buildSegmentTab(
                                                         text: "Notes",
-                                                        index: projects.length + 1 + buildsTabCount,
+                                                        index: projects.length + 1 + buildsTabCount + githubPrsTabCount,
                                                         currentIndex:
                                                             currentIndex,
                                                         icon: Icons.edit_note_rounded,
                                                         onTap: () =>
                                                             _tabController!
                                                                 .animateTo(
-                                                                  projects.length + 1 + buildsTabCount,
+                                                                  projects.length + 1 + buildsTabCount + githubPrsTabCount,
                                                                 ),
                                                       ),
                                                     ],
@@ -360,6 +378,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 ),
                                               ),
                                               if (hasBuildsTab) const BuildsTab(),
+                                              if (hasGithubPrsTab) const GithubPrsTab(),
                                               const MarkdownEditorView(),
                                             ],
                                           ),

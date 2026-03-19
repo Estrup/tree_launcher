@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
 import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
+import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
@@ -213,6 +214,15 @@ class WorkspaceController extends ChangeNotifier {
     String branch,
   ) async {
     final updated = await preferences.updateLastAzureDevopsBranch(repo, branch);
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
+  Future<RepoConfig?> updateGithubConfig(
+    RepoConfig repo,
+    GithubConfig? config,
+  ) async {
+    final updated = await preferences.updateGithubConfig(repo, config);
     _replaceSelection(repo, updated);
     return updated;
   }
