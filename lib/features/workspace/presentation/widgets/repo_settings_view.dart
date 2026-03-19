@@ -1922,10 +1922,12 @@ class _BuildsSectionState extends State<_BuildsSection> {
   late TextEditingController _serverUrlController;
   late TextEditingController _projectController;
   late TextEditingController _patController;
+  late TextEditingController _searchController;
   String? _lastRepoPath;
   Timer? _debounce;
   Set<int> _selectedPipelineIds = {};
   bool _pipelinesLoaded = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -1936,6 +1938,10 @@ class _BuildsSectionState extends State<_BuildsSection> {
     _serverUrlController = TextEditingController(text: config?.serverUrl ?? '');
     _projectController = TextEditingController(text: config?.project ?? '');
     _patController = TextEditingController(text: config?.pat ?? '');
+    _searchController = TextEditingController();
+    _searchController.addListener(() {
+      setState(() => _searchQuery = _searchController.text.toLowerCase());
+    });
     _selectedPipelineIds = config?.selectedPipelines.map((p) => p.id).toSet() ?? {};
   }
 
@@ -1949,6 +1955,7 @@ class _BuildsSectionState extends State<_BuildsSection> {
       _serverUrlController.text = config?.serverUrl ?? '';
       _projectController.text = config?.project ?? '';
       _patController.text = config?.pat ?? '';
+      _searchController.clear();
       _selectedPipelineIds = config?.selectedPipelines.map((p) => p.id).toSet() ?? {};
       _pipelinesLoaded = false;
     }
@@ -1960,6 +1967,7 @@ class _BuildsSectionState extends State<_BuildsSection> {
     _serverUrlController.dispose();
     _projectController.dispose();
     _patController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -2185,84 +2193,130 @@ class _BuildsSectionState extends State<_BuildsSection> {
               ),
             ),
             const SizedBox(height: 8),
-            Container(
-              constraints: const BoxConstraints(maxHeight: 400),
-              decoration: BoxDecoration(
-                color: AppColors.surface0,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.borderSubtle),
+            TextField(
+              controller: _searchController,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
               ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: builds.availableDefinitions.length,
-                itemBuilder: (context, index) {
-                  final def = builds.availableDefinitions[index];
-                  final isSelected = _selectedPipelineIds.contains(def.id);
-                  return InkWell(
-                    onTap: () {
-                      setState(() {
-                        if (isSelected) {
-                          _selectedPipelineIds.remove(def.id);
-                        } else {
-                          _selectedPipelineIds.add(def.id);
-                        }
-                      });
-                      _saveConfig();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        border: index < builds.availableDefinitions.length - 1
-                            ? Border(
-                                bottom: BorderSide(
-                                    color: AppColors.borderSubtle, width: 0.5),
-                              )
-                            : null,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isSelected
-                                ? Icons.check_box_rounded
-                                : Icons.check_box_outline_blank_rounded,
-                            size: 18,
-                            color: isSelected
-                                ? AppColors.accent
-                                : AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  def.name,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                if (def.path != null &&
-                                    def.path!.isNotEmpty &&
-                                    def.path != '\\')
-                                  Text(
-                                    def.path!,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textMuted,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+              decoration: InputDecoration(
+                hintText: 'Search pipelines...',
+                hintStyle: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textMuted,
+                ),
+                prefixIcon: Icon(Icons.search, size: 18, color: AppColors.textMuted),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () => _searchController.clear(),
+                        child: Icon(Icons.close, size: 16, color: AppColors.textMuted),
+                      )
+                    : null,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Builder(
+              builder: (context) {
+                final filteredDefinitions = _searchQuery.isEmpty
+                    ? builds.availableDefinitions
+                    : builds.availableDefinitions.where((d) {
+                        final name = d.name.toLowerCase();
+                        final path = (d.path ?? '').toLowerCase();
+                        return name.contains(_searchQuery) || path.contains(_searchQuery);
+                      }).toList();
+
+                if (filteredDefinitions.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'No matching pipelines',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
                   );
-                },
-              ),
+                }
+
+                return Container(
+                  constraints: const BoxConstraints(maxHeight: 400),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface0,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: filteredDefinitions.length,
+                    itemBuilder: (context, index) {
+                      final def = filteredDefinitions[index];
+                      final isSelected = _selectedPipelineIds.contains(def.id);
+                      return InkWell(
+                        onTap: () {
+                          setState(() {
+                            if (isSelected) {
+                              _selectedPipelineIds.remove(def.id);
+                            } else {
+                              _selectedPipelineIds.add(def.id);
+                            }
+                          });
+                          _saveConfig();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            border: index < filteredDefinitions.length - 1
+                                ? Border(
+                                    bottom: BorderSide(
+                                        color: AppColors.borderSubtle, width: 0.5),
+                                  )
+                                : null,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isSelected
+                                    ? Icons.check_box_rounded
+                                    : Icons.check_box_outline_blank_rounded,
+                                size: 18,
+                                color: isSelected
+                                    ? AppColors.accent
+                                    : AppColors.textMuted,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      def.name,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    if (def.path != null &&
+                                        def.path!.isNotEmpty &&
+                                        def.path != '\\')
+                                      Text(
+                                        def.path!,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           ],
 
