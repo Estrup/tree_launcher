@@ -1,3 +1,5 @@
+import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
+
 import 'copilot_prompt.dart';
 import 'copilot_session.dart';
 import 'custom_command.dart';
@@ -15,6 +17,8 @@ class RepoConfig {
   final List<CopilotSession> copilotSessions;
   final List<CopilotPrompt> copilotPrompts;
   final Map<String, String> slotAssignments;
+  final AzureDevopsConfig? azureDevopsConfig;
+  final String? lastAzureDevopsBranch;
 
   RepoConfig({
     required this.name,
@@ -27,6 +31,8 @@ class RepoConfig {
     this.copilotSessions = const [],
     this.copilotPrompts = const [],
     this.slotAssignments = const {},
+    this.azureDevopsConfig,
+    this.lastAzureDevopsBranch,
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -68,6 +74,11 @@ class RepoConfig {
           (json['slotAssignments'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as String)) ??
           {},
+      azureDevopsConfig: json['azureDevopsConfig'] != null
+          ? AzureDevopsConfig.fromJson(
+              json['azureDevopsConfig'] as Map<String, dynamic>)
+          : null,
+      lastAzureDevopsBranch: json['lastAzureDevopsBranch'] as String?,
     );
   }
 
@@ -82,6 +93,10 @@ class RepoConfig {
     'copilotSessions': copilotSessions.map((s) => s.toJson()).toList(),
     'copilotPrompts': copilotPrompts.map((p) => p.toJson()).toList(),
     'slotAssignments': slotAssignments,
+    if (azureDevopsConfig != null)
+      'azureDevopsConfig': azureDevopsConfig!.toJson(),
+    if (lastAzureDevopsBranch != null)
+      'lastAzureDevopsBranch': lastAzureDevopsBranch,
   };
 
   @override

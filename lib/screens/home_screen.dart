@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/builds/presentation/widgets/builds_tab.dart';
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_attention_snackbar.dart';
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_terminal_view.dart';
 import 'package:tree_launcher/features/kanban/presentation/widgets/create_project_dialog.dart';
@@ -145,7 +146,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     final projects = kanbanProvider.projects;
-    final tabCount = projects.length + 2;
+    final hasBuildsTab = repoProvider.selectedRepo?.azureDevopsConfig != null &&
+        (repoProvider.selectedRepo!.azureDevopsConfig!.selectedPipelines.isNotEmpty);
+    final buildsTabCount = hasBuildsTab ? 1 : 0;
+    final tabCount = projects.length + 2 + buildsTabCount;
 
     if (_tabController == null || _lastTabCount != tabCount) {
       final oldIndex = _tabController?.index ?? 0;
@@ -292,16 +296,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                                 kanbanProvider,
                                                               ),
                                                         ),
+                                                    if (hasBuildsTab)
+                                                      _buildSegmentTab(
+                                                        text: 'Builds',
+                                                        index:
+                                                            projects.length + 1,
+                                                        currentIndex:
+                                                            currentIndex,
+                                                        icon: Icons
+                                                            .build_circle_outlined,
+                                                        onTap: () =>
+                                                            _tabController!
+                                                                .animateTo(
+                                                                  projects
+                                                                          .length +
+                                                                      1,
+                                                                ),
+                                                      ),
                                                       _buildSegmentTab(
                                                         text: "Notes",
-                                                        index: projects.length + 1,
+                                                        index: projects.length + 1 + buildsTabCount,
                                                         currentIndex:
                                                             currentIndex,
                                                         icon: Icons.edit_note_rounded,
                                                         onTap: () =>
                                                             _tabController!
                                                                 .animateTo(
-                                                                  projects.length + 1,
+                                                                  projects.length + 1 + buildsTabCount,
                                                                 ),
                                                       ),
                                                     ],
@@ -338,6 +359,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   projectId: p.id,
                                                 ),
                                               ),
+                                              if (hasBuildsTab) const BuildsTab(),
                                               const MarkdownEditorView(),
                                             ],
                                           ),
