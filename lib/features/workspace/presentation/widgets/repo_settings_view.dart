@@ -5,6 +5,7 @@ import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
 import 'package:tree_launcher/features/builds/presentation/controllers/builds_controller.dart';
+import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
@@ -12,7 +13,7 @@ import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 
-enum _SettingsSection { general, vscodeConfigs, customCommands, customLinks, copilotPrompts, builds }
+enum _SettingsSection { general, vscodeConfigs, customCommands, customLinks, copilotPrompts, builds, github }
 
 class RepoSettingsView extends StatefulWidget {
   const RepoSettingsView({super.key});
@@ -158,6 +159,16 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                             _selectedSection = _SettingsSection.builds,
                       ),
                     ),
+                    _NavItem(
+                      icon: Icons.merge_type_rounded,
+                      label: 'GitHub',
+                      isSelected:
+                          _selectedSection == _SettingsSection.github,
+                      onTap: () => setState(
+                        () =>
+                            _selectedSection = _SettingsSection.github,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -184,6 +195,8 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
         return const _CopilotPromptsSection();
       case _SettingsSection.builds:
         return const _BuildsSection();
+      case _SettingsSection.github:
+        return const _GithubSection();
     }
   }
 }
@@ -2260,6 +2273,233 @@ class _BuildsSectionState extends State<_BuildsSection> {
               style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// --- GitHub Section ---
+
+class _GithubSection extends StatefulWidget {
+  const _GithubSection();
+
+  @override
+  State<_GithubSection> createState() => _GithubSectionState();
+}
+
+class _GithubSectionState extends State<_GithubSection> {
+  late TextEditingController _ownerController;
+  late TextEditingController _repoController;
+  late TextEditingController _tokenController;
+  String? _lastRepoPath;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    final repo = context.read<RepoProvider>().selectedRepo;
+    _lastRepoPath = repo?.path;
+    final config = repo?.githubConfig;
+    _ownerController = TextEditingController(text: config?.owner ?? '');
+    _repoController = TextEditingController(text: config?.repo ?? '');
+    _tokenController = TextEditingController(text: config?.token ?? '');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repo = context.read<RepoProvider>().selectedRepo;
+    if (repo != null && repo.path != _lastRepoPath) {
+      _lastRepoPath = repo.path;
+      final config = repo.githubConfig;
+      _ownerController.text = config?.owner ?? '';
+      _repoController.text = config?.repo ?? '';
+      _tokenController.text = config?.token ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _ownerController.dispose();
+    _repoController.dispose();
+    _tokenController.dispose();
+    super.dispose();
+  }
+
+  void _saveConfig() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      final provider = context.read<RepoProvider>();
+      final repo = provider.selectedRepo;
+      if (repo == null) return;
+
+      var owner = _ownerController.text.trim();
+      final repoName = _repoController.text.trim();
+      final token = _tokenController.text.trim();
+
+      // Auto-parse if user pastes a full GitHub URL into the owner field
+      if (owner.contains('github.com') && repoName.isEmpty) {
+        final parsed = _parseGithubUrl(owner);
+        if (parsed != null) {
+          owner = parsed.$1;
+          _ownerController.text = parsed.$1;
+          _repoController.text = parsed.$2;
+          final config = GithubConfig(owner: parsed.$1, repo: parsed.$2, token: token);
+          provider.updateGithubConfig(repo, config);
+          return;
+        }
+      }
+
+      final config = (owner.isEmpty && repoName.isEmpty && token.isEmpty)
+          ? null
+          : GithubConfig(owner: owner, repo: repoName, token: token);
+      provider.updateGithubConfig(repo, config);
+    });
+  }
+
+  (String, String)? _parseGithubUrl(String input) {
+    final uri = Uri.tryParse(input);
+    if (uri != null && uri.host.contains('github.com')) {
+      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      if (segments.length >= 2) {
+        return (segments[0], segments[1]);
+      }
+    }
+    // Try pattern: github.com/owner/repo
+    final match = RegExp(r'github\.com/([^/]+)/([^/]+)').firstMatch(input);
+    if (match != null) {
+      return (match.group(1)!, match.group(2)!.replaceAll('.git', ''));
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'GitHub Pull Requests',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Configure GitHub connection to view pull requests',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Owner
+          Text(
+            'OWNER',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _ownerController,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+              fontFamily: 'monospace',
+            ),
+            decoration: InputDecoration(
+              hintText: 'owner (or paste full GitHub URL)',
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+                fontFamily: 'monospace',
+              ),
+            ),
+            onChanged: (_) => _saveConfig(),
+          ),
+          const SizedBox(height: 16),
+
+          // Repo
+          Text(
+            'REPOSITORY',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _repoController,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+              fontFamily: 'monospace',
+            ),
+            decoration: InputDecoration(
+              hintText: 'repository-name',
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+                fontFamily: 'monospace',
+              ),
+            ),
+            onChanged: (_) => _saveConfig(),
+          ),
+          const SizedBox(height: 16),
+
+          // Token
+          Text(
+            'PERSONAL ACCESS TOKEN',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _tokenController,
+            obscureText: true,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+              fontFamily: 'monospace',
+            ),
+            decoration: InputDecoration(
+              hintText: 'ghp_...',
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+                fontFamily: 'monospace',
+              ),
+            ),
+            onChanged: (_) => _saveConfig(),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Create a token at GitHub → Settings → Developer settings → Personal access tokens.\n'
+            'Requires the "repo" scope for private repositories.',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textMuted,
+              height: 1.5,
+            ),
+          ),
         ],
       ),
     );
