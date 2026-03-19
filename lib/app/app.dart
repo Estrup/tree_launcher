@@ -36,20 +36,6 @@ class TreeLauncherApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => TerminalController()),
         ChangeNotifierProvider(create: (_) => KanbanController()),
-        ChangeNotifierProxyProvider<
-          SettingsController,
-          MarkdownEditorController
-        >(
-          create: (context) => MarkdownEditorController(
-            settingsController: context.read<SettingsController>(),
-          ),
-          update: (context, settingsController, previous) {
-            return previous ??
-                MarkdownEditorController(
-                  settingsController: settingsController,
-                );
-          },
-        ),
         ChangeNotifierProxyProvider2<
           WorkspaceController,
           SettingsController,
@@ -70,6 +56,23 @@ class TreeLauncherApp extends StatelessWidget {
                   workspaceController: workspaceController,
                   settingsController: settingsController,
                   soundService: dependencies.soundService,
+                );
+          },
+        ),
+        ChangeNotifierProxyProvider2<
+          SettingsController,
+          CopilotController,
+          MarkdownEditorController
+        >(
+          create: (context) => MarkdownEditorController(
+            settingsController: context.read<SettingsController>(),
+            copilotController: context.read<CopilotController>(),
+          ),
+          update: (context, settingsController, copilotController, previous) {
+            return previous ??
+                MarkdownEditorController(
+                  settingsController: settingsController,
+                  copilotController: copilotController,
                 );
           },
         ),

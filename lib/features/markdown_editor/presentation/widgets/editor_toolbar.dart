@@ -4,17 +4,27 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 class EditorToolbar extends StatelessWidget {
   final String? fileName;
   final bool isModified;
+  final bool hasCopilotSession;
   final VoidCallback onOpen;
   final VoidCallback onSave;
   final VoidCallback onClose;
+  final VoidCallback? onNewFile;
+  final VoidCallback? onOpenPlan;
+  final VoidCallback? onSendToCopilot;
+  final VoidCallback? onInsertPath;
 
   const EditorToolbar({
     super.key,
     this.fileName,
     this.isModified = false,
+    this.hasCopilotSession = false,
     required this.onOpen,
     required this.onSave,
     required this.onClose,
+    this.onNewFile,
+    this.onOpenPlan,
+    this.onSendToCopilot,
+    this.onInsertPath,
   });
 
   @override
@@ -30,6 +40,23 @@ class EditorToolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (hasCopilotSession) ...[
+            _ToolbarButton(
+              icon: Icons.note_add_rounded,
+              tooltip: 'New document',
+              onTap: onNewFile ?? () {},
+              enabled: onNewFile != null,
+            ),
+            _ToolbarButton(
+              icon: Icons.assignment_rounded,
+              tooltip: 'Open plan.md',
+              onTap: onOpenPlan ?? () {},
+              enabled: onOpenPlan != null,
+            ),
+            const SizedBox(width: 4),
+            Container(width: 1, height: 18, color: AppColors.borderSubtle),
+            const SizedBox(width: 4),
+          ],
           _ToolbarButton(
             icon: Icons.folder_open_rounded,
             tooltip: 'Open file (⌘O)',
@@ -41,13 +68,9 @@ class EditorToolbar extends StatelessWidget {
             onTap: onSave,
             enabled: isModified,
           ),
-          const SizedBox(width: 8),
-          Container(
-            width: 1,
-            height: 18,
-            color: AppColors.borderSubtle,
-          ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
+          Container(width: 1, height: 18, color: AppColors.borderSubtle),
+          const SizedBox(width: 4),
           if (fileName != null) ...[
             Icon(
               Icons.description_outlined,
@@ -68,6 +91,28 @@ class EditorToolbar extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (hasCopilotSession) ...[
+              _ToolbarButton(
+                icon: Icons.send_rounded,
+                tooltip: 'Send contents to copilot',
+                onTap: onSendToCopilot ?? () {},
+                enabled: onSendToCopilot != null,
+                size: 16,
+              ),
+              _ToolbarButton(
+                icon: Icons.link_rounded,
+                tooltip: 'Insert file path in copilot',
+                onTap: onInsertPath ?? () {},
+                enabled: onInsertPath != null,
+                size: 16,
+              ),
+            ],
+            _ToolbarButton(
+              icon: Icons.close_rounded,
+              tooltip: 'Close file',
+              onTap: onClose,
+              size: 16,
+            ),
           ] else
             Expanded(
               child: Text(
@@ -77,13 +122,6 @@ class EditorToolbar extends StatelessWidget {
                   color: AppColors.textMuted,
                 ),
               ),
-            ),
-          if (fileName != null)
-            _ToolbarButton(
-              icon: Icons.close_rounded,
-              tooltip: 'Close file',
-              onTap: onClose,
-              size: 16,
             ),
         ],
       ),

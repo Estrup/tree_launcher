@@ -126,15 +126,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // Sync editor worktree context with active copilot session
     final activeWorktree = copilotProvider.activeSession?.workingDirectory;
+    final activeSessionId = copilotProvider.activeSession?.id;
     if (isCopilotActive) {
       if (editorController.activeWorktreeKey != activeWorktree) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) editorController.setActiveWorktree(activeWorktree);
+          if (mounted) {
+            editorController.setActiveWorktree(
+              workingDirectory: activeWorktree,
+              copilotSessionId: activeSessionId,
+            );
+          }
         });
       }
     } else if (editorController.activeWorktreeKey != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) editorController.setActiveWorktree(null);
+        if (mounted) editorController.setActiveWorktree();
       });
     }
 
