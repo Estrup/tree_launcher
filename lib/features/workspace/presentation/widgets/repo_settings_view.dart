@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
+import 'package:tree_launcher/features/builds/presentation/controllers/builds_controller.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
@@ -10,7 +12,7 @@ import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 
-enum _SettingsSection { general, vscodeConfigs, customCommands, customLinks, copilotPrompts }
+enum _SettingsSection { general, vscodeConfigs, customCommands, customLinks, copilotPrompts, builds }
 
 class RepoSettingsView extends StatefulWidget {
   const RepoSettingsView({super.key});
@@ -146,6 +148,16 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                             _selectedSection = _SettingsSection.copilotPrompts,
                       ),
                     ),
+                    _NavItem(
+                      icon: Icons.build_circle_outlined,
+                      label: 'Builds',
+                      isSelected:
+                          _selectedSection == _SettingsSection.builds,
+                      onTap: () => setState(
+                        () =>
+                            _selectedSection = _SettingsSection.builds,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -170,6 +182,8 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
         return const _CustomLinksSection();
       case _SettingsSection.copilotPrompts:
         return const _CopilotPromptsSection();
+      case _SettingsSection.builds:
+        return const _BuildsSection();
     }
   }
 }
@@ -1877,6 +1891,376 @@ class _BackButtonState extends State<_BackButton> {
             color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
           ),
         ),
+      ),
+    );
+  }
+}
+
+// --- Builds Section ---
+
+class _BuildsSection extends StatefulWidget {
+  const _BuildsSection();
+
+  @override
+  State<_BuildsSection> createState() => _BuildsSectionState();
+}
+
+class _BuildsSectionState extends State<_BuildsSection> {
+  late TextEditingController _serverUrlController;
+  late TextEditingController _projectController;
+  late TextEditingController _patController;
+  String? _lastRepoPath;
+  Timer? _debounce;
+  Set<int> _selectedPipelineIds = {};
+  bool _pipelinesLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final repo = context.read<RepoProvider>().selectedRepo;
+    _lastRepoPath = repo?.path;
+    final config = repo?.azureDevopsConfig;
+    _serverUrlController = TextEditingController(text: config?.serverUrl ?? '');
+    _projectController = TextEditingController(text: config?.project ?? '');
+    _patController = TextEditingController(text: config?.pat ?? '');
+    _selectedPipelineIds = config?.selectedPipelines.map((p) => p.id).toSet() ?? {};
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repo = context.read<RepoProvider>().selectedRepo;
+    if (repo != null && repo.path != _lastRepoPath) {
+      _lastRepoPath = repo.path;
+      final config = repo.azureDevopsConfig;
+      _serverUrlController.text = config?.serverUrl ?? '';
+      _projectController.text = config?.project ?? '';
+      _patController.text = config?.pat ?? '';
+      _selectedPipelineIds = config?.selectedPipelines.map((p) => p.id).toSet() ?? {};
+      _pipelinesLoaded = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _serverUrlController.dispose();
+    _projectController.dispose();
+    _patController.dispose();
+    super.dispose();
+  }
+
+  void _saveConfig() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      final provider = context.read<RepoProvider>();
+      final repo = provider.selectedRepo;
+      if (repo == null) return;
+
+      final builds = context.read<BuildsController>();
+      final currentPipelines = builds.availableDefinitions
+          .where((d) => _selectedPipelineIds.contains(d.id))
+          .map((d) => BuildPipelineRef(id: d.id, name: d.name))
+          .toList();
+
+      // Keep previously saved pipelines that are still selected but not in availableDefinitions
+      final existingPipelines = repo.azureDevopsConfig?.selectedPipelines ?? [];
+      final fetchedIds = builds.availableDefinitions.map((d) => d.id).toSet();
+      for (final p in existingPipelines) {
+        if (_selectedPipelineIds.contains(p.id) && !fetchedIds.contains(p.id)) {
+          currentPipelines.add(p);
+        }
+      }
+
+      final config = AzureDevopsConfig(
+        serverUrl: _serverUrlController.text.trim(),
+        project: _projectController.text.trim(),
+        pat: _patController.text.trim(),
+        selectedPipelines: currentPipelines,
+      );
+      provider.updateAzureDevopsConfig(repo, config);
+    });
+  }
+
+  void _fetchPipelines() {
+    final config = AzureDevopsConfig(
+      serverUrl: _serverUrlController.text.trim(),
+      project: _projectController.text.trim(),
+      pat: _patController.text.trim(),
+    );
+    if (!config.isConfigured) return;
+    context.read<BuildsController>().fetchDefinitions(config).then((_) {
+      setState(() => _pipelinesLoaded = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final builds = context.watch<BuildsController>();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Azure DevOps Builds',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Configure Azure DevOps connection and select build pipelines',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Server URL
+          Text(
+            'SERVER URL',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _serverUrlController,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+              fontFamily: 'monospace',
+            ),
+            decoration: InputDecoration(
+              hintText: 'https://dev.azure.com/your-org',
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+                fontFamily: 'monospace',
+              ),
+            ),
+            onChanged: (_) => _saveConfig(),
+          ),
+          const SizedBox(height: 16),
+
+          // Project
+          Text(
+            'PROJECT',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _projectController,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+              fontFamily: 'monospace',
+            ),
+            decoration: InputDecoration(
+              hintText: 'MyProject',
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+                fontFamily: 'monospace',
+              ),
+            ),
+            onChanged: (_) => _saveConfig(),
+          ),
+          const SizedBox(height: 16),
+
+          // PAT Token
+          Text(
+            'PERSONAL ACCESS TOKEN',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _patController,
+            obscureText: true,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+              fontFamily: 'monospace',
+            ),
+            decoration: InputDecoration(
+              hintText: 'PAT token with Build read & execute scope',
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+                fontFamily: 'monospace',
+              ),
+            ),
+            onChanged: (_) => _saveConfig(),
+          ),
+          const SizedBox(height: 24),
+
+          // Fetch Pipelines button
+          Row(
+            children: [
+              GestureDetector(
+                onTap: builds.isFetchingDefinitions ? null : _fetchPipelines,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: builds.isFetchingDefinitions
+                        ? AppColors.accent.withValues(alpha: 0.5)
+                        : AppColors.accent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: builds.isFetchingDefinitions
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.base,
+                          ),
+                        )
+                      : Text(
+                          'Fetch Pipelines',
+                          style: TextStyle(
+                            color: AppColors.base,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ),
+              if (builds.definitionsError != null) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    builds.definitionsError!,
+                    style: TextStyle(color: AppColors.error, fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Pipeline selection list
+          if (_pipelinesLoaded && builds.availableDefinitions.isNotEmpty) ...[
+            Text(
+              'SELECT PIPELINES',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 400),
+              decoration: BoxDecoration(
+                color: AppColors.surface0,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: builds.availableDefinitions.length,
+                itemBuilder: (context, index) {
+                  final def = builds.availableDefinitions[index];
+                  final isSelected = _selectedPipelineIds.contains(def.id);
+                  return InkWell(
+                    onTap: () {
+                      setState(() {
+                        if (isSelected) {
+                          _selectedPipelineIds.remove(def.id);
+                        } else {
+                          _selectedPipelineIds.add(def.id);
+                        }
+                      });
+                      _saveConfig();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        border: index < builds.availableDefinitions.length - 1
+                            ? Border(
+                                bottom: BorderSide(
+                                    color: AppColors.borderSubtle, width: 0.5),
+                              )
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isSelected
+                                ? Icons.check_box_rounded
+                                : Icons.check_box_outline_blank_rounded,
+                            size: 18,
+                            color: isSelected
+                                ? AppColors.accent
+                                : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  def.name,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                if (def.path != null &&
+                                    def.path!.isNotEmpty &&
+                                    def.path != '\\')
+                                  Text(
+                                    def.path!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+
+          if (_pipelinesLoaded && builds.availableDefinitions.isEmpty && builds.definitionsError == null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'No pipeline definitions found in this project.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+          ],
+        ],
       ),
     );
   }

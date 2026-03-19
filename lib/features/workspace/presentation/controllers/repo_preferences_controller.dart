@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
 import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
 import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
@@ -26,6 +27,8 @@ class RepoPreferencesController extends ChangeNotifier {
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
       slotAssignments: repo.slotAssignments,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -47,6 +50,8 @@ class RepoPreferencesController extends ChangeNotifier {
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
       slotAssignments: repo.slotAssignments,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -68,6 +73,8 @@ class RepoPreferencesController extends ChangeNotifier {
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
       slotAssignments: repo.slotAssignments,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -89,6 +96,8 @@ class RepoPreferencesController extends ChangeNotifier {
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
       slotAssignments: repo.slotAssignments,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -110,6 +119,8 @@ class RepoPreferencesController extends ChangeNotifier {
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
       slotAssignments: repo.slotAssignments,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -131,6 +142,8 @@ class RepoPreferencesController extends ChangeNotifier {
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
       slotAssignments: repo.slotAssignments,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -152,6 +165,8 @@ class RepoPreferencesController extends ChangeNotifier {
       copilotSessions: sessions,
       copilotPrompts: repo.copilotPrompts,
       slotAssignments: repo.slotAssignments,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -173,6 +188,8 @@ class RepoPreferencesController extends ChangeNotifier {
       copilotSessions: repo.copilotSessions,
       copilotPrompts: prompts,
       slotAssignments: repo.slotAssignments,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -194,6 +211,54 @@ class RepoPreferencesController extends ChangeNotifier {
       copilotSessions: repo.copilotSessions,
       copilotPrompts: repo.copilotPrompts,
       slotAssignments: slotAssignments,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
+    );
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  Future<RepoConfig?> updateAzureDevopsConfig(
+    RepoConfig repo,
+    AzureDevopsConfig? config,
+  ) async {
+    final updated = RepoConfig(
+      name: repo.name,
+      path: repo.path,
+      vscodeConfigs: repo.vscodeConfigs,
+      customCommands: repo.customCommands,
+      customLinks: repo.customLinks,
+      lastBaseBranch: repo.lastBaseBranch,
+      defaultRunCommands: repo.defaultRunCommands,
+      copilotSessions: repo.copilotSessions,
+      copilotPrompts: repo.copilotPrompts,
+      slotAssignments: repo.slotAssignments,
+      azureDevopsConfig: config,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
+    );
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  Future<RepoConfig?> updateLastAzureDevopsBranch(
+    RepoConfig repo,
+    String branch,
+  ) async {
+    final updated = RepoConfig(
+      name: repo.name,
+      path: repo.path,
+      vscodeConfigs: repo.vscodeConfigs,
+      customCommands: repo.customCommands,
+      customLinks: repo.customLinks,
+      lastBaseBranch: repo.lastBaseBranch,
+      defaultRunCommands: repo.defaultRunCommands,
+      copilotSessions: repo.copilotSessions,
+      copilotPrompts: repo.copilotPrompts,
+      slotAssignments: repo.slotAssignments,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: branch,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
