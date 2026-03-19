@@ -20,11 +20,37 @@ class MarkdownEditingController extends TextEditingController {
   List<InlineSpan> _buildSpans(String text, TextStyle baseStyle) {
     final lines = text.split('\n');
     final spans = <InlineSpan>[];
+    bool inCodeBlock = false;
+
+    final codeBlockStyle = baseStyle.copyWith(
+      fontFamily: 'Menlo',
+      fontSize: (baseStyle.fontSize ?? 14) * 0.9,
+      color: AppColors.textSecondary,
+      backgroundColor: AppColors.surface1,
+    );
+    final codeFenceStyle = baseStyle.copyWith(
+      color: AppColors.textMuted.withValues(alpha: 0.6),
+      fontFamily: 'Menlo',
+      fontSize: (baseStyle.fontSize ?? 14) * 0.9,
+      backgroundColor: AppColors.surface1,
+    );
 
     for (int i = 0; i < lines.length; i++) {
       if (i > 0) spans.add(const TextSpan(text: '\n'));
       final line = lines[i];
-      _parseLine(line, baseStyle, spans);
+
+      if (line.startsWith('```')) {
+        // Toggle code block state; render fence line in muted style
+        spans.add(TextSpan(text: line, style: codeFenceStyle));
+        inCodeBlock = !inCodeBlock;
+        continue;
+      }
+
+      if (inCodeBlock) {
+        spans.add(TextSpan(text: line, style: codeBlockStyle));
+      } else {
+        _parseLine(line, baseStyle, spans);
+      }
     }
 
     return spans;
@@ -112,19 +138,6 @@ class MarkdownEditingController extends TextEditingController {
         style: baseStyle.copyWith(color: AppColors.accent),
       ));
       _parseInline(line.substring(cbMatch.end), baseStyle, spans);
-      return;
-    }
-
-    // Code fence
-    if (line.startsWith('```')) {
-      spans.add(TextSpan(
-        text: line,
-        style: baseStyle.copyWith(
-          color: AppColors.textMuted.withValues(alpha: 0.6),
-          fontFamily: 'SF Mono',
-          fontSize: (baseStyle.fontSize ?? 14) * 0.9,
-        ),
-      ));
       return;
     }
 
