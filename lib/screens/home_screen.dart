@@ -179,6 +179,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             editor.saveDocument();
           }
         },
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true, shift: true): () {
+          final editor = context.read<MarkdownEditorController>();
+          if (editor.hasDocument) {
+            editor.saveDocumentAs();
+          }
+        },
         const SingleActivator(LogicalKeyboardKey.keyO, meta: true): () {
           final editor = context.read<MarkdownEditorController>();
           editor.openFile();

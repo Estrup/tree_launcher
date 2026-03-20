@@ -222,6 +222,13 @@ class MarkdownEditorController extends ChangeNotifier {
     }
   }
 
+  /// Prompt the user for a save location (Save As).
+  Future<void> saveDocumentAs() async {
+    final doc = activeDocument;
+    if (doc == null) return;
+    await _saveAs(doc);
+  }
+
   /// Prompt the user for a save location and write the document.
   Future<void> _saveAs(MarkdownDocument doc) async {
     final result = await file_selector.getSaveLocation(

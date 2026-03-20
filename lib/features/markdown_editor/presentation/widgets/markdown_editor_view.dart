@@ -45,6 +45,7 @@ class _MarkdownEditorViewState extends State<MarkdownEditorView> {
           activeDocumentIndex: controller.activeDocumentIndex,
           onOpen: () => controller.openFile(),
           onSave: () => controller.saveDocument(),
+          onSaveAs: doc != null ? () => controller.saveDocumentAs() : null,
           onClose: () => controller.closeDocument(),
           onNewFile: hasCopilot
               ? () => controller.createNewDocument()

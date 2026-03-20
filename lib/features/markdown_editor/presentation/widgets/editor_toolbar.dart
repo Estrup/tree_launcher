@@ -10,6 +10,7 @@ class EditorToolbar extends StatelessWidget {
   final int activeDocumentIndex;
   final VoidCallback onOpen;
   final VoidCallback onSave;
+  final VoidCallback? onSaveAs;
   final VoidCallback onClose;
   final VoidCallback? onNewFile;
   final VoidCallback? onOpenPlan;
@@ -27,6 +28,7 @@ class EditorToolbar extends StatelessWidget {
     this.activeDocumentIndex = 0,
     required this.onOpen,
     required this.onSave,
+    this.onSaveAs,
     required this.onClose,
     this.onNewFile,
     this.onOpenPlan,
@@ -76,6 +78,12 @@ class EditorToolbar extends StatelessWidget {
             tooltip: 'Save (⌘S)',
             onTap: onSave,
             enabled: fileName != null && (isModified || openDocuments.isNotEmpty && activeDocumentIndex < openDocuments.length && openDocuments[activeDocumentIndex].isUntitled),
+          ),
+          _ToolbarButton(
+            icon: Icons.save_as_rounded,
+            tooltip: 'Save As (⌘⇧S)',
+            onTap: onSaveAs ?? () {},
+            enabled: onSaveAs != null && fileName != null,
           ),
           const SizedBox(width: 4),
           Container(width: 1, height: 18, color: AppColors.borderSubtle),
