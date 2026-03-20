@@ -46,6 +46,34 @@ class BuildsController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+
+    // Fetch commit messages for builds that don't have one from triggerInfo.
+    _fetchMissingCommitMessages(config);
+  }
+
+  /// Fetches commit messages for builds missing sourceVersionMessage.
+  Future<void> _fetchMissingCommitMessages(AzureDevopsConfig config) async {
+    final buildsNeedingMessage = _latestBuilds.entries
+        .where((e) =>
+            e.value != null &&
+            e.value!.sourceVersionMessage == null &&
+            e.value!.sourceVersion != null)
+        .toList();
+
+    if (buildsNeedingMessage.isEmpty) return;
+
+    final futures = buildsNeedingMessage.map((entry) async {
+      final message = await _service.fetchBuildCommitMessage(
+        config,
+        entry.value!.id,
+      );
+      if (message != null) {
+        _latestBuilds[entry.key] = entry.value!.copyWithMessage(message);
+      }
+    });
+
+    await Future.wait(futures);
+    notifyListeners();
   }
 
   /// Fetches all pipeline definitions from the project (for settings selector).
@@ -81,6 +109,12 @@ class BuildsController extends ChangeNotifier {
       notifyListeners();
       return null;
     }
+  }
+
+  /// Updates the latest build for a pipeline after a build was queued externally.
+  void onBuildQueued(int definitionId, BuildResult result) {
+    _latestBuilds[definitionId] = result;
+    notifyListeners();
   }
 
   /// Fetches branch list from Azure DevOps for the queue build dialog.

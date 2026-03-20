@@ -179,17 +179,23 @@ class _BuildsTabState extends State<BuildsTab> {
   void _showQueueDialog(AzureDevopsConfig config, int definitionId) {
     final workspace = context.read<WorkspaceController>();
     final repo = workspace.selectedRepo;
+    final buildsController = context.read<BuildsController>();
     showDialog(
       context: context,
-      builder: (_) => QueueBuildDialog(
-        config: config,
-        definitionId: definitionId,
-        lastBranch: repo?.lastAzureDevopsBranch,
-        onBuildQueued: (branch) async {
-          if (repo != null) {
-            await workspace.updateLastAzureDevopsBranch(repo, branch);
-          }
-        },
+      builder: (_) => MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: buildsController),
+          ChangeNotifierProvider.value(value: workspace),
+        ],
+        child: QueueBuildDialog(
+            config: config,
+            definitionId: definitionId,
+            lastBranch: repo?.lastAzureDevopsBranch,
+            onBuildQueued: (branch) async {
+              if (repo != null) {
+                await workspace.updateLastAzureDevopsBranch(repo, branch);
+              }
+            }),
       ),
     );
   }
@@ -290,7 +296,27 @@ class _BuildPipelineRow extends StatelessWidget {
                 : const SizedBox.shrink(),
           ),
           const SizedBox(width: 12),
-          // Commit
+          // Commit message (truncated with tooltip)
+          Expanded(
+            flex: 3,
+            child: buildResult?.sourceVersionMessage != null
+                ? Tooltip(
+                    message: buildResult!.sourceVersionMessage!,
+                    waitDuration: const Duration(milliseconds: 400),
+                    child: Text(
+                      buildResult!.sourceVersionMessage!.replaceAll('\n', ' '),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(width: 12),
+          // Commit SHA
           SizedBox(
             width: 70,
             child: buildResult?.shortCommit != null
@@ -300,6 +326,45 @@ class _BuildPipelineRow extends StatelessWidget {
                       fontSize: 12,
                       color: AppColors.textMuted,
                       fontFamily: 'monospace',
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(width: 12),
+          // Duration
+          SizedBox(
+            width: 65,
+            child: buildResult?.durationLabel != null
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.timer_outlined,
+                          size: 13, color: AppColors.textMuted),
+                      const SizedBox(width: 3),
+                      Text(
+                        buildResult!.durationLabel!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(width: 12),
+          // Finished time (relative with tooltip)
+          SizedBox(
+            width: 60,
+            child: buildResult?.finishedAgo != null
+                ? Tooltip(
+                    message: _formatDateTime(buildResult!.finishTime!),
+                    child: Text(
+                      buildResult!.finishedAgo!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   )
                 : const SizedBox.shrink(),
@@ -338,6 +403,12 @@ class _BuildPipelineRow extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final d = dt.toLocal();
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')} '
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 }
 

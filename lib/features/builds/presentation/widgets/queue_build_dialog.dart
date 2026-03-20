@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:tree_launcher/features/builds/data/azure_devops_service.dart';
 import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
 import 'package:tree_launcher/features/builds/presentation/controllers/builds_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/branch_search_dropdown.dart';
 import 'package:tree_launcher/theme/app_theme.dart';
 
 class QueueBuildDialog extends StatefulWidget {
@@ -24,49 +27,51 @@ class QueueBuildDialog extends StatefulWidget {
 }
 
 class _QueueBuildDialogState extends State<QueueBuildDialog> {
-  final _searchController = TextEditingController();
   String? _selectedBranch;
   bool _isQueuing = false;
   String? _errorMessage;
-  List<String> _filteredBranches = [];
+  List<String> _branches = [];
+  bool _loadingBranches = true;
 
   @override
   void initState() {
     super.initState();
     _selectedBranch = widget.lastBranch;
-    if (_selectedBranch != null) {
-      _searchController.text = _selectedBranch!;
-    }
-    _searchController.addListener(_filterBranches);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<BuildsController>().loadBranches(widget.config);
-    });
+    _loadBranches();
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _filterBranches() {
-    final builds = context.read<BuildsController>();
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredBranches = builds.branches;
-      } else {
-        _filteredBranches = builds.branches
-            .where((b) => b.toLowerCase().contains(query))
-            .toList();
+  Future<void> _loadBranches() async {
+    try {
+      final workspace = context.read<WorkspaceController>();
+      final branches = await workspace.listBranches();
+      if (mounted) {
+        final lastBranch =
+            widget.lastBranch != null && branches.contains(widget.lastBranch)
+            ? widget.lastBranch
+            : null;
+        setState(() {
+          _branches = branches;
+          _loadingBranches = false;
+          if (lastBranch != null) {
+            _selectedBranch = lastBranch;
+          } else if (_selectedBranch == null && branches.isNotEmpty) {
+            _selectedBranch = branches.first;
+          }
+        });
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingBranches = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
   }
 
   Future<void> _queueBuild() async {
-    final branch = _selectedBranch ?? _searchController.text.trim();
-    if (branch.isEmpty) {
+    final branch = _selectedBranch;
+    if (branch == null || branch.isEmpty) {
       setState(() => _errorMessage = 'Please select or enter a branch');
       return;
     }
@@ -76,30 +81,31 @@ class _QueueBuildDialogState extends State<QueueBuildDialog> {
       _errorMessage = null;
     });
 
-    final builds = context.read<BuildsController>();
-    final result = await builds.queueBuild(
-      widget.config,
-      widget.definitionId,
-      branch,
-    );
+    try {
+      final result =
+          await AzureDevopsService().queueBuild(widget.config, widget.definitionId, branch);
+      if (!mounted) return;
 
-    if (!mounted) return;
+      // Update the builds controller so the list refreshes.
+      context.read<BuildsController>().onBuildQueued(
+            widget.definitionId,
+            result,
+          );
 
-    if (result != null) {
       await widget.onBuildQueued?.call(branch);
       if (mounted) Navigator.of(context).pop();
-    } else {
-      setState(() {
-        _isQueuing = false;
-        _errorMessage = builds.error ?? 'Failed to queue build';
-      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isQueuing = false;
+          _errorMessage = e.toString();
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final builds = context.watch<BuildsController>();
-
     return AlertDialog(
       backgroundColor: AppColors.surface1,
       shape: RoundedRectangleBorder(
@@ -130,93 +136,29 @@ class _QueueBuildDialogState extends State<QueueBuildDialog> {
                 letterSpacing: 1.2,
               ),
             ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _searchController,
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textPrimary,
-                fontFamily: 'monospace',
-              ),
-              decoration: InputDecoration(
-                hintText: 'Search or enter branch name...',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                  fontFamily: 'monospace',
-                ),
-                prefixIcon: Icon(Icons.search,
-                    size: 18, color: AppColors.textMuted),
-                suffixIcon: builds.isFetchingBranches
-                    ? Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.accent,
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
-              onChanged: (value) {
-                setState(() => _selectedBranch = value);
-              },
-              onSubmitted: (_) => _queueBuild(),
-            ),
             const SizedBox(height: 8),
-            if (_filteredBranches.isNotEmpty ||
-                (!builds.isFetchingBranches && builds.branches.isNotEmpty))
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 200),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: (_filteredBranches.isNotEmpty
-                          ? _filteredBranches
-                          : builds.branches)
-                      .length,
-                  itemBuilder: (context, index) {
-                    final branches = _filteredBranches.isNotEmpty
-                        ? _filteredBranches
-                        : builds.branches;
-                    final branch = branches[index];
-                    final isSelected = branch == _selectedBranch;
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(6),
-                      onTap: () {
-                        setState(() {
-                          _selectedBranch = branch;
-                          _searchController.text = branch;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.accent.withValues(alpha: 0.1)
-                              : null,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          branch,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontFamily: 'monospace',
-                            color: isSelected
-                                ? AppColors.accent
-                                : AppColors.textSecondary,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+            if (_loadingBranches)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.accent,
+                    ),
+                  ),
                 ),
+              )
+            else
+              BranchSearchDropdown(
+                branches: _branches,
+                selectedBranch: _selectedBranch,
+                enabled: !_isQueuing,
+                onSelected: (branch) {
+                  setState(() => _selectedBranch = branch);
+                },
               ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 8),

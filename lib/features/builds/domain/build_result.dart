@@ -58,6 +58,7 @@ class BuildResult {
   final BuildResultType result;
   final String? sourceBranch;
   final String? sourceVersion;
+  final String? sourceVersionMessage;
   final String? buildNumber;
   final DateTime? startTime;
   final DateTime? finishTime;
@@ -71,6 +72,7 @@ class BuildResult {
     required this.result,
     this.sourceBranch,
     this.sourceVersion,
+    this.sourceVersionMessage,
     this.buildNumber,
     this.startTime,
     this.finishTime,
@@ -81,6 +83,7 @@ class BuildResult {
     final definition = json['definition'] as Map<String, dynamic>? ?? {};
     final links = json['_links'] as Map<String, dynamic>? ?? {};
     final webLink = links['web'] as Map<String, dynamic>? ?? {};
+    final triggerInfo = json['triggerInfo'] as Map<String, dynamic>?;
 
     return BuildResult(
       id: json['id'] as int,
@@ -90,6 +93,7 @@ class BuildResult {
       result: BuildResultType.fromApi(json['result'] as String?),
       sourceBranch: json['sourceBranch'] as String?,
       sourceVersion: json['sourceVersion'] as String?,
+      sourceVersionMessage: triggerInfo?['ci.message'] as String?,
       buildNumber: json['buildNumber'] as String?,
       startTime: json['startTime'] != null
           ? DateTime.tryParse(json['startTime'] as String)
@@ -98,6 +102,24 @@ class BuildResult {
           ? DateTime.tryParse(json['finishTime'] as String)
           : null,
       webUrl: webLink['href'] as String?,
+    );
+  }
+
+  /// Creates a copy with an updated commit message.
+  BuildResult copyWithMessage(String message) {
+    return BuildResult(
+      id: id,
+      definitionId: definitionId,
+      definitionName: definitionName,
+      status: status,
+      result: result,
+      sourceBranch: sourceBranch,
+      sourceVersion: sourceVersion,
+      sourceVersionMessage: message,
+      buildNumber: buildNumber,
+      startTime: startTime,
+      finishTime: finishTime,
+      webUrl: webUrl,
     );
   }
 
@@ -112,6 +134,37 @@ class BuildResult {
     if (sourceVersion == null) return null;
     if (sourceVersion!.length > 7) return sourceVersion!.substring(0, 7);
     return sourceVersion;
+  }
+
+  /// Build duration computed from start and finish times.
+  Duration? get duration {
+    if (startTime == null || finishTime == null) return null;
+    return finishTime!.difference(startTime!);
+  }
+
+  /// Human-readable duration string (e.g. "2m 34s", "1h 12m").
+  String? get durationLabel {
+    final d = duration;
+    if (d == null) return null;
+    if (d.inHours > 0) {
+      final mins = d.inMinutes.remainder(60);
+      return '${d.inHours}h ${mins}m';
+    }
+    if (d.inMinutes > 0) {
+      final secs = d.inSeconds.remainder(60);
+      return '${d.inMinutes}m ${secs}s';
+    }
+    return '${d.inSeconds}s';
+  }
+
+  /// Relative time since build finished (e.g. "3h ago", "2d ago").
+  String? get finishedAgo {
+    if (finishTime == null) return null;
+    final diff = DateTime.now().difference(finishTime!);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'just now';
   }
 
   /// Display label for the build's current state.

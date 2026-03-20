@@ -154,6 +154,27 @@ class AzureDevopsService {
     return BuildResult.fromApiJson(json);
   }
 
+  /// Fetches the commit message for a build via its changes endpoint.
+  /// Returns the first change's commit message, or null if none found.
+  Future<String?> fetchBuildCommitMessage(
+    AzureDevopsConfig config,
+    int buildId,
+  ) async {
+    try {
+      final body = await _get(config, 'build/builds/$buildId/changes', {
+        '\$top': '1',
+      });
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      final items = json['value'] as List<dynamic>? ?? [];
+      if (items.isEmpty) return null;
+      final first = items.first as Map<String, dynamic>;
+      final message = first['message'] as String?;
+      return message?.trim();
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Fetches branch names from all git repositories in the project.
   Future<List<String>> fetchBranches(AzureDevopsConfig config) async {
     // First, get repositories in the project.
