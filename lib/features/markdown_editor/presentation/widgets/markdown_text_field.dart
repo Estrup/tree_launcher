@@ -1,3 +1,4 @@
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 
@@ -389,6 +390,7 @@ class MarkdownTextField extends StatefulWidget {
 class _MarkdownTextFieldState extends State<MarkdownTextField> {
   late final MarkdownEditingController _controller;
   late final ScrollController _scrollController;
+  bool _isDragging = false;
 
   @override
   void initState() {
@@ -421,32 +423,71 @@ class _MarkdownTextFieldState extends State<MarkdownTextField> {
     super.dispose();
   }
 
+  void _onFileDrop(DropDoneDetails details) {
+    for (final file in details.files) {
+      final path = file.path;
+      final offset = _controller.selection.baseOffset.clamp(0, _controller.text.length);
+      final before = _controller.text.substring(0, offset);
+      final after = _controller.text.substring(offset);
+      final newText = '$before$path$after';
+      _controller.removeListener(_onTextChanged);
+      _controller.text = newText;
+      _controller.selection = TextSelection.collapsed(offset: offset + path.length);
+      _controller.addListener(_onTextChanged);
+      widget.onChanged(_controller.text);
+    }
+    setState(() => _isDragging = false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.base,
-      padding: const EdgeInsets.only(top: 8),
-      child: TextField(
-        controller: _controller,
-        focusNode: widget.focusNode,
-        scrollController: _scrollController,
-        maxLines: null,
-        expands: true,
-        textAlignVertical: TextAlignVertical.top,
-        style: TextStyle(
-          fontSize: 14,
-          height: 1.7,
-          color: AppColors.textPrimary,
-          fontFamily: '.AppleSystemUIFont',
+    return DropTarget(
+      onDragDone: _onFileDrop,
+      onDragEntered: (_) => setState(() => _isDragging = true),
+      onDragExited: (_) => setState(() => _isDragging = false),
+      child: Container(
+        color: AppColors.base,
+        padding: const EdgeInsets.only(top: 8),
+        child: Stack(
+          children: [
+            TextField(
+              controller: _controller,
+              focusNode: widget.focusNode,
+              scrollController: _scrollController,
+              maxLines: null,
+              expands: true,
+              textAlignVertical: TextAlignVertical.top,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.7,
+                color: AppColors.textPrimary,
+                fontFamily: '.AppleSystemUIFont',
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.fromLTRB(32, 24, 32, 24),
+                isCollapsed: true,
+              ),
+              scrollPadding: const EdgeInsets.all(24),
+              cursorColor: AppColors.accent,
+              cursorWidth: 1.5,
+            ),
+            if (_isDragging)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.blueAccent.withValues(alpha: 0.7),
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.fromLTRB(32, 24, 32, 24),
-          isCollapsed: true,
-        ),
-        scrollPadding: const EdgeInsets.all(24),
-        cursorColor: AppColors.accent,
-        cursorWidth: 1.5,
       ),
     );
   }

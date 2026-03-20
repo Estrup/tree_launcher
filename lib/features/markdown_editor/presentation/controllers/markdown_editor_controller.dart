@@ -145,18 +145,31 @@ class MarkdownEditorController extends ChangeNotifier {
   }
 
   /// Create a new in-memory document. Not written to disk until saved.
-  void createNewDocument(String fileName) {
-    var name = fileName.trim();
-    if (!name.endsWith('.md')) name = '$name.md';
+  void createNewDocument() {
+    final name = _nextUntitledName();
 
     final doc = MarkdownDocument(
       path: name,
-      content: '# ${name.replaceAll('.md', '')}\n\n',
+      content: '',
       savedContent: '',
       isUntitled: true,
     );
     _addDocument(doc);
     notifyListeners();
+  }
+
+  /// Generate "Untitled.md", "Untitled 2.md", "Untitled 3.md", etc.
+  String _nextUntitledName() {
+    final docs = _documents[_currentKey] ?? [];
+    final existing = docs
+        .where((d) => d.isUntitled)
+        .map((d) => d.fileName)
+        .toSet();
+    if (!existing.contains('Untitled.md')) return 'Untitled.md';
+    for (int i = 2;; i++) {
+      final candidate = 'Untitled $i.md';
+      if (!existing.contains(candidate)) return candidate;
+    }
   }
 
   /// Open the active copilot session's plan.md.
