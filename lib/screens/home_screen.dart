@@ -10,8 +10,6 @@ import 'package:tree_launcher/features/builds/presentation/widgets/builds_tab.da
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_attention_snackbar.dart';
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_terminal_view.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_prs_tab.dart';
-import 'package:tree_launcher/features/kanban/presentation/widgets/create_project_dialog.dart';
-import 'package:tree_launcher/features/kanban/presentation/widgets/kanban_board.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/settings_dialog.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/running_commands_bar.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_panel.dart';
@@ -26,7 +24,6 @@ import 'package:tree_launcher/features/workspace/presentation/widgets/repo_setti
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_grid.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
-import 'package:tree_launcher/providers/kanban_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
 import 'package:tree_launcher/features/markdown_editor/presentation/controllers/markdown_editor_controller.dart';
@@ -121,7 +118,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final repoProvider = context.watch<RepoProvider>();
     final copilotProvider = context.watch<CopilotProvider>();
-    final kanbanProvider = context.watch<KanbanProvider>();
     final agentController = context.read<AgentPanelController>();
     final editorController = context.read<MarkdownEditorController>();
     final isCopilotActive = copilotProvider.activeSession != null;
@@ -147,14 +143,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       });
     }
 
-    final projects = kanbanProvider.projects;
     final hasBuildsTab = repoProvider.selectedRepo?.azureDevopsConfig != null &&
         (repoProvider.selectedRepo!.azureDevopsConfig!.selectedPipelines.isNotEmpty);
     final buildsTabCount = hasBuildsTab ? 1 : 0;
     final hasGithubPrsTab = repoProvider.selectedRepo?.githubConfig != null &&
         repoProvider.selectedRepo!.githubConfig!.isConfigured;
     final githubPrsTabCount = hasGithubPrsTab ? 1 : 0;
-    final tabCount = projects.length + 2 + buildsTabCount + githubPrsTabCount;
+    final tabCount = 2 + buildsTabCount + githubPrsTabCount;
 
     if (_tabController == null || _lastTabCount != tabCount) {
       final oldIndex = _tabController?.index ?? 0;
@@ -275,53 +270,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                             _tabController!
                                                                 .animateTo(0),
                                                       ),
-                                                      for (
-                                                        int i = 0;
-                                                        i < projects.length;
-                                                        i++
-                                                      )
-                                                        _buildSegmentTab(
-                                                          text: projects[i].name,
-                                                          index: i + 1,
-                                                          currentIndex:
-                                                              currentIndex,
-                                                          onTap: () =>
-                                                              _tabController!
-                                                                  .animateTo(
-                                                                    i + 1,
-                                                                  ),
-                                                          onSecondaryTapUp:
-                                                              (
-                                                                details,
-                                                              ) => _showProjectContextMenu(
-                                                                context,
-                                                                details
-                                                                    .globalPosition,
-                                                                projects[i].id,
-                                                                kanbanProvider,
-                                                              ),
-                                                        ),
                                                     if (hasBuildsTab)
                                                       _buildSegmentTab(
                                                         text: 'Builds',
-                                                        index:
-                                                            projects.length + 1,
+                                                        index: 1,
                                                         currentIndex:
                                                             currentIndex,
                                                         icon: Icons
                                                             .build_circle_outlined,
                                                         onTap: () =>
                                                             _tabController!
-                                                                .animateTo(
-                                                                  projects
-                                                                          .length +
-                                                                      1,
-                                                                ),
+                                                                .animateTo(1),
                                                       ),
                                                       if (hasGithubPrsTab)
                                                         _buildSegmentTab(
                                                           text: 'PRs',
-                                                          index: projects.length + 1 + buildsTabCount,
+                                                          index: 1 + buildsTabCount,
                                                           currentIndex:
                                                               currentIndex,
                                                           icon: Icons
@@ -329,19 +293,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                           onTap: () =>
                                                               _tabController!
                                                                   .animateTo(
-                                                                    projects.length + 1 + buildsTabCount,
+                                                                    1 + buildsTabCount,
                                                                   ),
                                                         ),
                                                       _buildSegmentTab(
                                                         text: "Notes",
-                                                        index: projects.length + 1 + buildsTabCount + githubPrsTabCount,
+                                                        index: 1 + buildsTabCount + githubPrsTabCount,
                                                         currentIndex:
                                                             currentIndex,
                                                         icon: Icons.edit_note_rounded,
                                                         onTap: () =>
                                                             _tabController!
                                                                 .animateTo(
-                                                                  projects.length + 1 + buildsTabCount + githubPrsTabCount,
+                                                                  1 + buildsTabCount + githubPrsTabCount,
                                                                 ),
                                                       ),
                                                     ],
@@ -373,11 +337,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 const NeverScrollableScrollPhysics(),
                                             children: [
                                               const WorktreeGrid(),
-                                              ...projects.map(
-                                                (p) => KanbanBoard(
-                                                  projectId: p.id,
-                                                ),
-                                              ),
                                               if (hasBuildsTab) const BuildsTab(),
                                               if (hasGithubPrsTab) const GithubPrsTab(),
                                               const MarkdownEditorView(),
@@ -442,56 +401,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
-  }
-
-  void _showProjectContextMenu(
-    BuildContext context,
-    Offset position,
-    String projectId,
-    KanbanProvider kanbanProvider,
-  ) {
-    showMenu<String>(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        position.dx,
-        position.dy,
-        position.dx + 1,
-        position.dy + 1,
-      ),
-      color: AppColors.surface1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: AppColors.border),
-      ),
-      items: [
-        PopupMenuItem<String>(
-          value: 'archive',
-          height: 36,
-          child: Row(
-            children: [
-              Icon(
-                Icons.archive_outlined,
-                size: 14,
-                color: AppColors.textMuted,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Archive project',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ).then((value) {
-      if (value == 'archive') {
-        kanbanProvider.archiveProject(projectId);
-      }
-    });
   }
 
   Widget _buildSegmentTab({
@@ -676,11 +585,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           if (selectedRepo != null && activeCopilot == null) ...[
             _AddWorktreeButton(
               onPressed: () => AddWorktreeDialog.show(context),
-            ),
-            const SizedBox(width: 8),
-            _AddProjectButton(
-              onPressed: () =>
-                  CreateProjectDialog.show(context, selectedRepo.path),
             ),
             const SizedBox(width: 8),
             _TerminalToggleButton(),
@@ -881,57 +785,6 @@ class _AddWorktreeButtonState extends State<_AddWorktreeButton> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.terminal,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AddProjectButton extends StatefulWidget {
-  final VoidCallback onPressed;
-
-  const _AddProjectButton({required this.onPressed});
-
-  @override
-  State<_AddProjectButton> createState() => _AddProjectButtonState();
-}
-
-class _AddProjectButtonState extends State<_AddProjectButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: _hovered ? AppColors.surface2 : AppColors.surface1,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: _hovered ? AppColors.border : AppColors.borderSubtle,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add_rounded, size: 15, color: AppColors.textPrimary),
-              SizedBox(width: 5),
-              Text(
-                'New Project',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
                 ),
               ),
             ],

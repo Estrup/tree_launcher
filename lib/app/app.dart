@@ -10,7 +10,6 @@ import 'package:tree_launcher/features/agent/presentation/controllers/agent_pane
 import 'package:tree_launcher/features/builds/presentation/controllers/builds_controller.dart';
 import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
-import 'package:tree_launcher/features/kanban/presentation/controllers/kanban_controller.dart';
 import 'package:tree_launcher/features/markdown_editor/presentation/controllers/markdown_editor_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
@@ -37,7 +36,6 @@ class TreeLauncherApp extends StatelessWidget {
                 ..loadSettings(),
         ),
         ChangeNotifierProvider(create: (_) => TerminalController()),
-        ChangeNotifierProvider(create: (_) => KanbanController()),
         ChangeNotifierProvider(create: (_) => BuildsController()),
         ChangeNotifierProvider(create: (_) => GithubPrsController()),
         ChangeNotifierProxyProvider2<

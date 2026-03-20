@@ -7,25 +7,14 @@ import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/copilot/data/sound_service.dart';
 import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
-import 'package:tree_launcher/features/kanban/domain/issue.dart';
-import 'package:tree_launcher/features/kanban/presentation/controllers/kanban_controller.dart';
-import 'package:tree_launcher/features/kanban/presentation/widgets/issue_view_dialog.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/models/worktree.dart';
-import 'package:tree_launcher/services/database_service.dart';
 
 void main() {
-  setUp(() {
-    DatabaseService.instance.initializeForTesting();
-  });
-
-  tearDown(() {
-    DatabaseService.instance.close();
-  });
 
   testWidgets(
     'text fields and themed dropdowns share the same baseline height',
@@ -111,57 +100,12 @@ void main() {
       expect(tester.getSize(fieldsAfter.at(1)).height, jiraHeightBefore);
     },
   );
-
-  testWidgets('issue dialog inline editors remain borderless', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(1600, 1000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-
-    await tester.pumpWidget(
-      _buildHarness(
-        child: IssueViewDialog(
-          issue: Issue.create(
-            projectId: 'project-1',
-            issueNumber: 7,
-            projectKey: 'APP',
-            title: 'Keep inline editors compact',
-            description: 'Initial description',
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final commentField = tester.widget<TextField>(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is TextField && widget.maxLines == 4 && widget.minLines == 1,
-      ),
-    );
-    expect(commentField.decoration!.border, InputBorder.none);
-
-    await tester.tap(find.text('Keep inline editors compact'));
-    await tester.pump();
-
-    final titleField = tester.widget<TextField>(
-      find.byWidgetPredicate(
-        (widget) => widget is TextField && widget.autofocus,
-      ),
-    );
-    expect(titleField.decoration!.border, InputBorder.none);
-  });
 }
 
 Widget _buildHarness({required Widget child}) {
   final workspace = WorkspaceController(gitService: _FakeGitService());
   final settings = SettingsController();
   final terminal = TerminalController();
-  final kanban = KanbanController();
   final copilot = CopilotController.create(
     workspaceController: workspace,
     settingsController: settings,
@@ -173,13 +117,11 @@ Widget _buildHarness({required Widget child}) {
       ChangeNotifierProvider<WorkspaceController>.value(value: workspace),
       ChangeNotifierProvider<SettingsController>.value(value: settings),
       ChangeNotifierProvider<TerminalController>.value(value: terminal),
-      ChangeNotifierProvider<KanbanController>.value(value: kanban),
       ChangeNotifierProvider<CopilotController>.value(value: copilot),
     ],
     child: _DisposableTestApp(
       disposers: [
         copilot.dispose,
-        kanban.dispose,
         terminal.dispose,
         settings.dispose,
         workspace.dispose,

@@ -6,12 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../providers/copilot_provider.dart';
-import 'issue_api_controller.dart';
 
 /// Embedded HTTP + WebSocket server for remote-controlling Copilot terminals.
 class RemoteControlService {
   final CopilotProvider _copilotProvider;
-  final IssueApiController _issueApiController;
 
   HttpServer? _server;
   bool _running = false;
@@ -21,9 +19,7 @@ class RemoteControlService {
 
   RemoteControlService({
     required CopilotProvider copilotProvider,
-    required IssueApiController issueApiController,
-  }) : _copilotProvider = copilotProvider,
-       _issueApiController = issueApiController;
+  }) : _copilotProvider = copilotProvider;
 
   bool get isRunning => _running;
   String? get url => _server != null
@@ -131,11 +127,6 @@ class RemoteControlService {
       return;
     }
 
-    if (path.startsWith('/api/projects') || path.startsWith('/api/issues')) {
-      await _handleIssueApi(request);
-      return;
-    }
-
     request.response
       ..statusCode = HttpStatus.notFound
       ..write('Not found')
@@ -177,47 +168,6 @@ class RemoteControlService {
       ..headers.contentType = ContentType.json
       ..write(jsonEncode(jsonList))
       ..close();
-  }
-
-  Future<void> _handleIssueApi(HttpRequest request) async {
-    IssueApiResponse apiResponse;
-    try {
-      final body = await _readJsonBodyIfPresent(request);
-      apiResponse = await _issueApiController.handle(
-        IssueApiRequest(
-          method: request.method,
-          pathSegments: request.uri.pathSegments,
-          queryParameters: request.uri.queryParameters,
-          body: body,
-        ),
-      );
-    } on FormatException {
-      apiResponse = const IssueApiResponse(
-        statusCode: 400,
-        ok: false,
-        summary: 'Request body must be valid JSON.',
-        data: {},
-      );
-    }
-
-    request.response
-      ..statusCode = apiResponse.statusCode
-      ..headers.contentType = ContentType.json
-      ..write(jsonEncode(apiResponse.toJson()))
-      ..close();
-  }
-
-  Future<Object?> _readJsonBodyIfPresent(HttpRequest request) async {
-    if (!const {'POST', 'PATCH', 'PUT'}.contains(request.method)) {
-      return null;
-    }
-
-    final body = await utf8.decoder.bind(request).join();
-    if (body.trim().isEmpty) {
-      return null;
-    }
-
-    return jsonDecode(body);
   }
 
   Future<void> _handleWebSocket(HttpRequest request) async {
