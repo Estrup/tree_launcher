@@ -7,8 +7,19 @@ import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
 import 'terminal_key_handler.dart';
 
-class TerminalPanel extends StatelessWidget {
+class TerminalPanel extends StatefulWidget {
   const TerminalPanel({super.key});
+
+  @override
+  State<TerminalPanel> createState() => _TerminalPanelState();
+}
+
+class _TerminalPanelState extends State<TerminalPanel> {
+  static const double _defaultSidebarWidth = 120.0;
+  static const double _minSidebarWidth = 80.0;
+  static const double _maxSidebarWidth = 260.0;
+
+  double _sidebarWidth = _defaultSidebarWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -33,17 +44,32 @@ class TerminalPanel extends StatelessWidget {
           ),
           child: Column(
             children: [
-              _TabBar(
-                sessions: tp.sessions,
-                activeIndex: tp.activeIndex,
-                onSelect: (i) => tp.setActive(i),
-                onClose: (i) => tp.closeTerminal(i),
-                onHide: () => tp.toggleVisibility(),
-              ),
+              _HeaderBar(onHide: () => tp.toggleVisibility()),
               Expanded(
-                child: tp.activeSession != null
-                    ? _TerminalBody(session: tp.activeSession!)
-                    : const SizedBox.shrink(),
+                child: Row(
+                  children: [
+                    _VerticalTabList(
+                      width: _sidebarWidth,
+                      sessions: tp.sessions,
+                      activeIndex: tp.activeIndex,
+                      onSelect: (i) => tp.setActive(i),
+                      onClose: (i) => tp.closeTerminal(i),
+                    ),
+                    _SidebarResizeHandle(
+                      onDrag: (dx) {
+                        setState(() {
+                          _sidebarWidth = (_sidebarWidth + dx)
+                              .clamp(_minSidebarWidth, _maxSidebarWidth);
+                        });
+                      },
+                    ),
+                    Expanded(
+                      child: tp.activeSession != null
+                          ? _TerminalBody(session: tp.activeSession!)
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -82,20 +108,10 @@ class _DragHandle extends StatelessWidget {
   }
 }
 
-class _TabBar extends StatelessWidget {
-  final List<dynamic> sessions;
-  final int activeIndex;
-  final ValueChanged<int> onSelect;
-  final ValueChanged<int> onClose;
+class _HeaderBar extends StatelessWidget {
   final VoidCallback onHide;
 
-  const _TabBar({
-    required this.sessions,
-    required this.activeIndex,
-    required this.onSelect,
-    required this.onClose,
-    required this.onHide,
-  });
+  const _HeaderBar({required this.onHide});
 
   @override
   Widget build(BuildContext context) {
@@ -121,28 +137,7 @@ class _TabBar extends StatelessWidget {
               letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: sessions.length,
-              itemBuilder: (context, i) {
-                final session = sessions[i];
-                final tooltipLines = [session.title];
-                tooltipLines.add(session.workingDirectory);
-                if (session.command != null) {
-                  tooltipLines.add('cmd: ${session.command}');
-                }
-                return _Tab(
-                  title: session.title,
-                  tooltip: tooltipLines.join('\n'),
-                  isActive: i == activeIndex,
-                  onTap: () => onSelect(i),
-                  onClose: () => onClose(i),
-                );
-              },
-            ),
-          ),
+          const Spacer(),
           _IconBtn(
             icon: Icons.remove_rounded,
             tooltip: 'Hide terminal',
@@ -150,6 +145,70 @@ class _TabBar extends StatelessWidget {
           ),
           const SizedBox(width: 4),
         ],
+      ),
+    );
+  }
+}
+
+class _VerticalTabList extends StatelessWidget {
+  final double width;
+  final List<dynamic> sessions;
+  final int activeIndex;
+  final ValueChanged<int> onSelect;
+  final ValueChanged<int> onClose;
+
+  const _VerticalTabList({
+    required this.width,
+    required this.sessions,
+    required this.activeIndex,
+    required this.onSelect,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      decoration: BoxDecoration(
+        color: AppColors.surface0,
+      ),
+      child: ListView.builder(
+        itemCount: sessions.length,
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        itemBuilder: (context, i) {
+          final session = sessions[i];
+          final tooltipLines = [session.title];
+          tooltipLines.add(session.workingDirectory);
+          if (session.command != null) {
+            tooltipLines.add('cmd: ${session.command}');
+          }
+          return _Tab(
+            title: session.title,
+            tooltip: tooltipLines.join('\n'),
+            isActive: i == activeIndex,
+            onTap: () => onSelect(i),
+            onClose: () => onClose(i),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SidebarResizeHandle extends StatelessWidget {
+  final ValueChanged<double> onDrag;
+  const _SidebarResizeHandle({required this.onDrag});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        child: Container(
+          width: 4,
+          color: AppColors.borderSubtle,
+        ),
       ),
     );
   }
@@ -187,55 +246,53 @@ class _TabState extends State<_Tab> {
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           onTap: widget.onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 100),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              margin: const EdgeInsets.only(right: 2),
-              decoration: BoxDecoration(
-                color: widget.isActive
-                    ? AppColors.base
-                    : (_hovered ? AppColors.surface2 : Colors.transparent),
-                border: widget.isActive
-                    ? Border(
-                        bottom: BorderSide(color: AppColors.terminal, width: 2),
-                      )
-                    : null,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      widget.title,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: widget.isActive
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                        color: widget.isActive
-                            ? AppColors.textPrimary
-                            : AppColors.textMuted,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+          child: Container(
+            height: 30,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: widget.isActive
+                  ? AppColors.base
+                  : (_hovered ? AppColors.surface2 : Colors.transparent),
+              borderRadius: BorderRadius.circular(4),
+              border: widget.isActive
+                  ? Border(
+                      left: BorderSide(color: AppColors.terminal, width: 2),
+                    )
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: widget.isActive
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: widget.isActive
+                          ? AppColors.textPrimary
+                          : AppColors.textMuted,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+                if (_hovered || widget.isActive) ...[
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: widget.onClose,
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 12,
+                      color: _hovered
+                          ? AppColors.textSecondary
+                          : AppColors.textMuted,
                     ),
                   ),
-                  if (_hovered || widget.isActive) ...[
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: widget.onClose,
-                      child: Icon(
-                        Icons.close_rounded,
-                        size: 12,
-                        color: _hovered
-                            ? AppColors.textSecondary
-                            : AppColors.textMuted,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
           ),
         ),

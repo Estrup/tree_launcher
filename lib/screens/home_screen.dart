@@ -1077,7 +1077,7 @@ class _HeaderCommandsButtonState extends State<_HeaderCommandsButton> {
         final slot = repo?.slotAssignments[widget.worktreePath] ?? 'alpha';
         final command = selected.command.replaceAll('{{SLOT}}', slot);
         tp.openTerminalWithCommand(
-          '${widget.worktreeName}: ${selected.name}',
+          '${selected.name}: ${widget.worktreeName}',
           widget.worktreePath,
           repo?.path ?? widget.worktreePath,
           command,

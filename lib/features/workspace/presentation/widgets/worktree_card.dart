@@ -790,7 +790,7 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
       if (selected != null) {
         final command = selected.command.replaceAll('{{SLOT}}', widget.slot);
         tp.openTerminalWithCommand(
-          '${widget.worktreeName}: ${selected.name}',
+          '${selected.name}: ${widget.worktreeName}',
           widget.worktreePath,
           repo?.path ?? widget.worktreePath,
           command,
