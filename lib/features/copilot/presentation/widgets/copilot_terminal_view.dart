@@ -1,10 +1,12 @@
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/terminal_theme.dart';
 import 'package:tree_launcher/core/widgets/focus_on_request.dart';
+import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_context_menu.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_key_handler.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
@@ -21,6 +23,7 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView>
     with AutomaticKeepAliveClientMixin {
   bool _isDragging = false;
   late final FocusNode _terminalFocusNode;
+  late final TerminalController _terminalController;
 
   @override
   bool get wantKeepAlive => true;
@@ -30,6 +33,7 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView>
     _terminalFocusNode = FocusNode(
       debugLabel: 'copilot-terminal-${widget.sessionId}',
     );
+    _terminalController = TerminalController();
     _ensurePtyStarted();
   }
 
@@ -109,23 +113,41 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView>
           padding: const EdgeInsets.all(8),
           child: Stack(
             children: [
-              TerminalView(
-                session.terminal,
-                theme: appTerminalTheme,
-                textStyle: TerminalStyle(
-                  fontFamily: fontFamily,
-                  fontSize: fontSize,
-                  height: 1.3,
-                  fontFamilyFallback: [fontFamily, 'monospace'],
+              Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: (event) {
+                  if (event.buttons == kSecondaryMouseButton) {
+                    showTerminalContextMenu(
+                      context: context,
+                      position: event.position,
+                      terminal: session.terminal,
+                      controller: _terminalController,
+                    );
+                  }
+                },
+                child: TerminalView(
+                  session.terminal,
+                  controller: _terminalController,
+                  theme: appTerminalTheme,
+                  textStyle: TerminalStyle(
+                    fontFamily: fontFamily,
+                    fontSize: fontSize,
+                    height: 1.3,
+                    fontFamilyFallback: [fontFamily, 'monospace'],
+                  ),
+                  textScaler: TextScaler.noScaling,
+                  padding: EdgeInsets.zero,
+                  focusNode: _terminalFocusNode,
+                  autofocus: true,
+                  hardwareKeyboardOnly: true,
+                  onKeyEvent: (node, event) =>
+                      terminalShiftEnterHandler(
+                        session.terminal,
+                        node,
+                        event,
+                      ) ??
+                      KeyEventResult.ignored,
                 ),
-                textScaler: TextScaler.noScaling,
-                padding: EdgeInsets.zero,
-                focusNode: _terminalFocusNode,
-                autofocus: true,
-                hardwareKeyboardOnly: true,
-                onKeyEvent: (node, event) =>
-                    terminalShiftEnterHandler(session.terminal, node, event) ??
-                    KeyEventResult.ignored,
               ),
               if (_isDragging)
                 Positioned.fill(
@@ -151,6 +173,7 @@ class _CopilotTerminalViewState extends State<CopilotTerminalView>
   @override
   void dispose() {
     _terminalFocusNode.dispose();
+    _terminalController.dispose();
     super.dispose();
   }
 }

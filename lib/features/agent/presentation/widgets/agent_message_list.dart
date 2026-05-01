@@ -1,4 +1,6 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agent/domain/agent_message.dart';
@@ -40,7 +42,8 @@ class _AgentMessageListState extends State<AgentMessageList> {
   }
 
   void _onControllerChanged() {
-    final itemCount = widget.controller.messages.length +
+    final itemCount =
+        widget.controller.messages.length +
         (widget.controller.isProcessing ? 1 : 0);
     if (itemCount != _prevItemCount) {
       _prevItemCount = itemCount;
@@ -137,8 +140,9 @@ class _MessageBubble extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isUser) ...[
             Container(
@@ -158,57 +162,71 @@ class _MessageBubble extends StatelessWidget {
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment:
-                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isUser
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isUser
-                        ? AppColors.accent.withValues(alpha: 0.12)
-                        : AppColors.surface1,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isUser
-                          ? AppColors.accent.withValues(alpha: 0.2)
-                          : AppColors.borderSubtle,
+                Listener(
+                  onPointerDown: (event) {
+                    if (event.buttons == kSecondaryMouseButton) {
+                      _showMessageContextMenu(
+                        context,
+                        event.position,
+                        message.content,
+                      );
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                  ),
-                  child: isUser
-                      ? Text(
-                          message.content,
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: AppColors.textPrimary,
-                            height: 1.4,
-                          ),
-                        )
-                      : MarkdownBody(
-                          data: message.content,
-                          styleSheet: MarkdownStyleSheet(
-                            p: TextStyle(
+                    decoration: BoxDecoration(
+                      color: isUser
+                          ? AppColors.accent.withValues(alpha: 0.12)
+                          : AppColors.surface1,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isUser
+                            ? AppColors.accent.withValues(alpha: 0.2)
+                            : AppColors.borderSubtle,
+                      ),
+                    ),
+                    child: isUser
+                        ? SelectableText(
+                            message.content,
+                            style: TextStyle(
                               fontSize: 12.5,
                               color: AppColors.textPrimary,
                               height: 1.4,
                             ),
-                            code: TextStyle(
-                              fontSize: 11.5,
-                              color: AppColors.accent,
-                              backgroundColor:
-                                  AppColors.surface0,
-                              fontFamily: 'monospace',
-                            ),
-                            codeblockDecoration: BoxDecoration(
-                              color: AppColors.surface0,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: AppColors.borderSubtle,
+                          )
+                        : MarkdownBody(
+                            data: message.content,
+                            selectable: true,
+                            styleSheet: MarkdownStyleSheet(
+                              p: TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textPrimary,
+                                height: 1.4,
+                              ),
+                              code: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.accent,
+                                backgroundColor: AppColors.surface0,
+                                fontFamily: 'monospace',
+                              ),
+                              codeblockDecoration: BoxDecoration(
+                                color: AppColors.surface0,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.borderSubtle,
+                                ),
                               ),
                             ),
+                            shrinkWrap: true,
                           ),
-                          shrinkWrap: true,
-                        ),
+                  ),
                 ),
                 if (message.toolSummaries.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -253,7 +271,39 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _showMessageContextMenu(
+    BuildContext context,
+    Offset position,
+    String content,
+  ) async {
+    final action = await showMenu<_MessageContextMenuAction>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx,
+        position.dy,
+      ),
+      items: const [
+        PopupMenuItem(
+          value: _MessageContextMenuAction.copyMessage,
+          child: Text('Copy message'),
+        ),
+      ],
+    );
+
+    switch (action) {
+      case _MessageContextMenuAction.copyMessage:
+        await Clipboard.setData(ClipboardData(text: content));
+        break;
+      case null:
+        break;
+    }
+  }
 }
+
+enum _MessageContextMenuAction { copyMessage }
 
 class _SpeakButton extends StatefulWidget {
   const _SpeakButton({required this.isSpeaking, required this.onPressed});
@@ -280,9 +330,7 @@ class _SpeakButtonState extends State<_SpeakButton> {
           duration: const Duration(milliseconds: 120),
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: _hovered
-                ? AppColors.surfaceHover
-                : Colors.transparent,
+            color: _hovered ? AppColors.surfaceHover : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
           ),
           child: Row(
@@ -298,10 +346,7 @@ class _SpeakButtonState extends State<_SpeakButton> {
               const SizedBox(width: 3),
               Text(
                 widget.isSpeaking ? 'Stop' : 'Speak',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textMuted,
-                ),
+                style: TextStyle(fontSize: 10, color: AppColors.textMuted),
               ),
             ],
           ),

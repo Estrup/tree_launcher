@@ -1,10 +1,13 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/terminal_theme.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
-import 'package:tree_launcher/providers/terminal_provider.dart';
+import 'package:tree_launcher/providers/terminal_provider.dart'
+    hide TerminalController;
+import 'terminal_context_menu.dart';
 import 'terminal_key_handler.dart';
 
 class TerminalPanel extends StatefulWidget {
@@ -58,8 +61,10 @@ class _TerminalPanelState extends State<TerminalPanel> {
                     _SidebarResizeHandle(
                       onDrag: (dx) {
                         setState(() {
-                          _sidebarWidth = (_sidebarWidth + dx)
-                              .clamp(_minSidebarWidth, _maxSidebarWidth);
+                          _sidebarWidth = (_sidebarWidth + dx).clamp(
+                            _minSidebarWidth,
+                            _maxSidebarWidth,
+                          );
                         });
                       },
                     ),
@@ -169,9 +174,7 @@ class _VerticalTabList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width,
-      decoration: BoxDecoration(
-        color: AppColors.surface0,
-      ),
+      decoration: BoxDecoration(color: AppColors.surface0),
       child: ListView.builder(
         itemCount: sessions.length,
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -205,10 +208,7 @@ class _SidebarResizeHandle extends StatelessWidget {
       onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
       child: MouseRegion(
         cursor: SystemMouseCursors.resizeColumn,
-        child: Container(
-          width: 4,
-          color: AppColors.borderSubtle,
-        ),
+        child: Container(width: 4, color: AppColors.borderSubtle),
       ),
     );
   }
@@ -356,9 +356,12 @@ class _TerminalBody extends StatefulWidget {
 }
 
 class _TerminalBodyState extends State<_TerminalBody> {
+  late final TerminalController _terminalController;
+
   @override
   void initState() {
     super.initState();
+    _terminalController = TerminalController();
     _ensurePtyStarted();
   }
 
@@ -366,6 +369,7 @@ class _TerminalBodyState extends State<_TerminalBody> {
   void didUpdateWidget(_TerminalBody oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.session != oldWidget.session) {
+      _terminalController.clearSelection();
       _ensurePtyStarted();
     }
   }
@@ -400,27 +404,47 @@ class _TerminalBodyState extends State<_TerminalBody> {
     return Container(
       padding: const EdgeInsets.all(8),
       color: AppColors.terminalBg,
-      child: TerminalView(
-        widget.session.terminal as Terminal,
-        theme: appTerminalTheme,
-        textStyle: TerminalStyle(
-          fontFamily: fontFamily,
-          fontSize: fontSize,
-          height: 1.9,
-          fontFamilyFallback: [fontFamily, 'monospace'],
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (event) {
+          if (event.buttons == kSecondaryMouseButton) {
+            showTerminalContextMenu(
+              context: context,
+              position: event.position,
+              terminal: widget.session.terminal as Terminal,
+              controller: _terminalController,
+            );
+          }
+        },
+        child: TerminalView(
+          widget.session.terminal as Terminal,
+          controller: _terminalController,
+          theme: appTerminalTheme,
+          textStyle: TerminalStyle(
+            fontFamily: fontFamily,
+            fontSize: fontSize,
+            height: 1.9,
+            fontFamilyFallback: [fontFamily, 'monospace'],
+          ),
+          textScaler: TextScaler.noScaling,
+          padding: EdgeInsets.zero,
+          autofocus: true,
+          hardwareKeyboardOnly: true,
+          onKeyEvent: (node, event) =>
+              terminalShiftEnterHandler(
+                widget.session.terminal as Terminal,
+                node,
+                event,
+              ) ??
+              KeyEventResult.ignored,
         ),
-        textScaler: TextScaler.noScaling,
-        padding: EdgeInsets.zero,
-        autofocus: true,
-        hardwareKeyboardOnly: true,
-        onKeyEvent: (node, event) =>
-            terminalShiftEnterHandler(
-              widget.session.terminal as Terminal,
-              node,
-              event,
-            ) ??
-            KeyEventResult.ignored,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _terminalController.dispose();
+    super.dispose();
   }
 }

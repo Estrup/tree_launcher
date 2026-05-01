@@ -1,10 +1,14 @@
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tree_launcher/models/chatgpt_processing_result.dart';
 import 'package:tree_launcher/features/agent/data/tts_service.dart';
 import 'package:tree_launcher/features/agent/presentation/controllers/agent_panel_controller.dart';
 import 'package:tree_launcher/features/agent/presentation/widgets/agent_input_bar.dart';
+import 'package:tree_launcher/features/agent/presentation/widgets/agent_message_list.dart';
 import 'package:tree_launcher/features/copilot/data/sound_service.dart';
 import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
@@ -172,6 +176,54 @@ void main() {
       expect(find.byTooltip('Cancel recording'), findsNothing);
     });
   });
+
+  group('AgentMessageList', () {
+    testWidgets('copies a message from the context menu', (
+      WidgetTester tester,
+    ) async {
+      String? clipboardText;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          switch (call.method) {
+            case 'Clipboard.setData':
+              final data = call.arguments as Map<Object?, Object?>;
+              clipboardText = data['text'] as String?;
+              return null;
+            case 'Clipboard.getData':
+              return clipboardText == null ? null : {'text': clipboardText};
+          }
+          return null;
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        );
+      });
+
+      final controller = await createController(
+        chatGptService: FakeChatGptService(responseText: 'Assistant reply'),
+      );
+      addTearDown(controller.dispose);
+
+      await controller.submitText('Copy this exact user message');
+      await tester.pumpWidget(buildMessageListHarness(controller));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.text('Copy this exact user message'),
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Copy message'));
+      await tester.pumpAndSettle();
+
+      expect(clipboardText, 'Copy this exact user message');
+    });
+  });
 }
 
 Future<AgentPanelController> createController({
@@ -213,6 +265,18 @@ Widget buildHarness(AgentPanelController controller) {
       body: ListenableBuilder(
         listenable: controller,
         builder: (context, _) => AgentInputBar(controller: controller),
+      ),
+    ),
+  );
+}
+
+Widget buildMessageListHarness(AgentPanelController controller) {
+  return MaterialApp(
+    home: Scaffold(
+      body: SizedBox(
+        width: 420,
+        height: 520,
+        child: AgentMessageList(controller: controller),
       ),
     ),
   );
@@ -265,10 +329,25 @@ class FakeMicrophoneRecordingService extends MicrophoneRecordingService {
 }
 
 class FakeChatGptService extends ChatGptService {
-  FakeChatGptService({this.copilotSummary = 'Copilot summary'});
+  FakeChatGptService({
+    this.copilotSummary = 'Copilot summary',
+    this.responseText = 'Assistant response',
+  });
 
   final String copilotSummary;
+  final String responseText;
   final List<SummaryRequest> summaryRequests = [];
+
+  @override
+  Future<ChatGptProcessingResult> chatWithHistory({
+    required String apiKey,
+    required List<Map<String, dynamic>> messages,
+    required String model,
+    required ToolRegistryInterface toolRegistry,
+    required String systemPrompt,
+  }) async {
+    return ChatGptProcessingResult(transcript: '', responseText: responseText);
+  }
 
   @override
   Future<String> summarizeCopilotSessionOutput({

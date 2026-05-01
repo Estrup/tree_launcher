@@ -74,6 +74,33 @@
       font-size: 14px;
     }
     .xterm { height: 100%; }
+    .context-menu {
+      position: fixed;
+      min-width: 130px;
+      padding: 4px;
+      background: #1f2335;
+      border: 1px solid #414868;
+      border-radius: 6px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+      display: none;
+      z-index: 1000;
+    }
+    .context-menu button {
+      width: 100%;
+      padding: 6px 10px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: #c0caf5;
+      text-align: left;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .context-menu button:hover:not(:disabled) { background: #292e42; }
+    .context-menu button:disabled {
+      color: #565f89;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
@@ -90,6 +117,11 @@
   <div id="terminal-container">
     <div class="no-sessions" id="placeholder">Select a Copilot session to connect</div>
   </div>
+  <div id="context-menu" class="context-menu">
+    <button id="context-copy" type="button">Copy</button>
+    <button id="context-paste" type="button">Paste</button>
+    <button id="context-select-all" type="button">Select all</button>
+  </div>
 
   <script src="/assets/xterm.min.js"></script>
   <script src="/assets/addon-fit.min.js"></script>
@@ -99,6 +131,10 @@
     const placeholder = document.getElementById('placeholder');
     const statusDot = document.getElementById('status-dot');
     const statusText = document.getElementById('status-text');
+    const contextMenu = document.getElementById('context-menu');
+    const contextCopy = document.getElementById('context-copy');
+    const contextPaste = document.getElementById('context-paste');
+    const contextSelectAll = document.getElementById('context-select-all');
 
     let term = null;
     let fitAddon = null;
@@ -109,6 +145,42 @@
     function setStatus(state, text) {
       statusDot.className = 'status-dot ' + state;
       statusText.textContent = text;
+    }
+
+    function hideContextMenu() {
+      contextMenu.style.display = 'none';
+    }
+
+    function showContextMenu(event) {
+      if (!term) return;
+      event.preventDefault();
+
+      const selectedText = term.getSelection ? term.getSelection() : '';
+      contextCopy.disabled = !selectedText;
+      contextMenu.style.left = event.clientX + 'px';
+      contextMenu.style.top = event.clientY + 'px';
+      contextMenu.style.display = 'block';
+    }
+
+    async function copySelection() {
+      const selectedText = term && term.getSelection ? term.getSelection() : '';
+      if (selectedText) {
+        await navigator.clipboard.writeText(selectedText);
+      }
+      hideContextMenu();
+    }
+
+    async function pasteClipboard() {
+      if (term) {
+        const text = await navigator.clipboard.readText();
+        if (text) term.paste(text);
+      }
+      hideContextMenu();
+    }
+
+    function selectAllTerminal() {
+      if (term) term.selectAll();
+      hideContextMenu();
     }
 
     async function loadSessions() {
@@ -239,6 +311,14 @@
     selectEl.addEventListener('change', () => {
       connectSession(selectEl.value);
     });
+    container.addEventListener('contextmenu', showContextMenu);
+    document.addEventListener('click', hideContextMenu);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') hideContextMenu();
+    });
+    contextCopy.addEventListener('click', copySelection);
+    contextPaste.addEventListener('click', pasteClipboard);
+    contextSelectAll.addEventListener('click', selectAllTerminal);
 
     window.addEventListener('resize', () => {
       if (fitAddon && term) {
