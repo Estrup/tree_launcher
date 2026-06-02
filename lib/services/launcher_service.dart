@@ -54,6 +54,14 @@ class LauncherService {
     }
   }
 
+  Future<void> openClaude(String directory, {String? prompt}) async {
+    var url = 'claude://code/new?folder=${Uri.encodeComponent(directory)}';
+    if (prompt != null && prompt.isNotEmpty) {
+      url += '&q=${Uri.encodeComponent(prompt)}';
+    }
+    await Process.run('open', [url]);
+  }
+
   Future<void> runCustomCommand(
     String directory,
     String command,

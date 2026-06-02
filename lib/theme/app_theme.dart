@@ -30,6 +30,8 @@ class AppColorPalette {
   final Color copilotBg;
   final Color vscode;
   final Color vscodeBg;
+  final Color claude;
+  final Color claudeBg;
 
   // Status
   final Color error;
@@ -75,6 +77,8 @@ class AppColorPalette {
     required this.copilotBg,
     required this.vscode,
     required this.vscodeBg,
+    required this.claude,
+    required this.claudeBg,
     required this.error,
     required this.success,
     required this.ansiBlack,
@@ -121,6 +125,8 @@ const palettes = <String, AppColorPalette>{
     copilotBg: Color(0x1A8B5CF6),
     vscode: Color(0xFF3B82F6),
     vscodeBg: Color(0x1A3B82F6),
+    claude: Color(0xFFD97757),
+    claudeBg: Color(0x1AD97757),
     error: Color(0xFFEF4444),
     success: Color(0xFF10B981),
     ansiBlack: Color(0xFF0D0F12),
@@ -159,6 +165,8 @@ const palettes = <String, AppColorPalette>{
     copilotBg: Color(0x1A8E7CC3),
     vscode: Color(0xFF6E9ECF),
     vscodeBg: Color(0x1A6E9ECF),
+    claude: Color(0xFFCC8C66),
+    claudeBg: Color(0x1ACC8C66),
     error: Color(0xFFCF6A6A),
     success: Color(0xFF56B88A),
     ansiBlack: Color(0xFF161B22),
@@ -197,6 +205,8 @@ const palettes = <String, AppColorPalette>{
     copilotBg: Color(0x1AB48EAD),
     vscode: Color(0xFF81A1C1),
     vscodeBg: Color(0x1A81A1C1),
+    claude: Color(0xFFD08770),
+    claudeBg: Color(0x1AD08770),
     error: Color(0xFFBF616A),
     success: Color(0xFFA3BE8C),
     ansiBlack: Color(0xFF3B4252),
@@ -235,6 +245,8 @@ const palettes = <String, AppColorPalette>{
     copilotBg: Color(0x1AB4BEFE),
     vscode: Color(0xFF89B4FA),
     vscodeBg: Color(0x1A89B4FA),
+    claude: Color(0xFFFAB387),
+    claudeBg: Color(0x1AFAB387),
     error: Color(0xFFF38BA8),
     success: Color(0xFFA6E3A1),
     ansiBlack: Color(0xFF45475A),
@@ -273,6 +285,8 @@ const palettes = <String, AppColorPalette>{
     copilotBg: Color(0x1A9E82B8),
     vscode: Color(0xFF6E9ECF),
     vscodeBg: Color(0x1A6E9ECF),
+    claude: Color(0xFFCC8C66),
+    claudeBg: Color(0x1ACC8C66),
     error: Color(0xFFCF6A6A),
     success: Color(0xFF7EAE82),
     ansiBlack: Color(0xFF191919),
@@ -343,6 +357,8 @@ class AppColors {
   static Color get copilotBg => _current.copilotBg;
   static Color get vscode => _current.vscode;
   static Color get vscodeBg => _current.vscodeBg;
+  static Color get claude => _current.claude;
+  static Color get claudeBg => _current.claudeBg;
 
   // Status
   static Color get error => _current.error;

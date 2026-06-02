@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
@@ -880,10 +881,14 @@ class _HeaderVscodeButtonState extends State<_HeaderVscodeButton> {
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              Icons.code_rounded,
-              size: 20,
-              color: _hovered ? AppColors.vscode : AppColors.textMuted,
+            child: SvgPicture.asset(
+              'assets/icons/vscode.svg',
+              width: 18,
+              height: 18,
+              colorFilter: ColorFilter.mode(
+                _hovered ? AppColors.vscode : AppColors.textMuted,
+                BlendMode.srcIn,
+              ),
             ),
           ),
         ),
@@ -917,7 +922,15 @@ class _HeaderVscodeButtonState extends State<_HeaderVscodeButton> {
           height: 36,
           child: Row(
             children: [
-              Icon(Icons.code_rounded, size: 13, color: AppColors.vscode),
+              SvgPicture.asset(
+                'assets/icons/vscode.svg',
+                width: 13,
+                height: 13,
+                colorFilter: ColorFilter.mode(
+                  AppColors.vscode,
+                  BlendMode.srcIn,
+                ),
+              ),
               const SizedBox(width: 8),
               Text(
                 'VS Code (default)',
@@ -936,7 +949,15 @@ class _HeaderVscodeButtonState extends State<_HeaderVscodeButton> {
             height: 36,
             child: Row(
               children: [
-                Icon(Icons.code_rounded, size: 13, color: AppColors.vscode),
+                SvgPicture.asset(
+                  'assets/icons/vscode.svg',
+                  width: 13,
+                  height: 13,
+                  colorFilter: ColorFilter.mode(
+                    AppColors.vscode,
+                    BlendMode.srcIn,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Text(
                   config.name as String,

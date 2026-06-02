@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
@@ -207,19 +208,15 @@ class _WorktreeCardState extends State<WorktreeCard> {
                 // Action buttons
                 Row(
                   children: [
-                    Expanded(
-                      child: _TerminalSplitButton(
-                        worktreePath: wt.path,
-                        worktreeName: wt.name,
-                        launcherService: _launcherService,
-                      ),
+                    _TerminalSplitButton(
+                      worktreePath: wt.path,
+                      worktreeName: wt.name,
+                      launcherService: _launcherService,
                     ),
                     SizedBox(width: 8),
-                    Expanded(
-                      child: _VscodeSplitButton(
-                        worktreePath: wt.path,
-                        launcherService: _launcherService,
-                      ),
+                    _VscodeSplitButton(
+                      worktreePath: wt.path,
+                      launcherService: _launcherService,
                     ),
                     SizedBox(width: 8),
                     _ActionButton(
@@ -241,6 +238,16 @@ class _WorktreeCardState extends State<WorktreeCard> {
                           _launcherService.openCopilotCli(wt.path, settings);
                         }
                       },
+                    ),
+                    SizedBox(width: 8),
+                    Tooltip(
+                      message: 'Claude',
+                      child: _ActionButton(
+                        svgAsset: 'assets/icons/claude.svg',
+                        color: AppColors.claude,
+                        bgColor: AppColors.claudeBg,
+                        onPressed: () => _launcherService.openClaude(wt.path),
+                      ),
                     ),
                     if (customCommands.isNotEmpty) ...[
                       const SizedBox(width: 8),
@@ -349,6 +356,7 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
+      width: 60,
       height: 36,
       child: AnimatedContainer(
         duration: Duration(milliseconds: 120),
@@ -380,32 +388,20 @@ class _TerminalSplitButtonState extends State<_TerminalSplitButton> {
                         repo?.path ?? widget.worktreePath,
                       );
                     },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 120),
-                      color: _mainHovered
-                          ? AppColors.terminal.withValues(alpha: 0.2)
-                          : Colors.transparent,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
+                    child: Tooltip(
+                      message: 'Terminal',
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        color: _mainHovered
+                            ? AppColors.terminal.withValues(alpha: 0.2)
+                            : Colors.transparent,
+                        child: Center(
+                          child: Icon(
                             Icons.terminal_rounded,
-                            size: 14,
+                            size: 16,
                             color: AppColors.terminal,
                           ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              'Terminal',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.terminal,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -522,16 +518,20 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
     final hasConfigs = configs.isNotEmpty;
 
     if (!hasConfigs) {
-      return _ActionButton(
-        icon: Icons.code_rounded,
-        label: 'VS Code',
-        color: AppColors.vscode,
-        bgColor: AppColors.vscodeBg,
-        onPressed: () => widget.launcherService.openVSCode(widget.worktreePath),
+      return Tooltip(
+        message: 'VS Code',
+        child: _ActionButton(
+          svgAsset: 'assets/icons/vscode.svg',
+          color: AppColors.vscode,
+          bgColor: AppColors.vscodeBg,
+          onPressed: () =>
+              widget.launcherService.openVSCode(widget.worktreePath),
+        ),
       );
     }
 
     return SizedBox(
+      width: 60,
       height: 36,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
@@ -556,32 +556,24 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
                   child: GestureDetector(
                     onTap: () =>
                         widget.launcherService.openVSCode(widget.worktreePath),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 120),
-                      color: _mainHovered
-                          ? AppColors.vscode.withValues(alpha: 0.2)
-                          : Colors.transparent,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.code_rounded,
-                            size: 14,
-                            color: AppColors.vscode,
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              'VS Code',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.vscode,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                    child: Tooltip(
+                      message: 'VS Code',
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        color: _mainHovered
+                            ? AppColors.vscode.withValues(alpha: 0.2)
+                            : Colors.transparent,
+                        child: Center(
+                          child: SvgPicture.asset(
+                            'assets/icons/vscode.svg',
+                            width: 15,
+                            height: 15,
+                            colorFilter: ColorFilter.mode(
+                              AppColors.vscode,
+                              BlendMode.srcIn,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -647,7 +639,15 @@ class _VscodeSplitButtonState extends State<_VscodeSplitButton> {
           height: 36,
           child: Row(
             children: [
-              Icon(Icons.code_rounded, size: 13, color: AppColors.vscode),
+              SvgPicture.asset(
+                'assets/icons/vscode.svg',
+                width: 13,
+                height: 13,
+                colorFilter: ColorFilter.mode(
+                  AppColors.vscode,
+                  BlendMode.srcIn,
+                ),
+              ),
               const SizedBox(width: 8),
               Text(
                 config.name as String,
@@ -946,19 +946,19 @@ class _DeleteIconState extends State<_DeleteIcon> {
 }
 
 class _ActionButton extends StatefulWidget {
-  final IconData icon;
-  final String? label;
+  final IconData? icon;
+  final String? svgAsset;
   final Color color;
   final Color bgColor;
   final VoidCallback onPressed;
 
   const _ActionButton({
-    required this.icon,
-    this.label,
+    this.icon,
+    this.svgAsset,
     required this.color,
     required this.bgColor,
     required this.onPressed,
-  });
+  }) : assert(icon != null || svgAsset != null);
 
   @override
   State<_ActionButton> createState() => _ActionButtonState();
@@ -976,7 +976,7 @@ class _ActionButtonState extends State<_ActionButton> {
         onTap: widget.onPressed,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          width: widget.label == null ? 36 : null,
+          width: 36,
           height: 36,
           decoration: BoxDecoration(
             color: _hovered
@@ -992,21 +992,17 @@ class _ActionButtonState extends State<_ActionButton> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(widget.icon, size: 14, color: widget.color),
-              if (widget.label != null) ...[
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    widget.label!,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: widget.color,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+              widget.svgAsset != null
+                  ? SvgPicture.asset(
+                      widget.svgAsset!,
+                      width: 14,
+                      height: 14,
+                      colorFilter: ColorFilter.mode(
+                        widget.color,
+                        BlendMode.srcIn,
+                      ),
+                    )
+                  : Icon(widget.icon, size: 14, color: widget.color),
             ],
           ),
         ),

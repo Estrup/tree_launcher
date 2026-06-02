@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
@@ -57,6 +59,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   String? _selectedBranch;
   bool _launchCopilot = false;
   CopilotPrompt? _selectedPrompt;
+  bool _launchClaude = false;
+  CopilotPrompt? _selectedClaudePrompt;
   bool _runCommands = false;
   Set<String> _selectedCommands = {};
   String? _error;
@@ -215,17 +219,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       String? copilotSessionId;
       if (_launchCopilot && worktreePath != null) {
         final repo = repoProvider.selectedRepo;
-        String? prompt;
-        if (_selectedPrompt != null) {
-          prompt = _selectedPrompt!.prompt;
-          if (jira.isNotEmpty) {
-            prompt = prompt.replaceAll('{issue}', jira);
-          } else {
-            prompt = prompt.replaceAll('{issue}', '');
-          }
-          prompt = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
-          if (prompt.isEmpty) prompt = null;
-        }
+        final prompt = _resolvePrompt(_selectedPrompt, jira);
         final session = await copilotProvider.createSession(
           repo?.path ?? worktreePath,
           worktreePath,
@@ -233,6 +227,12 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           prompt: prompt,
         );
         copilotSessionId = session.id;
+      }
+
+      // Launch Claude (external) in the new worktree
+      if (_launchClaude && worktreePath != null) {
+        final prompt = _resolvePrompt(_selectedClaudePrompt, jira);
+        await LauncherService().openClaude(worktreePath, prompt: prompt);
       }
 
       // Launch selected run commands in the new worktree
@@ -511,8 +511,13 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
               const SizedBox(height: 16),
 
-              // Launch Terminal
+              // Launch Copilot
               _buildTerminalSection(),
+
+              const SizedBox(height: 12),
+
+              // Launch Claude
+              _buildClaudeSection(),
 
               // Run Commands
               _buildRunSection(),
@@ -565,6 +570,14 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         ),
       ],
     );
+  }
+
+  String? _resolvePrompt(CopilotPrompt? selected, String jira) {
+    if (selected == null) return null;
+    var prompt = selected.prompt;
+    prompt = prompt.replaceAll('{issue}', jira.isNotEmpty ? jira : '');
+    prompt = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return prompt.isEmpty ? null : prompt;
   }
 
   Widget _buildTerminalSection() {
@@ -655,6 +668,112 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
             const SizedBox(height: 6),
             Text(
               _selectedPrompt!.prompt,
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.textMuted.withValues(alpha: 0.6),
+                fontFamily: 'monospace',
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildClaudeSection() {
+    final repo = context.read<RepoProvider>().selectedRepo;
+    final prompts = repo?.copilotPrompts ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: _creating
+                ? null
+                : () => setState(() => _launchClaude = !_launchClaude),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: Checkbox(
+                    value: _launchClaude,
+                    onChanged: _creating
+                        ? null
+                        : (v) => setState(() => _launchClaude = v ?? false),
+                    activeColor: AppColors.accent,
+                    side: BorderSide(color: AppColors.textMuted),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SvgPicture.asset(
+                  'assets/icons/claude.svg',
+                  width: 16,
+                  height: 16,
+                  colorFilter: ColorFilter.mode(
+                    AppColors.claude,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Launch Claude',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_launchClaude && prompts.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _sectionLabel('CLAUDE PROMPT (OPTIONAL)'),
+          const SizedBox(height: 8),
+          AppDropdownField<CopilotPrompt?>(
+            initialValue: _selectedClaudePrompt,
+            style: appFormFieldTextStyle(context, monospace: true),
+            icon: Icon(
+              Icons.expand_more_rounded,
+              color: AppColors.textMuted,
+              size: 18,
+            ),
+            items: [
+              DropdownMenuItem<CopilotPrompt?>(
+                value: null,
+                child: Text(
+                  'None',
+                  style: appFormFieldTextStyle(
+                    context,
+                    monospace: true,
+                  ).copyWith(color: AppColors.textMuted),
+                ),
+              ),
+              ...prompts.map(
+                (p) => DropdownMenuItem<CopilotPrompt?>(
+                  value: p,
+                  child: Text(
+                    p.name,
+                    style: appFormFieldTextStyle(context, monospace: true),
+                  ),
+                ),
+              ),
+            ],
+            onChanged: _creating
+                ? null
+                : (value) => setState(() => _selectedClaudePrompt = value),
+          ),
+          if (_selectedClaudePrompt != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              _selectedClaudePrompt!.prompt,
               style: TextStyle(
                 fontSize: 10,
                 color: AppColors.textMuted.withValues(alpha: 0.6),
