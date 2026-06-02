@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_stat
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
+import 'package:tree_launcher/providers/terminal_provider.dart';
 
 class RepoSidebar extends StatefulWidget {
   final VoidCallback onAddRepo;
@@ -184,6 +185,8 @@ class _RepoSidebarState extends State<RepoSidebar> {
               children: [
                 Expanded(child: _AddRepoButton(onPressed: widget.onAddRepo)),
                 const SizedBox(width: 8),
+                _TerminalToggleButton(),
+                const SizedBox(width: 8),
                 _AgentChatButton(onPressed: widget.onOpenAgent),
                 const SizedBox(width: 8),
                 _SettingsButton(onPressed: widget.onOpenSettings),
@@ -264,6 +267,8 @@ class _RepoSidebarState extends State<RepoSidebar> {
                 accent: true,
                 onTap: widget.onAddRepo,
               ),
+              const SizedBox(height: 8),
+              _TerminalToggleButton(),
               const SizedBox(height: 8),
               _RailIconButton(
                 icon: Icons.chat_rounded,
@@ -806,6 +811,108 @@ class _SettingsButtonState extends State<_SettingsButton> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TerminalToggleButton extends StatefulWidget {
+  const _TerminalToggleButton();
+
+  @override
+  State<_TerminalToggleButton> createState() => _TerminalToggleButtonState();
+}
+
+class _TerminalToggleButtonState extends State<_TerminalToggleButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tp = context.watch<TerminalProvider>();
+    final count = tp.sessions.length;
+    final hasSessions = count > 0;
+    final isActive = tp.isVisible && hasSessions;
+
+    final Color fg;
+    if (!hasSessions) {
+      fg = AppColors.textMuted.withValues(alpha: 0.4);
+    } else if (isActive) {
+      fg = AppColors.terminal;
+    } else {
+      fg = _hovered ? AppColors.textPrimary : AppColors.textMuted;
+    }
+
+    final Color bg;
+    if (isActive) {
+      bg = AppColors.terminal.withValues(alpha: 0.15);
+    } else {
+      bg = _hovered && hasSessions ? AppColors.surface2 : Colors.transparent;
+    }
+
+    final button = MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: hasSessions
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      child: GestureDetector(
+        onTap: hasSessions ? tp.toggleVisibility : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isActive
+                  ? AppColors.terminal.withValues(alpha: 0.4)
+                  : AppColors.border,
+            ),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Center(
+                child: Icon(Icons.terminal_rounded, size: 16, color: fg),
+              ),
+              if (hasSessions)
+                Positioned(
+                  top: -5,
+                  right: -5,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 15),
+                    decoration: BoxDecoration(
+                      color: AppColors.terminal,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.base, width: 1.5),
+                    ),
+                    child: Text(
+                      '$count',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 9,
+                        height: 1.1,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.base,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return Tooltip(
+      message: hasSessions
+          ? (isActive ? 'Hide terminals' : 'Show terminals ($count)')
+          : 'No active terminals',
+      child: button,
     );
   }
 }

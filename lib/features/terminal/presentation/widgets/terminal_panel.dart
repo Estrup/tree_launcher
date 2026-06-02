@@ -10,14 +10,14 @@ import 'package:tree_launcher/providers/terminal_provider.dart'
 import 'terminal_context_menu.dart';
 import 'terminal_key_handler.dart';
 
-class TerminalPanel extends StatefulWidget {
-  const TerminalPanel({super.key});
+class TerminalFullView extends StatefulWidget {
+  const TerminalFullView({super.key});
 
   @override
-  State<TerminalPanel> createState() => _TerminalPanelState();
+  State<TerminalFullView> createState() => _TerminalFullViewState();
 }
 
-class _TerminalPanelState extends State<TerminalPanel> {
+class _TerminalFullViewState extends State<TerminalFullView> {
   static const double _defaultSidebarWidth = 120.0;
   static const double _minSidebarWidth = 80.0;
   static const double _maxSidebarWidth = 260.0;
@@ -29,85 +29,40 @@ class _TerminalPanelState extends State<TerminalPanel> {
     final tp = context.watch<TerminalProvider>();
     if (!tp.isVisible || tp.sessions.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _DragHandle(
-          onDrag: (dy) {
-            tp.setPanelHeight(tp.panelHeight - dy);
-          },
-        ),
-        Container(
-          height: tp.panelHeight,
-          decoration: BoxDecoration(
-            color: AppColors.base,
-            border: Border(
-              top: BorderSide(color: AppColors.borderSubtle, width: 1),
-            ),
-          ),
-          child: Column(
-            children: [
-              _HeaderBar(onHide: () => tp.toggleVisibility()),
-              Expanded(
-                child: Row(
-                  children: [
-                    _VerticalTabList(
-                      width: _sidebarWidth,
-                      sessions: tp.sessions,
-                      activeIndex: tp.activeIndex,
-                      onSelect: (i) => tp.setActive(i),
-                      onClose: (i) => tp.closeTerminal(i),
-                    ),
-                    _SidebarResizeHandle(
-                      onDrag: (dx) {
-                        setState(() {
-                          _sidebarWidth = (_sidebarWidth + dx).clamp(
-                            _minSidebarWidth,
-                            _maxSidebarWidth,
-                          );
-                        });
-                      },
-                    ),
-                    Expanded(
-                      child: tp.activeSession != null
-                          ? _TerminalBody(session: tp.activeSession!)
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
+    return Container(
+      color: AppColors.base,
+      child: Column(
+        children: [
+          _HeaderBar(onHide: () => tp.toggleVisibility()),
+          Expanded(
+            child: Row(
+              children: [
+                _VerticalTabList(
+                  width: _sidebarWidth,
+                  sessions: tp.sessions,
+                  activeIndex: tp.activeIndex,
+                  onSelect: (i) => tp.setActive(i),
+                  onClose: (i) => tp.closeTerminal(i),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DragHandle extends StatelessWidget {
-  final ValueChanged<double> onDrag;
-  const _DragHandle({required this.onDrag});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onVerticalDragUpdate: (d) => onDrag(d.delta.dy),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.resizeRow,
-        child: Container(
-          height: 6,
-          color: Colors.transparent,
-          child: Center(
-            child: Container(
-              width: 40,
-              height: 3,
-              decoration: BoxDecoration(
-                color: AppColors.textMuted.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
+                _SidebarResizeHandle(
+                  onDrag: (dx) {
+                    setState(() {
+                      _sidebarWidth = (_sidebarWidth + dx).clamp(
+                        _minSidebarWidth,
+                        _maxSidebarWidth,
+                      );
+                    });
+                  },
+                ),
+                Expanded(
+                  child: tp.activeSession != null
+                      ? _TerminalBody(session: tp.activeSession!)
+                      : const SizedBox.shrink(),
+                ),
+              ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }

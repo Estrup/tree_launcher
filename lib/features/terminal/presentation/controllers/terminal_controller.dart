@@ -4,19 +4,14 @@ import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
 
 class TerminalController extends ChangeNotifier {
   static const int maxSessions = 8;
-  static const double defaultPanelHeight = 300.0;
-  static const double minPanelHeight = 120.0;
-  static const double maxPanelHeight = 800.0;
 
   final List<TerminalSession> _sessions = [];
   int _activeIndex = 0;
   bool _visible = false;
-  double _panelHeight = defaultPanelHeight;
 
   List<TerminalSession> get sessions => List.unmodifiable(_sessions);
   int get activeIndex => _activeIndex;
   bool get isVisible => _visible;
-  double get panelHeight => _panelHeight;
   TerminalSession? get activeSession =>
       _sessions.isNotEmpty && _activeIndex < _sessions.length
       ? _sessions[_activeIndex]
@@ -138,11 +133,6 @@ class TerminalController extends ChangeNotifier {
 
   void toggleVisibility() {
     _visible = !_visible;
-    notifyListeners();
-  }
-
-  void setPanelHeight(double height) {
-    _panelHeight = height.clamp(minPanelHeight, maxPanelHeight);
     notifyListeners();
   }
 

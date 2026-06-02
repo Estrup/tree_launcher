@@ -119,9 +119,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final repoProvider = context.watch<RepoProvider>();
     final copilotProvider = context.watch<CopilotProvider>();
+    final terminalProvider = context.watch<TerminalProvider>();
     final agentController = context.read<AgentPanelController>();
     final editorController = context.read<MarkdownEditorController>();
     final isCopilotActive = copilotProvider.activeSession != null;
+    final isTerminalActive =
+        terminalProvider.isVisible && terminalProvider.sessions.isNotEmpty;
 
     // Sync editor worktree context with active copilot session
     final activeWorktree = copilotProvider.activeSession?.workingDirectory;
@@ -234,7 +237,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               showMenuButton: isCollapsed,
                             ),
                             Expanded(
-                              child: Column(
+                              child: isTerminalActive
+                                  ? const TerminalFullView()
+                                  : Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   if (!isCopilotActive)
@@ -354,7 +359,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                             ),
                             const RunningCommandsBar(),
-                            const TerminalPanel(),
                           ],
                         ),
                       ),
@@ -595,8 +599,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               onPressed: () => AddWorktreeDialog.show(context),
             ),
             const SizedBox(width: 8),
-            _TerminalToggleButton(),
-            const SizedBox(width: 8),
             _RefreshButton(
               loading: repoProvider.loading,
               onPressed: () => repoProvider.refreshWorktrees(),
@@ -697,50 +699,6 @@ class _HeaderEditorToggleButtonState extends State<_HeaderEditorToggleButton> {
                       ? AppColors.textPrimary
                       : AppColors.textMuted,
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TerminalToggleButton extends StatefulWidget {
-  @override
-  State<_TerminalToggleButton> createState() => _TerminalToggleButtonState();
-}
-
-class _TerminalToggleButtonState extends State<_TerminalToggleButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final tp = context.watch<TerminalProvider>();
-    final isActive = tp.isVisible && tp.sessions.isNotEmpty;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () {
-          if (tp.sessions.isNotEmpty) {
-            tp.toggleVisibility();
-          }
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isActive
-                ? AppColors.terminal.withValues(alpha: 0.15)
-                : (_hovered ? AppColors.surface2 : Colors.transparent),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            Icons.terminal_rounded,
-            size: 20,
-            color: isActive
-                ? AppColors.terminal
-                : (_hovered ? AppColors.textPrimary : AppColors.textMuted),
           ),
         ),
       ),
