@@ -77,7 +77,7 @@ class CopilotSessionController extends ChangeNotifier {
       await _workspaceController.updateRepoCopilotSessions(repo, sessions);
     }
 
-    _activateSession(session, initialPrompt: prompt);
+    _activateSession(session, initialPrompt: prompt, isNewSession: true);
     return session;
   }
 
@@ -122,7 +122,11 @@ class CopilotSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _activateSession(CopilotSession session, {String? initialPrompt}) {
+  void _activateSession(
+    CopilotSession session, {
+    String? initialPrompt,
+    bool isNewSession = false,
+  }) {
     _activeSession = session;
     _focusRequestVersions[session.id] = ++_focusRequestSerial;
 
@@ -158,7 +162,11 @@ class CopilotSessionController extends ChangeNotifier {
         final escapedPrompt = initialPrompt.replaceAll("'", "'\\''");
         parts.add("-i '$escapedPrompt'");
       }
-      parts.add('--resume ${session.id}');
+      if (isNewSession) {
+        parts.add('--session-id=${session.id}');
+      } else {
+        parts.add('--resume=${session.id}');
+      }
 
       final command = parts.join(' ');
 
