@@ -8,66 +8,94 @@ import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 
-class RepoSidebar extends StatelessWidget {
+class RepoSidebar extends StatefulWidget {
   final VoidCallback onAddRepo;
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenAgent;
+  final bool allowCollapse;
 
   const RepoSidebar({
     super.key,
     required this.onAddRepo,
     required this.onOpenSettings,
     required this.onOpenAgent,
+    this.allowCollapse = true,
   });
+
+  @override
+  State<RepoSidebar> createState() => _RepoSidebarState();
+}
+
+class _RepoSidebarState extends State<RepoSidebar> {
+  bool _collapsed = false;
+
+  void _toggleCollapsed() => setState(() => _collapsed = !_collapsed);
 
   @override
   Widget build(BuildContext context) {
     final repoProvider = context.watch<RepoProvider>();
+    final collapsed = widget.allowCollapse && _collapsed;
 
-    return Container(
-      width: 240,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      width: collapsed ? 64 : 240,
       decoration: BoxDecoration(
         color: AppColors.surface0,
         border: Border(
           right: BorderSide(color: AppColors.borderSubtle, width: 1),
         ),
       ),
-      child: Column(
-        children: [
-          // Logo / brand
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-            child: Row(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppColors.accentMuted,
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: Icon(
-                    Icons.account_tree_rounded,
-                    size: 16,
-                    color: AppColors.accent,
+      child: collapsed
+          ? _buildRail(context, repoProvider)
+          : _buildExpanded(context, repoProvider),
+    );
+  }
+
+  Widget _buildExpanded(BuildContext context, RepoProvider repoProvider) {
+    return Column(
+      children: [
+        // Logo / brand
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: AppColors.accentMuted,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Icon(
+                  Icons.account_tree_rounded,
+                  size: 16,
+                  color: AppColors.accent,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'TreeLauncher',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'TreeLauncher',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
+              ),
+              if (widget.allowCollapse) ...[
+                const SizedBox(width: 8),
+                _CollapseToggleButton(
+                  collapsed: false,
+                  onTap: _toggleCollapsed,
                 ),
               ],
-            ),
+            ],
           ),
+        ),
 
           // Section label
           Padding(
@@ -154,16 +182,104 @@ class RepoSidebar extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Expanded(child: _AddRepoButton(onPressed: onAddRepo)),
+                Expanded(child: _AddRepoButton(onPressed: widget.onAddRepo)),
                 const SizedBox(width: 8),
-                _AgentChatButton(onPressed: onOpenAgent),
+                _AgentChatButton(onPressed: widget.onOpenAgent),
                 const SizedBox(width: 8),
-                _SettingsButton(onPressed: onOpenSettings),
+                _SettingsButton(onPressed: widget.onOpenSettings),
               ],
             ),
           ),
         ],
-      ),
+    );
+  }
+
+  // --- Collapsed navigation rail ---
+
+  Widget _buildRail(BuildContext context, RepoProvider repoProvider) {
+    return Column(
+      children: [
+        // Compact brand + expand toggle
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 20, 0, 16),
+          child: Column(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: AppColors.accentMuted,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Icon(
+                  Icons.account_tree_rounded,
+                  size: 16,
+                  color: AppColors.accent,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _CollapseToggleButton(collapsed: true, onTap: _toggleCollapsed),
+            ],
+          ),
+        ),
+        // Repo avatar list
+        Expanded(
+          child: repoProvider.repos.isEmpty
+              ? const SizedBox.shrink()
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  itemCount: repoProvider.repos.length,
+                  itemBuilder: (context, index) {
+                    final repo = repoProvider.repos[index];
+                    final isSelected = repo == repoProvider.selectedRepo;
+                    return _RepoRailTile(
+                      repo: repo,
+                      isSelected: isSelected,
+                      onTap: () {
+                        final copilotProvider = context
+                            .read<CopilotProvider>();
+                        copilotProvider.deselectSession();
+                        repoProvider.selectRepo(repo);
+                      },
+                    );
+                  },
+                ),
+        ),
+        // Compact vertical action bar
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: AppColors.borderSubtle, width: 1),
+            ),
+          ),
+          child: Column(
+            children: [
+              _RailIconButton(
+                icon: Icons.add_rounded,
+                tooltip: 'Add Repo',
+                accent: true,
+                onTap: widget.onAddRepo,
+              ),
+              const SizedBox(height: 8),
+              _RailIconButton(
+                icon: Icons.chat_rounded,
+                tooltip: 'Agent Chat',
+                onTap: widget.onOpenAgent,
+              ),
+              const SizedBox(height: 8),
+              _RailIconButton(
+                icon: Icons.tune_rounded,
+                tooltip: 'Settings',
+                onTap: widget.onOpenSettings,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -191,6 +307,189 @@ class RepoSidebar extends StatelessWidget {
             child: const Text('Remove'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// --- Collapse / expand toggle button ---
+
+class _CollapseToggleButton extends StatefulWidget {
+  final bool collapsed;
+  final VoidCallback onTap;
+
+  const _CollapseToggleButton({required this.collapsed, required this.onTap});
+
+  @override
+  State<_CollapseToggleButton> createState() => _CollapseToggleButtonState();
+}
+
+class _CollapseToggleButtonState extends State<_CollapseToggleButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: widget.collapsed ? 'Expand sidebar' : 'Collapse sidebar',
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 100),
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: _hovered ? AppColors.surface2 : Colors.transparent,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Icon(
+              widget.collapsed
+                  ? Icons.menu_open_rounded
+                  : Icons.keyboard_double_arrow_left_rounded,
+              size: 16,
+              color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Collapsed rail repo avatar tile ---
+
+class _RepoRailTile extends StatefulWidget {
+  final RepoConfig repo;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RepoRailTile({
+    required this.repo,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  State<_RepoRailTile> createState() => _RepoRailTileState();
+}
+
+class _RepoRailTileState extends State<_RepoRailTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final letter = widget.repo.name.isNotEmpty
+        ? widget.repo.name[0].toUpperCase()
+        : '?';
+
+    return Tooltip(
+      message: widget.repo.name,
+      waitDuration: const Duration(milliseconds: 300),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            margin: const EdgeInsets.symmetric(vertical: 3),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: widget.isSelected
+                  ? AppColors.accentMuted
+                  : _hovered
+                  ? AppColors.surface1
+                  : AppColors.surface0,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: widget.isSelected
+                    ? AppColors.accent
+                    : AppColors.border,
+                width: widget.isSelected ? 1.5 : 1,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              letter,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: widget.isSelected
+                    ? AppColors.accent
+                    : _hovered
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Collapsed rail icon button ---
+
+class _RailIconButton extends StatefulWidget {
+  final IconData icon;
+  final String tooltip;
+  final bool accent;
+  final VoidCallback onTap;
+
+  const _RailIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.accent = false,
+  });
+
+  @override
+  State<_RailIconButton> createState() => _RailIconButtonState();
+}
+
+class _RailIconButtonState extends State<_RailIconButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg;
+    final Color fg;
+    if (widget.accent) {
+      bg = _hovered ? AppColors.accent : AppColors.accentMuted;
+      fg = _hovered ? AppColors.base : AppColors.accent;
+    } else {
+      bg = _hovered ? AppColors.surface2 : Colors.transparent;
+      fg = _hovered ? AppColors.textPrimary : AppColors.textMuted;
+    }
+
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: widget.accent
+                    ? (_hovered
+                          ? AppColors.accent
+                          : AppColors.accent.withValues(alpha: 0.3))
+                    : AppColors.border,
+              ),
+            ),
+            child: Icon(widget.icon, size: 16, color: fg),
+          ),
+        ),
       ),
     );
   }

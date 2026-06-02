@@ -3,9 +3,23 @@ import 'package:path/path.dart' as p;
 import '../models/worktree.dart';
 
 class GitService {
+  /// Runs git with config that allows operating on bare-repository worktree
+  /// layouts even when the user has set `safe.bareRepository=explicit`
+  /// (git's hardened default since 2.45.1).
+  Future<ProcessResult> _runGit(
+    List<String> args, {
+    required String workingDirectory,
+  }) {
+    return Process.run(
+      '/usr/bin/git',
+      ['-c', 'safe.bareRepository=all', ...args],
+      workingDirectory: workingDirectory,
+    );
+  }
+
   /// Fetches worktrees for a given repo path using `git worktree list --porcelain`.
   Future<WorktreeListResult> getWorktrees(String repoPath) async {
-    final result = await Process.run('/usr/bin/git', [
+    final result = await _runGit([
       'worktree',
       'list',
       '--porcelain',
@@ -28,7 +42,7 @@ class GitService {
     if (await gitDir.exists() || await gitFile.exists()) return true;
 
     // Also check if the path itself is a bare repo
-    final result = await Process.run('/usr/bin/git', [
+    final result = await _runGit([
       'rev-parse',
       '--git-dir',
     ], workingDirectory: path);
@@ -37,7 +51,7 @@ class GitService {
 
   /// Lists all branches (local and remote), sorted by most recent commit.
   Future<List<String>> listBranches(String repoPath) async {
-    final result = await Process.run('/usr/bin/git', [
+    final result = await _runGit([
       'branch',
       '-a',
       '--sort=-committerdate',
@@ -90,7 +104,7 @@ class GitService {
     // Fetch latest changes from origin for the base branch so the worktree
     // is created from the newest remote state.
     if (baseBranch != null && baseBranch.isNotEmpty) {
-      await Process.run('/usr/bin/git', [
+      await _runGit([
         'fetch',
         'origin',
         baseBranch,
@@ -115,8 +129,7 @@ class GitService {
       }
     }
 
-    final result = await Process.run(
-      '/usr/bin/git',
+    final result = await _runGit(
       args,
       workingDirectory: repoPath,
     );
@@ -130,7 +143,7 @@ class GitService {
 
   /// Removes a worktree from disk and git.
   Future<void> removeWorktree(String repoPath, String worktreePath) async {
-    final result = await Process.run('/usr/bin/git', [
+    final result = await _runGit([
       'worktree',
       'remove',
       worktreePath,

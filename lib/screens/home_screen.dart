@@ -382,6 +382,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         elevation: 8,
                         color: Colors.transparent,
                         child: RepoSidebar(
+                          allowCollapse: false,
                           onAddRepo: () {
                             setState(() => _sidebarOpen = false);
                             AddRepoDialog.show(context);
