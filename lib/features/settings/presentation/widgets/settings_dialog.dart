@@ -9,7 +9,7 @@ import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
-enum _SettingsSection { theme, terminals, copilot, aiAssistant, markdownEditor, remoteControl, help }
+enum _SettingsSection { theme, terminals, copilot, aiAssistant, markdownEditor, help }
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -166,17 +166,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                 _selectedSection = _SettingsSection.markdownEditor,
                           ),
                         ),
-                        _NavItem(
-                          icon: Icons.cast_connected_rounded,
-                          label: 'Remote Control',
-                          isSelected:
-                              _selectedSection ==
-                              _SettingsSection.remoteControl,
-                          onTap: () => setState(
-                            () => _selectedSection =
-                                _SettingsSection.remoteControl,
-                          ),
-                        ),
                         const Spacer(),
                         _NavItem(
                           icon: Icons.help_outline_rounded,
@@ -222,8 +211,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
         return const _AiAssistantSection();
       case _SettingsSection.markdownEditor:
         return const _MarkdownEditorSection();
-      case _SettingsSection.remoteControl:
-        return const _RemoteControlSection();
       case _SettingsSection.help:
         return const _HelpSection();
     }
@@ -1207,179 +1194,6 @@ class _AiAssistantSectionState extends State<_AiAssistantSection> {
               }
             },
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RemoteControlSection extends StatefulWidget {
-  const _RemoteControlSection();
-
-  @override
-  State<_RemoteControlSection> createState() => _RemoteControlSectionState();
-}
-
-class _RemoteControlSectionState extends State<_RemoteControlSection> {
-  late final TextEditingController _remotePortController;
-
-  @override
-  void initState() {
-    super.initState();
-    final settings = context.read<SettingsProvider>().settings;
-    _remotePortController = TextEditingController(
-      text: settings.remoteControlPort.toString(),
-    );
-  }
-
-  @override
-  void dispose() {
-    _remotePortController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final settingsProvider = context.watch<SettingsProvider>();
-    final settings = settingsProvider.settings;
-
-    final isEnabled = settings.remoteControlEnabled;
-    final bindAddress = settings.remoteControlBindAddress;
-    final port = settings.remoteControlPort;
-    final url = 'http://$bindAddress:$port';
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Remote Control',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Configure remote Copilot terminal access',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textMuted.withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            'SERVER CONFIGURATION',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Serve Copilot terminals via web browser',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-              Transform.scale(
-                scale: 0.75,
-                child: Switch(
-                  value: isEnabled,
-                  activeTrackColor: AppColors.accent,
-                  onChanged: (v) =>
-                      settingsProvider.updateRemoteControlEnabled(v),
-                ),
-              ),
-            ],
-          ),
-          if (isEnabled) ...[
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: _DropdownField<String>(
-                    label: 'Bind address',
-                    value: bindAddress,
-                    items: const [
-                      DropdownMenuItem(
-                        value: '127.0.0.1',
-                        child: Text(
-                          'localhost',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: '0.0.0.0',
-                        child: Text(
-                          'All interfaces',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) {
-                        settingsProvider.updateRemoteControlBindAddress(v);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Port',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      TextField(
-                        controller: _remotePortController,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                          fontFamily: 'monospace',
-                        ),
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          final parsed = int.tryParse(value);
-                          if (parsed != null && parsed > 0 && parsed < 65536) {
-                            settingsProvider.updateRemoteControlPort(parsed);
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SelectableText(
-              url,
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.accent,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ],
         ],
       ),
     );

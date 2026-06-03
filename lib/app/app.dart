@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:tree_launcher/app/coordinators/remote_control_coordinator.dart';
 import 'package:tree_launcher/app/coordinators/workspace_flow_coordinator.dart';
 import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/app/shell/workspace_shell.dart';
@@ -119,9 +118,7 @@ class TreeLauncherApp extends StatelessWidget {
             theme: AppTheme.dark,
             darkTheme: AppTheme.dark,
             themeMode: ThemeMode.dark,
-            home: const RemoteControlCoordinator(
-              child: WorkspaceFlowCoordinator(child: WorkspaceShell()),
-            ),
+            home: const WorkspaceFlowCoordinator(child: WorkspaceShell()),
           );
         },
       ),

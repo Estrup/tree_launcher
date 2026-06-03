@@ -18,7 +18,6 @@ TreeLauncher is a Flutter desktop app organized around a feature-first structure
 - `terminal`: embedded terminal sessions and terminal panel state
 - `settings`: app settings, persistence, and theme selection
 - `voice_commands`: microphone capture, transcription, transcript routing, and overlay UI
-- `remote_control`: embedded HTTP/WebSocket server for external control
 
 ## Runtime Flow
 
@@ -26,7 +25,6 @@ TreeLauncher is a Flutter desktop app organized around a feature-first structure
 2. `app/app.dart` builds shared dependencies and registers top-level `Provider` controllers.
 3. Coordinators in `lib/app/coordinators/` handle cross-feature workflows such as:
    - repo selection -> kanban refresh
-   - settings changes -> remote-control lifecycle
 4. Feature widgets read only the controllers they need.
 
 ## State and Data

@@ -56,9 +56,6 @@ class AppSettings {
   final CopilotAttentionSound copilotAttentionSound;
   final String openAiTtsModel;
   final TtsVoice openAiTtsVoice;
-  final bool remoteControlEnabled;
-  final int remoteControlPort;
-  final String remoteControlBindAddress;
   final String? copilotModel;
   final bool copilotAllowAll;
   final bool copilotAllowAllTools;
@@ -84,9 +81,6 @@ class AppSettings {
     this.copilotAttentionSound = CopilotAttentionSound.ping,
     this.openAiTtsModel = 'tts-1',
     this.openAiTtsVoice = TtsVoice.nova,
-    this.remoteControlEnabled = false,
-    this.remoteControlPort = 8422,
-    this.remoteControlBindAddress = '127.0.0.1',
     this.copilotModel,
     this.copilotAllowAll = false,
     this.copilotAllowAllTools = false,
@@ -132,10 +126,6 @@ class AppSettings {
         (e) => e.name == (json['openAiTtsVoice'] as String?),
         orElse: () => TtsVoice.nova,
       ),
-      remoteControlEnabled: json['remoteControlEnabled'] as bool? ?? false,
-      remoteControlPort: json['remoteControlPort'] as int? ?? 8422,
-      remoteControlBindAddress:
-          json['remoteControlBindAddress'] as String? ?? '127.0.0.1',
       copilotModel: json['copilotModel'] as String?,
       copilotAllowAll: json['copilotAllowAll'] as bool? ?? false,
       copilotAllowAllTools: json['copilotAllowAllTools'] as bool? ?? false,
@@ -167,9 +157,6 @@ class AppSettings {
     'copilotAttentionSound': copilotAttentionSound.name,
     'openAiTtsModel': openAiTtsModel,
     'openAiTtsVoice': openAiTtsVoice.name,
-    'remoteControlEnabled': remoteControlEnabled,
-    'remoteControlPort': remoteControlPort,
-    'remoteControlBindAddress': remoteControlBindAddress,
     'copilotModel': copilotModel,
     'copilotAllowAll': copilotAllowAll,
     'copilotAllowAllTools': copilotAllowAllTools,
@@ -199,9 +186,6 @@ class AppSettings {
     CopilotAttentionSound? copilotAttentionSound,
     String? openAiTtsModel,
     TtsVoice? openAiTtsVoice,
-    bool? remoteControlEnabled,
-    int? remoteControlPort,
-    String? remoteControlBindAddress,
     String? copilotModel,
     bool clearCopilotModel = false,
     bool? copilotAllowAll,
@@ -239,10 +223,6 @@ class AppSettings {
           copilotAttentionSound ?? this.copilotAttentionSound,
       openAiTtsModel: openAiTtsModel ?? this.openAiTtsModel,
       openAiTtsVoice: openAiTtsVoice ?? this.openAiTtsVoice,
-      remoteControlEnabled: remoteControlEnabled ?? this.remoteControlEnabled,
-      remoteControlPort: remoteControlPort ?? this.remoteControlPort,
-      remoteControlBindAddress:
-          remoteControlBindAddress ?? this.remoteControlBindAddress,
       copilotModel: clearCopilotModel
           ? null
           : (copilotModel ?? this.copilotModel),

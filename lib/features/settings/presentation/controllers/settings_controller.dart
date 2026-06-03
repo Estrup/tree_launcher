@@ -104,24 +104,6 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateRemoteControlEnabled(bool enabled) async {
-    _settings = _settings.copyWith(remoteControlEnabled: enabled);
-    await _store.save(_settings);
-    notifyListeners();
-  }
-
-  Future<void> updateRemoteControlPort(int port) async {
-    _settings = _settings.copyWith(remoteControlPort: port);
-    await _store.save(_settings);
-    notifyListeners();
-  }
-
-  Future<void> updateRemoteControlBindAddress(String address) async {
-    _settings = _settings.copyWith(remoteControlBindAddress: address);
-    await _store.save(_settings);
-    notifyListeners();
-  }
-
   Future<void> updateOpenAiTtsModel(String model) async {
     _settings = _settings.copyWith(openAiTtsModel: model);
     await _store.save(_settings);
