@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
 
@@ -98,6 +99,31 @@ class TerminalController extends ChangeNotifier {
     _activeIndex = _sessions.length - 1;
     _visible = true;
     notifyListeners();
+
+    // Start the PTY and run the command for every command session up front,
+    // not just the focused one. Only the active session's _TerminalBody is
+    // built, so without this the background sessions wouldn't start their PTY
+    // (or run their command) until the user manually focused each tab.
+    // Deferred to endOfFrame so the active session's TerminalView has been
+    // laid out and reports correct dimensions before startPty(). The
+    // !isPtyStarted guards here and in the view make the start idempotent.
+    _scheduleCommandStart(session);
+  }
+
+  void _scheduleCommandStart(TerminalSession session) {
+    SchedulerBinding.instance.endOfFrame.then((_) {
+      if (session.isDisposed || session.isPtyStarted) return;
+      session.startPty();
+      final command = session.command;
+      if (command != null) {
+        // Match the view's delay so the shell has initialized before input.
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (!session.isDisposed) {
+            session.sendCommand(command);
+          }
+        });
+      }
+    });
   }
 
   void closeTerminal(int index) {
