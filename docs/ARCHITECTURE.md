@@ -17,7 +17,6 @@ TreeLauncher is a Flutter desktop app organized around a feature-first structure
 - `copilot`: session lifecycle, activity state, and Copilot terminal UX
 - `terminal`: embedded terminal sessions and terminal panel state
 - `settings`: app settings, persistence, and theme selection
-- `voice_commands`: microphone capture, transcription, transcript routing, and overlay UI
 
 ## Runtime Flow
 

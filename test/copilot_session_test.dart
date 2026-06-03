@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tree_launcher/features/agent/data/copilot_tool_registry.dart';
 import 'package:tree_launcher/features/copilot/data/sound_service.dart';
 import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
 import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
@@ -143,35 +142,6 @@ void main() {
           harness.workspace.selectedRepo!.copilotSessions.single.name,
           'Refactor login flow',
         );
-      },
-    );
-
-    test(
-      'copilot tools still resolve a session by its original worktree name after rename',
-      () async {
-        final harness = await _createHarness();
-        addTearDown(harness.dispose);
-
-        final session = await harness.copilot.createSession(
-          harness.repoPath,
-          '${harness.repoPath}/feature-auth',
-          'feature-auth',
-        );
-        final terminal = harness.copilot.terminalForSession(session.id)!;
-        final registry = CopilotToolRegistry(
-          copilotController: harness.copilot,
-        );
-
-        terminal.onTitleChange?.call('Refactor login flow');
-        await pumpEventQueue();
-
-        final result = await registry.executeTool('focus_copilot_session', {
-          'sessionName': 'feature-auth',
-        });
-
-        expect(result.payload['focused'], isTrue);
-        expect(result.payload['sessionName'], 'Refactor login flow');
-        expect(harness.copilot.activeSession!.id, session.id);
       },
     );
   });

@@ -13,7 +13,6 @@ class SettingsController extends ChangeNotifier {
   AppSettings _settings = AppSettings();
 
   AppSettings get settings => _settings;
-  String get openAiApiKey => _settings.openAiApiKey ?? '';
 
   Future<void> loadSettings() async {
     _settings = await _store.load();
@@ -42,28 +41,6 @@ class SettingsController extends ChangeNotifier {
   Future<void> updateTheme(String name) async {
     AppColors.setTheme(name);
     _settings = _settings.copyWith(themeName: name);
-    await _store.save(_settings);
-    notifyListeners();
-  }
-
-  Future<void> updateOpenAiApiKey(String apiKey) async {
-    final normalizedApiKey = apiKey.trim();
-    _settings = _settings.copyWith(
-      openAiApiKey: normalizedApiKey,
-      clearOpenAiApiKey: normalizedApiKey.isEmpty,
-    );
-    await _store.save(_settings);
-    notifyListeners();
-  }
-
-  Future<void> updateOpenAiTranscriptionModel(String model) async {
-    _settings = _settings.copyWith(openAiTranscriptionModel: model);
-    await _store.save(_settings);
-    notifyListeners();
-  }
-
-  Future<void> updateOpenAiResponseModel(String model) async {
-    _settings = _settings.copyWith(openAiResponseModel: model);
     await _store.save(_settings);
     notifyListeners();
   }
@@ -100,18 +77,6 @@ class SettingsController extends ChangeNotifier {
 
   Future<void> updateCopilotAttentionSound(CopilotAttentionSound sound) async {
     _settings = _settings.copyWith(copilotAttentionSound: sound);
-    await _store.save(_settings);
-    notifyListeners();
-  }
-
-  Future<void> updateOpenAiTtsModel(String model) async {
-    _settings = _settings.copyWith(openAiTtsModel: model);
-    await _store.save(_settings);
-    notifyListeners();
-  }
-
-  Future<void> updateOpenAiTtsVoice(TtsVoice voice) async {
-    _settings = _settings.copyWith(openAiTtsVoice: voice);
     await _store.save(_settings);
     notifyListeners();
   }

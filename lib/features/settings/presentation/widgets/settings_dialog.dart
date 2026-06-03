@@ -9,7 +9,7 @@ import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
-enum _SettingsSection { theme, terminals, copilot, aiAssistant, markdownEditor, help }
+enum _SettingsSection { theme, terminals, copilot, markdownEditor, help }
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -147,16 +147,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           ),
                         ),
                         _NavItem(
-                          icon: Icons.smart_toy_outlined,
-                          label: 'AI Assistant',
-                          isSelected:
-                              _selectedSection == _SettingsSection.aiAssistant,
-                          onTap: () => setState(
-                            () =>
-                                _selectedSection = _SettingsSection.aiAssistant,
-                          ),
-                        ),
-                        _NavItem(
                           icon: Icons.edit_note_rounded,
                           label: 'Markdown Editor',
                           isSelected:
@@ -207,8 +197,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
         return const _TerminalsSection();
       case _SettingsSection.copilot:
         return const _CopilotSection();
-      case _SettingsSection.aiAssistant:
-        return const _AiAssistantSection();
       case _SettingsSection.markdownEditor:
         return const _MarkdownEditorSection();
       case _SettingsSection.help:
@@ -997,209 +985,6 @@ class _CopilotSectionState extends State<_CopilotSection> {
   }
 }
 
-class _AiAssistantSection extends StatefulWidget {
-  const _AiAssistantSection();
-
-  @override
-  State<_AiAssistantSection> createState() => _AiAssistantSectionState();
-}
-
-class _AiAssistantSectionState extends State<_AiAssistantSection> {
-  late final TextEditingController _openAiApiKeyController;
-  late final TextEditingController _openAiTranscriptionModelController;
-  late final TextEditingController _openAiResponseModelController;
-
-  @override
-  void initState() {
-    super.initState();
-    final settingsProvider = context.read<SettingsProvider>();
-    final settings = settingsProvider.settings;
-    _openAiApiKeyController = TextEditingController(
-      text: settingsProvider.openAiApiKey,
-    );
-    _openAiTranscriptionModelController = TextEditingController(
-      text: settings.openAiTranscriptionModel,
-    );
-    _openAiResponseModelController = TextEditingController(
-      text: settings.openAiResponseModel,
-    );
-  }
-
-  @override
-  void dispose() {
-    _openAiApiKeyController.dispose();
-    _openAiTranscriptionModelController.dispose();
-    _openAiResponseModelController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final settingsProvider = context.watch<SettingsProvider>();
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'AI Assistant',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'OpenAI specific configuration',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textMuted.withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            'API KEY',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _openAiApiKeyController,
-            obscureText: true,
-            enableSuggestions: false,
-            autocorrect: false,
-            style: appFormFieldTextStyle(context, monospace: true),
-            decoration: InputDecoration(
-              hintText: 'sk-...',
-              hintStyle: appFormFieldHintStyle(context, monospace: true),
-            ),
-            onChanged: (value) => settingsProvider.updateOpenAiApiKey(value),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Stored directly in the app config file.',
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.textMuted.withValues(alpha: 0.7),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'TRANSCRIPTION MODEL',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _openAiTranscriptionModelController,
-            style: appFormFieldTextStyle(context, monospace: true),
-            decoration: InputDecoration(
-              hintText: 'e.g. whisper-1',
-              hintStyle: appFormFieldHintStyle(context, monospace: true),
-            ),
-            onChanged: (value) {
-              if (value.trim().isNotEmpty) {
-                settingsProvider.updateOpenAiTranscriptionModel(value.trim());
-              }
-            },
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'RESPONSE MODEL',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _openAiResponseModelController,
-            style: appFormFieldTextStyle(context, monospace: true),
-            decoration: InputDecoration(
-              hintText: 'e.g. gpt-4o',
-              hintStyle: appFormFieldHintStyle(context, monospace: true),
-            ),
-            onChanged: (value) {
-              if (value.trim().isNotEmpty) {
-                settingsProvider.updateOpenAiResponseModel(value.trim());
-              }
-            },
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'TTS MODEL',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _DropdownField<String>(
-            label: '',
-            value: settingsProvider.settings.openAiTtsModel,
-            items: const [
-              DropdownMenuItem(value: 'tts-1', child: Text('tts-1')),
-              DropdownMenuItem(value: 'tts-1-hd', child: Text('tts-1-hd')),
-              DropdownMenuItem(
-                value: 'gpt-4o-mini-tts',
-                child: Text('gpt-4o-mini-tts'),
-              ),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                settingsProvider.updateOpenAiTtsModel(value);
-              }
-            },
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'TTS VOICE',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _DropdownField<TtsVoice>(
-            label: '',
-            value: settingsProvider.settings.openAiTtsVoice,
-            items: TtsVoice.values
-                .map(
-                  (v) => DropdownMenuItem(
-                    value: v,
-                    child: Text(v.displayName),
-                  ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                settingsProvider.updateOpenAiTtsVoice(value);
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ThemeCard extends StatefulWidget {
   final String label;
   final AppColorPalette palette;
@@ -1652,24 +1437,8 @@ class _HelpSection extends StatelessWidget {
   Widget build(BuildContext context) {
     const shortcuts = [
       (
-        keys: ['Ctrl', 'M'],
-        description: 'Start / Stop voice recording',
-      ),
-      (
-        keys: ['⌘', 'L'],
-        description: 'Clear agent history (when agent panel is open)',
-      ),
-      (
-        keys: ['⌘', '⌥', 'I'],
-        description: 'Copilot summary',
-      ),
-      (
         keys: ['⌘', '`'],
         description: 'Toggle terminal visibility',
-      ),
-      (
-        keys: ['Enter'],
-        description: 'Submit agent message',
       ),
       (
         keys: ['⇧', 'Enter'],

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -14,8 +13,6 @@ import 'package:tree_launcher/features/github_prs/presentation/widgets/github_pr
 import 'package:tree_launcher/features/settings/presentation/widgets/settings_dialog.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/running_commands_bar.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_panel.dart';
-import 'package:tree_launcher/features/agent/presentation/controllers/agent_panel_controller.dart';
-import 'package:tree_launcher/features/agent/presentation/widgets/agent_panel.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
@@ -43,71 +40,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _sidebarOpen = false;
   TabController? _tabController;
   int _lastTabCount = 0;
-  AgentPanelController? _agentController;
 
   @override
   void initState() {
     super.initState();
-    HardwareKeyboard.instance.addHandler(_handleGlobalKeyEvent);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _agentController = context.read<AgentPanelController>();
   }
 
   @override
   void dispose() {
-    HardwareKeyboard.instance.removeHandler(_handleGlobalKeyEvent);
     _tabController?.dispose();
     super.dispose();
-  }
-
-  bool _handleGlobalKeyEvent(KeyEvent event) {
-    if (!mounted || event is! KeyDownEvent) return false;
-    final agentController = _agentController;
-    if (agentController == null) return false;
-
-    final keyboard = HardwareKeyboard.instance;
-    if (event.logicalKey == LogicalKeyboardKey.keyM) {
-      if (!keyboard.isControlPressed ||
-          keyboard.isAltPressed ||
-          keyboard.isMetaPressed ||
-          keyboard.isShiftPressed) {
-        return false;
-      }
-
-      unawaited(agentController.handleVoiceShortcut());
-      return true;
-    }
-
-    if (event.logicalKey == LogicalKeyboardKey.keyL) {
-      if (!keyboard.isMetaPressed ||
-          keyboard.isAltPressed ||
-          keyboard.isControlPressed ||
-          keyboard.isShiftPressed ||
-          !agentController.panelOpen) {
-        return false;
-      }
-
-      agentController.clearHistory();
-      return true;
-    }
-
-    if (event.logicalKey == LogicalKeyboardKey.keyI) {
-      if (!keyboard.isMetaPressed ||
-          !keyboard.isAltPressed ||
-          keyboard.isControlPressed ||
-          keyboard.isShiftPressed) {
-        return false;
-      }
-
-      unawaited(agentController.handleCopilotSummaryShortcut());
-      return true;
-    }
-
-    return false;
   }
 
   void _onTabChanged() {
@@ -120,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final repoProvider = context.watch<RepoProvider>();
     final copilotProvider = context.watch<CopilotProvider>();
     final terminalProvider = context.watch<TerminalProvider>();
-    final agentController = context.read<AgentPanelController>();
     final editorController = context.read<MarkdownEditorController>();
     final isCopilotActive = copilotProvider.activeSession != null;
     final isTerminalActive =
@@ -225,7 +166,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         RepoSidebar(
                           onAddRepo: () => AddRepoDialog.show(context),
                           onOpenSettings: () => SettingsDialog.show(context),
-                          onOpenAgent: () => agentController.openPanel(),
                         ),
                       Expanded(
                         child: Column(
@@ -396,16 +336,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             setState(() => _sidebarOpen = false);
                             SettingsDialog.show(context);
                           },
-                          onOpenAgent: () {
-                            setState(() => _sidebarOpen = false);
-                            agentController.openPanel();
-                          },
                         ),
                       ),
                     ),
                   // Copilot attention notification
                   const CopilotAttentionSnackbar(),
-                  AgentPanel(controller: agentController),
                 ],
               );
             },
