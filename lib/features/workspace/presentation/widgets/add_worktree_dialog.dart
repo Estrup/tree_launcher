@@ -163,12 +163,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   }
 
   String get _effectiveWorktreeName {
-    final name = _nameController.text.trim();
-    final jira = _jiraController.text.trim();
-    if (jira.isNotEmpty && _validateJira(jira) == null) {
-      return '$name-${jira.toLowerCase()}';
-    }
-    return name;
+    return _nameController.text.trim();
   }
 
   Future<void> _submit() async {
@@ -390,19 +385,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                 Text(
                   jiraError,
                   style: TextStyle(fontSize: 11, color: AppColors.error),
-                ),
-              ],
-              if (_jiraController.text.isNotEmpty &&
-                  jiraError == null &&
-                  _nameController.text.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  'Worktree: $_effectiveWorktreeName',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted.withValues(alpha: 0.6),
-                    fontFamily: 'monospace',
-                  ),
                 ),
               ],
 
