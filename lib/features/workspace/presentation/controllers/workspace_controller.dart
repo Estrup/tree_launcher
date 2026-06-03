@@ -235,6 +235,7 @@ class WorkspaceController extends ChangeNotifier {
     String name, {
     String? baseBranch,
     String? newBranch,
+    String? jiraIssue,
   }) async {
     final worktreePath = await worktreesController.addWorktree(
       selectedRepo?.path,
@@ -250,29 +251,62 @@ class WorkspaceController extends ChangeNotifier {
       final slot = nextAvailableSlot(usedSlots);
       final updated = Map<String, String>.from(repo.slotAssignments);
       updated[worktreePath] = slot;
-      final newRepo = await preferences.updateSlotAssignments(repo, updated);
+      var newRepo = await preferences.updateSlotAssignments(repo, updated);
       _replaceSelection(repo, newRepo);
       worktreesController.setSlotAssignments(
         newRepo?.slotAssignments ?? updated,
       );
+
+      // Attach JIRA issue to the new worktree, if provided.
+      if (jiraIssue != null && jiraIssue.isNotEmpty) {
+        final current = newRepo ?? selectedRepo!;
+        final issues = Map<String, String>.from(current.jiraIssues);
+        issues[worktreePath] = jiraIssue;
+        final withJira = await preferences.updateJiraIssues(current, issues);
+        _replaceSelection(current, withJira);
+        worktreesController.setJiraIssues(withJira?.jiraIssues ?? issues);
+      }
     }
 
     return worktreePath;
   }
 
+  Future<void> updateJiraIssue(String worktreePath, String? jiraIssue) async {
+    if (selectedRepo == null) return;
+    final repo = selectedRepo!;
+    final updated = Map<String, String>.from(repo.jiraIssues);
+    if (jiraIssue == null || jiraIssue.isEmpty) {
+      updated.remove(worktreePath);
+    } else {
+      updated[worktreePath] = jiraIssue;
+    }
+    final newRepo = await preferences.updateJiraIssues(repo, updated);
+    _replaceSelection(repo, newRepo);
+    worktreesController.setJiraIssues(newRepo?.jiraIssues ?? updated);
+  }
+
   Future<void> deleteWorktree(Worktree worktree) async {
     await worktreesController.deleteWorktree(selectedRepo?.path, worktree);
 
-    // Remove slot assignment for the deleted worktree
+    // Remove slot assignment and JIRA issue for the deleted worktree
     if (selectedRepo != null) {
       final repo = selectedRepo!;
       final updated = Map<String, String>.from(repo.slotAssignments);
       updated.remove(worktree.path);
-      final newRepo = await preferences.updateSlotAssignments(repo, updated);
+      var newRepo = await preferences.updateSlotAssignments(repo, updated);
       _replaceSelection(repo, newRepo);
       worktreesController.setSlotAssignments(
         newRepo?.slotAssignments ?? updated,
       );
+
+      final current = newRepo ?? selectedRepo!;
+      if (current.jiraIssues.containsKey(worktree.path)) {
+        final issues = Map<String, String>.from(current.jiraIssues);
+        issues.remove(worktree.path);
+        final withJira = await preferences.updateJiraIssues(current, issues);
+        _replaceSelection(current, withJira);
+        worktreesController.setJiraIssues(withJira?.jiraIssues ?? issues);
+      }
     }
   }
 
@@ -298,6 +332,9 @@ class WorkspaceController extends ChangeNotifier {
     worktreesController.setSlotAssignments(
       repo?.slotAssignments ?? {},
     );
+    worktreesController.setJiraIssues(
+      repo?.jiraIssues ?? {},
+    );
   }
 
   /// Removes slot assignments for worktree paths that no longer exist.
@@ -314,11 +351,26 @@ class WorkspaceController extends ChangeNotifier {
     for (final key in staleKeys) {
       updated.remove(key);
     }
-    final newRepo = await preferences.updateSlotAssignments(repo, updated);
+    var newRepo = await preferences.updateSlotAssignments(repo, updated);
     _replaceSelection(repo, newRepo);
     worktreesController.setSlotAssignments(
       newRepo?.slotAssignments ?? updated,
     );
+
+    // Prune stale JIRA issue assignments too.
+    final current = newRepo ?? selectedRepo!;
+    final staleJiraKeys = current.jiraIssues.keys
+        .where((path) => !activePaths.contains(path))
+        .toList();
+    if (staleJiraKeys.isNotEmpty) {
+      final issues = Map<String, String>.from(current.jiraIssues);
+      for (final key in staleJiraKeys) {
+        issues.remove(key);
+      }
+      final withJira = await preferences.updateJiraIssues(current, issues);
+      _replaceSelection(current, withJira);
+      worktreesController.setJiraIssues(withJira?.jiraIssues ?? issues);
+    }
   }
 
   void _replaceSelection(RepoConfig previous, RepoConfig? updated) {

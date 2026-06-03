@@ -95,7 +95,7 @@ class WorktreeGrid extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            mainAxisExtent: 200,
+            mainAxisExtent: 170,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),

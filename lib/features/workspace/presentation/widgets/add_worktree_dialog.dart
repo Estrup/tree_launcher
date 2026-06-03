@@ -206,6 +206,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         worktreeName,
         baseBranch: _selectedBranch,
         newBranch: newBranch.isNotEmpty ? newBranch : null,
+        jiraIssue: jira.isNotEmpty ? jira : null,
       );
 
       // Save last used base branch for this repo

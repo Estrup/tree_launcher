@@ -98,49 +98,60 @@ class _WorktreeCardState extends State<WorktreeCard> {
                 ),
                 const SizedBox(height: 12),
 
-                // Branch tag
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () => _copyToClipboard(context, wt.branch, 'Branch'),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.copilotBg,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppColors.copilot.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.call_split_rounded,
-                            size: 12,
-                            color: AppColors.copilot,
+                // Branch tag and Jira Tag
+                Row(
+                  spacing: 5,
+                  children: [
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () =>
+                            _copyToClipboard(context, wt.branch, 'Branch'),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
                           ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              wt.branch,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.copilot,
-                                fontFamily: 'monospace',
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                          decoration: BoxDecoration(
+                            color: AppColors.copilotBg,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: AppColors.copilot.withValues(alpha: 0.2),
                             ),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.call_split_rounded,
+                                size: 12,
+                                color: AppColors.copilot,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  wt.branch,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.copilot,
+                                    fontFamily: 'monospace',
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    if (wt.jiraIssue != null) ...[
+                      const SizedBox(height: 8),
+                      _JiraBadge(issueKey: wt.jiraIssue!),
+                    ],
+                  ],
                 ),
+
                 SizedBox(height: 10),
 
                 // Commit + path
@@ -260,10 +271,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                     ],
                     if (customLinks.isNotEmpty) ...[
                       const SizedBox(width: 8),
-                      _CustomLinksButton(
-                        links: customLinks,
-                        slot: wt.slot,
-                      ),
+                      _CustomLinksButton(links: customLinks, slot: wt.slot),
                     ],
                   ],
                 ),
@@ -804,10 +812,7 @@ class _CustomLinksButton extends StatefulWidget {
   final List<CustomLink> links;
   final String slot;
 
-  const _CustomLinksButton({
-    required this.links,
-    required this.slot,
-  });
+  const _CustomLinksButton({required this.links, required this.slot});
 
   @override
   State<_CustomLinksButton> createState() => _CustomLinksButtonState();
@@ -839,11 +844,7 @@ class _CustomLinksButtonState extends State<_CustomLinksButton> {
             ),
           ),
           child: Center(
-            child: Icon(
-              Icons.link_rounded,
-              size: 18,
-              color: AppColors.accent,
-            ),
+            child: Icon(Icons.link_rounded, size: 18, color: AppColors.accent),
           ),
         ),
       ),
@@ -1011,6 +1012,64 @@ class _ActionButtonState extends State<_ActionButton> {
   }
 }
 
+/// Base URL for JIRA issues. The issue key is appended to build the link.
+const String _jiraBaseUrl = 'https://jira.elbek-vejrup.dk/browse/';
+
+class _JiraBadge extends StatefulWidget {
+  final String issueKey;
+
+  const _JiraBadge({required this.issueKey});
+
+  @override
+  State<_JiraBadge> createState() => _JiraBadgeState();
+}
+
+class _JiraBadgeState extends State<_JiraBadge> {
+  static const Color _jiraColor = Color(0xFF2684FF);
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => Process.run('open', ['$_jiraBaseUrl${widget.issueKey}']),
+        child: Tooltip(
+          message: 'Open $_jiraBaseUrl${widget.issueKey}',
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: _jiraColor.withValues(alpha: _hovered ? 0.18 : 0.1),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: _jiraColor.withValues(alpha: _hovered ? 0.4 : 0.2),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.open_in_new_rounded, size: 12, color: _jiraColor),
+                const SizedBox(width: 6),
+                Text(
+                  widget.issueKey,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _jiraColor,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SlotBadge extends StatelessWidget {
   final Worktree worktree;
 
@@ -1030,8 +1089,9 @@ class _SlotBadge extends StatelessWidget {
         usedSlots.add(wt.slot);
       }
     }
-    final availableSlots =
-        greekSlots.where((s) => !usedSlots.contains(s)).toList();
+    final availableSlots = greekSlots
+        .where((s) => !usedSlots.contains(s))
+        .toList();
 
     return PopupMenuButton<String>(
       tooltip: 'Change slot',
@@ -1065,9 +1125,7 @@ class _SlotBadge extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.terminalBg,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: AppColors.terminal.withValues(alpha: 0.3),
-          ),
+          border: Border.all(color: AppColors.terminal.withValues(alpha: 0.3)),
         ),
         child: Text(
           worktree.slot.toUpperCase(),

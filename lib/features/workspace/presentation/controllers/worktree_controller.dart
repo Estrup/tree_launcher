@@ -30,6 +30,16 @@ class WorktreeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// JIRA issue keys from config, keyed by worktree path.
+  Map<String, String> _jiraIssues = {};
+  Map<String, String> get jiraIssues => Map.unmodifiable(_jiraIssues);
+
+  void setJiraIssues(Map<String, String> issues) {
+    _jiraIssues = Map.of(issues);
+    _hydrateSlots();
+    notifyListeners();
+  }
+
   Future<void> refreshForRepo(String? repoPath) async {
     if (repoPath == null) {
       _worktrees = [];
@@ -59,12 +69,12 @@ class WorktreeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Assigns slots from [_slotAssignments] to worktrees.
-  /// Unassigned worktrees get 'alpha' as default.
+  /// Assigns slots and JIRA issues from config to worktrees.
+  /// Unassigned worktrees get 'alpha' as default slot.
   void _hydrateSlots() {
     _worktrees = _worktrees.map((wt) {
       final slot = _slotAssignments[wt.path] ?? 'alpha';
-      return wt.copyWith(slot: slot);
+      return wt.copyWith(slot: slot, jiraIssue: _jiraIssues[wt.path]);
     }).toList();
   }
 
