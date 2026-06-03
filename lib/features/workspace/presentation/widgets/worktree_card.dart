@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
+import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
@@ -758,30 +759,116 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
       Offset.zero & overlay.size,
     );
 
-    showMenu<CustomCommand>(
+    final selected = <String>{};
+
+    void runSelected() {
+      Navigator.pop(context);
+      for (final cmd in widget.commands) {
+        if (!selected.contains(cmd.name)) continue;
+        final command = cmd.command.replaceAll('{{SLOT}}', widget.slot);
+        tp.openTerminalWithCommand(
+          '${cmd.name}: ${widget.worktreeName}',
+          widget.worktreePath,
+          repo?.path ?? widget.worktreePath,
+          command,
+        );
+      }
+    }
+
+    showMenu<void>(
       context: context,
       position: position,
       color: AppColors.surface1,
-      constraints: const BoxConstraints(minWidth: 220),
+      constraints: const BoxConstraints(minWidth: 240),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(color: AppColors.border),
       ),
-      items: widget.commands.map((cmd) {
-        return PopupMenuItem<CustomCommand>(
-          value: cmd,
-          height: 36,
+      items: [
+        PopupMenuItem<void>(
+          enabled: false,
+          padding: EdgeInsets.zero,
+          child: StatefulBuilder(
+            builder: (context, setMenuState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (int i = 0; i < widget.commands.length; i++)
+                    _CommandCheckboxRow(
+                      command: widget.commands[i],
+                      index: i,
+                      selected: selected.contains(widget.commands[i].name),
+                      onToggle: () {
+                        setMenuState(() {
+                          final name = widget.commands[i].name;
+                          if (selected.contains(name)) {
+                            selected.remove(name);
+                          } else {
+                            selected.add(name);
+                          }
+                        });
+                      },
+                    ),
+                  Divider(height: 1, color: AppColors.border),
+                  _RunSelectedButton(
+                    count: selected.length,
+                    onTap: selected.isEmpty ? null : runSelected,
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CommandCheckboxRow extends StatelessWidget {
+  final CustomCommand command;
+  final int index;
+  final bool selected;
+  final VoidCallback onToggle;
+
+  const _CommandCheckboxRow({
+    required this.command,
+    required this.index,
+    required this.selected,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = getCommandColor(command.colorHex, index);
+    final icon = getCommandIcon(command.iconName);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onToggle,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Row(
             children: [
-              Icon(
-                Icons.play_arrow_rounded,
-                size: 13,
-                color: AppColors.terminal,
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: Checkbox(
+                  value: selected,
+                  onChanged: (_) => onToggle(),
+                  activeColor: color,
+                  side: BorderSide(color: AppColors.textMuted),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
+              const SizedBox(width: 10),
+              Icon(icon, size: 14, color: color),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  cmd.name,
+                  command.name,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -792,19 +879,50 @@ class _CustomCommandsButtonState extends State<_CustomCommandsButton> {
               ),
             ],
           ),
-        );
-      }).toList(),
-    ).then((selected) {
-      if (selected != null) {
-        final command = selected.command.replaceAll('{{SLOT}}', widget.slot);
-        tp.openTerminalWithCommand(
-          '${selected.name}: ${widget.worktreeName}',
-          widget.worktreePath,
-          repo?.path ?? widget.worktreePath,
-          command,
-        );
-      }
-    });
+        ),
+      ),
+    );
+  }
+}
+
+class _RunSelectedButton extends StatelessWidget {
+  final int count;
+  final VoidCallback? onTap;
+
+  const _RunSelectedButton({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.play_arrow_rounded,
+                size: 15,
+                color: enabled ? AppColors.terminal : AppColors.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Run Selected ($count)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: enabled ? AppColors.terminal : AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

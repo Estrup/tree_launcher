@@ -591,6 +591,19 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
   }
 
   @override
+  void didUpdateWidget(_VscodeConfigCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Cards are keyed by index, so removing one reuses State for a different
+    // config. Re-sync controllers when the underlying config differs.
+    if (widget.config.name != _nameController.text) {
+      _nameController.text = widget.config.name;
+    }
+    if (widget.config.path != _pathController.text) {
+      _pathController.text = widget.config.path;
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _pathController.dispose();
@@ -872,6 +885,20 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
     super.initState();
     _nameController = TextEditingController(text: widget.command.name);
     _commandController = TextEditingController(text: widget.command.command);
+  }
+
+  @override
+  void didUpdateWidget(_CustomCommandCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The parent keys these cards by index, so when a command is removed the
+    // surviving State objects are reused for different commands. Re-sync the
+    // controllers whenever the underlying command no longer matches.
+    if (widget.command.name != _nameController.text) {
+      _nameController.text = widget.command.name;
+    }
+    if (widget.command.command != _commandController.text) {
+      _commandController.text = widget.command.command;
+    }
   }
 
   @override
@@ -1172,6 +1199,19 @@ class _CustomLinkCardState extends State<_CustomLinkCard> {
   }
 
   @override
+  void didUpdateWidget(_CustomLinkCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Cards are keyed by index, so removing one reuses State for a different
+    // link. Re-sync controllers when the underlying link differs.
+    if (widget.link.name != _nameController.text) {
+      _nameController.text = widget.link.name;
+    }
+    if (widget.link.url != _urlController.text) {
+      _urlController.text = widget.link.url;
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _urlController.dispose();
@@ -1456,6 +1496,19 @@ class _CopilotPromptCardState extends State<_CopilotPromptCard> {
     super.initState();
     _nameController = TextEditingController(text: widget.prompt.name);
     _promptController = TextEditingController(text: widget.prompt.prompt);
+  }
+
+  @override
+  void didUpdateWidget(_CopilotPromptCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Cards are keyed by index, so removing one reuses State for a different
+    // prompt. Re-sync controllers when the underlying prompt differs.
+    if (widget.prompt.name != _nameController.text) {
+      _nameController.text = widget.prompt.name;
+    }
+    if (widget.prompt.prompt != _promptController.text) {
+      _promptController.text = widget.prompt.prompt;
+    }
   }
 
   @override
