@@ -18,6 +18,23 @@ import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
 
+/// Builds the standard Claude launch context prompt from a worktree's recorded
+/// JIRA issue and base branch. Returns null when neither is known.
+String? _claudeContextPrompt(Worktree wt) {
+  final issue = wt.jiraIssue;
+  final base = wt.baseBranch;
+  if (issue != null && issue.isNotEmpty && base != null && base.isNotEmpty) {
+    return 'Context: Working on $issue where the base branch is $base.';
+  }
+  if (issue != null && issue.isNotEmpty) {
+    return 'Context: Working on $issue.';
+  }
+  if (base != null && base.isNotEmpty) {
+    return 'Context: The base branch is $base.';
+  }
+  return null;
+}
+
 class WorktreeCard extends StatefulWidget {
   final Worktree worktree;
 
@@ -258,9 +275,17 @@ class _WorktreeCardState extends State<WorktreeCard> {
                         svgAsset: 'assets/icons/claude.svg',
                         color: AppColors.claude,
                         bgColor: AppColors.claudeBg,
-                        onPressed: () => _launcherService.openClaude(wt.path),
+                        onPressed: () => _launcherService.openClaude(
+                          wt.path,
+                          prompt: _claudeContextPrompt(wt),
+                        ),
                       ),
                     ),
+
+                    if (customLinks.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      _CustomLinksButton(links: customLinks, slot: wt.slot),
+                    ],
                     if (customCommands.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       _CustomCommandsButton(
@@ -269,10 +294,6 @@ class _WorktreeCardState extends State<WorktreeCard> {
                         commands: customCommands,
                         slot: wt.slot,
                       ),
-                    ],
-                    if (customLinks.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      _CustomLinksButton(links: customLinks, slot: wt.slot),
                     ],
                   ],
                 ),

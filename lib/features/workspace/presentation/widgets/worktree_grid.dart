@@ -90,13 +90,20 @@ class WorktreeGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = (constraints.maxWidth / 340).floor().clamp(1, 4);
+        const minTileWidth = 348.0;
+        const spacing = 12.0;
+        const horizontalPadding = 20.0;
+        // Fit as many columns as possible while keeping each tile >= 348px wide.
+        final available = constraints.maxWidth - horizontalPadding * 2;
+        final crossAxisCount = ((available + spacing) / (minTileWidth + spacing))
+            .floor()
+            .clamp(1, 4);
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             mainAxisExtent: 170,
-            crossAxisSpacing: 12,
+            crossAxisSpacing: spacing,
             mainAxisSpacing: 12,
           ),
           itemCount: repoProvider.worktrees.length,

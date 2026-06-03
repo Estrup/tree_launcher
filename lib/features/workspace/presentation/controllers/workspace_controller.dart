@@ -266,6 +266,16 @@ class WorkspaceController extends ChangeNotifier {
         _replaceSelection(current, withJira);
         worktreesController.setJiraIssues(withJira?.jiraIssues ?? issues);
       }
+
+      // Record the base branch the worktree was created from, if known.
+      if (baseBranch != null && baseBranch.isNotEmpty) {
+        final current = selectedRepo!;
+        final branches = Map<String, String>.from(current.baseBranches);
+        branches[worktreePath] = baseBranch;
+        final withBase = await preferences.updateBaseBranches(current, branches);
+        _replaceSelection(current, withBase);
+        worktreesController.setBaseBranches(withBase?.baseBranches ?? branches);
+      }
     }
 
     return worktreePath;
@@ -334,6 +344,9 @@ class WorkspaceController extends ChangeNotifier {
     );
     worktreesController.setJiraIssues(
       repo?.jiraIssues ?? {},
+    );
+    worktreesController.setBaseBranches(
+      repo?.baseBranches ?? {},
     );
   }
 

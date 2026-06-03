@@ -1392,7 +1392,7 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Copilot Prompts',
+                      'AI Prompts',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -1402,7 +1402,8 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Prompt templates for Copilot sessions. Use {issue} for JIRA issue substitution.',
+                      'Prompt templates for Copilot or Claude sessions. '
+                      'Substitutions: {issue}, {base_branch}, {worktree}, {path}, {repo}.',
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textMuted,
@@ -1583,7 +1584,7 @@ class _CopilotPromptCardState extends State<_CopilotPromptCard> {
             decoration: InputDecoration(
               hintText:
                   'e.g. Retrieve the jira issue {issue} with comments and files.\n'
-                  'Analyse the issue and find a solution.',
+                  'Analyse the issue on branch {base_branch} and find a solution.',
               hintStyle: appFormFieldHintStyle(context, monospace: true),
             ),
             controller: _promptController,

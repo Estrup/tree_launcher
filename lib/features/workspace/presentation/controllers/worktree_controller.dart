@@ -40,6 +40,16 @@ class WorktreeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Base branches from config, keyed by worktree path.
+  Map<String, String> _baseBranches = {};
+  Map<String, String> get baseBranches => Map.unmodifiable(_baseBranches);
+
+  void setBaseBranches(Map<String, String> branches) {
+    _baseBranches = Map.of(branches);
+    _hydrateSlots();
+    notifyListeners();
+  }
+
   Future<void> refreshForRepo(String? repoPath) async {
     if (repoPath == null) {
       _worktrees = [];
@@ -74,7 +84,11 @@ class WorktreeController extends ChangeNotifier {
   void _hydrateSlots() {
     _worktrees = _worktrees.map((wt) {
       final slot = _slotAssignments[wt.path] ?? 'alpha';
-      return wt.copyWith(slot: slot, jiraIssue: _jiraIssues[wt.path]);
+      return wt.copyWith(
+        slot: slot,
+        jiraIssue: _jiraIssues[wt.path],
+        baseBranch: _baseBranches[wt.path],
+      );
     }).toList();
   }
 

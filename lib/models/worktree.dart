@@ -9,6 +9,9 @@ class Worktree {
   /// JIRA issue key attached to this worktree (e.g. AU2-4859), or null.
   final String? jiraIssue;
 
+  /// Base branch this worktree was created from (e.g. develop), or null.
+  final String? baseBranch;
+
   Worktree({
     required this.path,
     required this.branch,
@@ -17,6 +20,7 @@ class Worktree {
     required this.commitHash,
     this.slot = 'alpha',
     this.jiraIssue,
+    this.baseBranch,
   });
 
   Worktree copyWith({
@@ -27,6 +31,7 @@ class Worktree {
     String? commitHash,
     String? slot,
     String? jiraIssue,
+    String? baseBranch,
   }) {
     return Worktree(
       path: path ?? this.path,
@@ -36,6 +41,7 @@ class Worktree {
       commitHash: commitHash ?? this.commitHash,
       slot: slot ?? this.slot,
       jiraIssue: jiraIssue ?? this.jiraIssue,
+      baseBranch: baseBranch ?? this.baseBranch,
     );
   }
 }

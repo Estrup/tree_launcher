@@ -220,7 +220,14 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       String? copilotSessionId;
       if (_launchCopilot && worktreePath != null) {
         final repo = repoProvider.selectedRepo;
-        final prompt = _resolvePrompt(_selectedPrompt, jira);
+        final prompt = _resolvePrompt(
+          _selectedPrompt,
+          jira,
+          baseBranch: _selectedBranch,
+          worktreeName: worktreeName,
+          worktreePath: worktreePath,
+          repoName: repo?.name,
+        );
         final session = await copilotProvider.createSession(
           repo?.path ?? worktreePath,
           worktreePath,
@@ -232,7 +239,14 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
       // Launch Claude (external) in the new worktree
       if (_launchClaude && worktreePath != null) {
-        final prompt = _resolvePrompt(_selectedClaudePrompt, jira);
+        final prompt = _resolvePrompt(
+          _selectedClaudePrompt,
+          jira,
+          baseBranch: _selectedBranch,
+          worktreeName: worktreeName,
+          worktreePath: worktreePath,
+          repoName: repoProvider.selectedRepo?.name,
+        );
         await LauncherService().openClaude(worktreePath, prompt: prompt);
       }
 
@@ -573,10 +587,21 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     );
   }
 
-  String? _resolvePrompt(CopilotPrompt? selected, String jira) {
+  String? _resolvePrompt(
+    CopilotPrompt? selected,
+    String jira, {
+    String? baseBranch,
+    String? worktreeName,
+    String? worktreePath,
+    String? repoName,
+  }) {
     if (selected == null) return null;
     var prompt = selected.prompt;
-    prompt = prompt.replaceAll('{issue}', jira.isNotEmpty ? jira : '');
+    prompt = prompt.replaceAll('{issue}', jira);
+    prompt = prompt.replaceAll('{base_branch}', baseBranch ?? '');
+    prompt = prompt.replaceAll('{worktree}', worktreeName ?? '');
+    prompt = prompt.replaceAll('{path}', worktreePath ?? '');
+    prompt = prompt.replaceAll('{repo}', repoName ?? '');
     prompt = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
     return prompt.isEmpty ? null : prompt;
   }

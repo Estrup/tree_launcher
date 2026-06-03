@@ -21,6 +21,9 @@ class RepoConfig {
 
   /// JIRA issue keys per worktree path (worktree path -> issue key).
   final Map<String, String> jiraIssues;
+
+  /// Base branch per worktree path, recorded at creation (worktree path -> base branch).
+  final Map<String, String> baseBranches;
   final AzureDevopsConfig? azureDevopsConfig;
   final String? lastAzureDevopsBranch;
   final GithubConfig? githubConfig;
@@ -37,6 +40,7 @@ class RepoConfig {
     this.copilotPrompts = const [],
     this.slotAssignments = const {},
     this.jiraIssues = const {},
+    this.baseBranches = const {},
     this.azureDevopsConfig,
     this.lastAzureDevopsBranch,
     this.githubConfig,
@@ -85,6 +89,10 @@ class RepoConfig {
           (json['jiraIssues'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as String)) ??
           {},
+      baseBranches:
+          (json['baseBranches'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v as String)) ??
+          {},
       azureDevopsConfig: json['azureDevopsConfig'] != null
           ? AzureDevopsConfig.fromJson(
               json['azureDevopsConfig'] as Map<String, dynamic>)
@@ -109,6 +117,7 @@ class RepoConfig {
     'copilotPrompts': copilotPrompts.map((p) => p.toJson()).toList(),
     'slotAssignments': slotAssignments,
     'jiraIssues': jiraIssues,
+    'baseBranches': baseBranches,
     if (azureDevopsConfig != null)
       'azureDevopsConfig': azureDevopsConfig!.toJson(),
     if (lastAzureDevopsBranch != null)
