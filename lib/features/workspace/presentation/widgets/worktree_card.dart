@@ -24,10 +24,10 @@ String? _claudeContextPrompt(Worktree wt) {
   final issue = wt.jiraIssue;
   final base = wt.baseBranch;
   if (issue != null && issue.isNotEmpty && base != null && base.isNotEmpty) {
-    return 'Context: Working on $issue where the base branch is $base.';
+    return 'Context: Working on issue $issue where the base branch is $base.';
   }
   if (issue != null && issue.isNotEmpty) {
-    return 'Context: Working on $issue.';
+    return 'Context: Working on issue $issue.';
   }
   if (base != null && base.isNotEmpty) {
     return 'Context: The base branch is $base.';
