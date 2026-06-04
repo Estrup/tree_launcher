@@ -2,6 +2,8 @@ enum TerminalApp { terminal, ghostty, custom }
 
 enum CopilotButtonMode { inApp, external }
 
+enum WorktreeViewMode { grid, list }
+
 enum CopilotAttentionSound {
   basso('Basso'),
   blow('Blow'),
@@ -44,6 +46,7 @@ class AppSettings {
   final bool copilotAutopilot;
   final String? markdownDocumentsFolder;
   final List<String> markdownRecentFiles;
+  final WorktreeViewMode worktreeViewMode;
 
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
@@ -64,6 +67,7 @@ class AppSettings {
     this.copilotAutopilot = false,
     this.markdownDocumentsFolder,
     this.markdownRecentFiles = const [],
+    this.worktreeViewMode = WorktreeViewMode.grid,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -96,14 +100,18 @@ class AppSettings {
       copilotAllowAllTools: json['copilotAllowAllTools'] as bool? ?? false,
       copilotAllowAllUrls: json['copilotAllowAllUrls'] as bool? ?? false,
       copilotAllowAllPaths: json['copilotAllowAllPaths'] as bool? ?? false,
-      copilotAddDirs: (json['copilotAddDirs'] as List<dynamic>?)
-              ?.cast<String>() ??
+      copilotAddDirs:
+          (json['copilotAddDirs'] as List<dynamic>?)?.cast<String>() ??
           const [],
       copilotAutopilot: json['copilotAutopilot'] as bool? ?? false,
       markdownDocumentsFolder: json['markdownDocumentsFolder'] as String?,
-      markdownRecentFiles: (json['markdownRecentFiles'] as List<dynamic>?)
-              ?.cast<String>() ??
+      markdownRecentFiles:
+          (json['markdownRecentFiles'] as List<dynamic>?)?.cast<String>() ??
           const [],
+      worktreeViewMode: WorktreeViewMode.values.firstWhere(
+        (e) => e.name == (json['worktreeViewMode'] as String?),
+        orElse: () => WorktreeViewMode.grid,
+      ),
     );
   }
 
@@ -126,6 +134,7 @@ class AppSettings {
     'copilotAutopilot': copilotAutopilot,
     'markdownDocumentsFolder': markdownDocumentsFolder,
     'markdownRecentFiles': markdownRecentFiles,
+    'worktreeViewMode': worktreeViewMode.name,
   };
 
   AppSettings copyWith({
@@ -151,6 +160,7 @@ class AppSettings {
     String? markdownDocumentsFolder,
     bool clearMarkdownDocumentsFolder = false,
     List<String>? markdownRecentFiles,
+    WorktreeViewMode? worktreeViewMode,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -182,6 +192,7 @@ class AppSettings {
           ? null
           : (markdownDocumentsFolder ?? this.markdownDocumentsFolder),
       markdownRecentFiles: markdownRecentFiles ?? this.markdownRecentFiles,
+      worktreeViewMode: worktreeViewMode ?? this.worktreeViewMode,
     );
   }
 }

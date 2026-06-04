@@ -88,10 +88,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       });
     }
 
-    final hasBuildsTab = repoProvider.selectedRepo?.azureDevopsConfig != null &&
-        (repoProvider.selectedRepo!.azureDevopsConfig!.selectedPipelines.isNotEmpty);
+    final hasBuildsTab =
+        repoProvider.selectedRepo?.azureDevopsConfig != null &&
+        (repoProvider
+            .selectedRepo!
+            .azureDevopsConfig!
+            .selectedPipelines
+            .isNotEmpty);
     final buildsTabCount = hasBuildsTab ? 1 : 0;
-    final hasGithubPrsTab = repoProvider.selectedRepo?.githubConfig != null &&
+    final hasGithubPrsTab =
+        repoProvider.selectedRepo?.githubConfig != null &&
         repoProvider.selectedRepo!.githubConfig!.isConfigured;
     final githubPrsTabCount = hasGithubPrsTab ? 1 : 0;
     final tabCount = 2 + buildsTabCount + githubPrsTabCount;
@@ -124,7 +130,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             editor.saveDocument();
           }
         },
-        const SingleActivator(LogicalKeyboardKey.keyS, meta: true, shift: true): () {
+        const SingleActivator(
+          LogicalKeyboardKey.keyS,
+          meta: true,
+          shift: true,
+        ): () {
           final editor = context.read<MarkdownEditorController>();
           if (editor.hasDocument) {
             editor.saveDocumentAs();
@@ -134,7 +144,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           final editor = context.read<MarkdownEditorController>();
           editor.openFile();
         },
-        const SingleActivator(LogicalKeyboardKey.keyE, meta: true, shift: true): () {
+        const SingleActivator(
+          LogicalKeyboardKey.keyE,
+          meta: true,
+          shift: true,
+        ): () {
           final editor = context.read<MarkdownEditorController>();
           editor.toggleSidePanel();
         },
@@ -180,123 +194,158 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               child: isTerminalActive
                                   ? const TerminalFullView()
                                   : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (!isCopilotActive)
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 24,
-                                        right: 24,
-                                        top: 16,
-                                        bottom: 0,
-                                      ),
-                                      child: AnimatedBuilder(
-                                        animation: _tabController!,
-                                        builder: (context, _) {
-                                          final currentIndex =
-                                              _tabController!.index;
-                                          return SingleChildScrollView(
-                                            scrollDirection: Axis.horizontal,
-                                            child: Row(
-                                              children: [
-                                                // Worktrees & Projects & Notes
-                                                Container(
-                                                  padding: const EdgeInsets.all(
-                                                    4,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: AppColors.surface0,
-                                                    borderRadius:
-                                                        BorderRadius.circular(10),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      _buildSegmentTab(
-                                                        text: "Worktrees",
-                                                        index: 0,
-                                                        currentIndex:
-                                                            currentIndex,
-                                                        onTap: () =>
-                                                            _tabController!
-                                                                .animateTo(0),
-                                                      ),
-                                                    if (hasBuildsTab)
-                                                      _buildSegmentTab(
-                                                        text: 'Builds',
-                                                        index: 1,
-                                                        currentIndex:
-                                                            currentIndex,
-                                                        icon: Icons
-                                                            .build_circle_outlined,
-                                                        onTap: () =>
-                                                            _tabController!
-                                                                .animateTo(1),
-                                                      ),
-                                                      if (hasGithubPrsTab)
-                                                        _buildSegmentTab(
-                                                          text: 'PRs',
-                                                          index: 1 + buildsTabCount,
-                                                          currentIndex:
-                                                              currentIndex,
-                                                          icon: Icons
-                                                              .merge_type_rounded,
-                                                          onTap: () =>
-                                                              _tabController!
-                                                                  .animateTo(
-                                                                    1 + buildsTabCount,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (!isCopilotActive)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 24,
+                                              right: 24,
+                                              top: 16,
+                                              bottom: 0,
+                                            ),
+                                            child: AnimatedBuilder(
+                                              animation: _tabController!,
+                                              builder: (context, _) {
+                                                final currentIndex =
+                                                    _tabController!.index;
+                                                return Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: SingleChildScrollView(
+                                                        scrollDirection:
+                                                            Axis.horizontal,
+                                                        child: Row(
+                                                          children: [
+                                                            // Worktrees & Projects & Notes
+                                                            Container(
+                                                              padding:
+                                                                  const EdgeInsets.all(
+                                                                    4,
                                                                   ),
+                                                              decoration: BoxDecoration(
+                                                                color: AppColors
+                                                                    .surface0,
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      10,
+                                                                    ),
+                                                              ),
+                                                              child: Row(
+                                                                mainAxisSize:
+                                                                    MainAxisSize
+                                                                        .min,
+                                                                children: [
+                                                                  _buildSegmentTab(
+                                                                    text:
+                                                                        "Worktrees",
+                                                                    index: 0,
+                                                                    currentIndex:
+                                                                        currentIndex,
+                                                                    onTap: () =>
+                                                                        _tabController!
+                                                                            .animateTo(
+                                                                              0,
+                                                                            ),
+                                                                  ),
+                                                                  if (hasBuildsTab)
+                                                                    _buildSegmentTab(
+                                                                      text:
+                                                                          'Builds',
+                                                                      index: 1,
+                                                                      currentIndex:
+                                                                          currentIndex,
+                                                                      icon: Icons
+                                                                          .build_circle_outlined,
+                                                                      onTap: () =>
+                                                                          _tabController!.animateTo(
+                                                                            1,
+                                                                          ),
+                                                                    ),
+                                                                  if (hasGithubPrsTab)
+                                                                    _buildSegmentTab(
+                                                                      text:
+                                                                          'PRs',
+                                                                      index:
+                                                                          1 +
+                                                                          buildsTabCount,
+                                                                      currentIndex:
+                                                                          currentIndex,
+                                                                      icon: Icons
+                                                                          .merge_type_rounded,
+                                                                      onTap: () =>
+                                                                          _tabController!.animateTo(
+                                                                            1 +
+                                                                                buildsTabCount,
+                                                                          ),
+                                                                    ),
+                                                                  _buildSegmentTab(
+                                                                    text:
+                                                                        "Notes",
+                                                                    index:
+                                                                        1 +
+                                                                        buildsTabCount +
+                                                                        githubPrsTabCount,
+                                                                    currentIndex:
+                                                                        currentIndex,
+                                                                    icon: Icons
+                                                                        .edit_note_rounded,
+                                                                    onTap: () =>
+                                                                        _tabController!.animateTo(
+                                                                          1 +
+                                                                              buildsTabCount +
+                                                                              githubPrsTabCount,
+                                                                        ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
-                                                      _buildSegmentTab(
-                                                        text: "Notes",
-                                                        index: 1 + buildsTabCount + githubPrsTabCount,
-                                                        currentIndex:
-                                                            currentIndex,
-                                                        icon: Icons.edit_note_rounded,
-                                                        onTap: () =>
-                                                            _tabController!
-                                                                .animateTo(
-                                                                  1 + buildsTabCount + githubPrsTabCount,
-                                                                ),
                                                       ),
+                                                    ),
+                                                    if (currentIndex == 0) ...[
+                                                      const SizedBox(width: 12),
+                                                      const WorktreeViewModeToggle(),
                                                     ],
-                                                  ),
-                                                ),
-                                              ],
+                                                  ],
+                                                );
+                                              },
                                             ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  if (!isCopilotActive)
-                                    const SizedBox(height: 16),
-                                  Expanded(
-                                    child: isCopilotActive
-                                        ? EditorSplitPanel(
-                                            child: CopilotTerminalView(
-                                              key: ValueKey(
-                                                copilotProvider
-                                                    .activeSession!.id,
-                                              ),
-                                              sessionId: copilotProvider
-                                                  .activeSession!.id,
-                                            ),
-                                          )
-                                        : TabBarView(
-                                            controller: _tabController,
-                                            physics:
-                                                const NeverScrollableScrollPhysics(),
-                                            children: [
-                                              const WorktreeGrid(),
-                                              if (hasBuildsTab) const BuildsTab(),
-                                              if (hasGithubPrsTab) const GithubPrsTab(),
-                                              const MarkdownEditorView(),
-                                            ],
                                           ),
-                                  ),
-                                ],
-                              ),
+                                        if (!isCopilotActive)
+                                          const SizedBox(height: 16),
+                                        Expanded(
+                                          child: isCopilotActive
+                                              ? EditorSplitPanel(
+                                                  child: CopilotTerminalView(
+                                                    key: ValueKey(
+                                                      copilotProvider
+                                                          .activeSession!
+                                                          .id,
+                                                    ),
+                                                    sessionId: copilotProvider
+                                                        .activeSession!
+                                                        .id,
+                                                  ),
+                                                )
+                                              : TabBarView(
+                                                  controller: _tabController,
+                                                  physics:
+                                                      const NeverScrollableScrollPhysics(),
+                                                  children: [
+                                                    const WorktreeGrid(),
+                                                    if (hasBuildsTab)
+                                                      const BuildsTab(),
+                                                    if (hasGithubPrsTab)
+                                                      const GithubPrsTab(),
+                                                    const MarkdownEditorView(),
+                                                  ],
+                                                ),
+                                        ),
+                                      ],
+                                    ),
                             ),
                             const RunningCommandsBar(),
                           ],
@@ -607,7 +656,9 @@ class _HeaderEditorToggleButtonState extends State<_HeaderEditorToggleButton> {
     final isActive = editor.isSidePanelOpen;
 
     return Tooltip(
-      message: isActive ? 'Close editor panel (⇧⌘E)' : 'Open editor panel (⇧⌘E)',
+      message: isActive
+          ? 'Close editor panel (⇧⌘E)'
+          : 'Open editor panel (⇧⌘E)',
       waitDuration: const Duration(milliseconds: 600),
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
@@ -621,8 +672,8 @@ class _HeaderEditorToggleButtonState extends State<_HeaderEditorToggleButton> {
               color: isActive
                   ? AppColors.accent.withValues(alpha: 0.15)
                   : _hovered
-                      ? AppColors.surface2
-                      : Colors.transparent,
+                  ? AppColors.surface2
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -631,8 +682,8 @@ class _HeaderEditorToggleButtonState extends State<_HeaderEditorToggleButton> {
               color: isActive
                   ? AppColors.accent
                   : _hovered
-                      ? AppColors.textPrimary
-                      : AppColors.textMuted,
+                  ? AppColors.textPrimary
+                  : AppColors.textMuted,
             ),
           ),
         ),
@@ -1006,10 +1057,7 @@ class _HeaderLinksButton extends StatefulWidget {
   final String worktreePath;
   final List<CustomLink> links;
 
-  const _HeaderLinksButton({
-    required this.worktreePath,
-    required this.links,
-  });
+  const _HeaderLinksButton({required this.worktreePath, required this.links});
 
   @override
   State<_HeaderLinksButton> createState() => _HeaderLinksButtonState();

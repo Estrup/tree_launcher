@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
+import 'package:tree_launcher/providers/settings_provider.dart';
 import 'worktree_card.dart';
+import 'worktree_table.dart';
 
 class WorktreeGrid extends StatelessWidget {
   const WorktreeGrid({super.key});
@@ -88,6 +92,24 @@ class WorktreeGrid extends StatelessWidget {
       );
     }
 
+    final viewMode = context
+        .watch<SettingsProvider>()
+        .settings
+        .worktreeViewMode;
+
+    return viewMode == WorktreeViewMode.list
+        ? WorktreeTable(worktrees: repoProvider.worktrees)
+        : _WorktreeTileGrid(worktrees: repoProvider.worktrees);
+  }
+}
+
+class _WorktreeTileGrid extends StatelessWidget {
+  final List<Worktree> worktrees;
+
+  const _WorktreeTileGrid({required this.worktrees});
+
+  @override
+  Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         const minTileWidth = 348.0;
@@ -95,9 +117,11 @@ class WorktreeGrid extends StatelessWidget {
         const horizontalPadding = 20.0;
         // Fit as many columns as possible while keeping each tile >= 348px wide.
         final available = constraints.maxWidth - horizontalPadding * 2;
-        final crossAxisCount = ((available + spacing) / (minTileWidth + spacing))
-            .floor()
-            .clamp(1, 4);
+        final crossAxisCount =
+            ((available + spacing) / (minTileWidth + spacing)).floor().clamp(
+              1,
+              4,
+            );
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -106,12 +130,92 @@ class WorktreeGrid extends StatelessWidget {
             crossAxisSpacing: spacing,
             mainAxisSpacing: 12,
           ),
-          itemCount: repoProvider.worktrees.length,
+          itemCount: worktrees.length,
           itemBuilder: (context, index) {
-            return WorktreeCard(worktree: repoProvider.worktrees[index]);
+            return WorktreeCard(worktree: worktrees[index]);
           },
         );
       },
+    );
+  }
+}
+
+/// Grid/List segmented toggle for the Worktrees view. Placed in the tab row by
+/// the home screen; reads/writes [SettingsController.updateWorktreeViewMode].
+class WorktreeViewModeToggle extends StatelessWidget {
+  const WorktreeViewModeToggle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = context.watch<SettingsProvider>().settings.worktreeViewMode;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surface0,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ViewModeSegment(
+            icon: Icons.grid_view_rounded,
+            tooltip: 'Grid view',
+            selected: mode == WorktreeViewMode.grid,
+            onTap: () => context
+                .read<SettingsProvider>()
+                .updateWorktreeViewMode(WorktreeViewMode.grid),
+          ),
+          const SizedBox(width: 2),
+          _ViewModeSegment(
+            icon: Icons.view_list_rounded,
+            tooltip: 'List view',
+            selected: mode == WorktreeViewMode.list,
+            onTap: () => context
+                .read<SettingsProvider>()
+                .updateWorktreeViewMode(WorktreeViewMode.list),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ViewModeSegment extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ViewModeSegment({
+    required this.icon,
+    required this.tooltip,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Tooltip(
+          message: tooltip,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.surface2 : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: selected ? AppColors.textPrimary : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

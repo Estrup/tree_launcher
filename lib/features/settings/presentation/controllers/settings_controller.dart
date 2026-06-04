@@ -154,4 +154,10 @@ class SettingsController extends ChangeNotifier {
     await _store.save(_settings);
     notifyListeners();
   }
+
+  Future<void> updateWorktreeViewMode(WorktreeViewMode mode) async {
+    _settings = _settings.copyWith(worktreeViewMode: mode);
+    await _store.save(_settings);
+    notifyListeners();
+  }
 }
