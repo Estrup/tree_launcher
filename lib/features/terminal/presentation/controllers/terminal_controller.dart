@@ -162,6 +162,12 @@ class TerminalController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void hide() {
+    if (!_visible) return;
+    _visible = false;
+    notifyListeners();
+  }
+
   void closeSessionsForPath(String path) {
     _sessions
         .where((session) => session.workingDirectory == path)

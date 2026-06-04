@@ -152,6 +152,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
                           final copilotProvider = context
                               .read<CopilotProvider>();
                           copilotProvider.deselectSession();
+                          context.read<TerminalProvider>().hide();
                           repoProvider.selectRepo(repo);
                         },
                         onRemove: () =>
@@ -237,6 +238,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
                         final copilotProvider = context
                             .read<CopilotProvider>();
                         copilotProvider.deselectSession();
+                        context.read<TerminalProvider>().hide();
                         repoProvider.selectRepo(repo);
                       },
                     );
