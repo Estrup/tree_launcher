@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_context_menu.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
+import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
 
 class RepoSidebar extends StatefulWidget {
@@ -52,6 +53,10 @@ class _RepoSidebarState extends State<RepoSidebar> {
   }
 
   Widget _buildExpanded(BuildContext context, RepoProvider repoProvider) {
+    final hidden = context.watch<SettingsProvider>().settings.hiddenRepos.toSet();
+    final repos = repoProvider.repos
+        .where((r) => !hidden.contains(r.path))
+        .toList();
     return Column(
       children: [
         // Logo / brand
@@ -116,7 +121,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
 
           // Repo list (with nested copilot sessions)
           Expanded(
-            child: repoProvider.repos.isEmpty
+            child: repos.isEmpty
                 ? Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
@@ -141,9 +146,9 @@ class _RepoSidebarState extends State<RepoSidebar> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemCount: repoProvider.repos.length,
+                    itemCount: repos.length,
                     itemBuilder: (context, index) {
-                      final repo = repoProvider.repos[index];
+                      final repo = repos[index];
                       final isSelected = repo == repoProvider.selectedRepo;
                       return _RepoTile(
                         repo: repo,
@@ -194,6 +199,10 @@ class _RepoSidebarState extends State<RepoSidebar> {
   // --- Collapsed navigation rail ---
 
   Widget _buildRail(BuildContext context, RepoProvider repoProvider) {
+    final hidden = context.watch<SettingsProvider>().settings.hiddenRepos.toSet();
+    final repos = repoProvider.repos
+        .where((r) => !hidden.contains(r.path))
+        .toList();
     return Column(
       children: [
         // Compact brand + expand toggle
@@ -221,16 +230,16 @@ class _RepoSidebarState extends State<RepoSidebar> {
         ),
         // Repo avatar list
         Expanded(
-          child: repoProvider.repos.isEmpty
+          child: repos.isEmpty
               ? const SizedBox.shrink()
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
-                  itemCount: repoProvider.repos.length,
+                  itemCount: repos.length,
                   itemBuilder: (context, index) {
-                    final repo = repoProvider.repos[index];
+                    final repo = repos[index];
                     final isSelected = repo == repoProvider.selectedRepo;
                     return _RepoRailTile(
                       repo: repo,
@@ -294,6 +303,10 @@ class _RepoSidebarState extends State<RepoSidebar> {
         provider.selectRepo(repo);
         if (!provider.showSettings) {
           provider.toggleSettings();
+        }
+      case RepoContextMenuAction.hide:
+        if (context.mounted) {
+          context.read<SettingsProvider>().hideRepo(repo.path);
         }
       case RepoContextMenuAction.remove:
         if (context.mounted) {

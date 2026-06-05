@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 
-enum RepoContextMenuAction { openSettings, remove }
+enum RepoContextMenuAction { openSettings, hide, remove }
 
 Future<RepoContextMenuAction?> showRepoContextMenu({
   required BuildContext context,
@@ -31,6 +31,24 @@ Future<RepoContextMenuAction?> showRepoContextMenu({
             const SizedBox(width: 10),
             Text(
               'Open settings',
+              style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+            ),
+          ],
+        ),
+      ),
+      PopupMenuItem(
+        value: RepoContextMenuAction.hide,
+        height: 36,
+        child: Row(
+          children: [
+            Icon(
+              Icons.visibility_off_rounded,
+              size: 15,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Hide',
               style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
             ),
           ],

@@ -49,6 +49,9 @@ class AppSettings {
   final WorktreeViewMode worktreeViewMode;
   final bool showHiddenWorktrees;
 
+  /// Repo paths the user has hidden from the sidebar.
+  final List<String> hiddenRepos;
+
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
     this.customTerminalCommand,
@@ -70,6 +73,7 @@ class AppSettings {
     this.markdownRecentFiles = const [],
     this.worktreeViewMode = WorktreeViewMode.grid,
     this.showHiddenWorktrees = false,
+    this.hiddenRepos = const [],
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -115,6 +119,8 @@ class AppSettings {
         orElse: () => WorktreeViewMode.grid,
       ),
       showHiddenWorktrees: json['showHiddenWorktrees'] as bool? ?? false,
+      hiddenRepos:
+          (json['hiddenRepos'] as List<dynamic>?)?.cast<String>() ?? const [],
     );
   }
 
@@ -139,6 +145,7 @@ class AppSettings {
     'markdownRecentFiles': markdownRecentFiles,
     'worktreeViewMode': worktreeViewMode.name,
     'showHiddenWorktrees': showHiddenWorktrees,
+    'hiddenRepos': hiddenRepos,
   };
 
   AppSettings copyWith({
@@ -166,6 +173,7 @@ class AppSettings {
     List<String>? markdownRecentFiles,
     WorktreeViewMode? worktreeViewMode,
     bool? showHiddenWorktrees,
+    List<String>? hiddenRepos,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -199,6 +207,7 @@ class AppSettings {
       markdownRecentFiles: markdownRecentFiles ?? this.markdownRecentFiles,
       worktreeViewMode: worktreeViewMode ?? this.worktreeViewMode,
       showHiddenWorktrees: showHiddenWorktrees ?? this.showHiddenWorktrees,
+      hiddenRepos: hiddenRepos ?? this.hiddenRepos,
     );
   }
 }

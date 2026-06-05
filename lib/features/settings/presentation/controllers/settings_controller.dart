@@ -166,4 +166,22 @@ class SettingsController extends ChangeNotifier {
     await _store.save(_settings);
     notifyListeners();
   }
+
+  /// Hides a repo from the sidebar.
+  Future<void> hideRepo(String path) async {
+    if (_settings.hiddenRepos.contains(path)) return;
+    final hidden = List<String>.from(_settings.hiddenRepos)..add(path);
+    _settings = _settings.copyWith(hiddenRepos: hidden);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  /// Restores a previously hidden repo to the sidebar.
+  Future<void> unhideRepo(String path) async {
+    if (!_settings.hiddenRepos.contains(path)) return;
+    final hidden = List<String>.from(_settings.hiddenRepos)..remove(path);
+    _settings = _settings.copyWith(hiddenRepos: hidden);
+    await _store.save(_settings);
+    notifyListeners();
+  }
 }

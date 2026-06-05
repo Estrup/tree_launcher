@@ -9,7 +9,14 @@ import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
-enum _SettingsSection { theme, terminals, copilot, markdownEditor, help }
+enum _SettingsSection {
+  theme,
+  terminals,
+  copilot,
+  markdownEditor,
+  repositories,
+  help,
+}
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -156,6 +163,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                 _selectedSection = _SettingsSection.markdownEditor,
                           ),
                         ),
+                        _NavItem(
+                          icon: Icons.folder_outlined,
+                          label: 'Repositories',
+                          isSelected:
+                              _selectedSection == _SettingsSection.repositories,
+                          onTap: () => setState(
+                            () =>
+                                _selectedSection = _SettingsSection.repositories,
+                          ),
+                        ),
                         const Spacer(),
                         _NavItem(
                           icon: Icons.help_outline_rounded,
@@ -199,6 +216,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         return const _CopilotSection();
       case _SettingsSection.markdownEditor:
         return const _MarkdownEditorSection();
+      case _SettingsSection.repositories:
+        return const _RepositoriesSection();
       case _SettingsSection.help:
         return const _HelpSection();
     }
@@ -1365,6 +1384,114 @@ class _MarkdownEditorSectionState extends State<_MarkdownEditorSection> {
                           color: AppColors.textMuted,
                         ),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RepositoriesSection extends StatelessWidget {
+  const _RepositoriesSection();
+
+  /// Replaces the home directory prefix with `~` to match the sidebar display.
+  String _displayPath(String path) {
+    final home = Platform.environment['HOME'];
+    if (home != null && home.isNotEmpty && path.startsWith(home)) {
+      return '~${path.substring(home.length)}';
+    }
+    return path;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settingsProvider = context.watch<SettingsProvider>();
+    final hiddenRepos = settingsProvider.settings.hiddenRepos;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Repositories',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "Repositories you've hidden from the sidebar",
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'HIDDEN REPOSITORIES',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (hiddenRepos.isEmpty)
+            Text(
+              'No hidden repositories',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            )
+          else
+            ...hiddenRepos.map(
+              (path) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.folder_outlined,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            path.split('/').last,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            _displayPath(path),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                              fontFamily: 'monospace',
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _SmallButton(
+                      label: 'Unhide',
+                      icon: Icons.visibility_rounded,
+                      onTap: () => settingsProvider.unhideRepo(path),
                     ),
                   ],
                 ),
