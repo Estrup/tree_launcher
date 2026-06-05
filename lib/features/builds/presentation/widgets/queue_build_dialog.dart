@@ -10,14 +10,14 @@ import 'package:tree_launcher/theme/app_theme.dart';
 
 class QueueBuildDialog extends StatefulWidget {
   final AzureDevopsConfig config;
-  final int definitionId;
+  final List<int> definitionIds;
   final String? lastBranch;
   final Future<void> Function(String branch)? onBuildQueued;
 
   const QueueBuildDialog({
     super.key,
     required this.config,
-    required this.definitionId,
+    required this.definitionIds,
     this.lastBranch,
     this.onBuildQueued,
   });
@@ -32,6 +32,7 @@ class _QueueBuildDialogState extends State<QueueBuildDialog> {
   String? _errorMessage;
   List<String> _branches = [];
   bool _loadingBranches = true;
+  int _queuedCount = 0;
 
   @override
   void initState() {
@@ -79,26 +80,41 @@ class _QueueBuildDialogState extends State<QueueBuildDialog> {
     setState(() {
       _isQueuing = true;
       _errorMessage = null;
+      _queuedCount = 0;
     });
 
-    try {
-      final result =
-          await AzureDevopsService().queueBuild(widget.config, widget.definitionId, branch);
+    final service = AzureDevopsService();
+    final controller = context.read<BuildsController>();
+    final failures = <String>[];
+    var succeeded = 0;
+
+    for (final definitionId in widget.definitionIds) {
+      try {
+        final result =
+            await service.queueBuild(widget.config, definitionId, branch);
+        if (!mounted) return;
+        // Update the builds controller so the list refreshes.
+        controller.onBuildQueued(definitionId, result, config: widget.config);
+        succeeded++;
+      } catch (e) {
+        failures.add(e.toString());
+      }
       if (!mounted) return;
+      setState(() => _queuedCount++);
+    }
 
-      // Update the builds controller so the list refreshes.
-      context.read<BuildsController>().onBuildQueued(
-            widget.definitionId,
-            result,
-          );
-
+    if (failures.isEmpty) {
       await widget.onBuildQueued?.call(branch);
       if (mounted) Navigator.of(context).pop();
-    } catch (e) {
+    } else {
+      // Persist the branch if at least one build was queued successfully.
+      if (succeeded > 0) await widget.onBuildQueued?.call(branch);
       if (mounted) {
         setState(() {
           _isQueuing = false;
-          _errorMessage = e.toString();
+          _errorMessage = widget.definitionIds.length == 1
+              ? failures.first
+              : '$succeeded queued, ${failures.length} failed: ${failures.first}';
         });
       }
     }
@@ -113,7 +129,9 @@ class _QueueBuildDialogState extends State<QueueBuildDialog> {
         side: BorderSide(color: AppColors.border),
       ),
       title: Text(
-        'Start Build',
+        widget.definitionIds.length == 1
+            ? 'Start Build'
+            : 'Start ${widget.definitionIds.length} Builds',
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -192,16 +210,27 @@ class _QueueBuildDialogState extends State<QueueBuildDialog> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: _isQueuing
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.base,
-                    ),
-                  )
+                ? (widget.definitionIds.length == 1
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.base,
+                        ),
+                      )
+                    : Text(
+                        'Queuing $_queuedCount/${widget.definitionIds.length}…',
+                        style: TextStyle(
+                          color: AppColors.base,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ))
                 : Text(
-                    'Start Build',
+                    widget.definitionIds.length == 1
+                        ? 'Start Build'
+                        : 'Start ${widget.definitionIds.length} Builds',
                     style: TextStyle(
                       color: AppColors.base,
                       fontSize: 13,

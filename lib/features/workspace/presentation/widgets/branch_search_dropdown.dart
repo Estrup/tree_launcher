@@ -176,6 +176,9 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
           ),
         ),
         onChanged: (value) {
+          // Commit the typed value to the parent so it's used even when the
+          // user doesn't tap a suggestion row.
+          widget.onSelected(value);
           setState(() {
             _filtered = _filterBranches(value);
           });

@@ -19,6 +19,7 @@ class BuildsTab extends StatefulWidget {
 
 class _BuildsTabState extends State<BuildsTab> {
   String? _lastLoadedRepoPath;
+  final Set<int> _selectedPipelineIds = {};
 
   @override
   void didChangeDependencies() {
@@ -42,6 +43,23 @@ class _BuildsTabState extends State<BuildsTab> {
         }
       });
     }
+  }
+
+  bool _allSelected(AzureDevopsConfig config) {
+    final pipelines = config.selectedPipelines;
+    return pipelines.isNotEmpty &&
+        pipelines.every((p) => _selectedPipelineIds.contains(p.id));
+  }
+
+  void _toggleSelectAll(AzureDevopsConfig config) {
+    setState(() {
+      if (_allSelected(config)) {
+        _selectedPipelineIds.clear();
+      } else {
+        _selectedPipelineIds
+            .addAll(config.selectedPipelines.map((p) => p.id));
+      }
+    });
   }
 
   @override
@@ -97,6 +115,12 @@ class _BuildsTabState extends State<BuildsTab> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
             children: [
+              _SelectCheckbox(
+                selected: _allSelected(config),
+                tooltip: _allSelected(config) ? 'Deselect all' : 'Select all',
+                onTap: () => _toggleSelectAll(config),
+              ),
+              const SizedBox(width: 12),
               Text(
                 'Build Pipelines',
                 style: TextStyle(
@@ -107,6 +131,25 @@ class _BuildsTabState extends State<BuildsTab> {
                 ),
               ),
               const Spacer(),
+              if (_selectedPipelineIds.isNotEmpty) ...[
+                TextButton(
+                  onPressed: () => setState(_selectedPipelineIds.clear),
+                  child: Text(
+                    'Clear',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                _StartBuildsButton(
+                  count: _selectedPipelineIds.length,
+                  onTap: () => _showQueueDialog(
+                    config,
+                    _selectedPipelineIds.toList(),
+                    onQueued: () => setState(_selectedPipelineIds.clear),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
               if (builds.isLoading)
                 SizedBox(
                   width: 16,
@@ -164,7 +207,13 @@ class _BuildsTabState extends State<BuildsTab> {
               return _BuildPipelineRow(
                 pipelineName: pipeline.name,
                 buildResult: build,
-                onRun: () => _showQueueDialog(config, pipeline.id),
+                selected: _selectedPipelineIds.contains(pipeline.id),
+                onToggleSelect: () => setState(() {
+                  if (!_selectedPipelineIds.add(pipeline.id)) {
+                    _selectedPipelineIds.remove(pipeline.id);
+                  }
+                }),
+                onRun: () => _showQueueDialog(config, [pipeline.id]),
                 onOpenInBrowser: build?.webUrl != null
                     ? () => Process.run('open', [build!.webUrl!])
                     : null,
@@ -176,7 +225,8 @@ class _BuildsTabState extends State<BuildsTab> {
     );
   }
 
-  void _showQueueDialog(AzureDevopsConfig config, int definitionId) {
+  void _showQueueDialog(AzureDevopsConfig config, List<int> definitionIds,
+      {VoidCallback? onQueued}) {
     final workspace = context.read<WorkspaceController>();
     final repo = workspace.selectedRepo;
     final buildsController = context.read<BuildsController>();
@@ -189,12 +239,13 @@ class _BuildsTabState extends State<BuildsTab> {
         ],
         child: QueueBuildDialog(
             config: config,
-            definitionId: definitionId,
+            definitionIds: definitionIds,
             lastBranch: repo?.lastAzureDevopsBranch,
             onBuildQueued: (branch) async {
               if (repo != null) {
                 await workspace.updateLastAzureDevopsBranch(repo, branch);
               }
+              onQueued?.call();
             }),
       ),
     );
@@ -228,9 +279,80 @@ class _HeaderAction extends StatelessWidget {
   }
 }
 
+class _SelectCheckbox extends StatelessWidget {
+  final bool selected;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _SelectCheckbox({
+    required this.selected,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(4),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Icon(
+            selected
+                ? Icons.check_box_rounded
+                : Icons.check_box_outline_blank_rounded,
+            size: 18,
+            color: selected ? AppColors.accent : AppColors.textMuted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StartBuildsButton extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _StartBuildsButton({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: AppColors.accent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.play_arrow_rounded, size: 16, color: AppColors.base),
+            const SizedBox(width: 4),
+            Text(
+              'Start $count build${count == 1 ? '' : 's'}',
+              style: TextStyle(
+                color: AppColors.base,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _BuildPipelineRow extends StatelessWidget {
   final String pipelineName;
   final BuildResult? buildResult;
+  final bool selected;
+  final VoidCallback? onToggleSelect;
   final VoidCallback onRun;
   final VoidCallback? onOpenInBrowser;
 
@@ -238,6 +360,8 @@ class _BuildPipelineRow extends StatelessWidget {
     required this.pipelineName,
     required this.buildResult,
     required this.onRun,
+    this.selected = false,
+    this.onToggleSelect,
     this.onOpenInBrowser,
   });
 
@@ -247,14 +371,41 @@ class _BuildPipelineRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface1,
+        color: selected ? AppColors.accentMuted : AppColors.surface1,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(
+          color: selected ? AppColors.accent : AppColors.borderSubtle,
+        ),
       ),
       child: Row(
         children: [
+          // Selection checkbox
+          if (onToggleSelect != null) ...[
+            _SelectCheckbox(
+              selected: selected,
+              tooltip: selected ? 'Deselect' : 'Select',
+              onTap: onToggleSelect!,
+            ),
+            const SizedBox(width: 12),
+          ],
           // Status indicator
           _StatusDot(buildResult: buildResult),
+          const SizedBox(width: 8),
+          // Status label
+          SizedBox(
+            width: 64,
+            child: buildResult != null
+                ? Text(
+                    buildResult!.statusLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _statusColorFor(buildResult),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  )
+                : const SizedBox.shrink(),
+          ),
           const SizedBox(width: 12),
           // Pipeline name
           Expanded(
@@ -419,7 +570,7 @@ class _StatusDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor;
+    final color = _statusColorFor(buildResult);
     final isRunning =
         buildResult != null && buildResult!.status == BuildStatus.inProgress;
 
@@ -437,28 +588,29 @@ class _StatusDot extends StatelessWidget {
     );
   }
 
-  Color get _statusColor {
-    if (buildResult == null) return AppColors.textMuted;
+}
 
-    if (buildResult!.status == BuildStatus.completed) {
-      switch (buildResult!.result) {
-        case BuildResultType.succeeded:
-          return AppColors.success;
-        case BuildResultType.partiallySucceeded:
-          return Colors.orange;
-        case BuildResultType.failed:
-          return AppColors.error;
-        case BuildResultType.canceled:
-          return AppColors.textMuted;
-        case BuildResultType.none:
-          return AppColors.textMuted;
-      }
+Color _statusColorFor(BuildResult? buildResult) {
+  if (buildResult == null) return AppColors.textMuted;
+
+  if (buildResult.status == BuildStatus.completed) {
+    switch (buildResult.result) {
+      case BuildResultType.succeeded:
+        return AppColors.success;
+      case BuildResultType.partiallySucceeded:
+        return Colors.orange;
+      case BuildResultType.failed:
+        return AppColors.error;
+      case BuildResultType.canceled:
+        return AppColors.textMuted;
+      case BuildResultType.none:
+        return AppColors.textMuted;
     }
-
-    if (buildResult!.status == BuildStatus.inProgress) {
-      return AppColors.accent;
-    }
-
-    return AppColors.textMuted;
   }
+
+  if (buildResult.status == BuildStatus.inProgress) {
+    return AppColors.accent;
+  }
+
+  return AppColors.textMuted;
 }
