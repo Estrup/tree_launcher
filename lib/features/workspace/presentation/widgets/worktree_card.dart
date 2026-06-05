@@ -86,7 +86,6 @@ class _WorktreeCardState extends State<WorktreeCard> {
                           ),
                         ),
                       ),
-                    if (!wt.isMain) const SizedBox(width: 24),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -209,21 +208,24 @@ class _WorktreeCardState extends State<WorktreeCard> {
 
                 Spacer(),
 
-                // Action buttons
+                // Action buttons (compact, mirroring the table view)
                 Row(
                   children: [
                     TerminalButton(
                       worktreePath: wt.path,
                       worktreeName: wt.name,
                       launcherService: _launcherService,
+                      compact: true,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     VscodeButton(
                       worktreePath: wt.path,
                       launcherService: _launcherService,
+                      compact: true,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     ActionButton(
+                      compact: true,
                       icon: Icons.auto_awesome_rounded,
                       color: AppColors.copilot,
                       bgColor: AppColors.copilotBg,
@@ -243,35 +245,36 @@ class _WorktreeCardState extends State<WorktreeCard> {
                         }
                       },
                     ),
-                    SizedBox(width: 8),
-                    ClaudeButton(wt: wt, launcherService: _launcherService),
-
+                    const SizedBox(width: 6),
+                    ClaudeButton(
+                      wt: wt,
+                      launcherService: _launcherService,
+                      compact: true,
+                    ),
                     if (customLinks.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      CustomLinksButton(links: customLinks, slot: wt.slot),
+                      const SizedBox(width: 6),
+                      CustomLinksButton(
+                        links: customLinks,
+                        slot: wt.slot,
+                        compact: true,
+                      ),
                     ],
                     if (customCommands.isNotEmpty) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       CustomCommandsButton(
                         worktreePath: wt.path,
                         worktreeName: wt.name,
                         commands: customCommands,
                         slot: wt.slot,
+                        compact: true,
                       ),
                     ],
+                    const Spacer(),
+                    WorktreeOptionsButton(worktree: wt),
                   ],
                 ),
               ],
             ),
-            // Delete icon (upper-right, hover-only, non-primary only)
-            if (!wt.isMain && _hovered)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: DeleteIconButton(
-                  onPressed: () => confirmDeleteWorktree(context, wt),
-                ),
-              ),
           ],
         ),
       ),
