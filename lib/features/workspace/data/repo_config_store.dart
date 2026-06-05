@@ -58,4 +58,26 @@ class RepoConfigStore {
     config['repos'] = repos.map((repo) => repo.toJson()).toList();
     await _writeConfig(config);
   }
+
+  Future<String?> loadLastSelectedRepoPath() async {
+    if (_configService != null) {
+      return _configService.loadLastSelectedRepoPath();
+    }
+    final config = await _readConfig();
+    return config['lastSelectedRepoPath'] as String?;
+  }
+
+  Future<void> saveLastSelectedRepoPath(String? path) async {
+    if (_configService != null) {
+      await _configService.saveLastSelectedRepoPath(path);
+      return;
+    }
+    final config = await _readConfig();
+    if (path == null) {
+      config.remove('lastSelectedRepoPath');
+    } else {
+      config['lastSelectedRepoPath'] = path;
+    }
+    await _writeConfig(config);
+  }
 }

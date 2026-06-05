@@ -59,4 +59,19 @@ class ConfigService {
     config['settings'] = settings.toJson();
     await _writeConfig(config);
   }
+
+  Future<String?> loadLastSelectedRepoPath() async {
+    final config = await _readConfig();
+    return config['lastSelectedRepoPath'] as String?;
+  }
+
+  Future<void> saveLastSelectedRepoPath(String? path) async {
+    final config = await _readConfig();
+    if (path == null) {
+      config.remove('lastSelectedRepoPath');
+    } else {
+      config['lastSelectedRepoPath'] = path;
+    }
+    await _writeConfig(config);
+  }
 }

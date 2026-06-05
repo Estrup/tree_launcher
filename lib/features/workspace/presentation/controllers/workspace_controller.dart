@@ -43,6 +43,7 @@ class WorkspaceController extends ChangeNotifier {
     required GitService gitService,
     required RepoConfigStore repoConfigStore,
   }) {
+    _store = repoConfigStore;
     final registry = RepoRegistryController(
       store: repoConfigStore,
       gitService: gitService,
@@ -55,6 +56,7 @@ class WorkspaceController extends ChangeNotifier {
     );
   }
 
+  late final RepoConfigStore _store;
   late final RepoRegistryController registry;
   late final RepoSelectionController selection;
   late final WorktreeController worktreesController;
@@ -95,9 +97,14 @@ class WorkspaceController extends ChangeNotifier {
   Future<void> loadRepos() async {
     await registry.loadRepos();
     if (repos.isNotEmpty && selectedRepo == null) {
-      selection.selectRepo(repos.first);
-      _syncSlotAssignments(repos.first);
-      await worktreesController.refreshForRepo(repos.first.path);
+      final savedPath = await _store.loadLastSelectedRepoPath();
+      final target = repos.firstWhere(
+        (r) => r.path == savedPath,
+        orElse: () => repos.first,
+      );
+      selection.selectRepo(target);
+      _syncSlotAssignments(target);
+      await worktreesController.refreshForRepo(target.path);
     }
     notifyListeners();
   }
@@ -106,6 +113,7 @@ class WorkspaceController extends ChangeNotifier {
     final repo = await registry.addRepo(path);
     if (selectedRepo == null) {
       selection.selectRepo(repo);
+      await _persistSelection(repo);
       await worktreesController.refreshForRepo(repo.path);
     }
     notifyListeners();
@@ -116,6 +124,7 @@ class WorkspaceController extends ChangeNotifier {
     if (selectedRepo == repo) {
       final fallback = repos.isNotEmpty ? repos.first : null;
       selection.selectRepo(fallback);
+      await _persistSelection(fallback);
       await worktreesController.refreshForRepo(fallback?.path);
     }
     notifyListeners();
@@ -124,9 +133,13 @@ class WorkspaceController extends ChangeNotifier {
   Future<void> selectRepo(RepoConfig repo) async {
     if (selectedRepo == repo) return;
     selection.selectRepo(repo);
+    await _persistSelection(repo);
     _syncSlotAssignments(repo);
     await worktreesController.refreshForRepo(repo.path);
   }
+
+  Future<void> _persistSelection(RepoConfig? repo) =>
+      _store.saveLastSelectedRepoPath(repo?.path);
 
   Future<RepoConfig?> renameRepo(RepoConfig repo, String newName) async {
     final updated = await preferences.renameRepo(repo, newName);
