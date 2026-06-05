@@ -6,42 +6,13 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
+import 'package:tree_launcher/features/github_prs/presentation/pr_worktree_actions.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
 
-class GithubPrsTab extends StatefulWidget {
+class GithubPrsTab extends StatelessWidget {
   const GithubPrsTab({super.key});
-
-  @override
-  State<GithubPrsTab> createState() => _GithubPrsTabState();
-}
-
-class _GithubPrsTabState extends State<GithubPrsTab> {
-  String? _lastLoadedRepoPath;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadIfNeeded();
-  }
-
-  void _loadIfNeeded() {
-    final workspace = context.read<WorkspaceController>();
-    final repo = workspace.selectedRepo;
-    if (repo == null) return;
-
-    final config = repo.githubConfig;
-    if (config == null || !config.isConfigured) return;
-
-    if (_lastLoadedRepoPath != repo.path) {
-      _lastLoadedRepoPath = repo.path;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          context.read<GithubPrsController>().loadPrs(config);
-        }
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +33,7 @@ class _GithubPrsTabState extends State<GithubPrsTab> {
               'Configure GitHub in repo settings',
               style: TextStyle(
                 color: AppColors.textMuted,
-                fontSize: 14,
+                fontSize: 17,
               ),
             ),
           ],
@@ -80,7 +51,7 @@ class _GithubPrsTabState extends State<GithubPrsTab> {
               Text(
                 'Pull Requests',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 17,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                   letterSpacing: -0.3,
@@ -98,7 +69,7 @@ class _GithubPrsTabState extends State<GithubPrsTab> {
                   child: Text(
                     '${prs.pullRequests.length}',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.accent,
                     ),
@@ -112,7 +83,7 @@ class _GithubPrsTabState extends State<GithubPrsTab> {
                   child: Text(
                     _formatLastRefreshed(prs.lastRefreshed!),
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 13,
                       color: AppColors.textMuted,
                     ),
                   ),
@@ -127,10 +98,15 @@ class _GithubPrsTabState extends State<GithubPrsTab> {
                   ),
                 )
               else
-                _HeaderAction(
-                  icon: Icons.refresh,
-                  tooltip: 'Refresh pull requests',
-                  onTap: () => prs.refresh(),
+                Tooltip(
+                  message: 'Refresh pull requests',
+                  child: ActionButton(
+                    compact: true,
+                    icon: Icons.refresh,
+                    color: AppColors.accent,
+                    bgColor: AppColors.accentMuted,
+                    onPressed: () => prs.refresh(),
+                  ),
                 ),
             ],
           ),
@@ -154,7 +130,7 @@ class _GithubPrsTabState extends State<GithubPrsTab> {
                   Expanded(
                     child: Text(
                       prs.error!,
-                      style: TextStyle(color: AppColors.error, fontSize: 12),
+                      style: TextStyle(color: AppColors.error, fontSize: 14),
                     ),
                   ),
                 ],
@@ -174,7 +150,7 @@ class _GithubPrsTabState extends State<GithubPrsTab> {
                     'No open pull requests',
                     style: TextStyle(
                       color: AppColors.textMuted,
-                      fontSize: 14,
+                      fontSize: 17,
                     ),
                   ),
                 ],
@@ -194,6 +170,10 @@ class _GithubPrsTabState extends State<GithubPrsTab> {
                       Process.run('open', [pr.htmlUrl]),
                   onCreateWorktree: () =>
                       _showAddWorktreeDialog(context, pr),
+                  onQuickCreateWorktree: () => createWorktreeForPr(
+                    context.read<WorkspaceController>(),
+                    pr,
+                  ),
                 );
               },
             ),
@@ -217,42 +197,17 @@ class _GithubPrsTabState extends State<GithubPrsTab> {
   }
 }
 
-class _HeaderAction extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-
-  const _HeaderAction({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Icon(icon, size: 18, color: AppColors.textSecondary),
-        ),
-      ),
-    );
-  }
-}
-
 class _PullRequestRow extends StatelessWidget {
   final GithubPullRequest pr;
   final VoidCallback onOpenInBrowser;
   final VoidCallback onCreateWorktree;
+  final Future<void> Function() onQuickCreateWorktree;
 
   const _PullRequestRow({
     required this.pr,
     required this.onOpenInBrowser,
     required this.onCreateWorktree,
+    required this.onQuickCreateWorktree,
   });
 
   @override
@@ -280,7 +235,7 @@ class _PullRequestRow extends StatelessWidget {
               Text(
                 '#${pr.number}',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   color: AppColors.textMuted,
                   fontFamily: 'monospace',
                 ),
@@ -294,7 +249,7 @@ class _PullRequestRow extends StatelessWidget {
                     child: Text(
                       pr.title,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                         decoration: TextDecoration.underline,
@@ -306,16 +261,19 @@ class _PullRequestRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              _QuickCreateButton(
+                headBranch: pr.headBranch,
+                onPressed: onQuickCreateWorktree,
+              ),
+              const SizedBox(width: 6),
               Tooltip(
-                message: 'Create worktree from ${pr.headBranch}',
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(4),
-                  onTap: onCreateWorktree,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(Icons.add_circle_outline,
-                        size: 16, color: AppColors.accent),
-                  ),
+                message: 'Create worktree from ${pr.headBranch}…',
+                child: ActionButton(
+                  compact: true,
+                  icon: Icons.add_circle_outline,
+                  color: AppColors.accent,
+                  bgColor: AppColors.accentMuted,
+                  onPressed: onCreateWorktree,
                 ),
               ),
             ],
@@ -335,7 +293,7 @@ class _PullRequestRow extends StatelessWidget {
                   child: Text(
                     pr.headBranch,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 13,
                       color: AppColors.textMuted,
                       fontFamily: 'monospace',
                     ),
@@ -350,7 +308,7 @@ class _PullRequestRow extends StatelessWidget {
               Text(
                 _formatAge(pr.createdAt),
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 13,
                   color: AppColors.textSecondary,
                 ),
               ),
@@ -361,10 +319,26 @@ class _PullRequestRow extends StatelessWidget {
               Text(
                 pr.author,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 13,
                   color: AppColors.textSecondary,
                 ),
               ),
+              if (pr.requestedReviewers.isNotEmpty) ...[
+                const SizedBox(width: 16),
+                Icon(Icons.rate_review_outlined,
+                    size: 12, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    pr.requestedReviewers.join(', '),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
               if (pr.assignee != null) ...[
                 const SizedBox(width: 16),
                 Icon(Icons.assignment_ind_outlined,
@@ -373,7 +347,7 @@ class _PullRequestRow extends StatelessWidget {
                 Text(
                   pr.assignee!,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -386,7 +360,7 @@ class _PullRequestRow extends StatelessWidget {
                 Text(
                   pr.milestone!,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -403,40 +377,49 @@ class _PullRequestRow extends StatelessWidget {
                   child: Text(
                     'Draft',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 12,
                       color: AppColors.textMuted,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
               ],
-              if (pr.labels.isNotEmpty) ...[
-                const SizedBox(width: 12),
-                ...pr.labels.take(3).map(
-                      (l) => Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentMuted,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            l,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-              ],
             ],
           ),
+          // Line 3: labels (all, with GitHub colors)
+          if (pr.labels.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(left: 28),
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: pr.labels.map(_buildLabelChip).toList(),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildLabelChip(GithubLabel label) {
+    final base = _hexToColor(label.color);
+    final foreground = _readableForeground(base);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: base.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: base.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        label.name,
+        style: TextStyle(
+          fontSize: 12,
+          color: foreground,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -448,4 +431,83 @@ class _PullRequestRow extends StatelessWidget {
     if (diff.inHours > 0) return '${diff.inHours}h';
     return '${diff.inMinutes}m';
   }
+}
+
+/// Quick-create (instant) worktree button that shows a spinner in place of the
+/// button while creation is in progress. This gives the user visual feedback
+/// and prevents firing the action multiple times with repeated clicks.
+class _QuickCreateButton extends StatefulWidget {
+  final String headBranch;
+  final Future<void> Function() onPressed;
+
+  const _QuickCreateButton({
+    required this.headBranch,
+    required this.onPressed,
+  });
+
+  @override
+  State<_QuickCreateButton> createState() => _QuickCreateButtonState();
+}
+
+class _QuickCreateButtonState extends State<_QuickCreateButton> {
+  bool _busy = false;
+
+  Future<void> _handlePressed() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await widget.onPressed();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Match the compact ActionButton footprint (28x28) so the row doesn't
+    // shift when swapping between the button and the spinner.
+    if (_busy) {
+      return SizedBox(
+        width: 28,
+        height: 28,
+        child: Center(
+          child: SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.accent,
+            ),
+          ),
+        ),
+      );
+    }
+    return Tooltip(
+      message: 'Quick-create worktree from ${widget.headBranch}',
+      child: ActionButton(
+        compact: true,
+        icon: Icons.bolt_rounded,
+        color: AppColors.accent,
+        bgColor: AppColors.accentMuted,
+        onPressed: _handlePressed,
+      ),
+    );
+  }
+}
+
+/// Parses a GitHub 6-hex label color (e.g. "d73a4a") into a [Color],
+/// falling back to the accent color when missing or malformed.
+Color _hexToColor(String hex) {
+  final cleaned = hex.replaceAll('#', '').trim();
+  if (cleaned.length != 6) return AppColors.accent;
+  final value = int.tryParse(cleaned, radix: 16);
+  if (value == null) return AppColors.accent;
+  return Color(0xFF000000 | value);
+}
+
+/// Brightens a label color so its text stays legible on the dark surface.
+Color _readableForeground(Color color) {
+  final hsl = HSLColor.fromColor(color);
+  if (hsl.lightness >= 0.65) return color;
+  return hsl.withLightness(0.72).toColor();
 }

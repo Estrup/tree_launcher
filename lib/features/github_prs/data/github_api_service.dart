@@ -47,4 +47,32 @@ class GithubApiService {
       client.close(force: true);
     }
   }
+
+  /// Returns the login of the user the token authenticates as, or null if the
+  /// call fails. Never throws so it can't block PR loading.
+  Future<String?> fetchAuthenticatedUserLogin(GithubConfig config) async {
+    final client = HttpClient();
+    try {
+      final uri = Uri.https('api.github.com', '/user');
+      final request = await client.getUrl(uri);
+      request.headers
+          .set(HttpHeaders.authorizationHeader, 'Bearer ${config.token}');
+      request.headers
+          .set(HttpHeaders.acceptHeader, 'application/vnd.github+json');
+      request.headers.set('X-GitHub-Api-Version', '2022-11-28');
+      request.headers.set(HttpHeaders.userAgentHeader, 'TreeLauncher');
+
+      final response = await request.close();
+      final body = await utf8.decodeStream(response);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      return json['login'] as String?;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
 }

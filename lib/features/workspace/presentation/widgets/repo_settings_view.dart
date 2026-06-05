@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
@@ -2400,6 +2401,8 @@ class _GithubSectionState extends State<_GithubSection> {
   late TextEditingController _ownerController;
   late TextEditingController _repoController;
   late TextEditingController _tokenController;
+  late TextEditingController _intervalController;
+  bool _autoCreateWorktree = true;
   String? _lastRepoPath;
   Timer? _debounce;
 
@@ -2412,6 +2415,10 @@ class _GithubSectionState extends State<_GithubSection> {
     _ownerController = TextEditingController(text: config?.owner ?? '');
     _repoController = TextEditingController(text: config?.repo ?? '');
     _tokenController = TextEditingController(text: config?.token ?? '');
+    _intervalController = TextEditingController(
+      text: (config?.prRefreshIntervalMinutes ?? 5).toString(),
+    );
+    _autoCreateWorktree = config?.autoCreateWorktreeOnReviewRequest ?? true;
   }
 
   @override
@@ -2424,6 +2431,9 @@ class _GithubSectionState extends State<_GithubSection> {
       _ownerController.text = config?.owner ?? '';
       _repoController.text = config?.repo ?? '';
       _tokenController.text = config?.token ?? '';
+      _intervalController.text =
+          (config?.prRefreshIntervalMinutes ?? 5).toString();
+      _autoCreateWorktree = config?.autoCreateWorktreeOnReviewRequest ?? true;
     }
   }
 
@@ -2433,6 +2443,7 @@ class _GithubSectionState extends State<_GithubSection> {
     _ownerController.dispose();
     _repoController.dispose();
     _tokenController.dispose();
+    _intervalController.dispose();
     super.dispose();
   }
 
@@ -2446,6 +2457,8 @@ class _GithubSectionState extends State<_GithubSection> {
       var owner = _ownerController.text.trim();
       final repoName = _repoController.text.trim();
       final token = _tokenController.text.trim();
+      final interval =
+          (int.tryParse(_intervalController.text.trim()) ?? 5).clamp(1, 1440);
 
       // Auto-parse if user pastes a full GitHub URL into the owner field
       if (owner.contains('github.com') && repoName.isEmpty) {
@@ -2454,7 +2467,13 @@ class _GithubSectionState extends State<_GithubSection> {
           owner = parsed.$1;
           _ownerController.text = parsed.$1;
           _repoController.text = parsed.$2;
-          final config = GithubConfig(owner: parsed.$1, repo: parsed.$2, token: token);
+          final config = GithubConfig(
+            owner: parsed.$1,
+            repo: parsed.$2,
+            token: token,
+            prRefreshIntervalMinutes: interval,
+            autoCreateWorktreeOnReviewRequest: _autoCreateWorktree,
+          );
           provider.updateGithubConfig(repo, config);
           return;
         }
@@ -2462,7 +2481,13 @@ class _GithubSectionState extends State<_GithubSection> {
 
       final config = (owner.isEmpty && repoName.isEmpty && token.isEmpty)
           ? null
-          : GithubConfig(owner: owner, repo: repoName, token: token);
+          : GithubConfig(
+              owner: owner,
+              repo: repoName,
+              token: token,
+              prRefreshIntervalMinutes: interval,
+              autoCreateWorktreeOnReviewRequest: _autoCreateWorktree,
+            );
       provider.updateGithubConfig(repo, config);
     });
   }
@@ -2607,6 +2632,92 @@ class _GithubSectionState extends State<_GithubSection> {
               color: AppColors.textMuted,
               height: 1.5,
             ),
+          ),
+          const SizedBox(height: 24),
+
+          // Auto-refresh interval
+          Text(
+            'AUTO-REFRESH INTERVAL (MINUTES)',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: 120,
+            child: TextField(
+              controller: _intervalController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+                fontFamily: 'monospace',
+              ),
+              decoration: InputDecoration(
+                hintText: '5',
+                hintStyle: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textMuted,
+                  fontFamily: 'monospace',
+                ),
+              ),
+              onChanged: (_) => _saveConfig(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'How often the pull request list refreshes (minimum 1 minute). '
+            'Refreshing runs in the background even when this tab is not open.',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textMuted,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Auto-create worktree on review request
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AUTO-CREATE WORKTREE WHEN ASSIGNED AS REVIEWER',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'When you are requested to review a PR, a worktree for its '
+                      'branch is created automatically.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Switch(
+                value: _autoCreateWorktree,
+                onChanged: (value) {
+                  setState(() => _autoCreateWorktree = value);
+                  _saveConfig();
+                },
+              ),
+            ],
           ),
         ],
       ),

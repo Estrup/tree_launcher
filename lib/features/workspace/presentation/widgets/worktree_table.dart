@@ -321,18 +321,10 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                     },
                   ),
                   const SizedBox(width: 6),
-                  Tooltip(
-                    message: 'Claude',
-                    child: ActionButton(
-                      compact: true,
-                      svgAsset: 'assets/icons/claude.svg',
-                      color: AppColors.claude,
-                      bgColor: AppColors.claudeBg,
-                      onPressed: () => _launcherService.openClaude(
-                        wt.path,
-                        prompt: claudeContextPrompt(wt),
-                      ),
-                    ),
+                  ClaudeButton(
+                    wt: wt,
+                    launcherService: _launcherService,
+                    compact: true,
                   ),
                   if (customLinks.isNotEmpty) ...[
                     const SizedBox(width: 6),

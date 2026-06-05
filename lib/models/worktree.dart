@@ -12,6 +12,10 @@ class Worktree {
   /// Base branch this worktree was created from (e.g. develop), or null.
   final String? baseBranch;
 
+  /// GitHub login of the PR author this worktree was created from, or null.
+  /// Persisted so worktrees can later be grouped by PR creator.
+  final String? prAuthor;
+
   Worktree({
     required this.path,
     required this.branch,
@@ -21,6 +25,7 @@ class Worktree {
     this.slot = 'alpha',
     this.jiraIssue,
     this.baseBranch,
+    this.prAuthor,
   });
 
   Worktree copyWith({
@@ -32,6 +37,7 @@ class Worktree {
     String? slot,
     String? jiraIssue,
     String? baseBranch,
+    String? prAuthor,
   }) {
     return Worktree(
       path: path ?? this.path,
@@ -42,6 +48,7 @@ class Worktree {
       slot: slot ?? this.slot,
       jiraIssue: jiraIssue ?? this.jiraIssue,
       baseBranch: baseBranch ?? this.baseBranch,
+      prAuthor: prAuthor ?? this.prAuthor,
     );
   }
 }

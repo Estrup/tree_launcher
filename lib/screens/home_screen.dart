@@ -10,6 +10,7 @@ import 'package:tree_launcher/features/builds/presentation/widgets/builds_tab.da
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_attention_snackbar.dart';
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_terminal_view.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_prs_tab.dart';
+import 'package:tree_launcher/features/github_prs/presentation/widgets/pr_review_toast.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/settings_dialog.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/running_commands_bar.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_panel.dart';
@@ -390,6 +391,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   // Copilot attention notification
                   const CopilotAttentionSnackbar(),
+                  // New PR review-request notification
+                  const PrReviewToast(),
                 ],
               );
             },

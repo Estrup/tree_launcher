@@ -236,6 +236,7 @@ class WorkspaceController extends ChangeNotifier {
     String? baseBranch,
     String? newBranch,
     String? jiraIssue,
+    String? prAuthor,
   }) async {
     final worktreePath = await worktreesController.addWorktree(
       selectedRepo?.path,
@@ -276,6 +277,17 @@ class WorkspaceController extends ChangeNotifier {
         _replaceSelection(current, withBase);
         worktreesController.setBaseBranches(withBase?.baseBranches ?? branches);
       }
+
+      // Attach the PR author to the new worktree, if provided, so worktrees
+      // can later be grouped by PR creator.
+      if (prAuthor != null && prAuthor.isNotEmpty) {
+        final current = selectedRepo!;
+        final authors = Map<String, String>.from(current.prAuthors);
+        authors[worktreePath] = prAuthor;
+        final withAuthor = await preferences.updatePrAuthors(current, authors);
+        _replaceSelection(current, withAuthor);
+        worktreesController.setPrAuthors(withAuthor?.prAuthors ?? authors);
+      }
     }
 
     return worktreePath;
@@ -309,13 +321,22 @@ class WorkspaceController extends ChangeNotifier {
         newRepo?.slotAssignments ?? updated,
       );
 
-      final current = newRepo ?? selectedRepo!;
+      var current = newRepo ?? selectedRepo!;
       if (current.jiraIssues.containsKey(worktree.path)) {
         final issues = Map<String, String>.from(current.jiraIssues);
         issues.remove(worktree.path);
         final withJira = await preferences.updateJiraIssues(current, issues);
         _replaceSelection(current, withJira);
-        worktreesController.setJiraIssues(withJira?.jiraIssues ?? issues);
+        current = withJira ?? current;
+        worktreesController.setJiraIssues(current.jiraIssues);
+      }
+
+      if (current.prAuthors.containsKey(worktree.path)) {
+        final authors = Map<String, String>.from(current.prAuthors);
+        authors.remove(worktree.path);
+        final withAuthor = await preferences.updatePrAuthors(current, authors);
+        _replaceSelection(current, withAuthor);
+        worktreesController.setPrAuthors(withAuthor?.prAuthors ?? authors);
       }
     }
   }
@@ -348,6 +369,9 @@ class WorkspaceController extends ChangeNotifier {
     worktreesController.setBaseBranches(
       repo?.baseBranches ?? {},
     );
+    worktreesController.setPrAuthors(
+      repo?.prAuthors ?? {},
+    );
   }
 
   /// Removes slot assignments for worktree paths that no longer exist.
@@ -371,7 +395,7 @@ class WorkspaceController extends ChangeNotifier {
     );
 
     // Prune stale JIRA issue assignments too.
-    final current = newRepo ?? selectedRepo!;
+    var current = newRepo ?? selectedRepo!;
     final staleJiraKeys = current.jiraIssues.keys
         .where((path) => !activePaths.contains(path))
         .toList();
@@ -382,7 +406,22 @@ class WorkspaceController extends ChangeNotifier {
       }
       final withJira = await preferences.updateJiraIssues(current, issues);
       _replaceSelection(current, withJira);
-      worktreesController.setJiraIssues(withJira?.jiraIssues ?? issues);
+      current = withJira ?? current;
+      worktreesController.setJiraIssues(current.jiraIssues);
+    }
+
+    // Prune stale PR author assignments too.
+    final stalePrAuthorKeys = current.prAuthors.keys
+        .where((path) => !activePaths.contains(path))
+        .toList();
+    if (stalePrAuthorKeys.isNotEmpty) {
+      final authors = Map<String, String>.from(current.prAuthors);
+      for (final key in stalePrAuthorKeys) {
+        authors.remove(key);
+      }
+      final withAuthor = await preferences.updatePrAuthors(current, authors);
+      _replaceSelection(current, withAuthor);
+      worktreesController.setPrAuthors(withAuthor?.prAuthors ?? authors);
     }
   }
 

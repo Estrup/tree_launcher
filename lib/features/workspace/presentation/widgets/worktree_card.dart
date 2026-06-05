@@ -244,18 +244,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                       },
                     ),
                     SizedBox(width: 8),
-                    Tooltip(
-                      message: 'Claude',
-                      child: ActionButton(
-                        svgAsset: 'assets/icons/claude.svg',
-                        color: AppColors.claude,
-                        bgColor: AppColors.claudeBg,
-                        onPressed: () => _launcherService.openClaude(
-                          wt.path,
-                          prompt: claudeContextPrompt(wt),
-                        ),
-                      ),
-                    ),
+                    ClaudeButton(wt: wt, launcherService: _launcherService),
 
                     if (customLinks.isNotEmpty) ...[
                       const SizedBox(width: 8),

@@ -11,6 +11,7 @@ import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/models/copilot_prompt.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
@@ -33,6 +34,24 @@ String? claudeContextPrompt(Worktree wt) {
     return 'Context: The base branch is $base.';
   }
   return null;
+}
+
+/// Fills a saved [CopilotPrompt]'s placeholders from an existing worktree's
+/// recorded fields. Mirrors the substitution used by the create-worktree dialog.
+/// Returns null when the resolved text is empty.
+String? resolveWorktreePrompt(
+  CopilotPrompt prompt,
+  Worktree wt, {
+  String? repoName,
+}) {
+  var p = prompt.prompt;
+  p = p.replaceAll('{issue}', wt.jiraIssue ?? '');
+  p = p.replaceAll('{base_branch}', wt.baseBranch ?? '');
+  p = p.replaceAll('{worktree}', wt.name);
+  p = p.replaceAll('{path}', wt.path);
+  p = p.replaceAll('{repo}', repoName ?? '');
+  p = p.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return p.isEmpty ? null : p;
 }
 
 /// Copies [value] to the clipboard and shows a brief confirmation snackbar.
@@ -463,6 +482,217 @@ class _VscodeButtonState extends State<VscodeButton> {
                         Icons.arrow_drop_down_rounded,
                         size: 18,
                         color: AppColors.vscode,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Claude button
+// ---------------------------------------------------------------------------
+
+class ClaudeButton extends StatefulWidget {
+  final Worktree wt;
+  final LauncherService launcherService;
+  final bool compact;
+
+  const ClaudeButton({
+    super.key,
+    required this.wt,
+    required this.launcherService,
+    this.compact = false,
+  });
+
+  @override
+  State<ClaudeButton> createState() => _ClaudeButtonState();
+}
+
+class _ClaudeButtonState extends State<ClaudeButton> {
+  bool _mainHovered = false;
+  bool _dropHovered = false;
+
+  /// Launches Claude with the auto-generated context prompt (today's behavior).
+  void _openWithContext() {
+    widget.launcherService.openClaude(
+      widget.wt.path,
+      prompt: claudeContextPrompt(widget.wt),
+    );
+  }
+
+  void _showDropdown(BuildContext context, List<CopilotPrompt> prompts) {
+    final repoName = context.read<RepoProvider>().selectedRepo?.name;
+    final claudeIcon = SvgPicture.asset(
+      'assets/icons/claude.svg',
+      width: 13,
+      height: 13,
+      colorFilter: ColorFilter.mode(AppColors.claude, BlendMode.srcIn),
+    );
+    _showMenuBelow<int>(
+      context,
+      minWidth: 220,
+      items: [
+        PopupMenuItem<int>(
+          value: -1,
+          height: 36,
+          child: Text(
+            'None',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ),
+        for (var i = 0; i < prompts.length; i++)
+          PopupMenuItem<int>(
+            value: i,
+            height: 36,
+            child: Row(
+              children: [
+                claudeIcon,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    prompts[i].name,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ).then((value) {
+      if (value == null) return;
+      if (value == -1) {
+        _openWithContext();
+        return;
+      }
+      widget.launcherService.openClaude(
+        widget.wt.path,
+        prompt: resolveWorktreePrompt(
+          prompts[value],
+          widget.wt,
+          repoName: repoName,
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = context.watch<RepoProvider>().selectedRepo;
+    final prompts = repo?.copilotPrompts ?? const <CopilotPrompt>[];
+    final hasPrompts = prompts.isNotEmpty;
+
+    if (widget.compact) {
+      final claudeIcon = SvgPicture.asset(
+        'assets/icons/claude.svg',
+        width: 14,
+        height: 14,
+        colorFilter: ColorFilter.mode(AppColors.claude, BlendMode.srcIn),
+      );
+      return _CompactSplitButton(
+        color: AppColors.claude,
+        bgColor: AppColors.claudeBg,
+        tooltip: 'Claude',
+        icon: claudeIcon,
+        onPrimary: _openWithContext,
+        onDropdown: hasPrompts ? () => _showDropdown(context, prompts) : null,
+      );
+    }
+
+    if (!hasPrompts) {
+      return Tooltip(
+        message: 'Claude',
+        child: ActionButton(
+          svgAsset: 'assets/icons/claude.svg',
+          color: AppColors.claude,
+          bgColor: AppColors.claudeBg,
+          onPressed: _openWithContext,
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: 60,
+      height: 36,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          color: AppColors.claudeBg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: (_mainHovered || _dropHovered)
+                ? AppColors.claude.withValues(alpha: 0.4)
+                : AppColors.claude.withValues(alpha: 0.15),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(7),
+          child: Row(
+            children: [
+              Expanded(
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _mainHovered = true),
+                  onExit: (_) => setState(() => _mainHovered = false),
+                  child: GestureDetector(
+                    onTap: _openWithContext,
+                    child: Tooltip(
+                      message: 'Claude',
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        color: _mainHovered
+                            ? AppColors.claude.withValues(alpha: 0.2)
+                            : Colors.transparent,
+                        child: Center(
+                          child: SvgPicture.asset(
+                            'assets/icons/claude.svg',
+                            width: 15,
+                            height: 15,
+                            colorFilter: ColorFilter.mode(
+                              AppColors.claude,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                width: 1,
+                color: AppColors.claude.withValues(alpha: 0.15),
+              ),
+              MouseRegion(
+                onEnter: (_) => setState(() => _dropHovered = true),
+                onExit: (_) => setState(() => _dropHovered = false),
+                child: GestureDetector(
+                  onTap: () => _showDropdown(context, prompts),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    width: 28,
+                    color: _dropHovered
+                        ? AppColors.claude.withValues(alpha: 0.2)
+                        : Colors.transparent,
+                    child: Center(
+                      child: Icon(
+                        Icons.arrow_drop_down_rounded,
+                        size: 18,
+                        color: AppColors.claude,
                       ),
                     ),
                   ),

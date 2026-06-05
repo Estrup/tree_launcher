@@ -24,6 +24,9 @@ class RepoConfig {
 
   /// Base branch per worktree path, recorded at creation (worktree path -> base branch).
   final Map<String, String> baseBranches;
+
+  /// PR author login per worktree path, recorded at creation (worktree path -> author login).
+  final Map<String, String> prAuthors;
   final AzureDevopsConfig? azureDevopsConfig;
   final String? lastAzureDevopsBranch;
   final GithubConfig? githubConfig;
@@ -41,6 +44,7 @@ class RepoConfig {
     this.slotAssignments = const {},
     this.jiraIssues = const {},
     this.baseBranches = const {},
+    this.prAuthors = const {},
     this.azureDevopsConfig,
     this.lastAzureDevopsBranch,
     this.githubConfig,
@@ -93,6 +97,10 @@ class RepoConfig {
           (json['baseBranches'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as String)) ??
           {},
+      prAuthors:
+          (json['prAuthors'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v as String)) ??
+          {},
       azureDevopsConfig: json['azureDevopsConfig'] != null
           ? AzureDevopsConfig.fromJson(
               json['azureDevopsConfig'] as Map<String, dynamic>)
@@ -118,6 +126,7 @@ class RepoConfig {
     'slotAssignments': slotAssignments,
     'jiraIssues': jiraIssues,
     'baseBranches': baseBranches,
+    'prAuthors': prAuthors,
     if (azureDevopsConfig != null)
       'azureDevopsConfig': azureDevopsConfig!.toJson(),
     if (lastAzureDevopsBranch != null)

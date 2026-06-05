@@ -1,3 +1,19 @@
+class GithubLabel {
+  final String name;
+
+  /// 6-hex color from the GitHub API (e.g. "d73a4a"), may be empty.
+  final String color;
+
+  GithubLabel({required this.name, required this.color});
+
+  factory GithubLabel.fromJson(Map<String, dynamic> json) {
+    return GithubLabel(
+      name: json['name'] as String,
+      color: (json['color'] as String?) ?? '',
+    );
+  }
+}
+
 class GithubPullRequest {
   final int number;
   final String title;
@@ -10,7 +26,15 @@ class GithubPullRequest {
   final String headBranch;
   final String baseBranch;
   final bool draft;
-  final List<String> labels;
+  final List<GithubLabel> labels;
+  final List<String> requestedReviewers;
+
+  /// First Jira-style issue key found in the title (e.g. "AU2-5555"), or null.
+  /// Jira keys are an uppercase project key + digits, so matching is
+  /// case-sensitive and finds the key whether or not it is parenthesized
+  /// (e.g. "Fejl fra driften (AU2-5555)" -> "AU2-5555").
+  String? get jiraKey =>
+      RegExp(r'[A-Z][A-Z0-9]*-\d+').firstMatch(title)?.group(0);
 
   GithubPullRequest({
     required this.number,
@@ -25,6 +49,7 @@ class GithubPullRequest {
     required this.baseBranch,
     this.draft = false,
     this.labels = const [],
+    this.requestedReviewers = const [],
   });
 
   factory GithubPullRequest.fromJson(Map<String, dynamic> json) {
@@ -46,7 +71,11 @@ class GithubPullRequest {
       baseBranch: (json['base'] as Map<String, dynamic>)['ref'] as String,
       draft: json['draft'] as bool? ?? false,
       labels: (json['labels'] as List<dynamic>?)
-              ?.map((l) => (l as Map<String, dynamic>)['name'] as String)
+              ?.map((l) => GithubLabel.fromJson(l as Map<String, dynamic>))
+              .toList() ??
+          [],
+      requestedReviewers: (json['requested_reviewers'] as List<dynamic>?)
+              ?.map((r) => (r as Map<String, dynamic>)['login'] as String)
               .toList() ??
           [],
     );

@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/app/coordinators/workspace_flow_coordinator.dart';
 import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/app/shell/workspace_shell.dart';
+import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/builds/presentation/controllers/builds_controller.dart';
 import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
+import 'package:tree_launcher/features/github_prs/presentation/pr_worktree_actions.dart';
 import 'package:tree_launcher/features/markdown_editor/presentation/controllers/markdown_editor_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
@@ -35,7 +37,16 @@ class TreeLauncherApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => TerminalController()),
         ChangeNotifierProvider(create: (_) => BuildsController()),
-        ChangeNotifierProvider(create: (_) => GithubPrsController()),
+        ChangeNotifierProxyProvider<WorkspaceController, GithubPrsController>(
+          create: (_) => GithubPrsController(),
+          update: (context, workspace, previous) {
+            final controller = previous ?? GithubPrsController();
+            controller.onReviewRequested =
+                (pr) => createWorktreeForPr(workspace, pr);
+            controller.syncToRepo(workspace.selectedRepo);
+            return controller;
+          },
+        ),
         ChangeNotifierProxyProvider2<
           WorkspaceController,
           SettingsController,
@@ -83,6 +94,7 @@ class TreeLauncherApp extends StatelessWidget {
           return MaterialApp(
             title: 'TreeLauncher',
             debugShowCheckedModeBanner: false,
+            scaffoldMessengerKey: appMessengerKey,
             theme: AppTheme.dark,
             darkTheme: AppTheme.dark,
             themeMode: ThemeMode.dark,

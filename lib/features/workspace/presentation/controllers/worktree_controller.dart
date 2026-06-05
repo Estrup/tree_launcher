@@ -50,6 +50,16 @@ class WorktreeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// PR author logins from config, keyed by worktree path.
+  Map<String, String> _prAuthors = {};
+  Map<String, String> get prAuthors => Map.unmodifiable(_prAuthors);
+
+  void setPrAuthors(Map<String, String> authors) {
+    _prAuthors = Map.of(authors);
+    _hydrateSlots();
+    notifyListeners();
+  }
+
   Future<void> refreshForRepo(String? repoPath) async {
     if (repoPath == null) {
       _worktrees = [];
@@ -88,6 +98,7 @@ class WorktreeController extends ChangeNotifier {
         slot: slot,
         jiraIssue: _jiraIssues[wt.path],
         baseBranch: _baseBranches[wt.path],
+        prAuthor: _prAuthors[wt.path],
       );
     }).toList();
   }
