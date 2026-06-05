@@ -309,6 +309,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     if (currentIndex == 0) ...[
                                                       const SizedBox(width: 12),
                                                       const WorktreeViewModeToggle(),
+                                                      const SizedBox(width: 8),
+                                                      const WorktreeListOptionsButton(),
                                                     ],
                                                   ],
                                                 );

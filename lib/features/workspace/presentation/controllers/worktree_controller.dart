@@ -60,6 +60,26 @@ class WorktreeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Hidden worktree paths from config.
+  Set<String> _hiddenWorktrees = {};
+  Set<String> get hiddenWorktrees => Set.unmodifiable(_hiddenWorktrees);
+
+  void setHiddenWorktrees(Iterable<String> paths) {
+    _hiddenWorktrees = paths.toSet();
+    _hydrateSlots();
+    notifyListeners();
+  }
+
+  /// Snoozed worktree paths from config.
+  Set<String> _snoozedWorktrees = {};
+  Set<String> get snoozedWorktrees => Set.unmodifiable(_snoozedWorktrees);
+
+  void setSnoozedWorktrees(Iterable<String> paths) {
+    _snoozedWorktrees = paths.toSet();
+    _hydrateSlots();
+    notifyListeners();
+  }
+
   Future<void> refreshForRepo(String? repoPath) async {
     if (repoPath == null) {
       _worktrees = [];
@@ -99,6 +119,8 @@ class WorktreeController extends ChangeNotifier {
         jiraIssue: _jiraIssues[wt.path],
         baseBranch: _baseBranches[wt.path],
         prAuthor: _prAuthors[wt.path],
+        isHidden: _hiddenWorktrees.contains(wt.path),
+        isSnoozed: _snoozedWorktrees.contains(wt.path),
       );
     }).toList();
   }

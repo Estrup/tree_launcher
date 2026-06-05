@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
@@ -12,24 +13,24 @@ import 'package:tree_launcher/providers/settings_provider.dart';
 
 /// Shared column layout so the header and every row line up.
 const double _kJiraWidth = 120;
-const double _kHashWidth = 80;
+const double _kPrWidth = 80;
 const double _kActionsWidth = 290;
 const double _kColumnGap = 16;
 const int _kNameFlex = 3;
 const int _kBranchFlex = 3;
 const int _kPathFlex = 4;
 
-/// Width breakpoints for responsive column hiding. Hash is dropped first (it is
-/// the least essential), then Path. Hash threshold sits above Path's so the two
+/// Width breakpoints for responsive column hiding. PR is dropped first (it is
+/// the least essential), then Path. PR threshold sits above Path's so the two
 /// columns disappear one at a time as the table narrows.
 const double _kHidePathBelow = 720;
-const double _kHideHashBelow = 880;
+const double _kHidePrBelow = 880;
 
 /// Compact list/table view of worktrees. An alternative to [WorktreeGrid]'s
 /// tile layout, easier to scan when there are many worktrees.
 ///
 /// Rows are grouped into "My worktrees" and "To review" (worktrees created from
-/// another user's PR, identified by [Worktree.prAuthor]). Hash and Path columns
+/// another user's PR, identified by [Worktree.prAuthor]). PR and Path columns
 /// hide on narrow widths.
 class WorktreeTable extends StatelessWidget {
   final List<Worktree> worktrees;
@@ -49,7 +50,7 @@ class WorktreeTable extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final showHash = constraints.maxWidth >= _kHideHashBelow;
+        final showPr = constraints.maxWidth >= _kHidePrBelow;
         final showPath = constraints.maxWidth >= _kHidePathBelow;
 
         // Flatten the groups into a single item list so one ListView scrolls
@@ -60,7 +61,7 @@ class WorktreeTable extends StatelessWidget {
           for (final wt in mine) {
             items.add(_WorktreeRow(
               worktree: wt,
-              showHash: showHash,
+              showPr: showPr,
               showPath: showPath,
             ));
           }
@@ -71,7 +72,7 @@ class WorktreeTable extends StatelessWidget {
             for (final wt in group) {
               items.add(_WorktreeRow(
                 worktree: wt,
-                showHash: showHash,
+                showPr: showPr,
                 showPath: showPath,
               ));
             }
@@ -84,7 +85,7 @@ class WorktreeTable extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _HeaderRow(showHash: showHash, showPath: showPath),
+            _HeaderRow(showPr: showPr, showPath: showPath),
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.only(bottom: 20),
@@ -138,10 +139,10 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _HeaderRow extends StatelessWidget {
-  final bool showHash;
+  final bool showPr;
   final bool showPath;
 
-  const _HeaderRow({required this.showHash, required this.showPath});
+  const _HeaderRow({required this.showPr, required this.showPath});
 
   Widget _label(String text) => Text(
     text.toUpperCase(),
@@ -167,9 +168,9 @@ class _HeaderRow extends StatelessWidget {
           Expanded(flex: _kBranchFlex, child: _label('Branch')),
           const SizedBox(width: _kColumnGap),
           SizedBox(width: _kJiraWidth, child: _label('Jira')),
-          if (showHash) ...[
+          if (showPr) ...[
             const SizedBox(width: _kColumnGap),
-            SizedBox(width: _kHashWidth, child: _label('Hash')),
+            SizedBox(width: _kPrWidth, child: _label('PR')),
           ],
           if (showPath) ...[
             const SizedBox(width: _kColumnGap),
@@ -191,12 +192,12 @@ class _HeaderRow extends StatelessWidget {
 
 class _WorktreeRow extends StatefulWidget {
   final Worktree worktree;
-  final bool showHash;
+  final bool showPr;
   final bool showPath;
 
   const _WorktreeRow({
     required this.worktree,
-    required this.showHash,
+    required this.showPr,
     required this.showPath,
   });
 
@@ -215,6 +216,19 @@ class _WorktreeRowState extends State<_WorktreeRow> {
     final customCommands = repo?.customCommands ?? [];
     final customLinks = repo?.customLinks ?? [];
     final wt = widget.worktree;
+
+    // Match this worktree to an open PR by branch. Both own worktrees and
+    // review worktrees check out the PR's head branch, so this finds either.
+    GithubPullRequest? matchPr;
+    if (widget.showPr) {
+      final prs = context.watch<GithubPrsController>().pullRequests;
+      for (final pr in prs) {
+        if (pr.headBranch == wt.branch) {
+          matchPr = pr;
+          break;
+        }
+      }
+    }
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -339,28 +353,27 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                       ),
               ),
             ),
-            if (widget.showHash) ...[
+            if (widget.showPr) ...[
               const SizedBox(width: _kColumnGap),
 
-              // Hash (click to copy)
+              // PR (link to GitHub)
               SizedBox(
-                width: _kHashWidth,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () =>
-                        copyToClipboard(context, wt.commitHash, 'Commit hash'),
-                    child: Text(
-                      wt.commitHash,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textMuted,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                width: _kPrWidth,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: matchPr != null
+                      ? PrBadge(
+                          number: matchPr.number,
+                          htmlUrl: matchPr.htmlUrl,
+                          compact: true,
+                        )
+                      : Text(
+                          '—',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -458,11 +471,7 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                   const SizedBox(width: 6),
                   SizedBox(
                     width: 24,
-                    child: wt.isMain
-                        ? null
-                        : DeleteIconButton(
-                            onPressed: () => confirmDeleteWorktree(context, wt),
-                          ),
+                    child: WorktreeOptionsButton(worktree: wt),
                   ),
                 ],
               ),

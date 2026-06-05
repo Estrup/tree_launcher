@@ -27,6 +27,12 @@ class RepoConfig {
 
   /// PR author login per worktree path, recorded at creation (worktree path -> author login).
   final Map<String, String> prAuthors;
+
+  /// Worktree paths the user has hidden from the list.
+  final List<String> hiddenWorktrees;
+
+  /// Worktree paths the user has snoozed.
+  final List<String> snoozedWorktrees;
   final AzureDevopsConfig? azureDevopsConfig;
   final String? lastAzureDevopsBranch;
   final GithubConfig? githubConfig;
@@ -45,6 +51,8 @@ class RepoConfig {
     this.jiraIssues = const {},
     this.baseBranches = const {},
     this.prAuthors = const {},
+    this.hiddenWorktrees = const [],
+    this.snoozedWorktrees = const [],
     this.azureDevopsConfig,
     this.lastAzureDevopsBranch,
     this.githubConfig,
@@ -101,6 +109,11 @@ class RepoConfig {
           (json['prAuthors'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as String)) ??
           {},
+      hiddenWorktrees:
+          (json['hiddenWorktrees'] as List<dynamic>?)?.cast<String>() ?? const [],
+      snoozedWorktrees:
+          (json['snoozedWorktrees'] as List<dynamic>?)?.cast<String>() ??
+          const [],
       azureDevopsConfig: json['azureDevopsConfig'] != null
           ? AzureDevopsConfig.fromJson(
               json['azureDevopsConfig'] as Map<String, dynamic>)
@@ -127,6 +140,8 @@ class RepoConfig {
     'jiraIssues': jiraIssues,
     'baseBranches': baseBranches,
     'prAuthors': prAuthors,
+    'hiddenWorktrees': hiddenWorktrees,
+    'snoozedWorktrees': snoozedWorktrees,
     if (azureDevopsConfig != null)
       'azureDevopsConfig': azureDevopsConfig!.toJson(),
     if (lastAzureDevopsBranch != null)

@@ -16,6 +16,15 @@ class Worktree {
   /// Persisted so worktrees can later be grouped by PR creator.
   final String? prAuthor;
 
+  /// Whether this worktree is hidden from the list (unless "Show hidden
+  /// worktrees" is enabled). Hydrated from RepoConfig.hiddenWorktrees.
+  final bool isHidden;
+
+  /// Whether this worktree is snoozed. PR worktrees auto-unsnooze when the PR
+  /// is again assigned to me; others stay snoozed until cleared manually.
+  /// Hydrated from RepoConfig.snoozedWorktrees.
+  final bool isSnoozed;
+
   Worktree({
     required this.path,
     required this.branch,
@@ -26,6 +35,8 @@ class Worktree {
     this.jiraIssue,
     this.baseBranch,
     this.prAuthor,
+    this.isHidden = false,
+    this.isSnoozed = false,
   });
 
   Worktree copyWith({
@@ -38,6 +49,8 @@ class Worktree {
     String? jiraIssue,
     String? baseBranch,
     String? prAuthor,
+    bool? isHidden,
+    bool? isSnoozed,
   }) {
     return Worktree(
       path: path ?? this.path,
@@ -49,6 +62,8 @@ class Worktree {
       jiraIssue: jiraIssue ?? this.jiraIssue,
       baseBranch: baseBranch ?? this.baseBranch,
       prAuthor: prAuthor ?? this.prAuthor,
+      isHidden: isHidden ?? this.isHidden,
+      isSnoozed: isSnoozed ?? this.isSnoozed,
     );
   }
 }

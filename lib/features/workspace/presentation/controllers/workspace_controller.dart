@@ -320,6 +320,59 @@ class WorkspaceController extends ChangeNotifier {
     worktreesController.setJiraIssues(newRepo?.jiraIssues ?? updated);
   }
 
+  /// Hides or unhides a worktree. Hidden worktrees are filtered from the list
+  /// unless "Show hidden worktrees" is enabled.
+  Future<void> setWorktreeHidden(String worktreePath, bool hidden) async {
+    if (selectedRepo == null) return;
+    final repo = selectedRepo!;
+    final updated = List<String>.from(repo.hiddenWorktrees);
+    if (hidden) {
+      if (!updated.contains(worktreePath)) updated.add(worktreePath);
+    } else {
+      updated.remove(worktreePath);
+    }
+    final newRepo = await preferences.updateHiddenWorktrees(repo, updated);
+    _replaceSelection(repo, newRepo);
+    worktreesController.setHiddenWorktrees(newRepo?.hiddenWorktrees ?? updated);
+  }
+
+  /// Snoozes or unsnoozes a worktree. PR worktrees auto-unsnooze when the PR is
+  /// again assigned to me (see [clearSnoozeForBranch]); others stay snoozed
+  /// until cleared manually.
+  Future<void> setWorktreeSnoozed(String worktreePath, bool snoozed) async {
+    if (selectedRepo == null) return;
+    final repo = selectedRepo!;
+    final updated = List<String>.from(repo.snoozedWorktrees);
+    if (snoozed) {
+      if (!updated.contains(worktreePath)) updated.add(worktreePath);
+    } else {
+      updated.remove(worktreePath);
+    }
+    final newRepo = await preferences.updateSnoozedWorktrees(repo, updated);
+    _replaceSelection(repo, newRepo);
+    worktreesController.setSnoozedWorktrees(newRepo?.snoozedWorktrees ?? updated);
+  }
+
+  /// Clears the snooze on any worktree of the selected repo whose branch
+  /// matches [headBranch]. Called when a PR transitions to requesting my review
+  /// again, implementing "hide until the PR is again assigned to me".
+  Future<void> clearSnoozeForBranch(String headBranch) async {
+    if (selectedRepo == null) return;
+    final repo = selectedRepo!;
+    if (repo.snoozedWorktrees.isEmpty) return;
+    final matching = worktreesController.worktrees
+        .where((w) => w.branch == headBranch)
+        .map((w) => w.path)
+        .where(repo.snoozedWorktrees.contains)
+        .toList();
+    if (matching.isEmpty) return;
+    final updated = List<String>.from(repo.snoozedWorktrees)
+      ..removeWhere(matching.contains);
+    final newRepo = await preferences.updateSnoozedWorktrees(repo, updated);
+    _replaceSelection(repo, newRepo);
+    worktreesController.setSnoozedWorktrees(newRepo?.snoozedWorktrees ?? updated);
+  }
+
   Future<void> deleteWorktree(Worktree worktree) async {
     await worktreesController.deleteWorktree(selectedRepo?.path, worktree);
 
@@ -349,7 +402,32 @@ class WorkspaceController extends ChangeNotifier {
         authors.remove(worktree.path);
         final withAuthor = await preferences.updatePrAuthors(current, authors);
         _replaceSelection(current, withAuthor);
-        worktreesController.setPrAuthors(withAuthor?.prAuthors ?? authors);
+        current = withAuthor ?? current;
+        worktreesController.setPrAuthors(current.prAuthors);
+      }
+
+      if (current.hiddenWorktrees.contains(worktree.path)) {
+        final hidden = List<String>.from(current.hiddenWorktrees)
+          ..remove(worktree.path);
+        final withHidden = await preferences.updateHiddenWorktrees(
+          current,
+          hidden,
+        );
+        _replaceSelection(current, withHidden);
+        current = withHidden ?? current;
+        worktreesController.setHiddenWorktrees(current.hiddenWorktrees);
+      }
+
+      if (current.snoozedWorktrees.contains(worktree.path)) {
+        final snoozed = List<String>.from(current.snoozedWorktrees)
+          ..remove(worktree.path);
+        final withSnoozed = await preferences.updateSnoozedWorktrees(
+          current,
+          snoozed,
+        );
+        _replaceSelection(current, withSnoozed);
+        current = withSnoozed ?? current;
+        worktreesController.setSnoozedWorktrees(current.snoozedWorktrees);
       }
     }
   }
@@ -384,6 +462,12 @@ class WorkspaceController extends ChangeNotifier {
     );
     worktreesController.setPrAuthors(
       repo?.prAuthors ?? {},
+    );
+    worktreesController.setHiddenWorktrees(
+      repo?.hiddenWorktrees ?? const [],
+    );
+    worktreesController.setSnoozedWorktrees(
+      repo?.snoozedWorktrees ?? const [],
     );
   }
 

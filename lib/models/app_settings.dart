@@ -47,6 +47,7 @@ class AppSettings {
   final String? markdownDocumentsFolder;
   final List<String> markdownRecentFiles;
   final WorktreeViewMode worktreeViewMode;
+  final bool showHiddenWorktrees;
 
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
@@ -68,6 +69,7 @@ class AppSettings {
     this.markdownDocumentsFolder,
     this.markdownRecentFiles = const [],
     this.worktreeViewMode = WorktreeViewMode.grid,
+    this.showHiddenWorktrees = false,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -112,6 +114,7 @@ class AppSettings {
         (e) => e.name == (json['worktreeViewMode'] as String?),
         orElse: () => WorktreeViewMode.grid,
       ),
+      showHiddenWorktrees: json['showHiddenWorktrees'] as bool? ?? false,
     );
   }
 
@@ -135,6 +138,7 @@ class AppSettings {
     'markdownDocumentsFolder': markdownDocumentsFolder,
     'markdownRecentFiles': markdownRecentFiles,
     'worktreeViewMode': worktreeViewMode.name,
+    'showHiddenWorktrees': showHiddenWorktrees,
   };
 
   AppSettings copyWith({
@@ -161,6 +165,7 @@ class AppSettings {
     bool clearMarkdownDocumentsFolder = false,
     List<String>? markdownRecentFiles,
     WorktreeViewMode? worktreeViewMode,
+    bool? showHiddenWorktrees,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -193,6 +198,7 @@ class AppSettings {
           : (markdownDocumentsFolder ?? this.markdownDocumentsFolder),
       markdownRecentFiles: markdownRecentFiles ?? this.markdownRecentFiles,
       worktreeViewMode: worktreeViewMode ?? this.worktreeViewMode,
+      showHiddenWorktrees: showHiddenWorktrees ?? this.showHiddenWorktrees,
     );
   }
 }

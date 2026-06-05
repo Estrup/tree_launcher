@@ -179,9 +179,29 @@ class _TerminalButtonState extends State<TerminalButton> {
 
   void _showDropdown(BuildContext context) {
     final settings = context.read<SettingsProvider>().settings;
+    final repo = context.read<RepoProvider>().selectedRepo;
+    final tp = context.read<TerminalProvider>();
     _showMenuBelow<String>(
       context,
       items: [
+        PopupMenuItem<String>(
+          value: 'embedded',
+          height: 36,
+          child: Row(
+            children: [
+              Icon(Icons.terminal_rounded, size: 13, color: AppColors.terminal),
+              const SizedBox(width: 8),
+              Text(
+                'Terminal',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
         PopupMenuItem<String>(
           value: 'external',
           height: 36,
@@ -206,7 +226,13 @@ class _TerminalButtonState extends State<TerminalButton> {
         ),
       ],
     ).then((value) {
-      if (value == 'external') {
+      if (value == 'embedded') {
+        tp.openTerminal(
+          widget.worktreeName,
+          widget.worktreePath,
+          repo?.path ?? widget.worktreePath,
+        );
+      } else if (value == 'external') {
         widget.launcherService.openTerminal(widget.worktreePath, settings);
       }
     });
@@ -215,7 +241,7 @@ class _TerminalButtonState extends State<TerminalButton> {
   @override
   Widget build(BuildContext context) {
     if (widget.compact) {
-      return _CompactSplitButton(
+      return _CompactActionButton(
         color: AppColors.terminal,
         bgColor: AppColors.terminalBg,
         tooltip: 'Terminal',
@@ -329,9 +355,9 @@ class _VscodeButtonState extends State<VscodeButton> {
     _showMenuBelow<String>(
       context,
       minWidth: 280,
-      items: configs.map((config) {
-        return PopupMenuItem<String>(
-          value: config.path as String,
+      items: [
+        PopupMenuItem<String>(
+          value: '.',
           height: 36,
           child: Row(
             children: [
@@ -346,35 +372,64 @@ class _VscodeButtonState extends State<VscodeButton> {
               ),
               const SizedBox(width: 8),
               Text(
-                config.name as String,
+                'Open at root',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  config.path as String,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                    fontFamily: 'monospace',
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                ),
-              ),
             ],
           ),
-        );
-      }).toList(),
+        ),
+        ...configs.map((config) {
+          return PopupMenuItem<String>(
+            value: config.path as String,
+            height: 36,
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/icons/vscode.svg',
+                  width: 13,
+                  height: 13,
+                  colorFilter: ColorFilter.mode(
+                    AppColors.vscode,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  config.name as String,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    config.path as String,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textMuted,
+                      fontFamily: 'monospace',
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     ).then((selectedPath) {
-      if (selectedPath != null) {
-        final resolved = p.join(widget.worktreePath, selectedPath);
-        widget.launcherService.openVSCode(resolved);
-      }
+      if (selectedPath == null) return;
+      final resolved = selectedPath == '.'
+          ? widget.worktreePath
+          : p.join(widget.worktreePath, selectedPath);
+      widget.launcherService.openVSCode(resolved);
     });
   }
 
@@ -391,7 +446,7 @@ class _VscodeButtonState extends State<VscodeButton> {
         height: 14,
         colorFilter: ColorFilter.mode(AppColors.vscode, BlendMode.srcIn),
       );
-      return _CompactSplitButton(
+      return _CompactActionButton(
         color: AppColors.vscode,
         bgColor: AppColors.vscodeBg,
         tooltip: 'VS Code',
@@ -604,7 +659,7 @@ class _ClaudeButtonState extends State<ClaudeButton> {
         height: 14,
         colorFilter: ColorFilter.mode(AppColors.claude, BlendMode.srcIn),
       );
-      return _CompactSplitButton(
+      return _CompactActionButton(
         color: AppColors.claude,
         bgColor: AppColors.claudeBg,
         tooltip: 'Claude',
@@ -706,10 +761,11 @@ class _ClaudeButtonState extends State<ClaudeButton> {
   }
 }
 
-/// A compact (table-mode) icon button whose body click runs [onPrimary]. When
-/// [onDropdown] is non-null a small caret affordance is shown that opens the
-/// extra-options dropdown — deliberately *not* a 50/50 split button.
-class _CompactSplitButton extends StatefulWidget {
+/// A compact (table-mode) single-icon button. Tapping it opens the dropdown
+/// when [onDropdown] is non-null (the default action is the first menu item),
+/// otherwise it runs [onPrimary] directly. No caret — the whole button is the
+/// icon.
+class _CompactActionButton extends StatefulWidget {
   final Color color;
   final Color bgColor;
   final String tooltip;
@@ -717,7 +773,7 @@ class _CompactSplitButton extends StatefulWidget {
   final VoidCallback onPrimary;
   final VoidCallback? onDropdown;
 
-  const _CompactSplitButton({
+  const _CompactActionButton({
     required this.color,
     required this.bgColor,
     required this.tooltip,
@@ -727,71 +783,38 @@ class _CompactSplitButton extends StatefulWidget {
   });
 
   @override
-  State<_CompactSplitButton> createState() => _CompactSplitButtonState();
+  State<_CompactActionButton> createState() => _CompactActionButtonState();
 }
 
-class _CompactSplitButtonState extends State<_CompactSplitButton> {
-  bool _mainHovered = false;
-  bool _dropHovered = false;
+class _CompactActionButtonState extends State<_CompactActionButton> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final hovered = _mainHovered || _dropHovered;
-    return SizedBox(
-      height: 28,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        decoration: BoxDecoration(
-          color: hovered ? widget.color.withValues(alpha: 0.2) : widget.bgColor,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(
-            color: hovered
-                ? widget.color.withValues(alpha: 0.4)
-                : widget.color.withValues(alpha: 0.15),
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              MouseRegion(
-                onEnter: (_) => setState(() => _mainHovered = true),
-                onExit: (_) => setState(() => _mainHovered = false),
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: widget.onPrimary,
-                  child: Tooltip(
-                    message: widget.tooltip,
-                    child: SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: Center(child: widget.icon),
-                    ),
-                  ),
-                ),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onDropdown ?? widget.onPrimary,
+        child: Tooltip(
+          message: widget.tooltip,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: _hovered
+                  ? widget.color.withValues(alpha: 0.2)
+                  : widget.bgColor,
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(
+                color: _hovered
+                    ? widget.color.withValues(alpha: 0.4)
+                    : widget.color.withValues(alpha: 0.15),
               ),
-              if (widget.onDropdown != null)
-                MouseRegion(
-                  onEnter: (_) => setState(() => _dropHovered = true),
-                  onExit: (_) => setState(() => _dropHovered = false),
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: widget.onDropdown,
-                    child: SizedBox(
-                      width: 14,
-                      height: 28,
-                      child: Center(
-                        child: Icon(
-                          Icons.arrow_drop_down_rounded,
-                          size: 16,
-                          color: widget.color,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+            ),
+            child: Center(child: widget.icon),
           ),
         ),
       ),
@@ -1187,6 +1210,127 @@ class _DeleteIconButtonState extends State<DeleteIconButton> {
 }
 
 // ---------------------------------------------------------------------------
+// Worktree options menu (hide / snooze / delete)
+// ---------------------------------------------------------------------------
+
+/// Overflow "more options" button for a worktree row. Opens a menu offering
+/// Hide/Unhide, Snooze/Unsnooze, and (for non-main worktrees) Delete.
+class WorktreeOptionsButton extends StatefulWidget {
+  final Worktree worktree;
+  const WorktreeOptionsButton({super.key, required this.worktree});
+
+  @override
+  State<WorktreeOptionsButton> createState() => _WorktreeOptionsButtonState();
+}
+
+class _WorktreeOptionsButtonState extends State<WorktreeOptionsButton> {
+  bool _hovered = false;
+
+  void _showMenu(BuildContext context) {
+    final repoProvider = context.read<RepoProvider>();
+    final wt = widget.worktree;
+
+    PopupMenuItem<String> item(
+      String value,
+      IconData icon,
+      String label, {
+      Color? color,
+    }) {
+      final c = color ?? AppColors.textPrimary;
+      return PopupMenuItem<String>(
+        value: value,
+        height: 36,
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: color ?? AppColors.textMuted),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: c,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    _showMenuBelow<String>(
+      context,
+      minWidth: 180,
+      items: [
+        item(
+          'hide',
+          wt.isHidden
+              ? Icons.visibility_rounded
+              : Icons.visibility_off_rounded,
+          wt.isHidden ? 'Unhide' : 'Hide',
+        ),
+        item(
+          'snooze',
+          wt.isSnoozed
+              ? Icons.notifications_active_rounded
+              : Icons.snooze_rounded,
+          wt.isSnoozed ? 'Unsnooze' : 'Snooze',
+        ),
+        if (!wt.isMain) ...[
+          const PopupMenuDivider(height: 1),
+          item(
+            'delete',
+            Icons.delete_outline_rounded,
+            'Delete',
+            color: AppColors.error,
+          ),
+        ],
+      ],
+    ).then((value) {
+      switch (value) {
+        case 'hide':
+          repoProvider.setWorktreeHidden(wt.path, !wt.isHidden);
+          break;
+        case 'snooze':
+          repoProvider.setWorktreeSnoozed(wt.path, !wt.isSnoozed);
+          break;
+        case 'delete':
+          if (context.mounted) confirmDeleteWorktree(context, wt);
+          break;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _showMenu(context),
+        child: Tooltip(
+          message: 'More options',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: _hovered ? AppColors.surface2 : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              Icons.more_vert_rounded,
+              size: 16,
+              color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Generic action button (copilot, claude, vscode-no-configs)
 // ---------------------------------------------------------------------------
 
@@ -1318,6 +1462,83 @@ class _JiraBadgeState extends State<JiraBadge> {
                     fontSize: fontSize,
                     fontWeight: FontWeight.w600,
                     color: _jiraColor,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GitHub PR badge (link)
+// ---------------------------------------------------------------------------
+
+/// Clickable pill linking to a GitHub pull request. Mirrors [JiraBadge]'s
+/// styling and launch mechanism, showing `#<number>` and opening [htmlUrl].
+class PrBadge extends StatefulWidget {
+  final int number;
+  final String htmlUrl;
+  final bool compact;
+
+  const PrBadge({
+    super.key,
+    required this.number,
+    required this.htmlUrl,
+    this.compact = false,
+  });
+
+  @override
+  State<PrBadge> createState() => _PrBadgeState();
+}
+
+class _PrBadgeState extends State<PrBadge> {
+  static const Color _prColor = Color(0xFF8957E5);
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconSize = widget.compact ? 11.0 : 12.0;
+    final fontSize = widget.compact ? 11.0 : 12.0;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => Process.run('open', [widget.htmlUrl]),
+        child: Tooltip(
+          message: 'Open PR #${widget.number}',
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.compact ? 8 : 10,
+              vertical: widget.compact ? 3 : 5,
+            ),
+            decoration: BoxDecoration(
+              color: _prColor.withValues(alpha: _hovered ? 0.18 : 0.1),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: _prColor.withValues(alpha: _hovered ? 0.4 : 0.2),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.merge_type_rounded,
+                  size: iconSize,
+                  color: _prColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '#${widget.number}',
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w600,
+                    color: _prColor,
                     fontFamily: 'monospace',
                   ),
                 ),

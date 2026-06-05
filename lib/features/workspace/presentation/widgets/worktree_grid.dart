@@ -92,14 +92,16 @@ class WorktreeGrid extends StatelessWidget {
       );
     }
 
-    final viewMode = context
-        .watch<SettingsProvider>()
-        .settings
-        .worktreeViewMode;
+    final settings = context.watch<SettingsProvider>().settings;
+    final visible = settings.showHiddenWorktrees
+        ? repoProvider.worktrees
+        : repoProvider.worktrees
+              .where((w) => !w.isHidden && !w.isSnoozed)
+              .toList();
 
-    return viewMode == WorktreeViewMode.list
-        ? WorktreeTable(worktrees: repoProvider.worktrees)
-        : _WorktreeTileGrid(worktrees: repoProvider.worktrees);
+    return settings.worktreeViewMode == WorktreeViewMode.list
+        ? WorktreeTable(worktrees: visible)
+        : _WorktreeTileGrid(worktrees: visible);
   }
 }
 
@@ -175,6 +177,93 @@ class WorktreeViewModeToggle extends StatelessWidget {
                 .updateWorktreeViewMode(WorktreeViewMode.list),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Overflow menu beside the view toggle, holding worktree-list view options.
+/// Currently a single checkable "Show hidden worktrees" item.
+class WorktreeListOptionsButton extends StatefulWidget {
+  const WorktreeListOptionsButton({super.key});
+
+  @override
+  State<WorktreeListOptionsButton> createState() =>
+      _WorktreeListOptionsButtonState();
+}
+
+class _WorktreeListOptionsButtonState extends State<WorktreeListOptionsButton> {
+  bool _hovered = false;
+
+  void _showMenu(BuildContext context) {
+    final settingsProvider = context.read<SettingsProvider>();
+    final showHidden = settingsProvider.settings.showHiddenWorktrees;
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height)),
+        button.localToGlobal(
+          Offset(button.size.width, button.size.height),
+        ),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      color: AppColors.surface1,
+      constraints: const BoxConstraints(minWidth: 220),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.border),
+      ),
+      items: [
+        CheckedPopupMenuItem<String>(
+          value: 'show_hidden',
+          checked: showHidden,
+          child: Text(
+            'Show hidden worktrees',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'show_hidden') {
+        settingsProvider.updateShowHiddenWorktrees(!showHidden);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => _showMenu(context),
+        child: Tooltip(
+          message: 'View options',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: _hovered ? AppColors.surface2 : AppColors.surface0,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              Icons.more_vert_rounded,
+              size: 16,
+              color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
+            ),
+          ),
+        ),
       ),
     );
   }

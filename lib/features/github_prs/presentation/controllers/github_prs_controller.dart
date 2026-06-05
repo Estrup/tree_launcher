@@ -56,6 +56,11 @@ class GithubPrsController extends ChangeNotifier {
   /// auto-create a worktree. Only called when the active config opts in.
   void Function(GithubPullRequest pr)? onReviewRequested;
 
+  /// Invoked on every transition into "requested as a reviewer" for a PR,
+  /// regardless of the auto-create setting. Wired at the app level to clear a
+  /// worktree's snooze so it reappears once the PR is again assigned to me.
+  void Function(GithubPullRequest pr)? onRequestedMeTransition;
+
   /// Queue of review requests that haven't yet been surfaced as a toast.
   final List<PrReviewNotification> _pendingReviewToasts = [];
 
@@ -162,6 +167,7 @@ class GithubPrsController extends ChangeNotifier {
             reRequested: _everRequestedMe.contains(pr.number),
           ),
         );
+        onRequestedMeTransition?.call(pr);
         if (_activeConfig?.autoCreateWorktreeOnReviewRequest ?? false) {
           onReviewRequested?.call(pr);
         }
