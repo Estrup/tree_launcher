@@ -323,22 +323,6 @@ class _PullRequestRow extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
-              if (pr.requestedReviewers.isNotEmpty) ...[
-                const SizedBox(width: 16),
-                Icon(Icons.rate_review_outlined,
-                    size: 12, color: AppColors.textMuted),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    pr.requestedReviewers.join(', '),
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
               if (pr.assignee != null) ...[
                 const SizedBox(width: 16),
                 Icon(Icons.assignment_ind_outlined,
@@ -384,6 +368,13 @@ class _PullRequestRow extends StatelessWidget {
                   ),
                 ),
               ],
+              // Reviewer chips: right-aligned on the metadata line
+              if (pr.requestedReviewers.isNotEmpty) ...[
+                const Spacer(),
+                ...pr.requestedReviewers.expand(
+                  (r) => [const SizedBox(width: 4), _buildReviewerChip(r)],
+                ),
+              ],
             ],
           ),
           // Line 3: labels (all, with GitHub colors)
@@ -420,6 +411,34 @@ class _PullRequestRow extends StatelessWidget {
           color: foreground,
           fontWeight: FontWeight.w500,
         ),
+      ),
+    );
+  }
+
+  Widget _buildReviewerChip(String reviewer) {
+    final base = _colorForName(reviewer);
+    final foreground = _readableForeground(base);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: base.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: base.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.rate_review_outlined, size: 11, color: foreground),
+          const SizedBox(width: 3),
+          Text(
+            reviewer,
+            style: TextStyle(
+              fontSize: 12,
+              color: foreground,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -503,6 +522,13 @@ Color _hexToColor(String hex) {
   final value = int.tryParse(cleaned, radix: 16);
   if (value == null) return AppColors.accent;
   return Color(0xFF000000 | value);
+}
+
+/// Derives a stable, legible color from a name by hashing it to a hue.
+/// The same name always yields the same color (avatar-style coloring).
+Color _colorForName(String name) {
+  final hue = (name.hashCode % 360).abs().toDouble();
+  return HSLColor.fromAHSL(1.0, hue, 0.55, 0.65).toColor();
 }
 
 /// Brightens a label color so its text stays legible on the dark surface.
