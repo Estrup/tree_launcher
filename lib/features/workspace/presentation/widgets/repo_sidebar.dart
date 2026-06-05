@@ -4,6 +4,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_status_dot.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/repo_context_menu.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
@@ -155,14 +156,14 @@ class _RepoSidebarState extends State<RepoSidebar> {
                           context.read<TerminalProvider>().hide();
                           repoProvider.selectRepo(repo);
                         },
-                        onRemove: () =>
-                            _confirmRemove(context, repoProvider, repo),
                         onSettings: () {
                           repoProvider.selectRepo(repo);
                           if (!repoProvider.showSettings) {
                             repoProvider.toggleSettings();
                           }
                         },
+                        onContextMenu: (pos) =>
+                            _showRepoMenu(context, repoProvider, repo, pos),
                       );
                     },
                   ),
@@ -241,6 +242,8 @@ class _RepoSidebarState extends State<RepoSidebar> {
                         context.read<TerminalProvider>().hide();
                         repoProvider.selectRepo(repo);
                       },
+                      onContextMenu: (pos) =>
+                          _showRepoMenu(context, repoProvider, repo, pos),
                     );
                   },
                 ),
@@ -274,6 +277,31 @@ class _RepoSidebarState extends State<RepoSidebar> {
         ),
       ],
     );
+  }
+
+  Future<void> _showRepoMenu(
+    BuildContext context,
+    RepoProvider provider,
+    RepoConfig repo,
+    Offset position,
+  ) async {
+    final action = await showRepoContextMenu(
+      context: context,
+      position: position,
+    );
+    switch (action) {
+      case RepoContextMenuAction.openSettings:
+        provider.selectRepo(repo);
+        if (!provider.showSettings) {
+          provider.toggleSettings();
+        }
+      case RepoContextMenuAction.remove:
+        if (context.mounted) {
+          _confirmRemove(context, provider, repo);
+        }
+      case null:
+        break;
+    }
   }
 
   void _confirmRemove(
@@ -357,11 +385,13 @@ class _RepoRailTile extends StatefulWidget {
   final RepoConfig repo;
   final bool isSelected;
   final VoidCallback onTap;
+  final void Function(Offset position) onContextMenu;
 
   const _RepoRailTile({
     required this.repo,
     required this.isSelected,
     required this.onTap,
+    required this.onContextMenu,
   });
 
   @override
@@ -385,6 +415,7 @@ class _RepoRailTileState extends State<_RepoRailTile> {
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           onTap: widget.onTap,
+          onSecondaryTapDown: (d) => widget.onContextMenu(d.globalPosition),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             margin: const EdgeInsets.symmetric(vertical: 3),
@@ -495,16 +526,16 @@ class _RepoTile extends StatefulWidget {
   final bool isSelected;
   final List<CopilotSession> sessions;
   final VoidCallback onTap;
-  final VoidCallback onRemove;
   final VoidCallback onSettings;
+  final void Function(Offset position) onContextMenu;
 
   const _RepoTile({
     required this.repo,
     required this.isSelected,
     required this.sessions,
     required this.onTap,
-    required this.onRemove,
     required this.onSettings,
+    required this.onContextMenu,
   });
 
   @override
@@ -527,6 +558,7 @@ class _RepoTileState extends State<_RepoTile> {
           onExit: (_) => setState(() => _hovered = false),
           child: GestureDetector(
             onTap: widget.onTap,
+            onSecondaryTapDown: (d) => widget.onContextMenu(d.globalPosition),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 120),
               margin: const EdgeInsets.only(bottom: 2),
@@ -593,18 +625,9 @@ class _RepoTileState extends State<_RepoTile> {
                     ),
                     // Action icons (only on hover)
                     if (_hovered || widget.isSelected)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _TinyIconButton(
-                            icon: Icons.edit_rounded,
-                            onTap: widget.onSettings,
-                          ),
-                          _TinyIconButton(
-                            icon: Icons.close_rounded,
-                            onTap: widget.onRemove,
-                          ),
-                        ],
+                      _TinyIconButton(
+                        icon: Icons.edit_rounded,
+                        onTap: widget.onSettings,
                       ),
                     const SizedBox(width: 4),
                   ],

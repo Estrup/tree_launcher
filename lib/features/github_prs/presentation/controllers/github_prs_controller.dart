@@ -60,6 +60,10 @@ class GithubPrsController extends ChangeNotifier {
   final List<PrReviewNotification> _pendingReviewToasts = [];
 
   List<GithubPullRequest> get pullRequests => _pullRequests;
+
+  /// GitHub login of the authenticated user, or null if unknown.
+  String? get currentUserLogin => _currentUserLogin;
+
   bool get isLoading => _isLoading;
   String? get error => _error;
   DateTime? get lastRefreshed => _lastRefreshed;

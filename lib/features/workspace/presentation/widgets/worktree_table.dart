@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
@@ -18,8 +19,18 @@ const int _kNameFlex = 3;
 const int _kBranchFlex = 3;
 const int _kPathFlex = 4;
 
+/// Width breakpoints for responsive column hiding. Hash is dropped first (it is
+/// the least essential), then Path. Hash threshold sits above Path's so the two
+/// columns disappear one at a time as the table narrows.
+const double _kHidePathBelow = 720;
+const double _kHideHashBelow = 880;
+
 /// Compact list/table view of worktrees. An alternative to [WorktreeGrid]'s
 /// tile layout, easier to scan when there are many worktrees.
+///
+/// Rows are grouped into "My worktrees" and "To review" (worktrees created from
+/// another user's PR, identified by [Worktree.prAuthor]). Hash and Path columns
+/// hide on narrow widths.
 class WorktreeTable extends StatelessWidget {
   final List<Worktree> worktrees;
 
@@ -27,25 +38,110 @@ class WorktreeTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const _HeaderRow(),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.only(bottom: 20),
-            itemCount: worktrees.length,
-            itemBuilder: (context, index) =>
-                _WorktreeRow(worktree: worktrees[index]),
+    final me = context.watch<GithubPrsController>().currentUserLogin;
+    // A worktree is a review worktree when it was created from someone else's
+    // PR. When the current login is unknown, any attached prAuthor counts —
+    // prAuthor is only ever set for worktrees created from another user's PR.
+    bool isReview(Worktree w) => w.prAuthor != null && w.prAuthor != me;
+
+    final mine = worktrees.where((w) => !isReview(w)).toList();
+    final toReview = worktrees.where(isReview).toList();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showHash = constraints.maxWidth >= _kHideHashBelow;
+        final showPath = constraints.maxWidth >= _kHidePathBelow;
+
+        // Flatten the groups into a single item list so one ListView scrolls
+        // both sections. Section headers are only shown when the review group
+        // is non-empty, so a repo with nothing to review looks unchanged.
+        final items = <Widget>[];
+        if (toReview.isEmpty) {
+          for (final wt in mine) {
+            items.add(_WorktreeRow(
+              worktree: wt,
+              showHash: showHash,
+              showPath: showPath,
+            ));
+          }
+        } else {
+          void addGroup(String title, List<Worktree> group) {
+            if (group.isEmpty) return;
+            items.add(_SectionHeader(title: title, count: group.length));
+            for (final wt in group) {
+              items.add(_WorktreeRow(
+                worktree: wt,
+                showHash: showHash,
+                showPath: showPath,
+              ));
+            }
+          }
+
+          addGroup('My worktrees', mine);
+          addGroup('To review', toReview);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _HeaderRow(showHash: showHash, showPath: showPath),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 20),
+                itemCount: items.length,
+                itemBuilder: (context, index) => items[index],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Group divider shown above each worktree section, styled like the muted
+/// uppercase column labels.
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final int count;
+
+  const _SectionHeader({required this.title, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 6),
+      child: Row(
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textMuted,
+              letterSpacing: 0.6,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _HeaderRow extends StatelessWidget {
-  const _HeaderRow();
+  final bool showHash;
+  final bool showPath;
+
+  const _HeaderRow({required this.showHash, required this.showPath});
 
   Widget _label(String text) => Text(
     text.toUpperCase(),
@@ -71,10 +167,14 @@ class _HeaderRow extends StatelessWidget {
           Expanded(flex: _kBranchFlex, child: _label('Branch')),
           const SizedBox(width: _kColumnGap),
           SizedBox(width: _kJiraWidth, child: _label('Jira')),
-          const SizedBox(width: _kColumnGap),
-          SizedBox(width: _kHashWidth, child: _label('Hash')),
-          const SizedBox(width: _kColumnGap),
-          Expanded(flex: _kPathFlex, child: _label('Path')),
+          if (showHash) ...[
+            const SizedBox(width: _kColumnGap),
+            SizedBox(width: _kHashWidth, child: _label('Hash')),
+          ],
+          if (showPath) ...[
+            const SizedBox(width: _kColumnGap),
+            Expanded(flex: _kPathFlex, child: _label('Path')),
+          ],
           const SizedBox(width: _kColumnGap),
           SizedBox(
             width: _kActionsWidth,
@@ -91,8 +191,14 @@ class _HeaderRow extends StatelessWidget {
 
 class _WorktreeRow extends StatefulWidget {
   final Worktree worktree;
+  final bool showHash;
+  final bool showPath;
 
-  const _WorktreeRow({required this.worktree});
+  const _WorktreeRow({
+    required this.worktree,
+    required this.showHash,
+    required this.showPath,
+  });
 
   @override
   State<_WorktreeRow> createState() => _WorktreeRowState();
@@ -233,53 +339,58 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                       ),
               ),
             ),
-            const SizedBox(width: _kColumnGap),
+            if (widget.showHash) ...[
+              const SizedBox(width: _kColumnGap),
 
-            // Hash (click to copy)
-            SizedBox(
-              width: _kHashWidth,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () =>
-                      copyToClipboard(context, wt.commitHash, 'Commit hash'),
-                  child: Text(
-                    wt.commitHash,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textMuted,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: _kColumnGap),
-
-            // Path (click to copy)
-            Expanded(
-              flex: _kPathFlex,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => copyToClipboard(context, wt.path, 'Path'),
-                  child: Tooltip(
-                    message: wt.path,
+              // Hash (click to copy)
+              SizedBox(
+                width: _kHashWidth,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () =>
+                        copyToClipboard(context, wt.commitHash, 'Commit hash'),
                     child: Text(
-                      wt.path.replaceFirst(RegExp(r'^/Users/[^/]+'), '~'),
+                      wt.commitHash,
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textMuted,
                         fontFamily: 'monospace',
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textMuted,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
+
+            if (widget.showPath) ...[
+              const SizedBox(width: _kColumnGap),
+
+              // Path (click to copy)
+              Expanded(
+                flex: _kPathFlex,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => copyToClipboard(context, wt.path, 'Path'),
+                    child: Tooltip(
+                      message: wt.path,
+                      child: Text(
+                        wt.path.replaceFirst(RegExp(r'^/Users/[^/]+'), '~'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                          fontFamily: 'monospace',
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(width: _kColumnGap),
 
             // Actions
