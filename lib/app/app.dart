@@ -17,11 +17,16 @@ import 'package:tree_launcher/features/terminal/presentation/controllers/termina
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 class TreeLauncherApp extends StatelessWidget {
-  const TreeLauncherApp({super.key});
+  const TreeLauncherApp({super.key, this.dependencies});
+
+  /// Injected by [bootstrap] so the app reuses the singletons whose background
+  /// services were already started. Falls back to a fresh instance (e.g. in
+  /// widget tests).
+  final AppDependencies? dependencies;
 
   @override
   Widget build(BuildContext context) {
-    final dependencies = AppDependencies();
+    final dependencies = this.dependencies ?? AppDependencies();
     return MultiProvider(
       providers: [
         Provider.value(value: dependencies),
