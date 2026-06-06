@@ -6,6 +6,7 @@ import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/app/shell/workspace_shell.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
 import 'package:tree_launcher/features/builds/presentation/controllers/builds_controller.dart';
 import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
@@ -28,6 +29,7 @@ class TreeLauncherApp extends StatelessWidget {
           create: (_) => WorkspaceController.create(
             gitService: dependencies.gitService,
             repoConfigStore: dependencies.repoConfigStore,
+            eventStore: dependencies.worktreeEventStore,
           )..loadRepos(),
         ),
         ChangeNotifierProvider(
@@ -37,6 +39,11 @@ class TreeLauncherApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => TerminalController()),
         ChangeNotifierProvider(create: (_) => BuildsController()),
+        ChangeNotifierProvider(
+          create: (_) => ActivityController(
+            eventStore: dependencies.worktreeEventStore,
+          ),
+        ),
         ChangeNotifierProxyProvider<WorkspaceController, GithubPrsController>(
           create: (_) => GithubPrsController(),
           update: (context, workspace, previous) {

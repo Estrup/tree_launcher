@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/activity/presentation/widgets/activity_tab.dart';
 import 'package:tree_launcher/features/builds/presentation/widgets/builds_tab.dart';
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_attention_snackbar.dart';
 import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_terminal_view.dart';
@@ -101,7 +102,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         repoProvider.selectedRepo?.githubConfig != null &&
         repoProvider.selectedRepo!.githubConfig!.isConfigured;
     final githubPrsTabCount = hasGithubPrsTab ? 1 : 0;
-    final tabCount = 2 + buildsTabCount + githubPrsTabCount;
+    // Worktrees + [Builds] + [PRs] + Activity + Notes
+    final activityTabIndex = 1 + buildsTabCount + githubPrsTabCount;
+    final notesTabIndex = 2 + buildsTabCount + githubPrsTabCount;
+    final tabCount = 3 + buildsTabCount + githubPrsTabCount;
 
     if (_tabController == null || _lastTabCount != tabCount) {
       final oldIndex = _tabController?.index ?? 0;
@@ -283,20 +287,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                                     ),
                                                                   _buildSegmentTab(
                                                                     text:
+                                                                        "Activity",
+                                                                    index:
+                                                                        activityTabIndex,
+                                                                    currentIndex:
+                                                                        currentIndex,
+                                                                    icon: Icons
+                                                                        .history_rounded,
+                                                                    onTap: () =>
+                                                                        _tabController!.animateTo(
+                                                                          activityTabIndex,
+                                                                        ),
+                                                                  ),
+                                                                  _buildSegmentTab(
+                                                                    text:
                                                                         "Notes",
                                                                     index:
-                                                                        1 +
-                                                                        buildsTabCount +
-                                                                        githubPrsTabCount,
+                                                                        notesTabIndex,
                                                                     currentIndex:
                                                                         currentIndex,
                                                                     icon: Icons
                                                                         .edit_note_rounded,
                                                                     onTap: () =>
                                                                         _tabController!.animateTo(
-                                                                          1 +
-                                                                              buildsTabCount +
-                                                                              githubPrsTabCount,
+                                                                          notesTabIndex,
                                                                         ),
                                                                   ),
                                                                 ],
@@ -343,6 +357,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                       const BuildsTab(),
                                                     if (hasGithubPrsTab)
                                                       const GithubPrsTab(),
+                                                    const ActivityTab(),
                                                     const MarkdownEditorView(),
                                                   ],
                                                 ),

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
 import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
 import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
@@ -23,27 +25,33 @@ class WorkspaceController extends ChangeNotifier {
     required GitService gitService,
     RepoConfigStore? repoConfigStore,
     ConfigService? configService,
+    WorktreeEventStore? eventStore,
   }) : this._create(
          gitService: gitService,
          repoConfigStore:
              repoConfigStore ?? RepoConfigStore(configService: configService),
+         eventStore: eventStore,
        );
 
   factory WorkspaceController.create({
     required GitService gitService,
     required RepoConfigStore repoConfigStore,
+    WorktreeEventStore? eventStore,
   }) {
     return WorkspaceController._create(
       gitService: gitService,
       repoConfigStore: repoConfigStore,
+      eventStore: eventStore,
     );
   }
 
   WorkspaceController._create({
     required GitService gitService,
     required RepoConfigStore repoConfigStore,
+    WorktreeEventStore? eventStore,
   }) {
     _store = repoConfigStore;
+    _eventStore = eventStore ?? WorktreeEventStore();
     final registry = RepoRegistryController(
       store: repoConfigStore,
       gitService: gitService,
@@ -57,6 +65,7 @@ class WorkspaceController extends ChangeNotifier {
   }
 
   late final RepoConfigStore _store;
+  late final WorktreeEventStore _eventStore;
   late final RepoRegistryController registry;
   late final RepoSelectionController selection;
   late final WorktreeController worktreesController;
@@ -301,9 +310,45 @@ class WorkspaceController extends ChangeNotifier {
         _replaceSelection(current, withAuthor);
         worktreesController.setPrAuthors(withAuthor?.prAuthors ?? authors);
       }
+
+      // Record the creation in the activity log.
+      _logWorktreeEvent(
+        type: WorktreeEventType.created,
+        repo: repo,
+        worktreePath: worktreePath,
+        branch: newBranch ?? baseBranch,
+        jiraIssue: jiraIssue,
+      );
     }
 
     return worktreePath;
+  }
+
+  /// Appends a worktree lifecycle event. Best-effort: a logging failure must
+  /// never block the create/delete it accompanies.
+  void _logWorktreeEvent({
+    required WorktreeEventType type,
+    required RepoConfig repo,
+    required String worktreePath,
+    String? branch,
+    String? jiraIssue,
+  }) {
+    final segments = worktreePath.split('/').where((s) => s.isNotEmpty).toList();
+    final name = segments.isEmpty ? worktreePath : segments.last;
+    _eventStore.append(
+      WorktreeEvent(
+        timestamp: DateTime.now(),
+        type: type,
+        repoPath: repo.path,
+        repoName: repo.name,
+        worktreePath: worktreePath,
+        worktreeName: name,
+        branch: (branch != null && branch.isNotEmpty) ? branch : null,
+        jiraIssue: (jiraIssue != null && jiraIssue.isNotEmpty)
+            ? jiraIssue
+            : null,
+      ),
+    );
   }
 
   Future<void> updateJiraIssue(String worktreePath, String? jiraIssue) async {
@@ -374,6 +419,20 @@ class WorkspaceController extends ChangeNotifier {
   }
 
   Future<void> deleteWorktree(Worktree worktree) async {
+    // Capture the close event before any per-worktree metadata is stripped
+    // below — the JIRA issue and branch only live on the passed [worktree] and
+    // in config, both of which we clear during deletion.
+    final repoForLog = selectedRepo;
+    if (repoForLog != null) {
+      _logWorktreeEvent(
+        type: WorktreeEventType.closed,
+        repo: repoForLog,
+        worktreePath: worktree.path,
+        branch: worktree.branch,
+        jiraIssue: worktree.jiraIssue,
+      );
+    }
+
     await worktreesController.deleteWorktree(selectedRepo?.path, worktree);
 
     // Remove slot assignment and JIRA issue for the deleted worktree

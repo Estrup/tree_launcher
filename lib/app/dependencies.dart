@@ -1,3 +1,4 @@
+import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/copilot/data/sound_service.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
@@ -9,13 +10,16 @@ class AppDependencies {
     RepoConfigStore? repoConfigStore,
     AppSettingsStore? appSettingsStore,
     SoundService? soundService,
+    WorktreeEventStore? worktreeEventStore,
   }) : gitService = gitService ?? GitService(),
        repoConfigStore = repoConfigStore ?? RepoConfigStore(),
        appSettingsStore = appSettingsStore ?? AppSettingsStore(),
-       soundService = soundService ?? SoundService();
+       soundService = soundService ?? SoundService(),
+       worktreeEventStore = worktreeEventStore ?? WorktreeEventStore();
 
   final GitService gitService;
   final RepoConfigStore repoConfigStore;
   final AppSettingsStore appSettingsStore;
   final SoundService soundService;
+  final WorktreeEventStore worktreeEventStore;
 }
