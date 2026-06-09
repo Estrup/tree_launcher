@@ -23,6 +23,7 @@ class AppDependencies {
         AgentApiServer(
           repoConfigStore: this.repoConfigStore,
           gitService: this.gitService,
+          appSettingsStore: this.appSettingsStore,
           eventStore: this.worktreeEventStore,
         );
   }

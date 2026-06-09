@@ -31,11 +31,18 @@ class TreeLauncherApp extends StatelessWidget {
       providers: [
         Provider.value(value: dependencies),
         ChangeNotifierProvider(
-          create: (_) => WorkspaceController.create(
-            gitService: dependencies.gitService,
-            repoConfigStore: dependencies.repoConfigStore,
-            eventStore: dependencies.worktreeEventStore,
-          )..loadRepos(),
+          create: (_) {
+            final controller = WorkspaceController.create(
+              gitService: dependencies.gitService,
+              repoConfigStore: dependencies.repoConfigStore,
+              eventStore: dependencies.worktreeEventStore,
+            )..loadRepos();
+            // Let the agent HTTP API create worktrees through the live
+            // controller so writes go through the in-memory → save → notify
+            // pipeline (a direct config write would be clobbered).
+            dependencies.agentApiServer.registerWorktreeCreator(controller);
+            return controller;
+          },
         ),
         ChangeNotifierProvider(
           create: (_) =>
@@ -45,18 +52,17 @@ class TreeLauncherApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TerminalController()),
         ChangeNotifierProvider(create: (_) => BuildsController()),
         ChangeNotifierProvider(
-          create: (_) => ActivityController(
-            eventStore: dependencies.worktreeEventStore,
-          ),
+          create: (_) =>
+              ActivityController(eventStore: dependencies.worktreeEventStore),
         ),
         ChangeNotifierProxyProvider<WorkspaceController, GithubPrsController>(
           create: (_) => GithubPrsController(),
           update: (context, workspace, previous) {
             final controller = previous ?? GithubPrsController();
-            controller.onReviewRequested =
-                (pr) => createWorktreeForPr(workspace, pr);
-            controller.onRequestedMeTransition =
-                (pr) => workspace.clearSnoozeForBranch(pr.headBranch);
+            controller.onReviewRequested = (pr) =>
+                createWorktreeForPr(workspace, pr);
+            controller.onRequestedMeTransition = (pr) =>
+                workspace.clearSnoozeForBranch(pr.headBranch);
             controller.syncToRepo(workspace.selectedRepo);
             return controller;
           },

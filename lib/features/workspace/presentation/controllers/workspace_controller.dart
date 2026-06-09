@@ -13,6 +13,7 @@ import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_preferences_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_registry_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_selection_controller.dart';
@@ -20,7 +21,7 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/worktr
 import 'package:tree_launcher/models/worktree_slot.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
-class WorkspaceController extends ChangeNotifier {
+class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
   WorkspaceController({
     required GitService gitService,
     RepoConfigStore? repoConfigStore,
@@ -52,6 +53,7 @@ class WorkspaceController extends ChangeNotifier {
   }) {
     _store = repoConfigStore;
     _eventStore = eventStore ?? WorktreeEventStore();
+    _gitService = gitService;
     final registry = RepoRegistryController(
       store: repoConfigStore,
       gitService: gitService,
@@ -66,6 +68,7 @@ class WorkspaceController extends ChangeNotifier {
 
   late final RepoConfigStore _store;
   late final WorktreeEventStore _eventStore;
+  late final GitService _gitService;
   late final RepoRegistryController registry;
   late final RepoSelectionController selection;
   late final WorktreeController worktreesController;
@@ -259,69 +262,169 @@ class WorkspaceController extends ChangeNotifier {
     String? newBranch,
     String? jiraIssue,
     String? prAuthor,
-  }) async {
-    final worktreePath = await worktreesController.addWorktree(
-      selectedRepo?.path,
+  }) {
+    final repo = selectedRepo;
+    if (repo == null) return Future.value(null);
+    return _addWorktreeForRepo(
+      repo,
       name,
       baseBranch: baseBranch,
       newBranch: newBranch,
+      jiraIssue: jiraIssue,
+      prAuthor: prAuthor,
     );
+  }
 
-    // Auto-assign next available slot to the new worktree
-    if (worktreePath != null && selectedRepo != null) {
-      final repo = selectedRepo!;
-      final usedSlots = repo.slotAssignments.values.toSet();
-      final slot = nextAvailableSlot(usedSlots);
-      final updated = Map<String, String>.from(repo.slotAssignments);
-      updated[worktreePath] = slot;
-      var newRepo = await preferences.updateSlotAssignments(repo, updated);
-      _replaceSelection(repo, newRepo);
-      worktreesController.setSlotAssignments(
-        newRepo?.slotAssignments ?? updated,
+  /// Creates a worktree in an explicit [repo] (not necessarily the selected
+  /// one) and records its slot / JIRA / base-branch / PR-author metadata.
+  ///
+  /// All persistence flows through [preferences] (registry → save → notify), so
+  /// it stays correct for any repo. The selected-repo view sync and the live
+  /// worktree-list refresh only run when [repo] is the selected one — otherwise
+  /// they would corrupt the currently-displayed list.
+  Future<String?> _addWorktreeForRepo(
+    RepoConfig repo,
+    String name, {
+    String? baseBranch,
+    String? newBranch,
+    String? jiraIssue,
+    String? prAuthor,
+  }) async {
+    final isSelected = repo.path == selectedRepo?.path;
+
+    final String? worktreePath;
+    if (isSelected) {
+      // Goes through the worktrees controller so the displayed list refreshes.
+      worktreePath = await worktreesController.addWorktree(
+        repo.path,
+        name,
+        baseBranch: baseBranch,
+        newBranch: newBranch,
       );
-
-      // Attach JIRA issue to the new worktree, if provided.
-      if (jiraIssue != null && jiraIssue.isNotEmpty) {
-        final current = newRepo ?? selectedRepo!;
-        final issues = Map<String, String>.from(current.jiraIssues);
-        issues[worktreePath] = jiraIssue;
-        final withJira = await preferences.updateJiraIssues(current, issues);
-        _replaceSelection(current, withJira);
-        worktreesController.setJiraIssues(withJira?.jiraIssues ?? issues);
-      }
-
-      // Record the base branch the worktree was created from, if known.
-      if (baseBranch != null && baseBranch.isNotEmpty) {
-        final current = selectedRepo!;
-        final branches = Map<String, String>.from(current.baseBranches);
-        branches[worktreePath] = baseBranch;
-        final withBase = await preferences.updateBaseBranches(current, branches);
-        _replaceSelection(current, withBase);
-        worktreesController.setBaseBranches(withBase?.baseBranches ?? branches);
-      }
-
-      // Attach the PR author to the new worktree, if provided, so worktrees
-      // can later be grouped by PR creator.
-      if (prAuthor != null && prAuthor.isNotEmpty) {
-        final current = selectedRepo!;
-        final authors = Map<String, String>.from(current.prAuthors);
-        authors[worktreePath] = prAuthor;
-        final withAuthor = await preferences.updatePrAuthors(current, authors);
-        _replaceSelection(current, withAuthor);
-        worktreesController.setPrAuthors(withAuthor?.prAuthors ?? authors);
-      }
-
-      // Record the creation in the activity log.
-      _logWorktreeEvent(
-        type: WorktreeEventType.created,
-        repo: repo,
-        worktreePath: worktreePath,
-        branch: newBranch ?? baseBranch,
-        jiraIssue: jiraIssue,
+    } else {
+      // Create directly so we don't replace the selected repo's worktree list.
+      worktreePath = await _gitService.addWorktree(
+        repo.path,
+        name,
+        baseBranch: baseBranch,
+        newBranch: newBranch,
       );
     }
 
+    if (worktreePath == null) return null;
+
+    // Persistence matches the in-memory RepoConfig by identity, so resolve the
+    // live registry instance and thread it through each update.
+    var current = _registryRepoFor(repo);
+
+    // Auto-assign next available slot to the new worktree.
+    final usedSlots = current.slotAssignments.values.toSet();
+    final slot = nextAvailableSlot(usedSlots);
+    final slots = Map<String, String>.from(current.slotAssignments);
+    slots[worktreePath] = slot;
+    final withSlot = await preferences.updateSlotAssignments(current, slots);
+    if (isSelected) {
+      _replaceSelection(current, withSlot);
+      worktreesController.setSlotAssignments(
+        withSlot?.slotAssignments ?? slots,
+      );
+    }
+    current = withSlot ?? current;
+
+    // Attach JIRA issue to the new worktree, if provided.
+    if (jiraIssue != null && jiraIssue.isNotEmpty) {
+      final issues = Map<String, String>.from(current.jiraIssues);
+      issues[worktreePath] = jiraIssue;
+      final withJira = await preferences.updateJiraIssues(current, issues);
+      if (isSelected) {
+        _replaceSelection(current, withJira);
+        worktreesController.setJiraIssues(withJira?.jiraIssues ?? issues);
+      }
+      current = withJira ?? current;
+    }
+
+    // Record the base branch the worktree was created from, if known.
+    if (baseBranch != null && baseBranch.isNotEmpty) {
+      final branches = Map<String, String>.from(current.baseBranches);
+      branches[worktreePath] = baseBranch;
+      final withBase = await preferences.updateBaseBranches(current, branches);
+      if (isSelected) {
+        _replaceSelection(current, withBase);
+        worktreesController.setBaseBranches(withBase?.baseBranches ?? branches);
+      }
+      current = withBase ?? current;
+    }
+
+    // Attach the PR author to the new worktree, if provided, so worktrees can
+    // later be grouped by PR creator.
+    if (prAuthor != null && prAuthor.isNotEmpty) {
+      final authors = Map<String, String>.from(current.prAuthors);
+      authors[worktreePath] = prAuthor;
+      final withAuthor = await preferences.updatePrAuthors(current, authors);
+      if (isSelected) {
+        _replaceSelection(current, withAuthor);
+        worktreesController.setPrAuthors(withAuthor?.prAuthors ?? authors);
+      }
+      current = withAuthor ?? current;
+    }
+
+    // Record the creation in the activity log.
+    _logWorktreeEvent(
+      type: WorktreeEventType.created,
+      repo: current,
+      worktreePath: worktreePath,
+      branch: newBranch ?? baseBranch,
+      jiraIssue: jiraIssue,
+    );
+
     return worktreePath;
+  }
+
+  /// Returns the live registry instance matching [repo] by path (so updates
+  /// match by identity), falling back to [repo] if it isn't registered.
+  RepoConfig _registryRepoFor(RepoConfig repo) {
+    for (final r in registry.repos) {
+      if (r.path == repo.path) return r;
+    }
+    return repo;
+  }
+
+  /// [WorktreeCreator] entry point for the agent HTTP API. Resolves the repo by
+  /// name from the live registry and delegates to [_addWorktreeForRepo].
+  @override
+  Future<CreatedWorktree> createWorktree({
+    required String repoName,
+    required String worktreeName,
+    required String baseBranch,
+    required String newBranch,
+    String? jiraIssue,
+  }) async {
+    RepoConfig? repo;
+    for (final r in registry.repos) {
+      if (r.name == repoName) {
+        repo = r;
+        break;
+      }
+    }
+    if (repo == null) throw RepoNotFoundException(repoName);
+
+    final worktreePath = await _addWorktreeForRepo(
+      repo,
+      worktreeName,
+      baseBranch: baseBranch,
+      newBranch: newBranch,
+      jiraIssue: jiraIssue,
+    );
+    if (worktreePath == null) {
+      throw Exception('Failed to create worktree "$worktreeName"');
+    }
+
+    final updated = _registryRepoFor(repo);
+    return CreatedWorktree(
+      worktreePath: worktreePath,
+      branch: newBranch,
+      slot: updated.slotAssignments[worktreePath] ?? '',
+    );
   }
 
   /// Appends a worktree lifecycle event. Best-effort: a logging failure must
@@ -333,7 +436,10 @@ class WorkspaceController extends ChangeNotifier {
     String? branch,
     String? jiraIssue,
   }) {
-    final segments = worktreePath.split('/').where((s) => s.isNotEmpty).toList();
+    final segments = worktreePath
+        .split('/')
+        .where((s) => s.isNotEmpty)
+        .toList();
     final name = segments.isEmpty ? worktreePath : segments.last;
     _eventStore.append(
       WorktreeEvent(
@@ -395,7 +501,9 @@ class WorkspaceController extends ChangeNotifier {
     }
     final newRepo = await preferences.updateSnoozedWorktrees(repo, updated);
     _replaceSelection(repo, newRepo);
-    worktreesController.setSnoozedWorktrees(newRepo?.snoozedWorktrees ?? updated);
+    worktreesController.setSnoozedWorktrees(
+      newRepo?.snoozedWorktrees ?? updated,
+    );
   }
 
   /// Clears the snooze on any worktree of the selected repo whose branch
@@ -415,7 +523,9 @@ class WorkspaceController extends ChangeNotifier {
       ..removeWhere(matching.contains);
     final newRepo = await preferences.updateSnoozedWorktrees(repo, updated);
     _replaceSelection(repo, newRepo);
-    worktreesController.setSnoozedWorktrees(newRepo?.snoozedWorktrees ?? updated);
+    worktreesController.setSnoozedWorktrees(
+      newRepo?.snoozedWorktrees ?? updated,
+    );
   }
 
   Future<void> deleteWorktree(Worktree worktree) async {
@@ -504,37 +614,25 @@ class WorkspaceController extends ChangeNotifier {
     updated[worktreePath] = slot;
     final newRepo = await preferences.updateSlotAssignments(repo, updated);
     _replaceSelection(repo, newRepo);
-    worktreesController.setSlotAssignments(
-      newRepo?.slotAssignments ?? updated,
-    );
+    worktreesController.setSlotAssignments(newRepo?.slotAssignments ?? updated);
   }
 
   void _syncSlotAssignments(RepoConfig? repo) {
-    worktreesController.setSlotAssignments(
-      repo?.slotAssignments ?? {},
-    );
-    worktreesController.setJiraIssues(
-      repo?.jiraIssues ?? {},
-    );
-    worktreesController.setBaseBranches(
-      repo?.baseBranches ?? {},
-    );
-    worktreesController.setPrAuthors(
-      repo?.prAuthors ?? {},
-    );
-    worktreesController.setHiddenWorktrees(
-      repo?.hiddenWorktrees ?? const [],
-    );
-    worktreesController.setSnoozedWorktrees(
-      repo?.snoozedWorktrees ?? const [],
-    );
+    worktreesController.setSlotAssignments(repo?.slotAssignments ?? {});
+    worktreesController.setJiraIssues(repo?.jiraIssues ?? {});
+    worktreesController.setBaseBranches(repo?.baseBranches ?? {});
+    worktreesController.setPrAuthors(repo?.prAuthors ?? {});
+    worktreesController.setHiddenWorktrees(repo?.hiddenWorktrees ?? const []);
+    worktreesController.setSnoozedWorktrees(repo?.snoozedWorktrees ?? const []);
   }
 
   /// Removes slot assignments for worktree paths that no longer exist.
   Future<void> _pruneStaleSlotAssignments() async {
     if (selectedRepo == null) return;
     final repo = selectedRepo!;
-    final activePaths = worktreesController.worktrees.map((w) => w.path).toSet();
+    final activePaths = worktreesController.worktrees
+        .map((w) => w.path)
+        .toSet();
     final staleKeys = repo.slotAssignments.keys
         .where((path) => !activePaths.contains(path))
         .toList();
@@ -546,9 +644,7 @@ class WorkspaceController extends ChangeNotifier {
     }
     var newRepo = await preferences.updateSlotAssignments(repo, updated);
     _replaceSelection(repo, newRepo);
-    worktreesController.setSlotAssignments(
-      newRepo?.slotAssignments ?? updated,
-    );
+    worktreesController.setSlotAssignments(newRepo?.slotAssignments ?? updated);
 
     // Prune stale JIRA issue assignments too.
     var current = newRepo ?? selectedRepo!;

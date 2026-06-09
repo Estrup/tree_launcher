@@ -8,6 +8,7 @@ import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
@@ -138,28 +139,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     final name = _effectiveWorktreeName;
     if (name.isEmpty) {
       _newBranchController.text = '';
-    } else if (prefix != null && prefix.isNotEmpty) {
-      _newBranchController.text = '$prefix/$name';
     } else {
-      _newBranchController.text = name;
+      _newBranchController.text = buildBranchName(name, prefix);
     }
-  }
-
-  String? _validateName(String value) {
-    if (value.isEmpty) return null;
-    if (value != value.toLowerCase()) return 'Must be lowercase';
-    if (!RegExp(r'^[a-z0-9._\-]+$').hasMatch(value)) {
-      return 'Only a-z, 0-9, ., -, _ allowed';
-    }
-    return null;
-  }
-
-  String? _validateJira(String value) {
-    if (value.isEmpty) return null;
-    if (!RegExp(r'^[A-Z][A-Z0-9]+-\d+$').hasMatch(value)) {
-      return 'Format: AU2-0001';
-    }
-    return null;
   }
 
   String get _effectiveWorktreeName {
@@ -170,7 +152,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
-    final nameError = _validateName(name);
+    final nameError = validateWorktreeName(name);
     if (nameError != null) {
       setState(() => _error = nameError);
       return;
@@ -178,7 +160,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
     final jira = _jiraController.text.trim();
     if (jira.isNotEmpty) {
-      final jiraError = _validateJira(jira);
+      final jiraError = validateJiraKey(jira);
       if (jiraError != null) {
         setState(() => _error = jiraError);
         return;
@@ -299,8 +281,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final nameError = _validateName(_nameController.text);
-    final jiraError = _validateJira(_jiraController.text);
+    final nameError = validateWorktreeName(_nameController.text);
+    final jiraError = validateJiraKey(_jiraController.text);
     final hasError = _error != null || nameError != null;
     final displayError = _error ?? nameError;
 
