@@ -15,6 +15,7 @@ import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_preferences_controller.dart';
+import 'package:tree_launcher/models/predefined_issue.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_registry_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_selection_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/worktree_controller.dart';
@@ -221,6 +222,15 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     List<CopilotPrompt> prompts,
   ) async {
     final updated = await preferences.updateRepoCopilotPrompts(repo, prompts);
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
+  Future<RepoConfig?> updateRepoPredefinedIssues(
+    RepoConfig repo,
+    List<PredefinedIssue> issues,
+  ) async {
+    final updated = await preferences.updateRepoPredefinedIssues(repo, issues);
     _replaceSelection(repo, updated);
     return updated;
   }

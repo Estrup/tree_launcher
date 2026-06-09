@@ -8,6 +8,7 @@ import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
+import 'package:tree_launcher/models/predefined_issue.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_registry_controller.dart';
 
 class RepoPreferencesController extends ChangeNotifier {
@@ -36,6 +37,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -65,6 +67,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -94,6 +97,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -123,6 +127,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -152,6 +157,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -181,6 +187,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -210,6 +217,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -239,6 +247,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -268,6 +277,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -297,6 +307,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -326,6 +337,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -355,6 +367,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -384,6 +397,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -413,6 +427,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -442,6 +457,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: config,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -471,6 +487,7 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: branch,
       githubConfig: repo.githubConfig,
+      predefinedIssues: repo.predefinedIssues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -500,6 +517,37 @@ class RepoPreferencesController extends ChangeNotifier {
       azureDevopsConfig: repo.azureDevopsConfig,
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: config,
+      predefinedIssues: repo.predefinedIssues,
+    );
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  Future<RepoConfig?> updateRepoPredefinedIssues(
+    RepoConfig repo,
+    List<PredefinedIssue> issues,
+  ) async {
+    final updated = RepoConfig(
+      name: repo.name,
+      path: repo.path,
+      vscodeConfigs: repo.vscodeConfigs,
+      customCommands: repo.customCommands,
+      customLinks: repo.customLinks,
+      lastBaseBranch: repo.lastBaseBranch,
+      defaultRunCommands: repo.defaultRunCommands,
+      copilotSessions: repo.copilotSessions,
+      copilotPrompts: repo.copilotPrompts,
+      slotAssignments: repo.slotAssignments,
+      jiraIssues: repo.jiraIssues,
+      baseBranches: repo.baseBranches,
+      prAuthors: repo.prAuthors,
+      hiddenWorktrees: repo.hiddenWorktrees,
+      snoozedWorktrees: repo.snoozedWorktrees,
+      azureDevopsConfig: repo.azureDevopsConfig,
+      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
+      githubConfig: repo.githubConfig,
+      predefinedIssues: issues,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();

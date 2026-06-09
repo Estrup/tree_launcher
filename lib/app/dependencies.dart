@@ -1,3 +1,4 @@
+import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
 import 'package:tree_launcher/features/copilot/data/sound_service.dart';
@@ -12,12 +13,14 @@ class AppDependencies {
     AppSettingsStore? appSettingsStore,
     SoundService? soundService,
     WorktreeEventStore? worktreeEventStore,
+    ManualPostStore? manualPostStore,
     AgentApiServer? agentApiServer,
   }) : gitService = gitService ?? GitService(),
        repoConfigStore = repoConfigStore ?? RepoConfigStore(),
        appSettingsStore = appSettingsStore ?? AppSettingsStore(),
        soundService = soundService ?? SoundService(),
-       worktreeEventStore = worktreeEventStore ?? WorktreeEventStore() {
+       worktreeEventStore = worktreeEventStore ?? WorktreeEventStore(),
+       manualPostStore = manualPostStore ?? ManualPostStore() {
     this.agentApiServer =
         agentApiServer ??
         AgentApiServer(
@@ -25,6 +28,7 @@ class AppDependencies {
           gitService: this.gitService,
           appSettingsStore: this.appSettingsStore,
           eventStore: this.worktreeEventStore,
+          manualPostStore: this.manualPostStore,
         );
   }
 
@@ -33,6 +37,7 @@ class AppDependencies {
   final AppSettingsStore appSettingsStore;
   final SoundService soundService;
   final WorktreeEventStore worktreeEventStore;
+  final ManualPostStore manualPostStore;
 
   /// Loopback-only HTTP API that exposes app data to local AI agents.
   late final AgentApiServer agentApiServer;

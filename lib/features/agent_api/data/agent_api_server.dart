@@ -7,6 +7,7 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
 
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
+import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 import 'package:tree_launcher/features/activity/domain/activity_filter.dart';
@@ -18,6 +19,7 @@ import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
+import 'package:tree_launcher/models/manual_post.dart';
 
 /// A small read-only HTTP server, bound to loopback only, that exposes app data
 /// to local AI agents (for use in Claude Code skills).
@@ -31,12 +33,15 @@ class AgentApiServer {
     required AppSettingsStore appSettingsStore,
     WorktreeEventStore? eventStore,
     ClaudeSessionActivity? claudeActivity,
+    ManualPostStore? manualPostStore,
   }) : _repoConfigStore = repoConfigStore,
        _gitService = gitService,
        _appSettingsStore = appSettingsStore,
+       _manualPostStore = manualPostStore ?? ManualPostStore(),
        _activityService = ActivityService(
          eventStore: eventStore,
          claudeActivity: claudeActivity,
+         manualPostStore: manualPostStore,
        );
 
   /// Default loopback port the agent API listens on.
@@ -45,6 +50,7 @@ class AgentApiServer {
   final RepoConfigStore _repoConfigStore;
   final GitService _gitService;
   final AppSettingsStore _appSettingsStore;
+  final ManualPostStore _manualPostStore;
   final ActivityService _activityService;
 
   /// Set by the live app once its controllers exist, so write endpoints route
@@ -92,6 +98,7 @@ class AgentApiServer {
   Router get _router => Router()
     ..get('/health', _health)
     ..get('/v1/activity', _activity)
+    ..post('/v1/activity', _createPost)
     ..post('/v1/worktrees', _createWorktree);
 
   Response _health(Request request) =>
@@ -159,6 +166,99 @@ class AgentApiServer {
     } catch (e) {
       debugPrint('AgentApiServer: /v1/activity failed: $e');
       return _json({'error': 'failed to load activity: $e'}, status: 500);
+    }
+  }
+
+  /// `POST /v1/activity`
+  ///
+  /// Logs a manual activity post (work done outside any worktree), stamped at
+  /// the current time. JSON body:
+  /// - `repo` (required) — repo name, as in `GET /v1/activity?repo=`.
+  /// - `issueKey` (required) — Jira key the work is logged against.
+  /// - `description` (optional) — falls back to the matching predefined issue's
+  ///   description for the repo, else empty.
+  /// - `hours` (optional number) — time spent.
+  Future<Response> _createPost(Request request) async {
+    final Map<String, dynamic> body;
+    try {
+      final raw = await request.readAsString();
+      final decoded = raw.isEmpty ? null : jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return _json({
+          'error': 'request body must be a JSON object',
+        }, status: 400);
+      }
+      body = decoded;
+    } catch (e) {
+      return _json({'error': 'invalid JSON body: $e'}, status: 400);
+    }
+
+    String? field(String key) {
+      final value = body[key];
+      if (value == null) return null;
+      final s = value.toString().trim();
+      return s.isEmpty ? null : s;
+    }
+
+    final repo = field('repo');
+    final issueKey = field('issueKey');
+    final missing = <String>[
+      if (repo == null) 'repo',
+      if (issueKey == null) 'issueKey',
+    ];
+    if (missing.isNotEmpty) {
+      return _json({
+        'error': 'missing required field(s): ${missing.join(', ')}',
+      }, status: 400);
+    }
+
+    final jiraError = validateJiraKey(issueKey!);
+    if (jiraError != null) {
+      return _json({'error': 'issueKey: $jiraError'}, status: 400);
+    }
+
+    final hoursRaw = body['hours'];
+    double? hours;
+    if (hoursRaw != null) {
+      hours = hoursRaw is num
+          ? hoursRaw.toDouble()
+          : double.tryParse(hoursRaw.toString());
+      if (hours == null) {
+        return _json({'error': 'hours must be a number'}, status: 400);
+      }
+    }
+
+    try {
+      final repos = await _repoConfigStore.load();
+      final match = repos.where((r) => r.name == repo).toList();
+      if (match.isEmpty) {
+        return _json({'error': 'repo not found: $repo'}, status: 404);
+      }
+      final config = match.first;
+
+      var description = field('description') ?? '';
+      if (description.isEmpty) {
+        for (final preset in config.predefinedIssues) {
+          if (preset.key == issueKey) {
+            description = preset.description;
+            break;
+          }
+        }
+      }
+
+      final post = ManualPost(
+        id: ManualPost.newId(),
+        timestamp: DateTime.now(),
+        repoName: config.name,
+        issueKey: issueKey,
+        description: description,
+        hours: hours,
+      );
+      await _manualPostStore.add(post);
+      return _json(post.toJson(), status: 201);
+    } catch (e) {
+      debugPrint('AgentApiServer: /v1/activity POST failed: $e');
+      return _json({'error': 'failed to log post: $e'}, status: 500);
     }
   }
 

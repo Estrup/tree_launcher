@@ -5,6 +5,7 @@ import 'copilot_prompt.dart';
 import 'copilot_session.dart';
 import 'custom_command.dart';
 import 'custom_link.dart';
+import 'predefined_issue.dart';
 import 'vscode_config.dart';
 
 class RepoConfig {
@@ -37,6 +38,10 @@ class RepoConfig {
   final String? lastAzureDevopsBranch;
   final GithubConfig? githubConfig;
 
+  /// Reusable issue key + description presets, used as the picker source when
+  /// logging a manual activity post.
+  final List<PredefinedIssue> predefinedIssues;
+
   RepoConfig({
     required this.name,
     required this.path,
@@ -56,6 +61,7 @@ class RepoConfig {
     this.azureDevopsConfig,
     this.lastAzureDevopsBranch,
     this.githubConfig,
+    this.predefinedIssues = const [],
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -123,6 +129,11 @@ class RepoConfig {
           ? GithubConfig.fromJson(
               json['githubConfig'] as Map<String, dynamic>)
           : null,
+      predefinedIssues:
+          (json['predefinedIssues'] as List<dynamic>?)
+              ?.map((e) => PredefinedIssue.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -148,6 +159,7 @@ class RepoConfig {
       'lastAzureDevopsBranch': lastAzureDevopsBranch,
     if (githubConfig != null)
       'githubConfig': githubConfig!.toJson(),
+    'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
   };
 
   @override

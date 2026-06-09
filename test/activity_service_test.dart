@@ -3,10 +3,13 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
+import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 import 'package:tree_launcher/features/activity/domain/activity_service.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/models/manual_post.dart';
 
 void main() {
   late Directory tempDir; // event-store storage
@@ -25,6 +28,7 @@ void main() {
   ActivityService service() => ActivityService(
     eventStore: WorktreeEventStore(directoryPath: tempDir.path),
     claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
+    manualPostStore: ManualPostStore(directoryPath: tempDir.path),
   );
 
   Worktree worktree(String path, {String name = 'wt', String branch = 'b'}) =>
@@ -139,6 +143,65 @@ void main() {
     // (live is a signal), but a path with truly nothing does not.
     final entries = await service().loadEntries();
     expect(entries, isEmpty);
+  });
+
+  test('merges manual posts into the timeline as manual entries', () async {
+    final manualStore = ManualPostStore(directoryPath: tempDir.path);
+    await manualStore.add(
+      ManualPost(
+        id: 'm1',
+        timestamp: DateTime(2026, 6, 8, 14),
+        repoName: 'demo',
+        issueKey: 'AU2-9',
+        description: 'Code review',
+        hours: 2.5,
+      ),
+    );
+
+    final entries = await service().loadEntries();
+    expect(entries, hasLength(1));
+    final e = entries.single;
+    expect(e.kind, ActivityEntryKind.manual);
+    expect(e.isManual, isTrue);
+    expect(e.worktreeName, 'Code review');
+    expect(e.repoName, 'demo');
+    expect(e.jiraIssue, 'AU2-9');
+    expect(e.hours, 2.5);
+    expect(e.createdAt, DateTime(2026, 6, 8, 14));
+
+    final json = e.toJson();
+    expect(json['kind'], 'manual');
+    expect(json['hours'], 2.5);
+  });
+
+  test('sorts manual posts among worktree entries by recency', () async {
+    final store = WorktreeEventStore(directoryPath: tempDir.path);
+    await store.append(
+      WorktreeEvent(
+        timestamp: DateTime(2026, 6, 1, 9),
+        type: WorktreeEventType.created,
+        repoPath: '/repo',
+        repoName: 'demo',
+        worktreePath: '/repo/old',
+        worktreeName: 'old',
+      ),
+    );
+    final manualStore = ManualPostStore(directoryPath: tempDir.path);
+    await manualStore.add(
+      ManualPost(
+        id: 'm1',
+        timestamp: DateTime(2026, 6, 7, 14),
+        repoName: 'demo',
+        issueKey: 'AU2-9',
+        description: 'Newer manual post',
+      ),
+    );
+
+    final entries = await service().loadEntries();
+    expect(entries.map((e) => e.worktreeName), [
+      'Newer manual post',
+      'old',
+    ]);
   });
 
   test('toJson round-trips the entry fields', () async {

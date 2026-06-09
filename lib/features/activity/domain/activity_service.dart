@@ -1,4 +1,5 @@
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
+import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
@@ -14,11 +15,14 @@ class ActivityService {
   ActivityService({
     WorktreeEventStore? eventStore,
     ClaudeSessionActivity? claudeActivity,
+    ManualPostStore? manualPostStore,
   }) : _eventStore = eventStore ?? WorktreeEventStore(),
-       _claudeActivity = claudeActivity ?? ClaudeSessionActivity();
+       _claudeActivity = claudeActivity ?? ClaudeSessionActivity(),
+       _manualPostStore = manualPostStore ?? ManualPostStore();
 
   final WorktreeEventStore _eventStore;
   final ClaudeSessionActivity _claudeActivity;
+  final ManualPostStore _manualPostStore;
 
   /// Builds the timeline, newest-first by [ActivityEntry.sortKey].
   ///
@@ -97,6 +101,25 @@ class ActivityService {
           // stale close event for a since-recreated path.
           closedAt: live != null ? null : closedEvent?.timestamp,
           activeDays: activeDays,
+        ),
+      );
+    }
+
+    // Fold in manually logged posts. They carry their own repo name, so the
+    // repo filtering done by callers (keyed on repoName) covers them too.
+    final posts = await _manualPostStore.loadAll();
+    for (final post in posts) {
+      entries.add(
+        ActivityEntry(
+          worktreePath: 'manual:${post.id}',
+          worktreeName: post.description.isNotEmpty
+              ? post.description
+              : post.issueKey,
+          repoName: post.repoName.isEmpty ? null : post.repoName,
+          jiraIssue: post.issueKey.isEmpty ? null : post.issueKey,
+          createdAt: post.timestamp,
+          kind: ActivityEntryKind.manual,
+          hours: post.hours,
         ),
       );
     }

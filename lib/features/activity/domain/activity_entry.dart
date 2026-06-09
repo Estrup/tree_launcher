@@ -1,6 +1,12 @@
-/// One worktree's worth of timeline: when it was created/closed and which days
-/// Claude was active in it. Merges the durable event log with Claude Code's
-/// session history.
+/// Distinguishes a worktree-derived timeline entry from a manually logged post.
+enum ActivityEntryKind { worktree, manual }
+
+/// One row of the Activity timeline. For [ActivityEntryKind.worktree] entries
+/// this is a worktree's worth of history — when it was created/closed and which
+/// days Claude was active in it, merging the durable event log with Claude
+/// Code's session history. For [ActivityEntryKind.manual] entries it's a single
+/// manually logged post: [worktreeName] holds the description, [createdAt] the
+/// log time, and [hours] the time spent.
 class ActivityEntry {
   final String worktreePath;
   final String worktreeName;
@@ -10,6 +16,10 @@ class ActivityEntry {
   final DateTime? createdAt;
   final DateTime? closedAt;
   final List<DateTime> activeDays;
+  final ActivityEntryKind kind;
+
+  /// Hours logged, for [ActivityEntryKind.manual] entries. Null otherwise.
+  final double? hours;
 
   ActivityEntry({
     required this.worktreePath,
@@ -20,7 +30,11 @@ class ActivityEntry {
     this.createdAt,
     this.closedAt,
     this.activeDays = const [],
+    this.kind = ActivityEntryKind.worktree,
+    this.hours,
   });
+
+  bool get isManual => kind == ActivityEntryKind.manual;
 
   bool get isOpen => closedAt == null;
 
@@ -58,5 +72,7 @@ class ActivityEntry {
     'isOpen': isOpen,
     'activeDays': [for (final d in activeDays) d.toIso8601String()],
     'lastActiveDay': lastActiveDay?.toIso8601String(),
+    'kind': kind.name,
+    if (hours != null) 'hours': hours,
   };
 }

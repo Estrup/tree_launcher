@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/features/activity/domain/activity_filter.dart';
 import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
+import 'package:tree_launcher/features/activity/presentation/widgets/add_manual_post_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart'
     show JiraBadge;
@@ -46,6 +47,26 @@ class _ActivityTabState extends State<ActivityTab> {
     );
   }
 
+  /// Opens the "Log Activity" dialog for the selected repo and records the post.
+  Future<void> _addPost() async {
+    final workspace = context.read<WorkspaceController>();
+    final repo = workspace.selectedRepo;
+    if (repo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a repository first.')),
+      );
+      return;
+    }
+    final result = await AddManualPostDialog.show(context, repo: repo);
+    if (result == null || !mounted) return;
+    await context.read<ActivityController>().addManualPost(
+      repoName: repo.name,
+      issueKey: result.issueKey,
+      description: result.description,
+      hours: result.hours,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final workspace = context.watch<WorkspaceController>();
@@ -59,7 +80,7 @@ class _ActivityTabState extends State<ActivityTab> {
     }
 
     if (controller.entries.isEmpty) {
-      return _EmptyState(onRefresh: _refresh);
+      return _EmptyState(onRefresh: _refresh, onAddPost: _addPost);
     }
 
     final filtered = controller.filteredEntries;
@@ -69,6 +90,7 @@ class _ActivityTabState extends State<ActivityTab> {
         _FilterBar(
           selected: controller.filter,
           onSelected: controller.setFilter,
+          onAddPost: _addPost,
         ),
         Expanded(
           child: filtered.isEmpty
@@ -83,26 +105,78 @@ class _ActivityTabState extends State<ActivityTab> {
 class _FilterBar extends StatelessWidget {
   final ActivityFilter selected;
   final ValueChanged<ActivityFilter> onSelected;
-  const _FilterBar({required this.selected, required this.onSelected});
+  final VoidCallback onAddPost;
+  const _FilterBar({
+    required this.selected,
+    required this.onSelected,
+    required this.onAddPost,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (final filter in ActivityFilter.values)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _FilterChip(
-                  label: filter.label,
-                  selected: filter == selected,
-                  onTap: () => onSelected(filter),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final filter in ActivityFilter.values)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _FilterChip(
+                        label: filter.label,
+                        selected: filter == selected,
+                        onTap: () => onSelected(filter),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          _AddPostButton(onTap: onAddPost),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact button that opens the "Log Activity" dialog.
+class _AddPostButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddPostButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.accent.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.accent.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_rounded, size: 14, color: AppColors.accent),
+              const SizedBox(width: 4),
+              Text(
+                'Log activity',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.accent,
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -185,7 +259,8 @@ class _NoMatchesState extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   final Future<void> Function() onRefresh;
-  const _EmptyState({required this.onRefresh});
+  final VoidCallback onAddPost;
+  const _EmptyState({required this.onRefresh, required this.onAddPost});
 
   @override
   Widget build(BuildContext context) {
@@ -214,13 +289,24 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          TextButton.icon(
-            onPressed: onRefresh,
-            icon: Icon(Icons.refresh_rounded, size: 16, color: AppColors.accent),
-            label: Text(
-              'Refresh',
-              style: TextStyle(color: AppColors.accent),
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton.icon(
+                onPressed: onRefresh,
+                icon: Icon(
+                  Icons.refresh_rounded,
+                  size: 16,
+                  color: AppColors.accent,
+                ),
+                label: Text(
+                  'Refresh',
+                  style: TextStyle(color: AppColors.accent),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _AddPostButton(onTap: onAddPost),
+            ],
           ),
         ],
       ),
@@ -357,6 +443,14 @@ class _ActivityRow extends StatefulWidget {
 class _ActivityRowState extends State<_ActivityRow> {
   bool _hovered = false;
 
+  void _deleteManual() {
+    const prefix = 'manual:';
+    final path = widget.entry.worktreePath;
+    if (!path.startsWith(prefix)) return;
+    final id = path.substring(prefix.length);
+    context.read<ActivityController>().deleteManualPost(id);
+  }
+
   Widget _dateCell(DateTime? date) {
     if (date == null) {
       return Text(
@@ -453,7 +547,9 @@ class _ActivityRowState extends State<_ActivityRow> {
               width: _kStatusWidth,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: _StatusPill(isOpen: entry.isOpen),
+                child: entry.isManual
+                    ? const _LoggedPill()
+                    : _StatusPill(isOpen: entry.isOpen),
               ),
             ),
             const SizedBox(width: _kColumnGap),
@@ -468,12 +564,24 @@ class _ActivityRowState extends State<_ActivityRow> {
             ],
             const SizedBox(width: _kColumnGap),
 
-            // Active days
+            // Active days (or, for manual posts, logged hours + delete)
             SizedBox(
               width: _kActiveWidth,
               child: Align(
                 alignment: Alignment.centerRight,
-                child: _ActiveDaysBadge(days: entry.activeDays),
+                child: entry.isManual
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_hovered)
+                            _DeleteManualButton(onTap: _deleteManual),
+                          if (entry.hours != null) ...[
+                            if (_hovered) const SizedBox(width: 6),
+                            _HoursBadge(hours: entry.hours!),
+                          ],
+                        ],
+                      )
+                    : _ActiveDaysBadge(days: entry.activeDays),
               ),
             ),
           ],
@@ -502,6 +610,97 @@ class _StatusPill extends StatelessWidget {
           fontSize: 10,
           fontWeight: FontWeight.w700,
           color: color,
+        ),
+      ),
+    );
+  }
+}
+
+/// Status pill for a manually logged post — distinguishes it from worktree
+/// rows (which show Open/Closed).
+class _LoggedPill extends StatelessWidget {
+  const _LoggedPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        'Logged',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: AppColors.accent,
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact hours badge shown in the Active column for manual posts.
+class _HoursBadge extends StatelessWidget {
+  final double hours;
+  const _HoursBadge({required this.hours});
+
+  String get _label {
+    final whole = hours.roundToDouble() == hours;
+    final value = whole ? hours.toInt().toString() : hours.toString();
+    return '${value}h';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.schedule_rounded,
+            size: 12,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            _label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Delete affordance shown on hover for manual posts.
+class _DeleteManualButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _DeleteManualButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Tooltip(
+          message: 'Delete post',
+          child: Icon(
+            Icons.delete_outline_rounded,
+            size: 16,
+            color: AppColors.textMuted,
+          ),
         ),
       ),
     );

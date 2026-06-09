@@ -52,8 +52,10 @@ class TreeLauncherApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TerminalController()),
         ChangeNotifierProvider(create: (_) => BuildsController()),
         ChangeNotifierProvider(
-          create: (_) =>
-              ActivityController(eventStore: dependencies.worktreeEventStore),
+          create: (_) => ActivityController(
+            eventStore: dependencies.worktreeEventStore,
+            manualPostStore: dependencies.manualPostStore,
+          ),
         ),
         ChangeNotifierProxyProvider<WorkspaceController, GithubPrsController>(
           create: (_) => GithubPrsController(),

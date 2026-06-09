@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
+import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
@@ -10,6 +11,7 @@ import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
+import 'package:tree_launcher/models/predefined_issue.dart';
 import 'package:tree_launcher/models/repo_config.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
@@ -91,11 +93,11 @@ void main() {
     if (await tempHome.exists()) await tempHome.delete(recursive: true);
   });
 
-  Future<(int, Map<String, dynamic>)> get(String path) async {
+  Future<(int, Map<String, dynamic>)> get(String path, {int? port}) async {
     final client = HttpClient();
     try {
       final req = await client.getUrl(
-        Uri.parse('http://127.0.0.1:${server.port}$path'),
+        Uri.parse('http://127.0.0.1:${port ?? server.port}$path'),
       );
       final res = await req.close();
       final body = await res.transform(utf8.decoder).join();
@@ -105,11 +107,15 @@ void main() {
     }
   }
 
-  Future<(int, Map<String, dynamic>)> post(String path, Object body) async {
+  Future<(int, Map<String, dynamic>)> post(
+    String path,
+    Object body, {
+    int? port,
+  }) async {
     final client = HttpClient();
     try {
       final req = await client.postUrl(
-        Uri.parse('http://127.0.0.1:${server.port}$path'),
+        Uri.parse('http://127.0.0.1:${port ?? server.port}$path'),
       );
       req.headers.contentType = ContentType.json;
       req.add(utf8.encode(jsonEncode(body)));
@@ -229,6 +235,109 @@ void main() {
       expect(status, 201);
       expect(body['worktreeName'], 'my-feature');
       expect(body['branch'], 'feature/my-feature');
+    });
+  });
+
+  group('POST /v1/activity', () {
+    late ManualPostStore manualStore;
+    late AgentApiServer s;
+
+    setUp(() async {
+      manualStore = ManualPostStore(directoryPath: tempDir.path);
+      s = AgentApiServer(
+        repoConfigStore: RepoConfigStore(
+          configService: _FakeConfigService([
+            RepoConfig(
+              name: 'demo',
+              path: '/repos/demo',
+              predefinedIssues: [
+                PredefinedIssue(key: 'AU2-9', description: 'Code review'),
+              ],
+            ),
+          ]),
+        ),
+        gitService: GitService(),
+        appSettingsStore: AppSettingsStore(
+          configService: _FakeConfigService(const []),
+        ),
+        eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+        claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
+        manualPostStore: manualStore,
+      );
+      await s.start(port: 0);
+      addTearDown(() => s.stop());
+    });
+
+    test('rejects missing required fields with 400', () async {
+      final (status, body) = await post('/v1/activity', {
+        'hours': 2,
+      }, port: s.port);
+      expect(status, 400);
+      expect(body['error'], contains('missing required field'));
+      expect(body['error'], contains('repo'));
+      expect(body['error'], contains('issueKey'));
+    });
+
+    test('rejects an invalid issue key with 400', () async {
+      final (status, body) = await post('/v1/activity', {
+        'repo': 'demo',
+        'issueKey': 'not-a-key',
+      }, port: s.port);
+      expect(status, 400);
+      expect(body['error'], startsWith('issueKey:'));
+    });
+
+    test('rejects a non-numeric hours with 400', () async {
+      final (status, body) = await post('/v1/activity', {
+        'repo': 'demo',
+        'issueKey': 'AU2-9',
+        'hours': 'lots',
+      }, port: s.port);
+      expect(status, 400);
+      expect(body['error'], contains('hours'));
+    });
+
+    test('returns 404 when the repo is unknown', () async {
+      final (status, body) = await post('/v1/activity', {
+        'repo': 'missing',
+        'issueKey': 'AU2-9',
+      }, port: s.port);
+      expect(status, 404);
+      expect(body['error'], contains('missing'));
+    });
+
+    test('logs a post, filling description from a predefined issue', () async {
+      final (status, body) = await post('/v1/activity', {
+        'repo': 'demo',
+        'issueKey': 'AU2-9',
+        'hours': 2.5,
+      }, port: s.port);
+      expect(status, 201);
+      expect(body['repoName'], 'demo');
+      expect(body['issueKey'], 'AU2-9');
+      expect(body['description'], 'Code review');
+      expect(body['hours'], 2.5);
+      expect(body['id'], isNotEmpty);
+
+      // The post is persisted and surfaces in the timeline as a manual entry.
+      expect((await manualStore.loadAll()).single.issueKey, 'AU2-9');
+      final (gStatus, gBody) = await get('/v1/activity?repo=demo', port: s.port);
+      expect(gStatus, 200);
+      final entries = gBody['entries'] as List;
+      expect(entries, hasLength(1));
+      expect(entries.single['kind'], 'manual');
+      expect(entries.single['hours'], 2.5);
+      expect(entries.single['jiraIssue'], 'AU2-9');
+    });
+
+    test('keeps an explicit description over the predefined one', () async {
+      final (status, body) = await post('/v1/activity', {
+        'repo': 'demo',
+        'issueKey': 'AU2-9',
+        'description': 'Pairing session',
+      }, port: s.port);
+      expect(status, 201);
+      expect(body['description'], 'Pairing session');
     });
   });
 }
