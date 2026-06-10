@@ -11,6 +11,7 @@ import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/models/copilot_prompt.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
@@ -105,6 +106,85 @@ Future<void> confirmDeleteWorktree(BuildContext context, Worktree wt) async {
       }
     }
   }
+}
+
+/// Shows a dialog to add, edit, or clear the JIRA ticket key attached to [wt].
+/// Persists via [RepoProvider.updateJiraIssue]; an empty value clears the key.
+Future<void> editJiraIssueDialog(BuildContext context, Worktree wt) async {
+  final repoProvider = context.read<RepoProvider>();
+  final controller = TextEditingController(text: wt.jiraIssue ?? '');
+  final focusNode = FocusNode();
+
+  final saved = await showDialog<bool>(
+    context: context,
+    builder: (ctx) {
+      String? error;
+      var requestedFocus = false;
+      return StatefulBuilder(
+        builder: (ctx, setState) {
+          // Claim focus once after the first frame. Relying on autofocus loses a
+          // race with the popup menu's focus restoration (see WorktreeOptions).
+          if (!requestedFocus) {
+            requestedFocus = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (focusNode.canRequestFocus) focusNode.requestFocus();
+            });
+          }
+
+          void submit() {
+            final value = controller.text.trim();
+            final validationError = validateJiraKey(value);
+            if (validationError != null) {
+              setState(() => error = validationError);
+              return;
+            }
+            Navigator.of(ctx).pop(true);
+          }
+
+          return AlertDialog(
+            title: const Text('JIRA ticket'),
+            content: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              onChanged: (_) {
+                if (error != null) setState(() => error = null);
+              },
+              onSubmitted: (_) => submit(),
+              decoration: InputDecoration(
+                hintText: 'AU2-0001',
+                errorText: error,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: submit,
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  if (saved == true) {
+    final value = controller.text.trim();
+    try {
+      await repoProvider.updateJiraIssue(wt.path, value.isEmpty ? null : value);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update JIRA: $e')));
+      }
+    }
+  }
+  controller.dispose();
+  focusNode.dispose();
 }
 
 /// Opens a dropdown menu positioned below [anchorContext]'s render box.
@@ -1262,6 +1342,14 @@ class _WorktreeOptionsButtonState extends State<WorktreeOptionsButton> {
       minWidth: 180,
       items: [
         item(
+          'editJira',
+          Icons.confirmation_number_outlined,
+          (wt.jiraIssue == null || wt.jiraIssue!.isEmpty)
+              ? 'Attach JIRA ticket'
+              : 'Edit JIRA ticket',
+        ),
+        const PopupMenuDivider(height: 1),
+        item(
           'hide',
           wt.isHidden
               ? Icons.visibility_rounded
@@ -1287,6 +1375,14 @@ class _WorktreeOptionsButtonState extends State<WorktreeOptionsButton> {
       ],
     ).then((value) {
       switch (value) {
+        case 'editJira':
+          // Defer past the popup-menu route's focus restoration, which would
+          // otherwise return focus to the underlying terminal and steal it from
+          // the dialog's text field.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) editJiraIssueDialog(context, wt);
+          });
+          break;
         case 'hide':
           repoProvider.setWorktreeHidden(wt.path, !wt.isHidden);
           break;
