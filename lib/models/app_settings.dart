@@ -52,6 +52,11 @@ class AppSettings {
   /// Repo paths the user has hidden from the sidebar.
   final List<String> hiddenRepos;
 
+  /// Loopback port the agent API HTTP server listens on. Default mirrors
+  /// `AgentApiServer.defaultPort` (kept as a literal here to avoid the model
+  /// depending on the feature layer).
+  final int agentApiPort;
+
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
     this.customTerminalCommand,
@@ -74,6 +79,7 @@ class AppSettings {
     this.worktreeViewMode = WorktreeViewMode.grid,
     this.showHiddenWorktrees = false,
     this.hiddenRepos = const [],
+    this.agentApiPort = 8765,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -121,6 +127,7 @@ class AppSettings {
       showHiddenWorktrees: json['showHiddenWorktrees'] as bool? ?? false,
       hiddenRepos:
           (json['hiddenRepos'] as List<dynamic>?)?.cast<String>() ?? const [],
+      agentApiPort: json['agentApiPort'] as int? ?? 8765,
     );
   }
 
@@ -146,6 +153,7 @@ class AppSettings {
     'worktreeViewMode': worktreeViewMode.name,
     'showHiddenWorktrees': showHiddenWorktrees,
     'hiddenRepos': hiddenRepos,
+    'agentApiPort': agentApiPort,
   };
 
   AppSettings copyWith({
@@ -174,6 +182,7 @@ class AppSettings {
     WorktreeViewMode? worktreeViewMode,
     bool? showHiddenWorktrees,
     List<String>? hiddenRepos,
+    int? agentApiPort,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -208,6 +217,7 @@ class AppSettings {
       worktreeViewMode: worktreeViewMode ?? this.worktreeViewMode,
       showHiddenWorktrees: showHiddenWorktrees ?? this.showHiddenWorktrees,
       hiddenRepos: hiddenRepos ?? this.hiddenRepos,
+      agentApiPort: agentApiPort ?? this.agentApiPort,
     );
   }
 }

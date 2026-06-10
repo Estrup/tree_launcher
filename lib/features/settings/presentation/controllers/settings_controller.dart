@@ -167,6 +167,12 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateAgentApiPort(int port) async {
+    _settings = _settings.copyWith(agentApiPort: port);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
   /// Hides a repo from the sidebar.
   Future<void> hideRepo(String path) async {
     if (_settings.hiddenRepos.contains(path)) return;

@@ -9,6 +9,14 @@
       "flutterMode": "debug"
     },
     {
+      "name": "tree_launcher (macOS, debug, alt agent-API port 8766)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "macos",
+      "flutterMode": "debug",
+      "toolArgs": ["--dart-define=AGENT_API_PORT=8766"]
+    },
+    {
       "name": "tree_launcher (macOS, profile)",
       "request": "launch",
       "type": "dart",

@@ -95,6 +95,13 @@ class AgentApiServer {
     _server = null;
   }
 
+  /// Stops the server (if running) and starts it again on [port]. Like [start],
+  /// never throws — a failed rebind leaves the server stopped.
+  Future<void> restart({int port = defaultPort}) async {
+    await stop();
+    await start(port: port);
+  }
+
   Router get _router => Router()
     ..get('/health', _health)
     ..get('/v1/activity', _activity)

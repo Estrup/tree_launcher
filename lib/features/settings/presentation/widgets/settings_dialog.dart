@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/copilot/data/sound_service.dart';
@@ -15,6 +16,7 @@ enum _SettingsSection {
   copilot,
   markdownEditor,
   repositories,
+  agentApi,
   help,
 }
 
@@ -173,6 +175,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                 _selectedSection = _SettingsSection.repositories,
                           ),
                         ),
+                        _NavItem(
+                          icon: Icons.api_rounded,
+                          label: 'Agent API',
+                          isSelected:
+                              _selectedSection == _SettingsSection.agentApi,
+                          onTap: () => setState(
+                            () => _selectedSection = _SettingsSection.agentApi,
+                          ),
+                        ),
                         const Spacer(),
                         _NavItem(
                           icon: Icons.help_outline_rounded,
@@ -218,6 +229,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         return const _MarkdownEditorSection();
       case _SettingsSection.repositories:
         return const _RepositoriesSection();
+      case _SettingsSection.agentApi:
+        return const _AgentApiSection();
       case _SettingsSection.help:
         return const _HelpSection();
     }
@@ -1552,6 +1565,181 @@ class _SmallButtonState extends State<_SmallButton> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AgentApiSection extends StatefulWidget {
+  const _AgentApiSection();
+
+  @override
+  State<_AgentApiSection> createState() => _AgentApiSectionState();
+}
+
+class _AgentApiSectionState extends State<_AgentApiSection> {
+  late final TextEditingController _portController;
+  final FocusNode _portFocus = FocusNode();
+  String? _error;
+  bool _restarting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = context.read<SettingsProvider>().settings;
+    // A debug override (--dart-define=AGENT_API_PORT) wins over the saved
+    // config and must never be written back, so the field shows it read-only.
+    _portController = TextEditingController(
+      text: (agentApiPortOverride != 0
+              ? agentApiPortOverride
+              : settings.agentApiPort)
+          .toString(),
+    );
+    // Commit when the field loses focus, mirroring onSubmitted.
+    _portFocus.addListener(() {
+      if (!_portFocus.hasFocus) _commitPort();
+    });
+  }
+
+  @override
+  void dispose() {
+    _portController.dispose();
+    _portFocus.dispose();
+    super.dispose();
+  }
+
+  Future<void> _commitPort() async {
+    // Never persist while a debug override is active.
+    if (agentApiPortOverride != 0) return;
+    final settingsProvider = context.read<SettingsProvider>();
+    final current = settingsProvider.settings.agentApiPort;
+    final text = _portController.text.trim();
+    final port = int.tryParse(text);
+
+    if (port == null || port < 1024 || port > 65535) {
+      setState(() => _error = 'Enter a port between 1024 and 65535');
+      return;
+    }
+    setState(() => _error = null);
+    if (port == current) return;
+
+    await settingsProvider.updateAgentApiPort(port);
+    await _restart(port);
+  }
+
+  Future<void> _restart(int port) async {
+    final deps = context.read<AppDependencies>();
+    setState(() => _restarting = true);
+    await deps.agentApiServer.restart(port: port);
+    if (mounted) setState(() => _restarting = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>().settings;
+    final server = context.read<AppDependencies>().agentApiServer;
+    final running = server.isRunning;
+    final activePort = server.port;
+    final overridden = agentApiPortOverride != 0;
+    // Port this process uses: the debug override if set, else the saved config.
+    final effectivePort = overridden ? agentApiPortOverride : settings.agentApiPort;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Agent API',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Local HTTP API for AI agents, bound to 127.0.0.1',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'PORT',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: 160,
+            child: TextField(
+              style: appFormFieldTextStyle(context, monospace: true),
+              decoration: InputDecoration(
+                hintText: '8765',
+                hintStyle: appFormFieldHintStyle(context, monospace: true),
+              ),
+              controller: _portController,
+              focusNode: _portFocus,
+              enabled: !overridden,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onSubmitted: (_) => _commitPort(),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            overridden
+                ? 'Debug override from --dart-define=AGENT_API_PORT. The saved '
+                      'config port (${settings.agentApiPort}) is unchanged and '
+                      'will be used on a normal launch.'
+                : _error ??
+                      'Changing the port restarts the service immediately. '
+                          'Takes effect on next launch too.',
+            style: TextStyle(
+              fontSize: 10,
+              color: _error != null && !overridden
+                  ? AppColors.error
+                  : AppColors.textMuted.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              _SmallButton(
+                label: _restarting ? 'Restarting…' : 'Restart service',
+                icon: Icons.refresh_rounded,
+                onTap: () {
+                  if (!_restarting) _restart(effectivePort);
+                },
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                running ? Icons.circle : Icons.circle_outlined,
+                size: 9,
+                color: running ? AppColors.success : AppColors.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                running
+                    ? 'Running on http://127.0.0.1:$activePort'
+                    : 'Not running',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: running
+                      ? AppColors.textSecondary
+                      : AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

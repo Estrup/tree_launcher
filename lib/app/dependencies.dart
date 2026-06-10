@@ -6,6 +6,12 @@ import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 
+/// Debug-only agent API port override, supplied via
+/// `--dart-define=AGENT_API_PORT=NNNN`. Lets `flutter run` bind a non-default
+/// port without touching the saved config, so a debug instance doesn't collide
+/// with a normally-running one. `0` means "not set" — fall back to the config.
+const int agentApiPortOverride = int.fromEnvironment('AGENT_API_PORT');
+
 class AppDependencies {
   AppDependencies({
     GitService? gitService,
@@ -45,6 +51,9 @@ class AppDependencies {
   /// Starts long-lived background services (currently just the agent API).
   /// Guarded so a failure never blocks app startup.
   Future<void> startServers() async {
-    await agentApiServer.start();
+    final port = agentApiPortOverride != 0
+        ? agentApiPortOverride
+        : (await appSettingsStore.load()).agentApiPort;
+    await agentApiServer.start(port: port);
   }
 }
