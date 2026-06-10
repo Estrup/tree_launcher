@@ -8,8 +8,8 @@ import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/models/predefined_issue.dart';
 
 /// The fields captured when logging a manual activity post. The date is implied
-/// (always "now") and there is no free-text note — the description comes from
-/// the picked predefined issue.
+/// (always "now"); the description comes from the picked predefined issue, or
+/// is typed freely for a custom issue key.
 class AddManualPostResult {
   final String issueKey;
   final String description;
@@ -25,7 +25,8 @@ class AddManualPostResult {
 /// Dialog for logging work done outside any worktree against an issue key.
 ///
 /// When the repo has predefined issues, the key is picked from them (auto-
-/// filling the description). Otherwise the key is typed directly.
+/// filling the description) or "Custom issue…" reveals free-text key and
+/// description fields. Without presets the key is typed directly.
 class AddManualPostDialog extends StatefulWidget {
   final RepoConfig repo;
 
@@ -46,7 +47,13 @@ class AddManualPostDialog extends StatefulWidget {
 }
 
 class _AddManualPostDialogState extends State<AddManualPostDialog> {
+  /// Sentinel dropdown entry for typing an arbitrary issue key; compared by
+  /// identity since real presets may legitimately have any field values.
+  static final PredefinedIssue _customIssue =
+      PredefinedIssue(key: '', description: '');
+
   final _keyController = TextEditingController();
+  final _descriptionController = TextEditingController();
   final _hoursController = TextEditingController();
 
   PredefinedIssue? _selectedIssue;
@@ -54,6 +61,9 @@ class _AddManualPostDialogState extends State<AddManualPostDialog> {
   String? _error;
 
   List<PredefinedIssue> get _presets => widget.repo.predefinedIssues;
+
+  bool get _isCustom =>
+      _presets.isEmpty || identical(_selectedIssue, _customIssue);
 
   @override
   void initState() {
@@ -66,6 +76,7 @@ class _AddManualPostDialogState extends State<AddManualPostDialog> {
   @override
   void dispose() {
     _keyController.dispose();
+    _descriptionController.dispose();
     _hoursController.dispose();
     super.dispose();
   }
@@ -74,7 +85,7 @@ class _AddManualPostDialogState extends State<AddManualPostDialog> {
     setState(() {
       _selectedIssue = issue;
       _description = issue.description;
-      _keyController.text = issue.key;
+      _keyController.text = identical(issue, _customIssue) ? '' : issue.key;
       _error = null;
     });
   }
@@ -105,7 +116,8 @@ class _AddManualPostDialogState extends State<AddManualPostDialog> {
       context,
       AddManualPostResult(
         issueKey: issueKey,
-        description: _description,
+        description:
+            _isCustom ? _descriptionController.text.trim() : _description,
         hours: hours,
       ),
     );
@@ -161,12 +173,18 @@ class _AddManualPostDialogState extends State<AddManualPostDialog> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                    DropdownMenuItem(
+                      value: _customIssue,
+                      child: const Text('Custom issue…'),
+                    ),
                   ],
                   onChanged: (issue) {
                     if (issue != null) _selectIssue(issue);
                   },
                 ),
-              ] else ...[
+              ],
+              if (_isCustom) ...[
+                if (hasPresets) const SizedBox(height: 8),
                 TextField(
                   controller: _keyController,
                   autofocus: true,
@@ -179,11 +197,27 @@ class _AddManualPostDialogState extends State<AddManualPostDialog> {
                   onChanged: (_) => setState(() => _error = null),
                   onSubmitted: (_) => _submit(),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Tip: add reusable issue keys in repo settings to pick them '
-                  'here.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                if (!hasPresets) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Tip: add reusable issue keys in repo settings to pick '
+                    'them here.',
+                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  ),
+                ],
+                const SizedBox(height: 16),
+
+                _sectionLabel('DESCRIPTION (OPTIONAL)'),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _descriptionController,
+                  style: appFormFieldTextStyle(context),
+                  decoration: InputDecoration(
+                    hintText: 'Shown in the activity timeline',
+                    hintStyle: appFormFieldHintStyle(context),
+                  ),
+                  onChanged: (_) => setState(() => _error = null),
+                  onSubmitted: (_) => _submit(),
                 ),
               ],
 
