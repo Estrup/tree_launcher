@@ -497,6 +497,26 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     worktreesController.setHiddenWorktrees(newRepo?.hiddenWorktrees ?? updated);
   }
 
+  /// Hides or unhides several worktrees in a single config write.
+  Future<void> setWorktreesHidden(
+    List<String> worktreePaths,
+    bool hidden,
+  ) async {
+    if (selectedRepo == null || worktreePaths.isEmpty) return;
+    final repo = selectedRepo!;
+    final updated = List<String>.from(repo.hiddenWorktrees);
+    if (hidden) {
+      for (final path in worktreePaths) {
+        if (!updated.contains(path)) updated.add(path);
+      }
+    } else {
+      updated.removeWhere(worktreePaths.contains);
+    }
+    final newRepo = await preferences.updateHiddenWorktrees(repo, updated);
+    _replaceSelection(repo, newRepo);
+    worktreesController.setHiddenWorktrees(newRepo?.hiddenWorktrees ?? updated);
+  }
+
   /// Snoozes or unsnoozes a worktree. PR worktrees auto-unsnooze when the PR is
   /// again assigned to me (see [clearSnoozeForBranch]); others stay snoozed
   /// until cleared manually.

@@ -202,6 +202,7 @@ class FakeSoundService extends SoundService {
 class FakeConfigService extends ConfigService {
   List<RepoConfig> savedRepos = const [];
   AppSettings savedSettings = AppSettings();
+  String? lastSelectedRepoPath;
 
   @override
   Future<List<RepoConfig>> loadRepos() async => savedRepos;
@@ -217,6 +218,14 @@ class FakeConfigService extends ConfigService {
   @override
   Future<void> saveSettings(AppSettings settings) async {
     savedSettings = settings;
+  }
+
+  @override
+  Future<String?> loadLastSelectedRepoPath() async => lastSelectedRepoPath;
+
+  @override
+  Future<void> saveLastSelectedRepoPath(String? path) async {
+    lastSelectedRepoPath = path;
   }
 }
 
