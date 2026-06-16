@@ -160,6 +160,15 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     return updated;
   }
 
+  Future<RepoConfig?> updateUseNestedWorktrees(
+    RepoConfig repo,
+    bool value,
+  ) async {
+    final updated = await preferences.updateUseNestedWorktrees(repo, value);
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
   Future<RepoConfig?> updateRepoVscodeConfigs(
     RepoConfig repo,
     List<VscodeConfig> configs,
@@ -310,6 +319,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
         name,
         baseBranch: baseBranch,
         newBranch: newBranch,
+        useNestedWorktrees: repo.useNestedWorktrees,
       );
     } else {
       // Create directly so we don't replace the selected repo's worktree list.
@@ -318,6 +328,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
         name,
         baseBranch: baseBranch,
         newBranch: newBranch,
+        useNestedWorktrees: repo.useNestedWorktrees,
       );
     }
 

@@ -18,27 +18,7 @@ class RepoPreferencesController extends ChangeNotifier {
   final RepoRegistryController _registry;
 
   Future<RepoConfig?> renameRepo(RepoConfig repo, String newName) async {
-    final updated = RepoConfig(
-      name: newName,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(name: newName);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -48,27 +28,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     List<VscodeConfig> configs,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: configs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(vscodeConfigs: configs);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -78,27 +38,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     List<CustomCommand> commands,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: commands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(customCommands: commands);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -108,27 +48,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     List<CustomLink> links,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: links,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(customLinks: links);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -138,27 +58,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     String branch,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: branch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(lastBaseBranch: branch);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -168,27 +68,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     List<String> commandNames,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: commandNames,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(defaultRunCommands: commandNames);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -198,27 +78,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     List<CopilotSession> sessions,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: sessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(copilotSessions: sessions);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -228,27 +88,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     List<CopilotPrompt> prompts,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: prompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(copilotPrompts: prompts);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -258,27 +98,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     Map<String, String> slotAssignments,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(slotAssignments: slotAssignments);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -288,27 +108,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     Map<String, String> jiraIssues,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(jiraIssues: jiraIssues);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -318,27 +118,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     Map<String, String> baseBranches,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(baseBranches: baseBranches);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -348,27 +128,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     Map<String, String> prAuthors,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(prAuthors: prAuthors);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -378,27 +138,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     List<String> hiddenWorktrees,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(hiddenWorktrees: hiddenWorktrees);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -408,27 +148,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     List<String> snoozedWorktrees,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(snoozedWorktrees: snoozedWorktrees);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -458,6 +178,7 @@ class RepoPreferencesController extends ChangeNotifier {
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: repo.githubConfig,
       predefinedIssues: repo.predefinedIssues,
+      useNestedWorktrees: repo.useNestedWorktrees,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -468,27 +189,7 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     String branch,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: branch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: repo.predefinedIssues,
-    );
+    final updated = repo.copyWith(lastAzureDevopsBranch: branch);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;
@@ -518,6 +219,7 @@ class RepoPreferencesController extends ChangeNotifier {
       lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
       githubConfig: config,
       predefinedIssues: repo.predefinedIssues,
+      useNestedWorktrees: repo.useNestedWorktrees,
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
@@ -528,27 +230,17 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     List<PredefinedIssue> issues,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      customLinks: repo.customLinks,
-      lastBaseBranch: repo.lastBaseBranch,
-      defaultRunCommands: repo.defaultRunCommands,
-      copilotSessions: repo.copilotSessions,
-      copilotPrompts: repo.copilotPrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
-      azureDevopsConfig: repo.azureDevopsConfig,
-      lastAzureDevopsBranch: repo.lastAzureDevopsBranch,
-      githubConfig: repo.githubConfig,
-      predefinedIssues: issues,
-    );
+    final updated = repo.copyWith(predefinedIssues: issues);
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  Future<RepoConfig?> updateUseNestedWorktrees(
+    RepoConfig repo,
+    bool value,
+  ) async {
+    final updated = repo.copyWith(useNestedWorktrees: value);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;

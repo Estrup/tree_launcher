@@ -135,6 +135,7 @@ class WorktreeController extends ChangeNotifier {
     String name, {
     String? baseBranch,
     String? newBranch,
+    bool useNestedWorktrees = false,
   }) async {
     if (repoPath == null) return null;
     final path = await _gitService.addWorktree(
@@ -142,6 +143,7 @@ class WorktreeController extends ChangeNotifier {
       name,
       baseBranch: baseBranch,
       newBranch: newBranch,
+      useNestedWorktrees: useNestedWorktrees,
     );
     await refreshForRepo(repoPath);
     return path;

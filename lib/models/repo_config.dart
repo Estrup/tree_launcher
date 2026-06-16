@@ -42,6 +42,11 @@ class RepoConfig {
   /// logging a manual activity post.
   final List<PredefinedIssue> predefinedIssues;
 
+  /// When true, new worktrees for this repo are created in a `.worktrees/`
+  /// subfolder inside the repo (and that folder is added to git's exclude)
+  /// instead of as siblings of the repo directory. Ignored for bare repos.
+  final bool useNestedWorktrees;
+
   RepoConfig({
     required this.name,
     required this.path,
@@ -62,6 +67,7 @@ class RepoConfig {
     this.lastAzureDevopsBranch,
     this.githubConfig,
     this.predefinedIssues = const [],
+    this.useNestedWorktrees = false,
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -134,6 +140,7 @@ class RepoConfig {
               ?.map((e) => PredefinedIssue.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      useNestedWorktrees: json['useNestedWorktrees'] as bool? ?? false,
     );
   }
 
@@ -160,7 +167,55 @@ class RepoConfig {
     if (githubConfig != null)
       'githubConfig': githubConfig!.toJson(),
     'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
+    'useNestedWorktrees': useNestedWorktrees,
   };
+
+  RepoConfig copyWith({
+    String? name,
+    String? path,
+    List<VscodeConfig>? vscodeConfigs,
+    List<CustomCommand>? customCommands,
+    List<CustomLink>? customLinks,
+    String? lastBaseBranch,
+    List<String>? defaultRunCommands,
+    List<CopilotSession>? copilotSessions,
+    List<CopilotPrompt>? copilotPrompts,
+    Map<String, String>? slotAssignments,
+    Map<String, String>? jiraIssues,
+    Map<String, String>? baseBranches,
+    Map<String, String>? prAuthors,
+    List<String>? hiddenWorktrees,
+    List<String>? snoozedWorktrees,
+    AzureDevopsConfig? azureDevopsConfig,
+    String? lastAzureDevopsBranch,
+    GithubConfig? githubConfig,
+    List<PredefinedIssue>? predefinedIssues,
+    bool? useNestedWorktrees,
+  }) {
+    return RepoConfig(
+      name: name ?? this.name,
+      path: path ?? this.path,
+      vscodeConfigs: vscodeConfigs ?? this.vscodeConfigs,
+      customCommands: customCommands ?? this.customCommands,
+      customLinks: customLinks ?? this.customLinks,
+      lastBaseBranch: lastBaseBranch ?? this.lastBaseBranch,
+      defaultRunCommands: defaultRunCommands ?? this.defaultRunCommands,
+      copilotSessions: copilotSessions ?? this.copilotSessions,
+      copilotPrompts: copilotPrompts ?? this.copilotPrompts,
+      slotAssignments: slotAssignments ?? this.slotAssignments,
+      jiraIssues: jiraIssues ?? this.jiraIssues,
+      baseBranches: baseBranches ?? this.baseBranches,
+      prAuthors: prAuthors ?? this.prAuthors,
+      hiddenWorktrees: hiddenWorktrees ?? this.hiddenWorktrees,
+      snoozedWorktrees: snoozedWorktrees ?? this.snoozedWorktrees,
+      azureDevopsConfig: azureDevopsConfig ?? this.azureDevopsConfig,
+      lastAzureDevopsBranch:
+          lastAzureDevopsBranch ?? this.lastAzureDevopsBranch,
+      githubConfig: githubConfig ?? this.githubConfig,
+      predefinedIssues: predefinedIssues ?? this.predefinedIssues,
+      useNestedWorktrees: useNestedWorktrees ?? this.useNestedWorktrees,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>

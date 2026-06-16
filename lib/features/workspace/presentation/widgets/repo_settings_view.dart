@@ -413,6 +413,59 @@ class _GeneralSectionState extends State<_GeneralSection> {
               ),
             ),
           ),
+          const SizedBox(height: 24),
+          Text(
+            'WORKTREE LOCATION',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: 400,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Nest worktrees in .worktrees/ subfolder',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'When on, new worktrees are created inside the repo '
+                        'and kept out of git status. When off, they are created '
+                        'alongside the repo. Does not apply to bare repos.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Switch.adaptive(
+                  value: repo.useNestedWorktrees,
+                  onChanged: (value) {
+                    context.read<RepoProvider>().updateUseNestedWorktrees(
+                      repo,
+                      value,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

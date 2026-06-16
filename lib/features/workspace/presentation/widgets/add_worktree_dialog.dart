@@ -503,7 +503,10 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
               const SizedBox(height: 12),
               Text(
-                'Created in the same folder as the repository.',
+                context.watch<RepoProvider>().selectedRepo?.useNestedWorktrees ==
+                        true
+                    ? 'Created in the repository\'s .worktrees/ subfolder.'
+                    : 'Created in the same folder as the repository.',
                 style: TextStyle(
                   fontSize: 11,
                   color: AppColors.textMuted.withValues(alpha: 0.6),

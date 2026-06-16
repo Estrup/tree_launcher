@@ -176,6 +176,7 @@ class _FakeGitService extends GitService {
     String name, {
     String? baseBranch,
     String? newBranch,
+    bool useNestedWorktrees = false,
   }) async {
     return '/tmp/${math.max(name.length, 1)}';
   }

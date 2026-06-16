@@ -84,17 +84,25 @@ class GitService {
     return branches;
   }
 
-  /// Creates a new worktree as a sibling of the repo directory.
-  /// Returns the path to the created worktree.
+  /// Creates a new worktree and returns the path to it.
+  ///
+  /// By default the worktree is placed as a sibling of the repo directory.
+  /// When [useNestedWorktrees] is true and the repo is not bare, it is placed
+  /// in a `.worktrees/` subfolder inside the repo instead, and that folder is
+  /// added to git's exclude so it never shows up as untracked.
   Future<String> addWorktree(
     String repoPath,
     String name, {
     String? baseBranch,
     String? newBranch,
+    bool useNestedWorktrees = false,
   }) async {
-    // Worktrees are always placed alongside the repo directory.
-    final parentDir = p.dirname(repoPath);
-    final worktreePath = p.join(parentDir, name);
+    // Bare repos have no working tree, so nesting (and its exclude entry) makes
+    // no sense — keep them on the sibling layout.
+    final nested = useNestedWorktrees && !await _isBareRepository(repoPath);
+    final worktreePath = nested
+        ? p.join(repoPath, '.worktrees', name)
+        : p.join(p.dirname(repoPath), name);
 
     // Check if folder already exists
     if (await Directory(worktreePath).exists()) {
@@ -138,7 +146,64 @@ class GitService {
       throw Exception(result.stderr.toString().trim());
     }
 
+    if (nested) {
+      await _ensureWorktreesIgnored(repoPath);
+    }
+
     return worktreePath;
+  }
+
+  /// Returns true if [repoPath] is a bare git repository.
+  Future<bool> _isBareRepository(String repoPath) async {
+    final result = await _runGit(
+      ['rev-parse', '--is-bare-repository'],
+      workingDirectory: repoPath,
+    );
+    return result.exitCode == 0 && (result.stdout as String).trim() == 'true';
+  }
+
+  /// Idempotently adds `.worktrees/` to the repo's local git exclude
+  /// (`.git/info/exclude`) so nested worktrees don't appear as untracked.
+  ///
+  /// Best-effort: any git/IO failure is swallowed so it never blocks worktree
+  /// creation. Uses `.git/info/exclude` rather than a tracked `.gitignore` so
+  /// it leaves no working-tree diff to commit.
+  Future<void> _ensureWorktreesIgnored(String repoPath) async {
+    final result = await _runGit(
+      ['rev-parse', '--git-common-dir'],
+      workingDirectory: repoPath,
+    );
+    if (result.exitCode != 0) return;
+    var gitCommonDir = (result.stdout as String).trim();
+    if (gitCommonDir.isEmpty) return;
+    // git may return a path relative to repoPath.
+    if (!p.isAbsolute(gitCommonDir)) {
+      gitCommonDir = p.join(repoPath, gitCommonDir);
+    }
+    final excludeFile = File(p.join(gitCommonDir, 'info', 'exclude'));
+
+    const entry = '.worktrees/';
+    var existing = '';
+    try {
+      if (await excludeFile.exists()) {
+        existing = await excludeFile.readAsString();
+        final present = existing
+            .split('\n')
+            .map((l) => l.trim())
+            .contains(entry);
+        if (present) return;
+      } else {
+        await excludeFile.parent.create(recursive: true);
+      }
+      final prefix =
+          existing.isEmpty || existing.endsWith('\n') ? '' : '\n';
+      await excludeFile.writeAsString(
+        '$prefix$entry\n',
+        mode: FileMode.append,
+      );
+    } catch (_) {
+      // Never let an exclude-write failure block worktree creation.
+    }
   }
 
   /// Removes a worktree from disk and git.
