@@ -40,6 +40,7 @@ class _FakeWorktreeCreator implements WorktreeCreator {
     required String baseBranch,
     required String newBranch,
     String? jiraIssue,
+    String? kickoffPrompt,
   }) async {
     lastCall = {
       'repoName': repoName,
@@ -47,6 +48,7 @@ class _FakeWorktreeCreator implements WorktreeCreator {
       'baseBranch': baseBranch,
       'newBranch': newBranch,
       'jiraIssue': jiraIssue,
+      'kickoffPrompt': kickoffPrompt,
     };
     if (!knownRepos.contains(repoName)) {
       throw RepoNotFoundException(repoName);
@@ -55,6 +57,9 @@ class _FakeWorktreeCreator implements WorktreeCreator {
       worktreePath: '/repos/$worktreeName',
       branch: newBranch,
       slot: 'alpha',
+      kickoffPromptPath: kickoffPrompt == null
+          ? null
+          : '/repos/$worktreeName/.tree-launcher/kickoff-prompt.md',
     );
   }
 }
@@ -222,6 +227,24 @@ void main() {
       expect(body['issueKey'], 'AU2-1234');
       expect(creator.lastCall!['newBranch'], 'feature/my-feature');
       expect(creator.lastCall!['jiraIssue'], 'AU2-1234');
+      // No kickoff prompt supplied → the creator sees null and the response
+      // carries a null path.
+      expect(creator.lastCall!['kickoffPrompt'], isNull);
+      expect(body['kickoffPromptPath'], isNull);
+    });
+
+    test('forwards a kickoff prompt and returns its file path', () async {
+      server.registerWorktreeCreator(creator);
+      final (status, body) = await post('/v1/worktrees', {
+        ...validBody(),
+        'kickoffPrompt': '# Plan\n\nStep 1\nStep 2',
+      });
+      expect(status, 201);
+      expect(creator.lastCall!['kickoffPrompt'], '# Plan\n\nStep 1\nStep 2');
+      expect(
+        body['kickoffPromptPath'],
+        '/repos/my-feature/.tree-launcher/kickoff-prompt.md',
+      );
     });
 
     test('normalizes worktree name and branch suffix', () async {

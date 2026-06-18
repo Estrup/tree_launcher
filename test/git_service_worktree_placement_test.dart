@@ -110,6 +110,41 @@ void main() {
     expect(count, 1);
   });
 
+  test('writeKickoffPrompt writes the file, excluded from git', () async {
+    if (!hasGit) {
+      markTestSkipped('git not available');
+      return;
+    }
+    final repoPath = await initRepoWithCommit(tempRoot);
+    final worktreePath = await service.addWorktree(
+      repoPath,
+      'feat-x',
+      newBranch: 'feat-x',
+    );
+
+    const content = '# Plan\n\nStep 1\nStep 2\n';
+    final filePath = await service.writeKickoffPrompt(
+      repoPath: repoPath,
+      worktreePath: worktreePath,
+      content: content,
+    );
+
+    expect(
+      filePath,
+      p.join(worktreePath, '.tree-launcher', 'kickoff-prompt.md'),
+    );
+    expect(File(filePath).readAsStringSync(), content);
+
+    // The file must not show up as untracked: `.tree-launcher/` is added to the
+    // shared git exclude, so `git status` in the worktree stays clean.
+    final status = await Process.run(
+      git,
+      ['status', '--porcelain'],
+      workingDirectory: worktreePath,
+    );
+    expect(status.stdout.toString(), isNot(contains('.tree-launcher')));
+  });
+
   test('bare repo ignores the flag and uses sibling layout', () async {
     if (!hasGit) {
       markTestSkipped('git not available');
@@ -140,7 +175,7 @@ void main() {
     }
     final repoPath = await initRepoWithCommit(tempRoot);
 
-    final path = await service.addWorktree(
+    await service.addWorktree(
       repoPath,
       'feat-x',
       newBranch: 'feat-x',

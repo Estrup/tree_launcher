@@ -308,6 +308,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     String? newBranch,
     String? jiraIssue,
     String? prAuthor,
+    String? kickoffPrompt,
   }) async {
     final isSelected = repo.path == selectedRepo?.path;
 
@@ -389,6 +390,34 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
       current = withAuthor ?? current;
     }
 
+    // Write the API-supplied kickoff prompt into the worktree and record the
+    // file reference (the text is too large for config.json). Best-effort: a
+    // write failure must never block worktree creation.
+    if (kickoffPrompt != null && kickoffPrompt.isNotEmpty) {
+      try {
+        final kickoffPath = await _gitService.writeKickoffPrompt(
+          repoPath: repo.path,
+          worktreePath: worktreePath,
+          content: kickoffPrompt,
+        );
+        final prompts = Map<String, String>.from(current.kickoffPrompts);
+        prompts[worktreePath] = kickoffPath;
+        final withKickoff = await preferences.updateKickoffPrompts(
+          current,
+          prompts,
+        );
+        if (isSelected) {
+          _replaceSelection(current, withKickoff);
+          worktreesController.setKickoffPrompts(
+            withKickoff?.kickoffPrompts ?? prompts,
+          );
+        }
+        current = withKickoff ?? current;
+      } catch (e) {
+        debugPrint('WorkspaceController: writeKickoffPrompt failed: $e');
+      }
+    }
+
     // Record the creation in the activity log.
     _logWorktreeEvent(
       type: WorktreeEventType.created,
@@ -419,6 +448,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     required String baseBranch,
     required String newBranch,
     String? jiraIssue,
+    String? kickoffPrompt,
   }) async {
     RepoConfig? repo;
     for (final r in registry.repos) {
@@ -435,6 +465,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
       baseBranch: baseBranch,
       newBranch: newBranch,
       jiraIssue: jiraIssue,
+      kickoffPrompt: kickoffPrompt,
     );
     if (worktreePath == null) {
       throw Exception('Failed to create worktree "$worktreeName"');
@@ -445,6 +476,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
       worktreePath: worktreePath,
       branch: newBranch,
       slot: updated.slotAssignments[worktreePath] ?? '',
+      kickoffPromptPath: updated.kickoffPrompts[worktreePath],
     );
   }
 
@@ -663,6 +695,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     worktreesController.setJiraIssues(repo?.jiraIssues ?? {});
     worktreesController.setBaseBranches(repo?.baseBranches ?? {});
     worktreesController.setPrAuthors(repo?.prAuthors ?? {});
+    worktreesController.setKickoffPrompts(repo?.kickoffPrompts ?? {});
     worktreesController.setHiddenWorktrees(repo?.hiddenWorktrees ?? const []);
     worktreesController.setSnoozedWorktrees(repo?.snoozedWorktrees ?? const []);
   }
@@ -714,7 +747,27 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
       }
       final withAuthor = await preferences.updatePrAuthors(current, authors);
       _replaceSelection(current, withAuthor);
-      worktreesController.setPrAuthors(withAuthor?.prAuthors ?? authors);
+      current = withAuthor ?? current;
+      worktreesController.setPrAuthors(current.prAuthors);
+    }
+
+    // Prune stale kickoff-prompt references too. The files live inside the
+    // worktree dirs, so they're gone with the worktree; just drop the refs.
+    final staleKickoffKeys = current.kickoffPrompts.keys
+        .where((path) => !activePaths.contains(path))
+        .toList();
+    if (staleKickoffKeys.isNotEmpty) {
+      final prompts = Map<String, String>.from(current.kickoffPrompts);
+      for (final key in staleKickoffKeys) {
+        prompts.remove(key);
+      }
+      final withKickoff = await preferences.updateKickoffPrompts(
+        current,
+        prompts,
+      );
+      _replaceSelection(current, withKickoff);
+      current = withKickoff ?? current;
+      worktreesController.setKickoffPrompts(current.kickoffPrompts);
     }
   }
 

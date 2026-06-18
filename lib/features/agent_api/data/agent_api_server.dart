@@ -278,6 +278,11 @@ class AgentApiServer {
   ///   `<defaultBranchPrefix>/<branch>` when a prefix is configured.
   /// - `worktreeName` (required) — the worktree directory name.
   /// - `issueKey` (optional) — Jira key stored as worktree metadata.
+  /// - `kickoffPrompt` (optional) — prompt text (e.g. a full implementation
+  ///   plan) written to `<worktree>/.tree-launcher/kickoff-prompt.md`; the
+  ///   response returns its `kickoffPromptPath`, and the worktree's Claude
+  ///   dropdown gains a "Kickoff prompt" option that launches Claude pointed
+  ///   at the file.
   ///
   /// `worktreeName` and `branch` are normalized (lowercased, spaces→dashes) and
   /// validated against the app's naming rules.
@@ -313,6 +318,7 @@ class AgentApiServer {
     final branchInput = field('branch');
     final worktreeInput = field('worktreeName');
     final issueKey = field('issueKey');
+    final kickoffPrompt = field('kickoffPrompt');
 
     final missing = <String>[
       if (repo == null) 'repo',
@@ -357,6 +363,7 @@ class AgentApiServer {
         baseBranch: baseBranch!,
         newBranch: newBranch,
         jiraIssue: issueKey,
+        kickoffPrompt: kickoffPrompt,
       );
 
       return _json({
@@ -366,6 +373,7 @@ class AgentApiServer {
         'branch': created.branch,
         'slot': created.slot,
         'issueKey': issueKey,
+        'kickoffPromptPath': created.kickoffPromptPath,
       }, status: 201);
     } on RepoNotFoundException catch (e) {
       return _json({'error': e.toString()}, status: 404);

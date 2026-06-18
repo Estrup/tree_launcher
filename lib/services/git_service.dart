@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import '../features/workspace/domain/worktree_naming.dart';
 import '../models/worktree.dart';
 
 class GitService {
@@ -147,10 +148,26 @@ class GitService {
     }
 
     if (nested) {
-      await _ensureWorktreesIgnored(repoPath);
+      await _ensureIgnored(repoPath, '.worktrees/');
     }
 
     return worktreePath;
+  }
+
+  /// Writes [content] to `<worktreePath>/.tree-launcher/kickoff-prompt.md`
+  /// (see [kickoffPromptRelativePath]), ensures `.tree-launcher/` is git-excluded
+  /// so it never shows as untracked, and returns the absolute file path.
+  Future<String> writeKickoffPrompt({
+    required String repoPath,
+    required String worktreePath,
+    required String content,
+  }) async {
+    final filePath = p.join(worktreePath, kickoffPromptRelativePath);
+    final file = File(filePath);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(content);
+    await _ensureIgnored(repoPath, '.tree-launcher/');
+    return filePath;
   }
 
   /// Returns true if [repoPath] is a bare git repository.
@@ -162,13 +179,14 @@ class GitService {
     return result.exitCode == 0 && (result.stdout as String).trim() == 'true';
   }
 
-  /// Idempotently adds `.worktrees/` to the repo's local git exclude
-  /// (`.git/info/exclude`) so nested worktrees don't appear as untracked.
+  /// Idempotently adds [entry] to the repo's local git exclude
+  /// (`.git/info/exclude`) so the matching files never appear as untracked.
   ///
   /// Best-effort: any git/IO failure is swallowed so it never blocks worktree
   /// creation. Uses `.git/info/exclude` rather than a tracked `.gitignore` so
-  /// it leaves no working-tree diff to commit.
-  Future<void> _ensureWorktreesIgnored(String repoPath) async {
+  /// it leaves no working-tree diff to commit. The exclude is shared across a
+  /// repo's worktrees (it lives in the common git dir).
+  Future<void> _ensureIgnored(String repoPath, String entry) async {
     final result = await _runGit(
       ['rev-parse', '--git-common-dir'],
       workingDirectory: repoPath,
@@ -182,7 +200,6 @@ class GitService {
     }
     final excludeFile = File(p.join(gitCommonDir, 'info', 'exclude'));
 
-    const entry = '.worktrees/';
     var existing = '';
     try {
       if (await excludeFile.exists()) {

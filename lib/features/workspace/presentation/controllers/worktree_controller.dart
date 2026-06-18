@@ -60,6 +60,16 @@ class WorktreeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Kickoff-prompt file paths from config, keyed by worktree path.
+  Map<String, String> _kickoffPrompts = {};
+  Map<String, String> get kickoffPrompts => Map.unmodifiable(_kickoffPrompts);
+
+  void setKickoffPrompts(Map<String, String> prompts) {
+    _kickoffPrompts = Map.of(prompts);
+    _hydrateSlots();
+    notifyListeners();
+  }
+
   /// Hidden worktree paths from config.
   Set<String> _hiddenWorktrees = {};
   Set<String> get hiddenWorktrees => Set.unmodifiable(_hiddenWorktrees);
@@ -119,6 +129,7 @@ class WorktreeController extends ChangeNotifier {
         jiraIssue: _jiraIssues[wt.path],
         baseBranch: _baseBranches[wt.path],
         prAuthor: _prAuthors[wt.path],
+        kickoffPromptPath: _kickoffPrompts[wt.path],
         isHidden: _hiddenWorktrees.contains(wt.path),
         isSnoozed: _snoozedWorktrees.contains(wt.path),
       );

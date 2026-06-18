@@ -29,6 +29,11 @@ class RepoConfig {
   /// PR author login per worktree path, recorded at creation (worktree path -> author login).
   final Map<String, String> prAuthors;
 
+  /// Absolute path to the API-supplied kickoff-prompt file per worktree path
+  /// (worktree path -> file path). The prompt text itself lives in the file
+  /// (potentially large), so only the reference is persisted here.
+  final Map<String, String> kickoffPrompts;
+
   /// Worktree paths the user has hidden from the list.
   final List<String> hiddenWorktrees;
 
@@ -61,6 +66,7 @@ class RepoConfig {
     this.jiraIssues = const {},
     this.baseBranches = const {},
     this.prAuthors = const {},
+    this.kickoffPrompts = const {},
     this.hiddenWorktrees = const [],
     this.snoozedWorktrees = const [],
     this.azureDevopsConfig,
@@ -121,6 +127,10 @@ class RepoConfig {
           (json['prAuthors'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as String)) ??
           {},
+      kickoffPrompts:
+          (json['kickoffPrompts'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v as String)) ??
+          {},
       hiddenWorktrees:
           (json['hiddenWorktrees'] as List<dynamic>?)?.cast<String>() ?? const [],
       snoozedWorktrees:
@@ -158,6 +168,7 @@ class RepoConfig {
     'jiraIssues': jiraIssues,
     'baseBranches': baseBranches,
     'prAuthors': prAuthors,
+    'kickoffPrompts': kickoffPrompts,
     'hiddenWorktrees': hiddenWorktrees,
     'snoozedWorktrees': snoozedWorktrees,
     if (azureDevopsConfig != null)
@@ -184,6 +195,7 @@ class RepoConfig {
     Map<String, String>? jiraIssues,
     Map<String, String>? baseBranches,
     Map<String, String>? prAuthors,
+    Map<String, String>? kickoffPrompts,
     List<String>? hiddenWorktrees,
     List<String>? snoozedWorktrees,
     AzureDevopsConfig? azureDevopsConfig,
@@ -206,6 +218,7 @@ class RepoConfig {
       jiraIssues: jiraIssues ?? this.jiraIssues,
       baseBranches: baseBranches ?? this.baseBranches,
       prAuthors: prAuthors ?? this.prAuthors,
+      kickoffPrompts: kickoffPrompts ?? this.kickoffPrompts,
       hiddenWorktrees: hiddenWorktrees ?? this.hiddenWorktrees,
       snoozedWorktrees: snoozedWorktrees ?? this.snoozedWorktrees,
       azureDevopsConfig: azureDevopsConfig ?? this.azureDevopsConfig,

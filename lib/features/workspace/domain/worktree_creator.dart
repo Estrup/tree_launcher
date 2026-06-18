@@ -9,6 +9,8 @@ abstract class WorktreeCreator {
   /// Creates a worktree in the repo named [repoName].
   ///
   /// [newBranch] is the fully-resolved branch name (prefix already applied).
+  /// When [kickoffPrompt] is non-empty its text is written to a file inside the
+  /// new worktree and referenced from [CreatedWorktree.kickoffPromptPath].
   /// Throws [RepoNotFoundException] if no repo matches [repoName].
   Future<CreatedWorktree> createWorktree({
     required String repoName,
@@ -16,6 +18,7 @@ abstract class WorktreeCreator {
     required String baseBranch,
     required String newBranch,
     String? jiraIssue,
+    String? kickoffPrompt,
   });
 }
 
@@ -25,11 +28,16 @@ class CreatedWorktree {
     required this.worktreePath,
     required this.branch,
     required this.slot,
+    this.kickoffPromptPath,
   });
 
   final String worktreePath;
   final String branch;
   final String slot;
+
+  /// Absolute path to the written kickoff-prompt file, or null when no prompt
+  /// was supplied (or the write failed).
+  final String? kickoffPromptPath;
 }
 
 /// Thrown when no repo matches the requested name.

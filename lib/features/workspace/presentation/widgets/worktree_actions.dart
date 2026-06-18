@@ -37,6 +37,14 @@ String? claudeContextPrompt(Worktree wt) {
   return null;
 }
 
+/// Short instruction that points Claude at the worktree's API-supplied
+/// kickoff-prompt file. The (potentially large) plan stays in the file rather
+/// than being inlined into the launch URL. Returns null when no kickoff prompt
+/// is attached to [wt].
+String? kickoffPromptLaunchPrompt(Worktree wt) => wt.kickoffPromptPath == null
+    ? null
+    : 'Read and follow the implementation plan in $kickoffPromptRelativePath.';
+
 /// Fills a saved [CopilotPrompt]'s placeholders from an existing worktree's
 /// recorded fields. Mirrors the substitution used by the create-worktree dialog.
 /// Returns null when the resolved text is empty.
@@ -797,6 +805,7 @@ class _ClaudeButtonState extends State<ClaudeButton> {
       height: 13,
       colorFilter: ColorFilter.mode(AppColors.claude, BlendMode.srcIn),
     );
+    final hasKickoff = widget.wt.kickoffPromptPath != null;
     _showMenuBelow<int>(
       context,
       minWidth: 220,
@@ -813,6 +822,28 @@ class _ClaudeButtonState extends State<ClaudeButton> {
             ),
           ),
         ),
+        if (hasKickoff)
+          PopupMenuItem<int>(
+            value: -2,
+            height: 36,
+            child: Row(
+              children: [
+                claudeIcon,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Kickoff prompt',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
         for (var i = 0; i < prompts.length; i++)
           PopupMenuItem<int>(
             value: i,
@@ -842,6 +873,13 @@ class _ClaudeButtonState extends State<ClaudeButton> {
         _openWithContext();
         return;
       }
+      if (value == -2) {
+        widget.launcherService.openClaude(
+          widget.wt.path,
+          prompt: kickoffPromptLaunchPrompt(widget.wt),
+        );
+        return;
+      }
       widget.launcherService.openClaude(
         widget.wt.path,
         prompt: resolveWorktreePrompt(
@@ -857,7 +895,10 @@ class _ClaudeButtonState extends State<ClaudeButton> {
   Widget build(BuildContext context) {
     final repo = context.watch<RepoProvider>().selectedRepo;
     final prompts = repo?.copilotPrompts ?? const <CopilotPrompt>[];
-    final hasPrompts = prompts.isNotEmpty;
+    final hasKickoff = widget.wt.kickoffPromptPath != null;
+    // The dropdown is worth showing when there are configured prompts or this
+    // worktree has an API-supplied kickoff prompt to launch.
+    final hasPrompts = prompts.isNotEmpty || hasKickoff;
 
     if (widget.compact) {
       final claudeIcon = SvgPicture.asset(

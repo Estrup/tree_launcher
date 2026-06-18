@@ -43,3 +43,9 @@ String buildBranchName(String suffix, String? prefix) {
   if (prefix != null && prefix.isNotEmpty) return '$prefix/$suffix';
   return suffix;
 }
+
+/// Relative path (within a worktree) of the API-supplied kickoff-prompt file.
+///
+/// The agent API writes a worktree's kickoff prompt here; the Claude launcher
+/// references this path rather than inlining the (potentially large) text.
+const String kickoffPromptRelativePath = '.tree-launcher/kickoff-prompt.md';

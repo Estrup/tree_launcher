@@ -16,6 +16,11 @@ class Worktree {
   /// Persisted so worktrees can later be grouped by PR creator.
   final String? prAuthor;
 
+  /// Absolute path to the API-supplied kickoff-prompt file inside this worktree
+  /// (see [kickoffPromptRelativePath]), or null. Hydrated from
+  /// RepoConfig.kickoffPrompts.
+  final String? kickoffPromptPath;
+
   /// Whether this worktree is hidden from the list (unless "Show hidden
   /// worktrees" is enabled). Hydrated from RepoConfig.hiddenWorktrees.
   final bool isHidden;
@@ -35,6 +40,7 @@ class Worktree {
     this.jiraIssue,
     this.baseBranch,
     this.prAuthor,
+    this.kickoffPromptPath,
     this.isHidden = false,
     this.isSnoozed = false,
   });
@@ -49,6 +55,7 @@ class Worktree {
     String? jiraIssue,
     String? baseBranch,
     String? prAuthor,
+    String? kickoffPromptPath,
     bool? isHidden,
     bool? isSnoozed,
   }) {
@@ -62,6 +69,7 @@ class Worktree {
       jiraIssue: jiraIssue ?? this.jiraIssue,
       baseBranch: baseBranch ?? this.baseBranch,
       prAuthor: prAuthor ?? this.prAuthor,
+      kickoffPromptPath: kickoffPromptPath ?? this.kickoffPromptPath,
       isHidden: isHidden ?? this.isHidden,
       isSnoozed: isSnoozed ?? this.isSnoozed,
     );

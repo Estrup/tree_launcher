@@ -134,6 +134,16 @@ class RepoPreferencesController extends ChangeNotifier {
     return updated;
   }
 
+  Future<RepoConfig?> updateKickoffPrompts(
+    RepoConfig repo,
+    Map<String, String> kickoffPrompts,
+  ) async {
+    final updated = repo.copyWith(kickoffPrompts: kickoffPrompts);
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
   Future<RepoConfig?> updateHiddenWorktrees(
     RepoConfig repo,
     List<String> hiddenWorktrees,
@@ -172,6 +182,7 @@ class RepoPreferencesController extends ChangeNotifier {
       jiraIssues: repo.jiraIssues,
       baseBranches: repo.baseBranches,
       prAuthors: repo.prAuthors,
+      kickoffPrompts: repo.kickoffPrompts,
       hiddenWorktrees: repo.hiddenWorktrees,
       snoozedWorktrees: repo.snoozedWorktrees,
       azureDevopsConfig: config,
@@ -213,6 +224,7 @@ class RepoPreferencesController extends ChangeNotifier {
       jiraIssues: repo.jiraIssues,
       baseBranches: repo.baseBranches,
       prAuthors: repo.prAuthors,
+      kickoffPrompts: repo.kickoffPrompts,
       hiddenWorktrees: repo.hiddenWorktrees,
       snoozedWorktrees: repo.snoozedWorktrees,
       azureDevopsConfig: repo.azureDevopsConfig,
