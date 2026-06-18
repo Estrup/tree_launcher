@@ -270,6 +270,8 @@ class _WorktreeCardState extends State<WorktreeCard> {
                       ),
                     ],
                     const Spacer(),
+                    PullButton(worktree: wt, compact: true),
+                    const SizedBox(width: 6),
                     WorktreeOptionsButton(worktree: wt),
                   ],
                 ),

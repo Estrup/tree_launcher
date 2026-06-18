@@ -601,6 +601,11 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     );
   }
 
+  /// Fetches and fast-forwards [worktree]'s current branch to its upstream.
+  /// Throws with a user-facing message when a clean fast-forward isn't possible.
+  Future<PullResult> pullWorktree(Worktree worktree) =>
+      worktreesController.pullWorktree(selectedRepo?.path, worktree);
+
   Future<void> deleteWorktree(Worktree worktree) async {
     // Capture the close event before any per-worktree metadata is stripped
     // below — the JIRA issue and branch only live on the passed [worktree] and

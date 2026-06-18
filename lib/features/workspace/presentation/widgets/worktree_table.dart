@@ -15,7 +15,7 @@ import 'package:tree_launcher/providers/settings_provider.dart';
 const double _kCheckboxWidth = 24;
 const double _kJiraWidth = 120;
 const double _kPrWidth = 80;
-const double _kActionsWidth = 290;
+const double _kActionsWidth = 330;
 const double _kColumnGap = 16;
 const int _kNameFlex = 3;
 const int _kBranchFlex = 3;
@@ -804,6 +804,8 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                       compact: true,
                     ),
                   ],
+                  const SizedBox(width: 6),
+                  PullButton(worktree: wt, compact: true),
                   const SizedBox(width: 6),
                   SizedBox(
                     width: 24,

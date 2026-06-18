@@ -160,6 +160,15 @@ class WorktreeController extends ChangeNotifier {
     return path;
   }
 
+  /// Fetches and fast-forwards [worktree]'s current branch, then refreshes the
+  /// list so the row's commit hash reflects the new HEAD. Rethrows any
+  /// [GitService] error so the caller can surface a message.
+  Future<PullResult> pullWorktree(String? repoPath, Worktree worktree) async {
+    final result = await _gitService.pullCurrentBranch(worktree.path);
+    await refreshForRepo(repoPath);
+    return result;
+  }
+
   Future<void> deleteWorktree(String? repoPath, Worktree worktree) async {
     if (repoPath == null) return;
     await _gitService.removeWorktree(repoPath, worktree.path);

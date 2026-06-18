@@ -223,6 +223,103 @@ class GitService {
     }
   }
 
+  /// Fetches the remote and fast-forwards the current branch of [worktreePath]
+  /// to its upstream.
+  ///
+  /// Fast-forward only: it never creates a merge commit or rebases. Throws an
+  /// [Exception] with a user-facing message when the pull is not possible:
+  /// - HEAD is detached (no branch checked out),
+  /// - the branch has no upstream/remote-tracking branch,
+  /// - the working tree has uncommitted changes, or
+  /// - the branch has diverged (local commits that block a fast-forward).
+  Future<PullResult> pullCurrentBranch(String worktreePath) async {
+    // 1. Current branch (and detached-HEAD guard).
+    final branchRes = await _runGit([
+      'symbolic-ref',
+      '--quiet',
+      '--short',
+      'HEAD',
+    ], workingDirectory: worktreePath);
+    if (branchRes.exitCode != 0) {
+      throw Exception('Cannot pull: HEAD is detached (no branch checked out).');
+    }
+    final branch = (branchRes.stdout as String).trim();
+
+    // 2. Upstream / remote-tracking branch.
+    final upstreamRes = await _runGit([
+      'rev-parse',
+      '--abbrev-ref',
+      '--symbolic-full-name',
+      '@{u}',
+    ], workingDirectory: worktreePath);
+    if (upstreamRes.exitCode != 0) {
+      throw Exception('Cannot pull: "$branch" has no upstream branch.');
+    }
+    final upstream = (upstreamRes.stdout as String).trim();
+
+    // 3. Uncommitted-changes guard.
+    final statusRes = await _runGit([
+      'status',
+      '--porcelain',
+    ], workingDirectory: worktreePath);
+    if (statusRes.exitCode != 0) {
+      throw Exception(statusRes.stderr.toString().trim());
+    }
+    if ((statusRes.stdout as String).trim().isNotEmpty) {
+      throw Exception(
+        'Cannot pull: "$branch" has uncommitted changes. '
+        'Commit or stash them first.',
+      );
+    }
+
+    // 4. Fetch the remote this branch tracks.
+    final remote = upstream.contains('/') ? upstream.split('/').first : 'origin';
+    final fetchRes = await _runGit([
+      'fetch',
+      remote,
+    ], workingDirectory: worktreePath);
+    if (fetchRes.exitCode != 0) {
+      throw Exception('Fetch failed: ${fetchRes.stderr.toString().trim()}');
+    }
+
+    // 5. Ahead/behind relative to upstream after the fetch.
+    // `--left-right --count <upstream>...HEAD` prints "<behind>\t<ahead>".
+    final countRes = await _runGit([
+      'rev-list',
+      '--left-right',
+      '--count',
+      '$upstream...HEAD',
+    ], workingDirectory: worktreePath);
+    if (countRes.exitCode != 0) {
+      throw Exception(countRes.stderr.toString().trim());
+    }
+    final parts = (countRes.stdout as String).trim().split(RegExp(r'\s+'));
+    final behind = int.tryParse(parts.isNotEmpty ? parts[0] : '0') ?? 0;
+    final ahead = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
+
+    if (behind == 0) {
+      // Nothing to pull — already up to date (possibly ahead of upstream).
+      return PullResult(updated: false, commits: 0, branch: branch);
+    }
+    if (ahead > 0) {
+      throw Exception(
+        'Cannot pull: "$branch" has $ahead local commit(s) and has diverged '
+        'from $upstream. Fast-forward not possible.',
+      );
+    }
+
+    // 6. Fast-forward only.
+    final mergeRes = await _runGit([
+      'merge',
+      '--ff-only',
+      upstream,
+    ], workingDirectory: worktreePath);
+    if (mergeRes.exitCode != 0) {
+      throw Exception(mergeRes.stderr.toString().trim());
+    }
+    return PullResult(updated: true, commits: behind, branch: branch);
+  }
+
   /// Removes a worktree from disk and git.
   Future<void> removeWorktree(String repoPath, String worktreePath) async {
     final result = await _runGit([
@@ -300,4 +397,22 @@ class GitService {
 
     return WorktreeListResult(worktrees: worktrees, isBareLayout: isBareLayout);
   }
+}
+
+/// Outcome of a fast-forward [GitService.pullCurrentBranch].
+class PullResult {
+  /// Whether the branch advanced (false when already up to date).
+  final bool updated;
+
+  /// Number of commits the branch was fast-forwarded by.
+  final int commits;
+
+  /// The branch that was pulled.
+  final String branch;
+
+  PullResult({
+    required this.updated,
+    required this.commits,
+    required this.branch,
+  });
 }
