@@ -91,6 +91,18 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updatePrLaunchPrompt(String prompt) async {
+    _settings = _settings.copyWith(prLaunchPrompt: prompt);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updatePrLaunchModel(String model) async {
+    _settings = _settings.copyWith(prLaunchModel: model.trim());
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
   Future<void> updateCopilotAllowAll(bool value) async {
     _settings = _settings.copyWith(copilotAllowAll: value);
     await _store.save(_settings);

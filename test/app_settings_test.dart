@@ -41,5 +41,24 @@ void main() {
 
       expect(restored.copilotAttentionSound, CopilotAttentionSound.ping);
     });
+
+    test('defaults PR launch prompt and model', () {
+      final settings = AppSettings();
+
+      expect(settings.prLaunchPrompt, kDefaultPrLaunchPrompt);
+      expect(settings.prLaunchModel, 'opus');
+    });
+
+    test('serializes and restores PR launch prompt and model', () {
+      final settings = AppSettings(
+        prLaunchPrompt: 'Custom {number} prompt',
+        prLaunchModel: 'sonnet',
+      );
+
+      final restored = AppSettings.fromJson(settings.toJson());
+
+      expect(restored.prLaunchPrompt, 'Custom {number} prompt');
+      expect(restored.prLaunchModel, 'sonnet');
+    });
   });
 }

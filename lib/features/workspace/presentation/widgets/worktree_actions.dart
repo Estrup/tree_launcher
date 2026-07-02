@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/jira/presentation/widgets/jira_issue_dialog.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
@@ -16,9 +17,6 @@ import 'package:tree_launcher/models/copilot_prompt.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
-
-/// Base URL for JIRA issues. The issue key is appended to build the link.
-const String jiraBaseUrl = 'https://jira.elbek-vejrup.dk/browse/';
 
 /// Builds the standard Claude launch context prompt from a worktree's recorded
 /// JIRA issue and base branch. Returns null when neither is known.
@@ -1805,9 +1803,10 @@ class _JiraBadgeState extends State<JiraBadge> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        onTap: () => Process.run('open', ['$jiraBaseUrl${widget.issueKey}']),
+        onTap: () =>
+            JiraIssueDialog.show(context, issueKey: widget.issueKey),
         child: Tooltip(
-          message: 'Open $jiraBaseUrl${widget.issueKey}',
+          message: 'View ${widget.issueKey}',
           child: Container(
             padding: EdgeInsets.symmetric(
               horizontal: widget.compact ? 8 : 10,

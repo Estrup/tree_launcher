@@ -7,6 +7,8 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/pr_worktree_actions.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
@@ -174,6 +176,13 @@ class GithubPrsTab extends StatelessWidget {
                     context.read<WorkspaceController>(),
                     pr,
                   ),
+                  onCreateAndLaunchClaude: () =>
+                      createWorktreeAndLaunchClaudeForPr(
+                    context.read<WorkspaceController>(),
+                    context.read<TerminalController>(),
+                    context.read<SettingsController>().settings,
+                    pr,
+                  ),
                 );
               },
             ),
@@ -202,12 +211,14 @@ class _PullRequestRow extends StatelessWidget {
   final VoidCallback onOpenInBrowser;
   final VoidCallback onCreateWorktree;
   final Future<void> Function() onQuickCreateWorktree;
+  final Future<void> Function() onCreateAndLaunchClaude;
 
   const _PullRequestRow({
     required this.pr,
     required this.onOpenInBrowser,
     required this.onCreateWorktree,
     required this.onQuickCreateWorktree,
+    required this.onCreateAndLaunchClaude,
   });
 
   @override
@@ -264,6 +275,11 @@ class _PullRequestRow extends StatelessWidget {
               _QuickCreateButton(
                 headBranch: pr.headBranch,
                 onPressed: onQuickCreateWorktree,
+              ),
+              const SizedBox(width: 6),
+              _CreateAndLaunchButton(
+                headBranch: pr.headBranch,
+                onPressed: onCreateAndLaunchClaude,
               ),
               const SizedBox(width: 6),
               Tooltip(
@@ -506,6 +522,69 @@ class _QuickCreateButtonState extends State<_QuickCreateButton> {
       child: ActionButton(
         compact: true,
         icon: Icons.bolt_rounded,
+        color: AppColors.accent,
+        bgColor: AppColors.accentMuted,
+        onPressed: _handlePressed,
+      ),
+    );
+  }
+}
+
+/// Create-worktree-and-launch-Claude button. Like [_QuickCreateButton] but also
+/// opens the built-in terminal running the `claude` CLI seeded with the
+/// configured PR prompt + model. Shows a spinner in place of the button while
+/// the work is in progress.
+class _CreateAndLaunchButton extends StatefulWidget {
+  final String headBranch;
+  final Future<void> Function() onPressed;
+
+  const _CreateAndLaunchButton({
+    required this.headBranch,
+    required this.onPressed,
+  });
+
+  @override
+  State<_CreateAndLaunchButton> createState() => _CreateAndLaunchButtonState();
+}
+
+class _CreateAndLaunchButtonState extends State<_CreateAndLaunchButton> {
+  bool _busy = false;
+
+  Future<void> _handlePressed() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await widget.onPressed();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Match the compact ActionButton footprint (28x28) so the row doesn't
+    // shift when swapping between the button and the spinner.
+    if (_busy) {
+      return SizedBox(
+        width: 28,
+        height: 28,
+        child: Center(
+          child: SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.accent,
+            ),
+          ),
+        ),
+      );
+    }
+    return Tooltip(
+      message: 'Create worktree & launch Claude from ${widget.headBranch}',
+      child: ActionButton(
+        compact: true,
+        icon: Icons.rocket_launch_rounded,
         color: AppColors.accent,
         bgColor: AppColors.accentMuted,
         onPressed: _handlePressed,

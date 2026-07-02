@@ -584,15 +584,19 @@ class _WorktreeRowState extends State<_WorktreeRow> {
               child: Row(
                 children: [
                   Flexible(
-                    child: Text(
-                      wt.name,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.2,
+                    child: Tooltip(
+                      message: wt.name,
+                      waitDuration: const Duration(milliseconds: 300),
+                      child: Text(
+                        wt.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.2,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (wt.isMain) ...[

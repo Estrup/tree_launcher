@@ -62,7 +62,12 @@ class TreeLauncherApp extends StatelessWidget {
           update: (context, workspace, previous) {
             final controller = previous ?? GithubPrsController();
             controller.onReviewRequested = (pr) =>
-                createWorktreeForPr(workspace, pr);
+                createWorktreeAndLaunchClaudeForPr(
+                  workspace,
+                  context.read<TerminalController>(),
+                  context.read<SettingsController>().settings,
+                  pr,
+                );
             controller.onRequestedMeTransition = (pr) =>
                 workspace.clearSnoozeForBranch(pr.headBranch);
             controller.syncToRepo(workspace.selectedRepo);

@@ -3033,7 +3033,7 @@ class _GithubSectionState extends State<_GithubSection> {
           ),
           const SizedBox(height: 24),
 
-          // Auto-create worktree on review request
+          // Auto-create worktree + launch Claude on review request
           Row(
             children: [
               Expanded(
@@ -3041,7 +3041,8 @@ class _GithubSectionState extends State<_GithubSection> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'AUTO-CREATE WORKTREE WHEN ASSIGNED AS REVIEWER',
+                      'AUTO-CREATE WORKTREE + LAUNCH CLAUDE WHEN ASSIGNED AS '
+                      'REVIEWER',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -3052,7 +3053,9 @@ class _GithubSectionState extends State<_GithubSection> {
                     const SizedBox(height: 4),
                     Text(
                       'When you are requested to review a PR, a worktree for its '
-                      'branch is created automatically.',
+                      'branch is created automatically and Claude is launched in '
+                      'the built-in terminal with the PR prompt configured in '
+                      'Settings → Pull Requests.',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,

@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
+
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
 import 'package:tree_launcher/features/copilot/data/sound_service.dart';
+import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
@@ -55,5 +58,18 @@ class AppDependencies {
         ? agentApiPortOverride
         : (await appSettingsStore.load()).agentApiPort;
     await agentApiServer.start(port: port);
+    await _pruneJiraCache();
+  }
+
+  /// Drops cached Jira issues no longer referenced by any worktree, keeping the
+  /// cache bounded to relevant issues. Guarded so a failure never blocks boot.
+  Future<void> _pruneJiraCache() async {
+    try {
+      final repos = await repoConfigStore.load();
+      final liveKeys = repos.expand((r) => r.jiraIssues.values).toSet();
+      await JiraIssueCache().prune(liveKeys);
+    } catch (e) {
+      debugPrint('Jira cache prune failed: $e');
+    }
   }
 }

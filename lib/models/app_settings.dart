@@ -1,3 +1,12 @@
+/// Default prompt used when launching the `claude` CLI for a pull request from
+/// the PRs tab. Placeholders ({number}, {title}, {url}, {branch}, {base},
+/// {author}, {jira}) are substituted from the PR before launch.
+const String kDefaultPrLaunchPrompt =
+    'Review pull request #{number}: "{title}". The branch {branch} (targeting '
+    '{base}) is checked out in this worktree. URL: {url}. Read the diff, assess '
+    'correctness and code quality, and summarize your findings along with any '
+    'suggested changes.';
+
 enum TerminalApp { terminal, ghostty, custom }
 
 enum CopilotButtonMode { inApp, external }
@@ -57,6 +66,14 @@ class AppSettings {
   /// depending on the feature layer).
   final int agentApiPort;
 
+  /// Prompt template used when launching the `claude` CLI for a PR from the PRs
+  /// tab (and the auto-on-review path). Placeholders are substituted per-PR.
+  final String prLaunchPrompt;
+
+  /// Model passed to `claude --model` when launching for a PR. Empty means use
+  /// the CLI's own default (no `--model` flag).
+  final String prLaunchModel;
+
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
     this.customTerminalCommand,
@@ -80,6 +97,8 @@ class AppSettings {
     this.showHiddenWorktrees = false,
     this.hiddenRepos = const [],
     this.agentApiPort = 8765,
+    this.prLaunchPrompt = kDefaultPrLaunchPrompt,
+    this.prLaunchModel = 'opus',
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -128,6 +147,9 @@ class AppSettings {
       hiddenRepos:
           (json['hiddenRepos'] as List<dynamic>?)?.cast<String>() ?? const [],
       agentApiPort: json['agentApiPort'] as int? ?? 8765,
+      prLaunchPrompt:
+          json['prLaunchPrompt'] as String? ?? kDefaultPrLaunchPrompt,
+      prLaunchModel: json['prLaunchModel'] as String? ?? 'opus',
     );
   }
 
@@ -154,6 +176,8 @@ class AppSettings {
     'showHiddenWorktrees': showHiddenWorktrees,
     'hiddenRepos': hiddenRepos,
     'agentApiPort': agentApiPort,
+    'prLaunchPrompt': prLaunchPrompt,
+    'prLaunchModel': prLaunchModel,
   };
 
   AppSettings copyWith({
@@ -183,6 +207,8 @@ class AppSettings {
     bool? showHiddenWorktrees,
     List<String>? hiddenRepos,
     int? agentApiPort,
+    String? prLaunchPrompt,
+    String? prLaunchModel,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -218,6 +244,8 @@ class AppSettings {
       showHiddenWorktrees: showHiddenWorktrees ?? this.showHiddenWorktrees,
       hiddenRepos: hiddenRepos ?? this.hiddenRepos,
       agentApiPort: agentApiPort ?? this.agentApiPort,
+      prLaunchPrompt: prLaunchPrompt ?? this.prLaunchPrompt,
+      prLaunchModel: prLaunchModel ?? this.prLaunchModel,
     );
   }
 }

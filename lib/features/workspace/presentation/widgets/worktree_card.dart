@@ -53,15 +53,19 @@ class _WorktreeCardState extends State<WorktreeCard> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        wt.name,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.3,
+                      child: Tooltip(
+                        message: wt.name,
+                        waitDuration: const Duration(milliseconds: 300),
+                        child: Text(
+                          wt.name,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.3,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     _SlotBadge(worktree: wt),

@@ -14,6 +14,7 @@ enum _SettingsSection {
   theme,
   terminals,
   copilot,
+  pullRequests,
   markdownEditor,
   repositories,
   agentApi,
@@ -156,6 +157,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           ),
                         ),
                         _NavItem(
+                          icon: Icons.merge_type_rounded,
+                          label: 'Pull Requests',
+                          isSelected:
+                              _selectedSection == _SettingsSection.pullRequests,
+                          onTap: () => setState(
+                            () =>
+                                _selectedSection = _SettingsSection.pullRequests,
+                          ),
+                        ),
+                        _NavItem(
                           icon: Icons.edit_note_rounded,
                           label: 'Markdown Editor',
                           isSelected:
@@ -225,6 +236,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         return const _TerminalsSection();
       case _SettingsSection.copilot:
         return const _CopilotSection();
+      case _SettingsSection.pullRequests:
+        return const _PullRequestsSection();
       case _SettingsSection.markdownEditor:
         return const _MarkdownEditorSection();
       case _SettingsSection.repositories:
@@ -573,6 +586,137 @@ class _TerminalsSectionState extends State<_TerminalsSection> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PullRequestsSection extends StatefulWidget {
+  const _PullRequestsSection();
+
+  @override
+  State<_PullRequestsSection> createState() => _PullRequestsSectionState();
+}
+
+class _PullRequestsSectionState extends State<_PullRequestsSection> {
+  late final TextEditingController _promptController;
+  late final TextEditingController _modelController;
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = context.read<SettingsProvider>().settings;
+    _promptController = TextEditingController(text: settings.prLaunchPrompt);
+    _modelController = TextEditingController(text: settings.prLaunchModel);
+  }
+
+  @override
+  void dispose() {
+    _promptController.dispose();
+    _modelController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settingsProvider = context.watch<SettingsProvider>();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Pull Requests',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Configure how Claude is launched when you create a worktree from a '
+            'pull request',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'CLAUDE LAUNCH PROMPT',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            style: appFormFieldTextStyle(context),
+            decoration: InputDecoration(
+              hintText: kDefaultPrLaunchPrompt,
+              hintStyle: appFormFieldHintStyle(context),
+            ),
+            controller: _promptController,
+            minLines: 4,
+            maxLines: 10,
+            onChanged: (value) =>
+                settingsProvider.updatePrLaunchPrompt(value),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Placeholders: {number} {title} {url} {branch} {base} {author} '
+            '{jira}',
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.textMuted.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'CLAUDE MODEL',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            style: appFormFieldTextStyle(context, monospace: true),
+            decoration: InputDecoration(
+              hintText: 'e.g. opus, sonnet',
+              hintStyle: appFormFieldHintStyle(context, monospace: true),
+            ),
+            controller: _modelController,
+            onChanged: (value) =>
+                settingsProvider.updatePrLaunchModel(value),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Passed to `claude --model`. Leave empty to use the CLI default.',
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.textMuted.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'Automatically creating a worktree and launching Claude when you are '
+            'requested as a reviewer is controlled per-repo by the '
+            '"auto-create worktree" toggle in repo settings.',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
           ),
         ],
       ),
