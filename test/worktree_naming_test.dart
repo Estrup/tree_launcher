@@ -50,17 +50,17 @@ void main() {
   });
 
   group('worktreeNameForJiraIssue', () {
-    test('combines the lowercased key with a slug of the summary', () {
+    test('puts a slug of the summary before the lowercased key', () {
       expect(
         worktreeNameForJiraIssue('AU2-5928', 'Værksted kontakt'),
-        'au2-5928-vaerksted-kontakt',
+        'vaerksted-kontakt-au2-5928',
       );
     });
 
     test('folds Danish letters and drops punctuation', () {
       expect(
         worktreeNameForJiraIssue('AU2-1', 'Én e-mail på kunden (Ø/Å)!'),
-        'au2-1-en-e-mail-paa-kunden',
+        'en-e-mail-paa-kunden-au2-1',
       );
     });
 
@@ -69,7 +69,7 @@ void main() {
         'AU2-5905',
         'Arbejdskort vælger forkert au2web-konto når værkstedet har 3',
       );
-      expect(name, 'au2-5905-arbejdskort-vaelger-forkert-au2web');
+      expect(name, 'arbejdskort-vaelger-forkert-au2web-au2-5905');
       expect(name.length, lessThanOrEqualTo(48));
     });
 
@@ -89,6 +89,51 @@ void main() {
           reason: summary,
         );
       }
+    });
+  });
+
+  group('worktreeNameForPrBranch', () {
+    test('moves the Jira key after the rest of the branch name', () {
+      expect(
+        worktreeNameForPrBranch(
+          'klp/AU2-5928-vaerksted-kontakt',
+          jiraKey: 'AU2-5928',
+        ),
+        'vaerksted-kontakt-au2-5928',
+      );
+      expect(
+        worktreeNameForPrBranch(
+          'hkh/au2office/AU2-4973_salesorderdraft-0-price',
+          jiraKey: 'AU2-4973',
+        ),
+        'salesorderdraft-0-price-au2-4973',
+      );
+    });
+
+    test('matches the key case-insensitively and only as a whole key', () {
+      expect(
+        worktreeNameForPrBranch(
+          'jlb/au2office/au2-5264-s1-backstage-schema',
+          jiraKey: 'AU2-5264',
+        ),
+        's1-backstage-schema-au2-5264',
+      );
+      expect(
+        worktreeNameForPrBranch('klp/AU2-52640-other', jiraKey: 'AU2-5264'),
+        'au2-52640-other-au2-5264',
+      );
+    });
+
+    test('appends the key when the branch does not contain it', () {
+      expect(
+        worktreeNameForPrBranch('feature/CarController', jiraKey: 'AU2-3799'),
+        'carcontroller-au2-3799',
+      );
+      expect(worktreeNameForPrBranch('hkh/AU2-1', jiraKey: 'AU2-1'), 'au2-1');
+    });
+
+    test('keeps the branch with dashes for slashes when there is no key', () {
+      expect(worktreeNameForPrBranch('klp/some-fix'), 'klp-some-fix');
     });
   });
 }

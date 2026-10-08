@@ -7,6 +7,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/pr_worktree_actions.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
@@ -185,7 +186,8 @@ class GithubPrsTab extends StatelessWidget {
   void _showAddWorktreeDialog(BuildContext context, GithubPullRequest pr) {
     AddWorktreeDialog.show(
       context,
-      initialName: pr.headBranch,
+      initialName: worktreeNameForPrBranch(pr.headBranch, jiraKey: pr.jiraKey),
+      initialJiraKey: pr.jiraKey,
     );
   }
 

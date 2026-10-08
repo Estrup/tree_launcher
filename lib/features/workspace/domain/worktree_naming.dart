@@ -58,10 +58,10 @@ const Map<String, String> _asciiFolds = {
   'ß': 'ss',
 };
 
-/// Builds a worktree name for a Jira issue: the lowercased [key] followed by a
-/// slug of the first words of [summary], e.g. `AU2-5928` + "Værksted kontakt"
-/// -> `au2-5928-vaerksted-kontakt`. Whole words are added while the name stays
-/// within [maxLength] and [maxWords]; the result always passes
+/// Builds a worktree name for a Jira issue: a slug of the first words of
+/// [summary] followed by the lowercased [key], e.g. `AU2-5928` + "Værksted
+/// kontakt" -> `vaerksted-kontakt-au2-5928`. Whole words are added while the
+/// name stays within [maxLength] and [maxWords]; the result always passes
 /// [validateWorktreeName].
 String worktreeNameForJiraIssue(
   String key,
@@ -76,13 +76,32 @@ String worktreeNameForJiraIssue(
       .where((w) => w.isNotEmpty)
       .take(maxWords);
 
-  var name = key.toLowerCase();
+  final suffix = key.toLowerCase();
+  var slug = '';
   for (final word in words) {
-    final next = '$name-$word';
-    if (next.length > maxLength) break;
-    name = next;
+    final next = slug.isEmpty ? word : '$slug-$word';
+    if (next.length + 1 + suffix.length > maxLength) break;
+    slug = next;
   }
-  return name;
+  return slug.isEmpty ? suffix : '$slug-$suffix';
+}
+
+/// Builds a worktree name for a PR's [headBranch]. With a Jira [jiraKey] it
+/// follows [worktreeNameForJiraIssue]: the branch's last segment without the
+/// key, then the key, e.g. `klp/AU2-5928-vaerksted-kontakt` ->
+/// `vaerksted-kontakt-au2-5928`. Without a key the branch is used as-is, with
+/// slashes turned into dashes.
+String worktreeNameForPrBranch(String headBranch, {String? jiraKey}) {
+  if (jiraKey == null) return headBranch.replaceAll('/', '-');
+  final keyPattern = RegExp(
+    '(?<![a-z0-9])${RegExp.escape(jiraKey)}(?![0-9])',
+    caseSensitive: false,
+  );
+  final lastSegment = headBranch.split('/').last;
+  return worktreeNameForJiraIssue(
+    jiraKey,
+    lastSegment.replaceAll(keyPattern, ''),
+  );
 }
 
 /// Relative path (within a worktree) of the API-supplied kickoff-prompt file.

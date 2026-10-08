@@ -111,7 +111,7 @@ void main() {
         .widgetList<TextField>(find.byType(TextField))
         .map((f) => f.controller?.text)
         .toList();
-    expect(fields, contains('au2-5928-vaerksted-kontakt'));
+    expect(fields, contains('vaerksted-kontakt-au2-5928'));
     expect(fields, contains('AU2-5928'));
   });
 

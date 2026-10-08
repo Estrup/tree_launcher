@@ -1,5 +1,6 @@
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 /// Creates a worktree that checks out [pr]'s existing head branch and shows a
@@ -10,8 +11,8 @@ Future<void> createWorktreeForPr(
   GithubPullRequest pr,
 ) async {
   // The branch already exists on the remote, so we check it out directly
-  // (baseBranch with no newBranch). The folder name can't contain slashes.
-  final name = pr.headBranch.replaceAll('/', '-');
+  // (baseBranch with no newBranch). Only the folder name puts the Jira key last.
+  final name = worktreeNameForPrBranch(pr.headBranch, jiraKey: pr.jiraKey);
   try {
     // Attach the Jira ticket parsed from the PR title (e.g. "AU2-5555") and the
     // PR author, so the worktree carries its PR origin.
