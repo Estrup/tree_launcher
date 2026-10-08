@@ -1,40 +1,6 @@
-/// Default prompt used when launching the `claude` CLI for a pull request from
-/// the PRs tab. Placeholders ({number}, {title}, {url}, {branch}, {base},
-/// {author}, {jira}) are substituted from the PR before launch.
-const String kDefaultPrLaunchPrompt =
-    'Review pull request #{number}: "{title}". The branch {branch} (targeting '
-    '{base}) is checked out in this worktree. URL: {url}. Read the diff, assess '
-    'correctness and code quality, and summarize your findings along with any '
-    'suggested changes.';
-
 enum TerminalApp { terminal, ghostty, custom }
 
-enum CopilotButtonMode { inApp, external }
-
 enum WorktreeViewMode { grid, list }
-
-enum CopilotAttentionSound {
-  basso('Basso'),
-  blow('Blow'),
-  bottle('Bottle'),
-  frog('Frog'),
-  funk('Funk'),
-  glass('Glass'),
-  hero('Hero'),
-  morse('Morse'),
-  ping('Ping'),
-  pop('Pop'),
-  purr('Purr'),
-  sosumi('Sosumi'),
-  submarine('Submarine'),
-  tink('Tink');
-
-  const CopilotAttentionSound(this.systemName);
-
-  final String systemName;
-
-  String get displayName => systemName;
-}
 
 class AppSettings {
   final TerminalApp terminalApp;
@@ -43,18 +9,6 @@ class AppSettings {
   final String themeName;
   final String? terminalFontFamily;
   final double? terminalFontSize;
-  final CopilotButtonMode copilotButtonMode;
-  final bool copilotAttentionSoundEnabled;
-  final CopilotAttentionSound copilotAttentionSound;
-  final String? copilotModel;
-  final bool copilotAllowAll;
-  final bool copilotAllowAllTools;
-  final bool copilotAllowAllUrls;
-  final bool copilotAllowAllPaths;
-  final List<String> copilotAddDirs;
-  final bool copilotAutopilot;
-  final String? markdownDocumentsFolder;
-  final List<String> markdownRecentFiles;
   final WorktreeViewMode worktreeViewMode;
   final bool showHiddenWorktrees;
 
@@ -66,14 +20,6 @@ class AppSettings {
   /// depending on the feature layer).
   final int agentApiPort;
 
-  /// Prompt template used when launching the `claude` CLI for a PR from the PRs
-  /// tab (and the auto-on-review path). Placeholders are substituted per-PR.
-  final String prLaunchPrompt;
-
-  /// Model passed to `claude --model` when launching for a PR. Empty means use
-  /// the CLI's own default (no `--model` flag).
-  final String prLaunchModel;
-
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
     this.customTerminalCommand,
@@ -81,24 +27,10 @@ class AppSettings {
     this.themeName = 'muted',
     this.terminalFontFamily,
     this.terminalFontSize,
-    this.copilotButtonMode = CopilotButtonMode.inApp,
-    this.copilotAttentionSoundEnabled = false,
-    this.copilotAttentionSound = CopilotAttentionSound.ping,
-    this.copilotModel,
-    this.copilotAllowAll = false,
-    this.copilotAllowAllTools = false,
-    this.copilotAllowAllUrls = false,
-    this.copilotAllowAllPaths = false,
-    this.copilotAddDirs = const [],
-    this.copilotAutopilot = false,
-    this.markdownDocumentsFolder,
-    this.markdownRecentFiles = const [],
     this.worktreeViewMode = WorktreeViewMode.grid,
     this.showHiddenWorktrees = false,
     this.hiddenRepos = const [],
     this.agentApiPort = 8765,
-    this.prLaunchPrompt = kDefaultPrLaunchPrompt,
-    this.prLaunchModel = 'opus',
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -116,29 +48,6 @@ class AppSettings {
       themeName: json['themeName'] as String? ?? 'muted',
       terminalFontFamily: json['terminalFontFamily'] as String?,
       terminalFontSize: (json['terminalFontSize'] as num?)?.toDouble(),
-      copilotButtonMode: CopilotButtonMode.values.firstWhere(
-        (e) => e.name == (json['copilotButtonMode'] as String?),
-        orElse: () => CopilotButtonMode.inApp,
-      ),
-      copilotAttentionSoundEnabled:
-          json['copilotAttentionSoundEnabled'] as bool? ?? false,
-      copilotAttentionSound: CopilotAttentionSound.values.firstWhere(
-        (e) => e.name == (json['copilotAttentionSound'] as String?),
-        orElse: () => CopilotAttentionSound.ping,
-      ),
-      copilotModel: json['copilotModel'] as String?,
-      copilotAllowAll: json['copilotAllowAll'] as bool? ?? false,
-      copilotAllowAllTools: json['copilotAllowAllTools'] as bool? ?? false,
-      copilotAllowAllUrls: json['copilotAllowAllUrls'] as bool? ?? false,
-      copilotAllowAllPaths: json['copilotAllowAllPaths'] as bool? ?? false,
-      copilotAddDirs:
-          (json['copilotAddDirs'] as List<dynamic>?)?.cast<String>() ??
-          const [],
-      copilotAutopilot: json['copilotAutopilot'] as bool? ?? false,
-      markdownDocumentsFolder: json['markdownDocumentsFolder'] as String?,
-      markdownRecentFiles:
-          (json['markdownRecentFiles'] as List<dynamic>?)?.cast<String>() ??
-          const [],
       worktreeViewMode: WorktreeViewMode.values.firstWhere(
         (e) => e.name == (json['worktreeViewMode'] as String?),
         orElse: () => WorktreeViewMode.grid,
@@ -147,9 +56,6 @@ class AppSettings {
       hiddenRepos:
           (json['hiddenRepos'] as List<dynamic>?)?.cast<String>() ?? const [],
       agentApiPort: json['agentApiPort'] as int? ?? 8765,
-      prLaunchPrompt:
-          json['prLaunchPrompt'] as String? ?? kDefaultPrLaunchPrompt,
-      prLaunchModel: json['prLaunchModel'] as String? ?? 'opus',
     );
   }
 
@@ -160,24 +66,10 @@ class AppSettings {
     'themeName': themeName,
     'terminalFontFamily': terminalFontFamily,
     'terminalFontSize': terminalFontSize,
-    'copilotButtonMode': copilotButtonMode.name,
-    'copilotAttentionSoundEnabled': copilotAttentionSoundEnabled,
-    'copilotAttentionSound': copilotAttentionSound.name,
-    'copilotModel': copilotModel,
-    'copilotAllowAll': copilotAllowAll,
-    'copilotAllowAllTools': copilotAllowAllTools,
-    'copilotAllowAllUrls': copilotAllowAllUrls,
-    'copilotAllowAllPaths': copilotAllowAllPaths,
-    'copilotAddDirs': copilotAddDirs,
-    'copilotAutopilot': copilotAutopilot,
-    'markdownDocumentsFolder': markdownDocumentsFolder,
-    'markdownRecentFiles': markdownRecentFiles,
     'worktreeViewMode': worktreeViewMode.name,
     'showHiddenWorktrees': showHiddenWorktrees,
     'hiddenRepos': hiddenRepos,
     'agentApiPort': agentApiPort,
-    'prLaunchPrompt': prLaunchPrompt,
-    'prLaunchModel': prLaunchModel,
   };
 
   AppSettings copyWith({
@@ -189,26 +81,10 @@ class AppSettings {
     double? terminalFontSize,
     bool clearTerminalFontFamily = false,
     bool clearTerminalFontSize = false,
-    CopilotButtonMode? copilotButtonMode,
-    bool? copilotAttentionSoundEnabled,
-    CopilotAttentionSound? copilotAttentionSound,
-    String? copilotModel,
-    bool clearCopilotModel = false,
-    bool? copilotAllowAll,
-    bool? copilotAllowAllTools,
-    bool? copilotAllowAllUrls,
-    bool? copilotAllowAllPaths,
-    List<String>? copilotAddDirs,
-    bool? copilotAutopilot,
-    String? markdownDocumentsFolder,
-    bool clearMarkdownDocumentsFolder = false,
-    List<String>? markdownRecentFiles,
     WorktreeViewMode? worktreeViewMode,
     bool? showHiddenWorktrees,
     List<String>? hiddenRepos,
     int? agentApiPort,
-    String? prLaunchPrompt,
-    String? prLaunchModel,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -222,30 +98,10 @@ class AppSettings {
       terminalFontSize: clearTerminalFontSize
           ? null
           : (terminalFontSize ?? this.terminalFontSize),
-      copilotButtonMode: copilotButtonMode ?? this.copilotButtonMode,
-      copilotAttentionSoundEnabled:
-          copilotAttentionSoundEnabled ?? this.copilotAttentionSoundEnabled,
-      copilotAttentionSound:
-          copilotAttentionSound ?? this.copilotAttentionSound,
-      copilotModel: clearCopilotModel
-          ? null
-          : (copilotModel ?? this.copilotModel),
-      copilotAllowAll: copilotAllowAll ?? this.copilotAllowAll,
-      copilotAllowAllTools: copilotAllowAllTools ?? this.copilotAllowAllTools,
-      copilotAllowAllUrls: copilotAllowAllUrls ?? this.copilotAllowAllUrls,
-      copilotAllowAllPaths: copilotAllowAllPaths ?? this.copilotAllowAllPaths,
-      copilotAddDirs: copilotAddDirs ?? this.copilotAddDirs,
-      copilotAutopilot: copilotAutopilot ?? this.copilotAutopilot,
-      markdownDocumentsFolder: clearMarkdownDocumentsFolder
-          ? null
-          : (markdownDocumentsFolder ?? this.markdownDocumentsFolder),
-      markdownRecentFiles: markdownRecentFiles ?? this.markdownRecentFiles,
       worktreeViewMode: worktreeViewMode ?? this.worktreeViewMode,
       showHiddenWorktrees: showHiddenWorktrees ?? this.showHiddenWorktrees,
       hiddenRepos: hiddenRepos ?? this.hiddenRepos,
       agentApiPort: agentApiPort ?? this.agentApiPort,
-      prLaunchPrompt: prLaunchPrompt ?? this.prLaunchPrompt,
-      prLaunchModel: prLaunchModel ?? this.prLaunchModel,
     );
   }
 }

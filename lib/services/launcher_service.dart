@@ -19,31 +19,6 @@ class LauncherService {
     }
   }
 
-  Future<void> openCopilotCli(String directory, AppSettings settings) async {
-    switch (settings.terminalApp) {
-      case TerminalApp.terminal:
-        await _runAppleScript('''
-          tell application "Terminal"
-            activate
-            do script "cd '${_escapeForAppleScript(directory)}' && gh copilot"
-          end tell
-        ''');
-        break;
-      case TerminalApp.ghostty:
-        await openGhosttyWithCommand(directory, 'gh copilot');
-        break;
-      case TerminalApp.custom:
-        if (settings.customTerminalCommand != null) {
-          await _openCustomTerminal(
-            directory,
-            settings.customTerminalCommand!,
-            command: 'gh copilot',
-          );
-        }
-        break;
-    }
-  }
-
   Future<void> openVSCode(String directory) async {
     // Try `code` CLI first, fall back to `open -a`
     final result = await Process.run('which', ['code']);
@@ -118,19 +93,15 @@ class LauncherService {
 
   Future<void> _openCustomTerminal(
     String directory,
-    String terminalCommand, {
-    String? command,
-  }) async {
+    String terminalCommand,
+  ) async {
     final String shellCommand;
     if (terminalCommand.contains('{path}')) {
       // Substitute {path} with the directory
       shellCommand = terminalCommand.replaceAll('{path}', directory);
     } else {
       // Legacy: assume terminal emulator with -e flag
-      final fullCommand = command != null
-          ? 'cd \'$directory\' && $command'
-          : 'cd \'$directory\'';
-      shellCommand = '$terminalCommand -e "$fullCommand"';
+      shellCommand = '$terminalCommand -e "cd \'$directory\'"';
     }
     final args = ['-c', shellCommand];
     debugPrint('Running custom terminal: /bin/bash ${args.join(' ')}');

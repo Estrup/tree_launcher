@@ -3,19 +3,16 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
-import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
-import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
-import 'package:tree_launcher/providers/settings_provider.dart';
 
 /// Shared column layout so the header and every row line up.
 const double _kCheckboxWidth = 24;
 const double _kJiraWidth = 120;
 const double _kPrWidth = 80;
-const double _kActionsWidth = 330;
+const double _kActionsWidth = 296;
 const double _kColumnGap = 16;
 const int _kNameFlex = 3;
 const int _kBranchFlex = 3;
@@ -528,10 +525,8 @@ class _WorktreeRowState extends State<_WorktreeRow> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>().settings;
     final repo = context.watch<RepoProvider>().selectedRepo;
     final customCommands = repo?.customCommands ?? [];
-    final customLinks = repo?.customLinks ?? [];
     final wt = widget.worktree;
 
     // Match this worktree to an open PR by branch. Both own worktrees and
@@ -641,10 +636,10 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.copilotBg,
+                        color: AppColors.branchBg,
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: AppColors.copilot.withValues(alpha: 0.2),
+                          color: AppColors.branch.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Row(
@@ -653,7 +648,7 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                           Icon(
                             Icons.call_split_rounded,
                             size: 11,
-                            color: AppColors.copilot,
+                            color: AppColors.branch,
                           ),
                           const SizedBox(width: 5),
                           Flexible(
@@ -662,7 +657,7 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
-                                color: AppColors.copilot,
+                                color: AppColors.branch,
                                 fontFamily: 'monospace',
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -765,39 +760,11 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                     compact: true,
                   ),
                   const SizedBox(width: 6),
-                  ActionButton(
-                    compact: true,
-                    icon: Icons.auto_awesome_rounded,
-                    color: AppColors.copilot,
-                    bgColor: AppColors.copilotBg,
-                    onPressed: () {
-                      if (settings.copilotButtonMode ==
-                          CopilotButtonMode.inApp) {
-                        final repo = context.read<RepoProvider>().selectedRepo;
-                        context.read<CopilotProvider>().createSession(
-                          repo?.path ?? wt.path,
-                          wt.path,
-                          wt.name,
-                        );
-                      } else {
-                        _launcherService.openCopilotCli(wt.path, settings);
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 6),
                   ClaudeButton(
                     wt: wt,
                     launcherService: _launcherService,
                     compact: true,
                   ),
-                  if (customLinks.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    CustomLinksButton(
-                      links: customLinks,
-                      slot: wt.slot,
-                      compact: true,
-                    ),
-                  ],
                   if (customCommands.isNotEmpty) ...[
                     const SizedBox(width: 6),
                     CustomCommandsButton(

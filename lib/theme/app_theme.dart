@@ -26,8 +26,8 @@ class AppColorPalette {
   // Action colors
   final Color terminal;
   final Color terminalBg;
-  final Color copilot;
-  final Color copilotBg;
+  final Color branch;
+  final Color branchBg;
   final Color vscode;
   final Color vscodeBg;
   final Color claude;
@@ -73,8 +73,8 @@ class AppColorPalette {
     required this.accentMuted,
     required this.terminal,
     required this.terminalBg,
-    required this.copilot,
-    required this.copilotBg,
+    required this.branch,
+    required this.branchBg,
     required this.vscode,
     required this.vscodeBg,
     required this.claude,
@@ -121,8 +121,8 @@ const palettes = <String, AppColorPalette>{
     accentMuted: Color(0x33F59E0B),
     terminal: Color(0xFF10B981),
     terminalBg: Color(0x1A10B981),
-    copilot: Color(0xFF8B5CF6),
-    copilotBg: Color(0x1A8B5CF6),
+    branch: Color(0xFF8B5CF6),
+    branchBg: Color(0x1A8B5CF6),
     vscode: Color(0xFF3B82F6),
     vscodeBg: Color(0x1A3B82F6),
     claude: Color(0xFFD97757),
@@ -161,8 +161,8 @@ const palettes = <String, AppColorPalette>{
     accentMuted: Color(0x33D4A054),
     terminal: Color(0xFF56B88A),
     terminalBg: Color(0x1A56B88A),
-    copilot: Color(0xFF8E7CC3),
-    copilotBg: Color(0x1A8E7CC3),
+    branch: Color(0xFF8E7CC3),
+    branchBg: Color(0x1A8E7CC3),
     vscode: Color(0xFF6E9ECF),
     vscodeBg: Color(0x1A6E9ECF),
     claude: Color(0xFFCC8C66),
@@ -201,8 +201,8 @@ const palettes = <String, AppColorPalette>{
     accentMuted: Color(0x3388C0D0),
     terminal: Color(0xFFA3BE8C),
     terminalBg: Color(0x1AA3BE8C),
-    copilot: Color(0xFFB48EAD),
-    copilotBg: Color(0x1AB48EAD),
+    branch: Color(0xFFB48EAD),
+    branchBg: Color(0x1AB48EAD),
     vscode: Color(0xFF81A1C1),
     vscodeBg: Color(0x1A81A1C1),
     claude: Color(0xFFD08770),
@@ -241,8 +241,8 @@ const palettes = <String, AppColorPalette>{
     accentMuted: Color(0x33CBA6F7),
     terminal: Color(0xFFA6E3A1),
     terminalBg: Color(0x1AA6E3A1),
-    copilot: Color(0xFFB4BEFE),
-    copilotBg: Color(0x1AB4BEFE),
+    branch: Color(0xFFB4BEFE),
+    branchBg: Color(0x1AB4BEFE),
     vscode: Color(0xFF89B4FA),
     vscodeBg: Color(0x1A89B4FA),
     claude: Color(0xFFFAB387),
@@ -281,8 +281,8 @@ const palettes = <String, AppColorPalette>{
     accentMuted: Color(0x33D97A5E),
     terminal: Color(0xFF7EAE82),
     terminalBg: Color(0x1A7EAE82),
-    copilot: Color(0xFF9E82B8),
-    copilotBg: Color(0x1A9E82B8),
+    branch: Color(0xFF9E82B8),
+    branchBg: Color(0x1A9E82B8),
     vscode: Color(0xFF6E9ECF),
     vscodeBg: Color(0x1A6E9ECF),
     claude: Color(0xFFCC8C66),
@@ -353,8 +353,8 @@ class AppColors {
   // Action colors
   static Color get terminal => _current.terminal;
   static Color get terminalBg => _current.terminalBg;
-  static Color get copilot => _current.copilot;
-  static Color get copilotBg => _current.copilotBg;
+  static Color get branch => _current.branch;
+  static Color get branchBg => _current.branchBg;
   static Color get vscode => _current.vscode;
   static Color get vscodeBg => _current.vscodeBg;
   static Color get claude => _current.claude;

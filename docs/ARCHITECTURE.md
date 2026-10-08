@@ -14,7 +14,6 @@ TreeLauncher is a Flutter desktop app organized around a feature-first structure
 
 - `workspace`: repositories, worktrees, repo preferences, launch actions
 - `kanban`: projects, issues, comments, and issue API behavior
-- `copilot`: session lifecycle, activity state, and Copilot terminal UX
 - `terminal`: embedded terminal sessions and terminal panel state
 - `settings`: app settings, persistence, and theme selection
 

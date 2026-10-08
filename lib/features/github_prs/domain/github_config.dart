@@ -6,16 +6,11 @@ class GithubConfig {
   /// How often the PR list auto-refreshes, in minutes.
   final int prRefreshIntervalMinutes;
 
-  /// When true, a worktree is automatically created for a PR's head branch
-  /// whenever the current user is requested as a reviewer on it.
-  final bool autoCreateWorktreeOnReviewRequest;
-
   GithubConfig({
     required this.owner,
     required this.repo,
     required this.token,
     this.prRefreshIntervalMinutes = 5,
-    this.autoCreateWorktreeOnReviewRequest = true,
   });
 
   factory GithubConfig.fromJson(Map<String, dynamic> json) {
@@ -24,8 +19,6 @@ class GithubConfig {
       repo: json['repo'] as String,
       token: json['token'] as String,
       prRefreshIntervalMinutes: json['prRefreshIntervalMinutes'] as int? ?? 5,
-      autoCreateWorktreeOnReviewRequest:
-          json['autoCreateWorktreeOnReviewRequest'] as bool? ?? true,
     );
   }
 
@@ -34,7 +27,6 @@ class GithubConfig {
     'repo': repo,
     'token': token,
     'prRefreshIntervalMinutes': prRefreshIntervalMinutes,
-    'autoCreateWorktreeOnReviewRequest': autoCreateWorktreeOnReviewRequest,
   };
 
   GithubConfig copyWith({
@@ -42,7 +34,6 @@ class GithubConfig {
     String? repo,
     String? token,
     int? prRefreshIntervalMinutes,
-    bool? autoCreateWorktreeOnReviewRequest,
   }) {
     return GithubConfig(
       owner: owner ?? this.owner,
@@ -50,8 +41,6 @@ class GithubConfig {
       token: token ?? this.token,
       prRefreshIntervalMinutes:
           prRefreshIntervalMinutes ?? this.prRefreshIntervalMinutes,
-      autoCreateWorktreeOnReviewRequest: autoCreateWorktreeOnReviewRequest ??
-          this.autoCreateWorktreeOnReviewRequest,
     );
   }
 

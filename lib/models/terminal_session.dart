@@ -11,18 +11,11 @@ class TerminalSession {
   final String? command;
   final Terminal terminal;
 
-  /// Called when the terminal title changes (e.g. Copilot CLI status icons).
-  void Function(String title)? onTitleChange;
-
-  /// Called when the terminal receives a BEL character (e.g. Copilot CLI needs attention).
-  void Function()? onBell;
-
   Pty? _pty;
   StreamSubscription<String>? _outputSub;
   bool _disposed = false;
   bool _ptyStarted = false;
   final Completer<int> _exitCodeCompleter = Completer<int>();
-  final Set<void Function(String)> _outputListeners = {};
 
   TerminalSession({
     required this.title,
@@ -55,7 +48,7 @@ class TerminalSession {
 
     // PTY output → terminal display (Utf8Decoder maintains state across chunks).
     // We intercept to handle Kitty keyboard protocol negotiation so that TUI
-    // apps (e.g. GitHub Copilot CLI) use the CSI u parser for Shift+Enter.
+    // apps (e.g. the Claude CLI) use the CSI u parser for Shift+Enter.
     _outputSub = pty.output
         .cast<List<int>>()
         .transform(const Utf8Decoder())
@@ -63,9 +56,6 @@ class TerminalSession {
           data = _handleKittyProtocol(data, pty);
           if (data.isNotEmpty) {
             terminal.write(data);
-            for (final listener in _outputListeners) {
-              listener(data);
-            }
           }
         });
 
@@ -87,16 +77,6 @@ class TerminalSession {
         _exitCodeCompleter.complete(code);
       }
     });
-
-    // Forward terminal title changes
-    terminal.onTitleChange = (title) {
-      onTitleChange?.call(title);
-    };
-
-    // Forward terminal bell events
-    terminal.onBell = () {
-      onBell?.call();
-    };
   }
 
   /// Intercept Kitty keyboard protocol sequences from PTY output and respond
@@ -119,22 +99,6 @@ class TerminalSession {
   }
 
   bool get isPtyStarted => _ptyStarted;
-
-  /// Register a listener that receives raw PTY output strings.
-  void addOutputListener(void Function(String) listener) {
-    _outputListeners.add(listener);
-  }
-
-  /// Remove a previously registered output listener.
-  void removeOutputListener(void Function(String) listener) {
-    _outputListeners.remove(listener);
-  }
-
-  /// Writes raw input bytes to the PTY (e.g. from a remote WebSocket client).
-  void writeInput(String data) {
-    if (_disposed || _pty == null) return;
-    _pty!.write(utf8.encode(data));
-  }
 
   /// Writes an initial command to the PTY (e.g., for custom commands).
   void sendCommand(String command) {

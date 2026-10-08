@@ -1,34 +1,20 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/widgets/activity_tab.dart';
-import 'package:tree_launcher/features/builds/presentation/widgets/builds_tab.dart';
-import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_attention_snackbar.dart';
-import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_terminal_view.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_prs_tab.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/pr_review_toast.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/settings_dialog.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/running_commands_bar.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_panel.dart';
-import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
-import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
-import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_repo_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings_view.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_grid.dart';
-import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
-import 'package:tree_launcher/features/markdown_editor/presentation/controllers/markdown_editor_controller.dart';
-import 'package:tree_launcher/features/markdown_editor/presentation/widgets/markdown_editor_view.dart';
-import 'package:tree_launcher/features/markdown_editor/presentation/widgets/editor_split_panel.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -44,68 +30,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _lastTabCount = 0;
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   void dispose() {
     _tabController?.dispose();
     super.dispose();
   }
 
-  void _onTabChanged() {
-    // Tab changes only affect Worktrees/Projects/Notes tabs.
-    // Copilot sessions are selected from the sidebar.
-  }
-
   @override
   Widget build(BuildContext context) {
     final repoProvider = context.watch<RepoProvider>();
-    final copilotProvider = context.watch<CopilotProvider>();
     final terminalProvider = context.watch<TerminalProvider>();
-    final editorController = context.read<MarkdownEditorController>();
-    final isCopilotActive = copilotProvider.activeSession != null;
     final isTerminalActive =
         terminalProvider.isVisible && terminalProvider.sessions.isNotEmpty;
 
-    // Sync editor worktree context with active copilot session
-    final activeWorktree = copilotProvider.activeSession?.workingDirectory;
-    final activeSessionId = copilotProvider.activeSession?.id;
-    if (isCopilotActive) {
-      if (editorController.activeWorktreeKey != activeWorktree ||
-          editorController.activeCopilotSessionId != activeSessionId) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            editorController.setActiveWorktree(
-              workingDirectory: activeWorktree,
-              copilotSessionId: activeSessionId,
-            );
-          }
-        });
-      }
-    } else if (editorController.activeWorktreeKey != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) editorController.setActiveWorktree();
-      });
-    }
-
-    final hasBuildsTab =
-        repoProvider.selectedRepo?.azureDevopsConfig != null &&
-        (repoProvider
-            .selectedRepo!
-            .azureDevopsConfig!
-            .selectedPipelines
-            .isNotEmpty);
-    final buildsTabCount = hasBuildsTab ? 1 : 0;
     final hasGithubPrsTab =
         repoProvider.selectedRepo?.githubConfig != null &&
         repoProvider.selectedRepo!.githubConfig!.isConfigured;
     final githubPrsTabCount = hasGithubPrsTab ? 1 : 0;
-    // Worktrees + [Builds] + [PRs] + Activity + Notes
-    final activityTabIndex = 1 + buildsTabCount + githubPrsTabCount;
-    final notesTabIndex = 2 + buildsTabCount + githubPrsTabCount;
-    final tabCount = 3 + buildsTabCount + githubPrsTabCount;
+    // Worktrees + [PRs] + Activity
+    final activityTabIndex = 1 + githubPrsTabCount;
+    final tabCount = 2 + githubPrsTabCount;
 
     if (_tabController == null || _lastTabCount != tabCount) {
       final oldIndex = _tabController?.index ?? 0;
@@ -117,7 +60,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             : oldIndex,
         vsync: this,
       );
-      _tabController!.addListener(_onTabChanged);
       _lastTabCount = tabCount;
     }
 
@@ -128,34 +70,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           if (tp.sessions.isNotEmpty) {
             tp.toggleVisibility();
           }
-        },
-        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () {
-          final editor = context.read<MarkdownEditorController>();
-          if (editor.hasDocument) {
-            editor.saveDocument();
-          }
-        },
-        const SingleActivator(
-          LogicalKeyboardKey.keyS,
-          meta: true,
-          shift: true,
-        ): () {
-          final editor = context.read<MarkdownEditorController>();
-          if (editor.hasDocument) {
-            editor.saveDocumentAs();
-          }
-        },
-        const SingleActivator(LogicalKeyboardKey.keyO, meta: true): () {
-          final editor = context.read<MarkdownEditorController>();
-          editor.openFile();
-        },
-        const SingleActivator(
-          LogicalKeyboardKey.keyE,
-          meta: true,
-          shift: true,
-        ): () {
-          final editor = context.read<MarkdownEditorController>();
-          editor.toggleSidePanel();
         },
       },
       child: Focus(
@@ -192,7 +106,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             _buildHeader(
                               context,
                               repoProvider,
-                              copilotProvider,
                               showMenuButton: isCollapsed,
                             ),
                             Expanded(
@@ -202,165 +115,116 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        if (!isCopilotActive)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 24,
-                                              right: 24,
-                                              top: 16,
-                                              bottom: 0,
-                                            ),
-                                            child: AnimatedBuilder(
-                                              animation: _tabController!,
-                                              builder: (context, _) {
-                                                final currentIndex =
-                                                    _tabController!.index;
-                                                return Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: SingleChildScrollView(
-                                                        scrollDirection:
-                                                            Axis.horizontal,
-                                                        child: Row(
-                                                          children: [
-                                                            // Worktrees & Projects & Notes
-                                                            Container(
-                                                              padding:
-                                                                  const EdgeInsets.all(
-                                                                    4,
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 24,
+                                            right: 24,
+                                            top: 16,
+                                            bottom: 0,
+                                          ),
+                                          child: AnimatedBuilder(
+                                            animation: _tabController!,
+                                            builder: (context, _) {
+                                              final currentIndex =
+                                                  _tabController!.index;
+                                              return Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: SingleChildScrollView(
+                                                      scrollDirection:
+                                                          Axis.horizontal,
+                                                      child: Row(
+                                                        children: [
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  4,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color: AppColors
+                                                                  .surface0,
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    10,
                                                                   ),
-                                                              decoration: BoxDecoration(
-                                                                color: AppColors
-                                                                    .surface0,
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      10,
-                                                                    ),
-                                                              ),
-                                                              child: Row(
-                                                                mainAxisSize:
-                                                                    MainAxisSize
-                                                                        .min,
-                                                                children: [
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              children: [
+                                                                _buildSegmentTab(
+                                                                  text:
+                                                                      "Worktrees",
+                                                                  index: 0,
+                                                                  currentIndex:
+                                                                      currentIndex,
+                                                                  onTap: () =>
+                                                                      _tabController!
+                                                                          .animateTo(
+                                                                            0,
+                                                                          ),
+                                                                ),
+                                                                if (hasGithubPrsTab)
                                                                   _buildSegmentTab(
-                                                                    text:
-                                                                        "Worktrees",
-                                                                    index: 0,
+                                                                    text: 'PRs',
+                                                                    index: 1,
                                                                     currentIndex:
                                                                         currentIndex,
+                                                                    icon: Icons
+                                                                        .merge_type_rounded,
                                                                     onTap: () =>
                                                                         _tabController!
                                                                             .animateTo(
-                                                                              0,
+                                                                              1,
                                                                             ),
                                                                   ),
-                                                                  if (hasBuildsTab)
-                                                                    _buildSegmentTab(
-                                                                      text:
-                                                                          'Builds',
-                                                                      index: 1,
-                                                                      currentIndex:
-                                                                          currentIndex,
-                                                                      icon: Icons
-                                                                          .build_circle_outlined,
-                                                                      onTap: () =>
-                                                                          _tabController!.animateTo(
-                                                                            1,
+                                                                _buildSegmentTab(
+                                                                  text:
+                                                                      "Activity",
+                                                                  index:
+                                                                      activityTabIndex,
+                                                                  currentIndex:
+                                                                      currentIndex,
+                                                                  icon: Icons
+                                                                      .history_rounded,
+                                                                  onTap: () =>
+                                                                      _tabController!
+                                                                          .animateTo(
+                                                                            activityTabIndex,
                                                                           ),
-                                                                    ),
-                                                                  if (hasGithubPrsTab)
-                                                                    _buildSegmentTab(
-                                                                      text:
-                                                                          'PRs',
-                                                                      index:
-                                                                          1 +
-                                                                          buildsTabCount,
-                                                                      currentIndex:
-                                                                          currentIndex,
-                                                                      icon: Icons
-                                                                          .merge_type_rounded,
-                                                                      onTap: () =>
-                                                                          _tabController!.animateTo(
-                                                                            1 +
-                                                                                buildsTabCount,
-                                                                          ),
-                                                                    ),
-                                                                  _buildSegmentTab(
-                                                                    text:
-                                                                        "Activity",
-                                                                    index:
-                                                                        activityTabIndex,
-                                                                    currentIndex:
-                                                                        currentIndex,
-                                                                    icon: Icons
-                                                                        .history_rounded,
-                                                                    onTap: () =>
-                                                                        _tabController!.animateTo(
-                                                                          activityTabIndex,
-                                                                        ),
-                                                                  ),
-                                                                  _buildSegmentTab(
-                                                                    text:
-                                                                        "Notes",
-                                                                    index:
-                                                                        notesTabIndex,
-                                                                    currentIndex:
-                                                                        currentIndex,
-                                                                    icon: Icons
-                                                                        .edit_note_rounded,
-                                                                    onTap: () =>
-                                                                        _tabController!.animateTo(
-                                                                          notesTabIndex,
-                                                                        ),
-                                                                  ),
-                                                                ],
-                                                              ),
+                                                                ),
+                                                              ],
                                                             ),
-                                                          ],
-                                                        ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
-                                                    if (currentIndex == 0) ...[
-                                                      const SizedBox(width: 12),
-                                                      const WorktreeViewModeToggle(),
-                                                      const SizedBox(width: 8),
-                                                      const WorktreeListOptionsButton(),
-                                                    ],
-                                                  ],
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        if (!isCopilotActive)
-                                          const SizedBox(height: 16),
-                                        Expanded(
-                                          child: isCopilotActive
-                                              ? EditorSplitPanel(
-                                                  child: CopilotTerminalView(
-                                                    key: ValueKey(
-                                                      copilotProvider
-                                                          .activeSession!
-                                                          .id,
-                                                    ),
-                                                    sessionId: copilotProvider
-                                                        .activeSession!
-                                                        .id,
                                                   ),
-                                                )
-                                              : TabBarView(
-                                                  controller: _tabController,
-                                                  physics:
-                                                      const NeverScrollableScrollPhysics(),
-                                                  children: [
-                                                    const WorktreeGrid(),
-                                                    if (hasBuildsTab)
-                                                      const BuildsTab(),
-                                                    if (hasGithubPrsTab)
-                                                      const GithubPrsTab(),
-                                                    const ActivityTab(),
-                                                    const MarkdownEditorView(),
+                                                  if (currentIndex == 0) ...[
+                                                    const SizedBox(width: 12),
+                                                    const WorktreeViewModeToggle(),
+                                                    const SizedBox(width: 8),
+                                                    const WorktreeListOptionsButton(),
                                                   ],
-                                                ),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Expanded(
+                                          child: TabBarView(
+                                            controller: _tabController,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            children: [
+                                              const WorktreeGrid(),
+                                              if (hasGithubPrsTab)
+                                                const GithubPrsTab(),
+                                              const ActivityTab(),
+                                            ],
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -406,8 +270,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                  // Copilot attention notification
-                  const CopilotAttentionSnackbar(),
                   // New PR review-request notification
                   const PrReviewToast(),
                 ],
@@ -471,12 +333,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildHeader(
     BuildContext context,
-    RepoProvider repoProvider,
-    CopilotProvider copilotProvider, {
+    RepoProvider repoProvider, {
     bool showMenuButton = false,
   }) {
     final selectedRepo = repoProvider.selectedRepo;
-    final activeCopilot = copilotProvider.activeSession;
 
     return Container(
       height: 64,
@@ -496,74 +356,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(width: 12),
           ],
           if (selectedRepo != null) ...[
-            if (activeCopilot != null) ...[
-              // Breadcrumb: reponame > session-name
-              GestureDetector(
-                onTap: () => copilotProvider.deselectSession(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Text(
-                    selectedRepo.name,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textMuted,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ),
+            // Repo name + worktree count
+            Text(
+              selectedRepo.name,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.3,
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: AppColors.textMuted,
-                ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.accentMuted,
+                borderRadius: BorderRadius.circular(6),
               ),
-              Icon(
-                Icons.auto_awesome_rounded,
-                size: 16,
-                color: AppColors.copilot,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                activeCopilot.name,
+              child: Text(
+                '${repoProvider.worktrees.length}',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.3,
+                  color: AppColors.accent,
                 ),
               ),
-            ] else ...[
-              // Normal header: repo name + count
-              Text(
-                selectedRepo.name,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.accentMuted,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${repoProvider.worktrees.length}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.accent,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ] else
             Text(
               'TreeLauncher',
@@ -575,30 +393,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
           const Spacer(),
-          if (selectedRepo != null && activeCopilot != null) ...[
-            _HeaderEditorToggleButton(),
-            const SizedBox(width: 8),
-            _HeaderVscodeButton(
-              worktreePath: activeCopilot.workingDirectory,
-              vscodeConfigs: selectedRepo.vscodeConfigs,
-            ),
-            if (selectedRepo.customCommands.isNotEmpty) ...[
-              const SizedBox(width: 8),
-              _HeaderCommandsButton(
-                worktreePath: activeCopilot.workingDirectory,
-                worktreeName: activeCopilot.name,
-                commands: selectedRepo.customCommands,
-              ),
-            ],
-            if (selectedRepo.customLinks.isNotEmpty) ...[
-              const SizedBox(width: 8),
-              _HeaderLinksButton(
-                worktreePath: activeCopilot.workingDirectory,
-                links: selectedRepo.customLinks,
-              ),
-            ],
-          ],
-          if (selectedRepo != null && activeCopilot == null) ...[
+          if (selectedRepo != null) ...[
             _AddWorktreeButton(
               onPressed: () => AddWorktreeDialog.show(context),
             ),
@@ -655,57 +450,6 @@ class _RefreshButtonState extends State<_RefreshButton> {
                   size: 20,
                   color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeaderEditorToggleButton extends StatefulWidget {
-  @override
-  State<_HeaderEditorToggleButton> createState() =>
-      _HeaderEditorToggleButtonState();
-}
-
-class _HeaderEditorToggleButtonState extends State<_HeaderEditorToggleButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final editor = context.watch<MarkdownEditorController>();
-    final isActive = editor.isSidePanelOpen;
-
-    return Tooltip(
-      message: isActive
-          ? 'Close editor panel (⇧⌘E)'
-          : 'Open editor panel (⇧⌘E)',
-      waitDuration: const Duration(milliseconds: 600),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: () => editor.toggleSidePanel(),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? AppColors.accent.withValues(alpha: 0.15)
-                  : _hovered
-                  ? AppColors.surface2
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.edit_note_rounded,
-              size: 20,
-              color: isActive
-                  ? AppColors.accent
-                  : _hovered
-                  ? AppColors.textPrimary
-                  : AppColors.textMuted,
-            ),
-          ),
         ),
       ),
     );
@@ -801,374 +545,5 @@ class _MenuButtonState extends State<_MenuButton> {
         ),
       ),
     );
-  }
-}
-
-class _HeaderVscodeButton extends StatefulWidget {
-  final String worktreePath;
-  final List<dynamic> vscodeConfigs;
-
-  const _HeaderVscodeButton({
-    required this.worktreePath,
-    required this.vscodeConfigs,
-  });
-
-  @override
-  State<_HeaderVscodeButton> createState() => _HeaderVscodeButtonState();
-}
-
-class _HeaderVscodeButtonState extends State<_HeaderVscodeButton> {
-  bool _hovered = false;
-  final LauncherService _launcherService = LauncherService();
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () {
-          if (widget.vscodeConfigs.isEmpty) {
-            _launcherService.openVSCode(widget.worktreePath);
-          } else {
-            _showDropdown(context);
-          }
-        },
-        child: Tooltip(
-          message: 'Open in VS Code',
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _hovered
-                  ? AppColors.vscode.withValues(alpha: 0.15)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: SvgPicture.asset(
-              'assets/icons/vscode.svg',
-              width: 18,
-              height: 18,
-              colorFilter: ColorFilter.mode(
-                _hovered ? AppColors.vscode : AppColors.textMuted,
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showDropdown(BuildContext context) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        button.localToGlobal(Offset(0, button.size.height)),
-        button.localToGlobal(Offset(button.size.width, button.size.height)),
-      ),
-      Offset.zero & overlay.size,
-    );
-
-    showMenu<String>(
-      context: context,
-      position: position,
-      color: AppColors.surface1,
-      constraints: const BoxConstraints(minWidth: 280),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: AppColors.border),
-      ),
-      items: [
-        PopupMenuItem<String>(
-          value: '',
-          height: 36,
-          child: Row(
-            children: [
-              SvgPicture.asset(
-                'assets/icons/vscode.svg',
-                width: 13,
-                height: 13,
-                colorFilter: ColorFilter.mode(
-                  AppColors.vscode,
-                  BlendMode.srcIn,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'VS Code (default)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        ...widget.vscodeConfigs.map((config) {
-          return PopupMenuItem<String>(
-            value: config.path as String,
-            height: 36,
-            child: Row(
-              children: [
-                SvgPicture.asset(
-                  'assets/icons/vscode.svg',
-                  width: 13,
-                  height: 13,
-                  colorFilter: ColorFilter.mode(
-                    AppColors.vscode,
-                    BlendMode.srcIn,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  config.name as String,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    config.path as String,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AppColors.textMuted,
-                      fontFamily: 'monospace',
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
-    ).then((selectedPath) {
-      if (selectedPath != null) {
-        if (selectedPath.isEmpty) {
-          _launcherService.openVSCode(widget.worktreePath);
-        } else {
-          final resolved = p.join(widget.worktreePath, selectedPath);
-          _launcherService.openVSCode(resolved);
-        }
-      }
-    });
-  }
-}
-
-class _HeaderCommandsButton extends StatefulWidget {
-  final String worktreePath;
-  final String worktreeName;
-  final List<CustomCommand> commands;
-
-  const _HeaderCommandsButton({
-    required this.worktreePath,
-    required this.worktreeName,
-    required this.commands,
-  });
-
-  @override
-  State<_HeaderCommandsButton> createState() => _HeaderCommandsButtonState();
-}
-
-class _HeaderCommandsButtonState extends State<_HeaderCommandsButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () => _showDropdown(context),
-        child: Tooltip(
-          message: 'Run Command',
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _hovered
-                  ? AppColors.terminal.withValues(alpha: 0.15)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.play_arrow_rounded,
-              size: 20,
-              color: _hovered ? AppColors.terminal : AppColors.textMuted,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showDropdown(BuildContext context) {
-    final repo = context.read<RepoProvider>().selectedRepo;
-    final tp = context.read<TerminalProvider>();
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        button.localToGlobal(Offset(0, button.size.height)),
-        button.localToGlobal(Offset(button.size.width, button.size.height)),
-      ),
-      Offset.zero & overlay.size,
-    );
-
-    showMenu<CustomCommand>(
-      context: context,
-      position: position,
-      color: AppColors.surface1,
-      constraints: const BoxConstraints(minWidth: 220),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: AppColors.border),
-      ),
-      items: widget.commands.map((cmd) {
-        return PopupMenuItem<CustomCommand>(
-          value: cmd,
-          height: 36,
-          child: Row(
-            children: [
-              Icon(
-                Icons.play_arrow_rounded,
-                size: 13,
-                color: AppColors.terminal,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  cmd.name,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    ).then((selected) {
-      if (selected != null) {
-        final slot = repo?.slotAssignments[widget.worktreePath] ?? 'alpha';
-        final command = selected.command.replaceAll('{{SLOT}}', slot);
-        tp.openTerminalWithCommand(
-          '${selected.name}: ${widget.worktreeName}',
-          widget.worktreePath,
-          repo?.path ?? widget.worktreePath,
-          command,
-        );
-      }
-    });
-  }
-}
-
-class _HeaderLinksButton extends StatefulWidget {
-  final String worktreePath;
-  final List<CustomLink> links;
-
-  const _HeaderLinksButton({required this.worktreePath, required this.links});
-
-  @override
-  State<_HeaderLinksButton> createState() => _HeaderLinksButtonState();
-}
-
-class _HeaderLinksButtonState extends State<_HeaderLinksButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () => _showDropdown(context),
-        child: Tooltip(
-          message: 'Open Link',
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _hovered
-                  ? AppColors.accent.withValues(alpha: 0.15)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.link_rounded,
-              size: 20,
-              color: _hovered ? AppColors.accent : AppColors.textMuted,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showDropdown(BuildContext context) {
-    final repo = context.read<RepoProvider>().selectedRepo;
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        button.localToGlobal(Offset(0, button.size.height)),
-        button.localToGlobal(Offset(button.size.width, button.size.height)),
-      ),
-      Offset.zero & overlay.size,
-    );
-
-    showMenu<CustomLink>(
-      context: context,
-      position: position,
-      color: AppColors.surface1,
-      constraints: const BoxConstraints(minWidth: 220),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: AppColors.border),
-      ),
-      items: widget.links.map((link) {
-        return PopupMenuItem<CustomLink>(
-          value: link,
-          height: 36,
-          child: Row(
-            children: [
-              Icon(
-                Icons.open_in_new_rounded,
-                size: 13,
-                color: AppColors.accent,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  link.name,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    ).then((selected) {
-      if (selected != null) {
-        final slot = repo?.slotAssignments[widget.worktreePath] ?? 'alpha';
-        final url = selected.url.replaceAll('{{SLOT}}', slot);
-        Process.run('open', [url]);
-      }
-    });
   }
 }

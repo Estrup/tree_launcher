@@ -1,30 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
-import 'package:tree_launcher/features/workspace/domain/command_style.dart';
-import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
-import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
-import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
-import 'package:tree_launcher/providers/terminal_provider.dart';
 import 'branch_search_dropdown.dart';
 
 class AddWorktreeResult {
   final String worktreePath;
   final String? branch;
-  final String? copilotSessionId;
 
-  const AddWorktreeResult({
-    required this.worktreePath,
-    this.branch,
-    this.copilotSessionId,
-  });
+  const AddWorktreeResult({required this.worktreePath, this.branch});
 }
 
 class AddWorktreeDialog extends StatefulWidget {
@@ -38,12 +26,8 @@ class AddWorktreeDialog extends StatefulWidget {
   }) {
     return showDialog<AddWorktreeResult>(
       context: context,
-      builder: (_) => MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: context.read<RepoProvider>()),
-          ChangeNotifierProvider.value(value: context.read<TerminalProvider>()),
-          ChangeNotifierProvider.value(value: context.read<CopilotProvider>()),
-        ],
+      builder: (_) => ChangeNotifierProvider.value(
+        value: context.read<RepoProvider>(),
         child: AddWorktreeDialog(initialName: initialName),
       ),
     );
@@ -58,12 +42,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   final _jiraController = TextEditingController();
   final _newBranchController = TextEditingController();
   String? _selectedBranch;
-  bool _launchCopilot = false;
-  CopilotPrompt? _selectedPrompt;
-  bool _launchClaude = false;
-  CopilotPrompt? _selectedClaudePrompt;
-  bool _runCommands = false;
-  Set<String> _selectedCommands = {};
   String? _error;
   bool _creating = false;
   List<String> _branches = [];
@@ -81,20 +59,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       });
     }
     _loadBranches();
-    _initRunCommandDefaults();
-  }
-
-  void _initRunCommandDefaults() {
-    final repo = context.read<RepoProvider>().selectedRepo;
-    if (repo == null) return;
-    final commandNames = repo.customCommands.map((c) => c.name).toSet();
-    final validDefaults = repo.defaultRunCommands
-        .where((name) => commandNames.contains(name))
-        .toSet();
-    if (validDefaults.isNotEmpty) {
-      _runCommands = true;
-      _selectedCommands = validDefaults;
-    }
   }
 
   @override
@@ -174,8 +138,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
     try {
       final repoProvider = context.read<RepoProvider>();
-      final terminalProvider = context.read<TerminalProvider>();
-      final copilotProvider = context.read<CopilotProvider>();
       final worktreeName = _effectiveWorktreeName;
       final newBranch = _newBranchController.text.trim();
 
@@ -194,69 +156,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         );
       }
 
-      String? copilotSessionId;
-      if (_launchCopilot && worktreePath != null) {
-        final repo = repoProvider.selectedRepo;
-        final prompt = _resolvePrompt(
-          _selectedPrompt,
-          jira,
-          baseBranch: _selectedBranch,
-          worktreeName: worktreeName,
-          worktreePath: worktreePath,
-          repoName: repo?.name,
-        );
-        final session = await copilotProvider.createSession(
-          repo?.path ?? worktreePath,
-          worktreePath,
-          worktreeName,
-          prompt: prompt,
-        );
-        copilotSessionId = session.id;
-      }
-
-      // Launch Claude (external) in the new worktree
-      if (_launchClaude && worktreePath != null) {
-        final prompt = _resolvePrompt(
-          _selectedClaudePrompt,
-          jira,
-          baseBranch: _selectedBranch,
-          worktreeName: worktreeName,
-          worktreePath: worktreePath,
-          repoName: repoProvider.selectedRepo?.name,
-        );
-        await LauncherService().openClaude(worktreePath, prompt: prompt);
-      }
-
-      // Launch selected run commands in the new worktree
-      if (_runCommands &&
-          _selectedCommands.isNotEmpty &&
-          worktreePath != null) {
-        final repo = repoProvider.selectedRepo!;
-
-        // Persist selected commands as defaults
-        await repoProvider.updateDefaultRunCommands(
-          repo,
-          _selectedCommands.toList(),
-        );
-
-        // Shut down existing command sessions for this repo
-        await terminalProvider.gracefulCloseCommandSessionsForRepo(repo.path);
-
-        // Launch each selected command
-        final slot = repo.slotAssignments[worktreePath] ?? 'alpha';
-        for (final cmd in repo.customCommands) {
-          if (_selectedCommands.contains(cmd.name)) {
-            final command = cmd.command.replaceAll('{{SLOT}}', slot);
-            terminalProvider.openTerminalWithCommand(
-              cmd.name,
-              worktreePath,
-              repo.path,
-              command,
-            );
-          }
-        }
-      }
-
       if (mounted) {
         Navigator.pop(
           context,
@@ -264,7 +163,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               ? AddWorktreeResult(
                   worktreePath: worktreePath,
                   branch: newBranch.isNotEmpty ? newBranch : null,
-                  copilotSessionId: copilotSessionId,
                 )
               : null,
         );
@@ -489,19 +387,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               ],
 
               const SizedBox(height: 16),
-
-              // Launch Copilot
-              _buildTerminalSection(),
-
-              const SizedBox(height: 12),
-
-              // Launch Claude
-              _buildClaudeSection(),
-
-              // Run Commands
-              _buildRunSection(),
-
-              const SizedBox(height: 12),
               Text(
                 context.watch<RepoProvider>().selectedRepo?.useNestedWorktrees ==
                         true
@@ -551,357 +436,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           ),
         ),
       ],
-    );
-  }
-
-  String? _resolvePrompt(
-    CopilotPrompt? selected,
-    String jira, {
-    String? baseBranch,
-    String? worktreeName,
-    String? worktreePath,
-    String? repoName,
-  }) {
-    if (selected == null) return null;
-    var prompt = selected.prompt;
-    prompt = prompt.replaceAll('{issue}', jira);
-    prompt = prompt.replaceAll('{base_branch}', baseBranch ?? '');
-    prompt = prompt.replaceAll('{worktree}', worktreeName ?? '');
-    prompt = prompt.replaceAll('{path}', worktreePath ?? '');
-    prompt = prompt.replaceAll('{repo}', repoName ?? '');
-    prompt = prompt.replaceAll(RegExp(r'\s+'), ' ').trim();
-    return prompt.isEmpty ? null : prompt;
-  }
-
-  Widget _buildTerminalSection() {
-    final repo = context.read<RepoProvider>().selectedRepo;
-    final prompts = repo?.copilotPrompts ?? [];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: _creating
-                ? null
-                : () => setState(() => _launchCopilot = !_launchCopilot),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: Checkbox(
-                    value: _launchCopilot,
-                    onChanged: _creating
-                        ? null
-                        : (v) => setState(() => _launchCopilot = v ?? false),
-                    activeColor: AppColors.accent,
-                    side: BorderSide(color: AppColors.textMuted),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 16,
-                  color: AppColors.copilot,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Launch Copilot',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (_launchCopilot && prompts.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _sectionLabel('COPILOT PROMPT (OPTIONAL)'),
-          const SizedBox(height: 8),
-          AppDropdownField<CopilotPrompt?>(
-            initialValue: _selectedPrompt,
-            style: appFormFieldTextStyle(context, monospace: true),
-            icon: Icon(
-              Icons.expand_more_rounded,
-              color: AppColors.textMuted,
-              size: 18,
-            ),
-            items: [
-              DropdownMenuItem<CopilotPrompt?>(
-                value: null,
-                child: Text(
-                  'None',
-                  style: appFormFieldTextStyle(
-                    context,
-                    monospace: true,
-                  ).copyWith(color: AppColors.textMuted),
-                ),
-              ),
-              ...prompts.map(
-                (p) => DropdownMenuItem<CopilotPrompt?>(
-                  value: p,
-                  child: Text(
-                    p.name,
-                    style: appFormFieldTextStyle(context, monospace: true),
-                  ),
-                ),
-              ),
-            ],
-            onChanged: _creating
-                ? null
-                : (value) => setState(() => _selectedPrompt = value),
-          ),
-          if (_selectedPrompt != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              _selectedPrompt!.prompt,
-              style: TextStyle(
-                fontSize: 10,
-                color: AppColors.textMuted.withValues(alpha: 0.6),
-                fontFamily: 'monospace',
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ],
-      ],
-    );
-  }
-
-  Widget _buildClaudeSection() {
-    final repo = context.read<RepoProvider>().selectedRepo;
-    final prompts = repo?.copilotPrompts ?? [];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: _creating
-                ? null
-                : () => setState(() => _launchClaude = !_launchClaude),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: Checkbox(
-                    value: _launchClaude,
-                    onChanged: _creating
-                        ? null
-                        : (v) => setState(() => _launchClaude = v ?? false),
-                    activeColor: AppColors.accent,
-                    side: BorderSide(color: AppColors.textMuted),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SvgPicture.asset(
-                  'assets/icons/claude.svg',
-                  width: 16,
-                  height: 16,
-                  colorFilter: ColorFilter.mode(
-                    AppColors.claude,
-                    BlendMode.srcIn,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Launch Claude',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (_launchClaude && prompts.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _sectionLabel('CLAUDE PROMPT (OPTIONAL)'),
-          const SizedBox(height: 8),
-          AppDropdownField<CopilotPrompt?>(
-            initialValue: _selectedClaudePrompt,
-            style: appFormFieldTextStyle(context, monospace: true),
-            icon: Icon(
-              Icons.expand_more_rounded,
-              color: AppColors.textMuted,
-              size: 18,
-            ),
-            items: [
-              DropdownMenuItem<CopilotPrompt?>(
-                value: null,
-                child: Text(
-                  'None',
-                  style: appFormFieldTextStyle(
-                    context,
-                    monospace: true,
-                  ).copyWith(color: AppColors.textMuted),
-                ),
-              ),
-              ...prompts.map(
-                (p) => DropdownMenuItem<CopilotPrompt?>(
-                  value: p,
-                  child: Text(
-                    p.name,
-                    style: appFormFieldTextStyle(context, monospace: true),
-                  ),
-                ),
-              ),
-            ],
-            onChanged: _creating
-                ? null
-                : (value) => setState(() => _selectedClaudePrompt = value),
-          ),
-          if (_selectedClaudePrompt != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              _selectedClaudePrompt!.prompt,
-              style: TextStyle(
-                fontSize: 10,
-                color: AppColors.textMuted.withValues(alpha: 0.6),
-                fontFamily: 'monospace',
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ],
-      ],
-    );
-  }
-
-  Widget _buildRunSection() {
-    final repo = context.read<RepoProvider>().selectedRepo;
-    if (repo == null || repo.customCommands.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: _creating
-                ? null
-                : () => setState(() => _runCommands = !_runCommands),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: Checkbox(
-                    value: _runCommands,
-                    onChanged: _creating
-                        ? null
-                        : (v) => setState(() => _runCommands = v ?? false),
-                    activeColor: AppColors.accent,
-                    side: BorderSide(color: AppColors.textMuted),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.play_arrow_rounded,
-                  size: 16,
-                  color: AppColors.accent,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Run',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (_runCommands) ...[
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(left: 26),
-            child: Column(
-              children: [
-                for (int i = 0; i < repo.customCommands.length; i++)
-                  _buildCommandCheckbox(repo.customCommands[i], i),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildCommandCheckbox(CustomCommand cmd, int index) {
-    final isSelected = _selectedCommands.contains(cmd.name);
-    final color = getCommandColor(cmd.colorHex, index);
-    final icon = getCommandIcon(cmd.iconName);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: _creating
-              ? null
-              : () {
-                  setState(() {
-                    if (isSelected) {
-                      _selectedCommands.remove(cmd.name);
-                    } else {
-                      _selectedCommands.add(cmd.name);
-                    }
-                  });
-                },
-          child: Row(
-            children: [
-              SizedBox(
-                width: 18,
-                height: 18,
-                child: Checkbox(
-                  value: isSelected,
-                  onChanged: _creating
-                      ? null
-                      : (v) {
-                          setState(() {
-                            if (v == true) {
-                              _selectedCommands.add(cmd.name);
-                            } else {
-                              _selectedCommands.remove(cmd.name);
-                            }
-                          });
-                        },
-                  activeColor: color,
-                  side: BorderSide(color: AppColors.textMuted),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 6),
-              Text(
-                cmd.name,
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

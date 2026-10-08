@@ -4,18 +4,22 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
-import 'package:tree_launcher/features/builds/presentation/controllers/builds_controller.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
-import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
+import 'package:tree_launcher/features/workspace/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
-import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/models/predefined_issue.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 
-enum _SettingsSection { general, vscodeConfigs, customCommands, customLinks, copilotPrompts, predefinedIssues, builds, github }
+enum _SettingsSection {
+  general,
+  vscodeConfigs,
+  customCommands,
+  claudePrompts,
+  predefinedIssues,
+  github,
+}
 
 class RepoSettingsView extends StatefulWidget {
   const RepoSettingsView({super.key});
@@ -132,23 +136,13 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                       ),
                     ),
                     _NavItem(
-                      icon: Icons.link_rounded,
-                      label: 'Custom Links',
-                      isSelected:
-                          _selectedSection == _SettingsSection.customLinks,
-                      onTap: () => setState(
-                        () =>
-                            _selectedSection = _SettingsSection.customLinks,
-                      ),
-                    ),
-                    _NavItem(
                       icon: Icons.auto_awesome_rounded,
-                      label: 'Copilot Prompts',
+                      label: 'Claude Prompts',
                       isSelected:
-                          _selectedSection == _SettingsSection.copilotPrompts,
+                          _selectedSection == _SettingsSection.claudePrompts,
                       onTap: () => setState(
                         () =>
-                            _selectedSection = _SettingsSection.copilotPrompts,
+                            _selectedSection = _SettingsSection.claudePrompts,
                       ),
                     ),
                     _NavItem(
@@ -159,16 +153,6 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                       onTap: () => setState(
                         () => _selectedSection =
                             _SettingsSection.predefinedIssues,
-                      ),
-                    ),
-                    _NavItem(
-                      icon: Icons.build_circle_outlined,
-                      label: 'Builds',
-                      isSelected:
-                          _selectedSection == _SettingsSection.builds,
-                      onTap: () => setState(
-                        () =>
-                            _selectedSection = _SettingsSection.builds,
                       ),
                     ),
                     _NavItem(
@@ -201,14 +185,10 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
         return const _VscodeConfigsSection();
       case _SettingsSection.customCommands:
         return const _CustomCommandsSection();
-      case _SettingsSection.customLinks:
-        return const _CustomLinksSection();
-      case _SettingsSection.copilotPrompts:
-        return const _CopilotPromptsSection();
+      case _SettingsSection.claudePrompts:
+        return const _ClaudePromptsSection();
       case _SettingsSection.predefinedIssues:
         return const _PredefinedIssuesSection();
-      case _SettingsSection.builds:
-        return const _BuildsSection();
       case _SettingsSection.github:
         return const _GithubSection();
     }
@@ -1070,17 +1050,17 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
   }
 }
 
-// --- Custom Links Section ---
+// --- Claude Prompts Section ---
 
-class _CustomLinksSection extends StatefulWidget {
-  const _CustomLinksSection();
+class _ClaudePromptsSection extends StatefulWidget {
+  const _ClaudePromptsSection();
 
   @override
-  State<_CustomLinksSection> createState() => _CustomLinksSectionState();
+  State<_ClaudePromptsSection> createState() => _ClaudePromptsSectionState();
 }
 
-class _CustomLinksSectionState extends State<_CustomLinksSection> {
-  late List<CustomLink> _links;
+class _ClaudePromptsSectionState extends State<_ClaudePromptsSection> {
+  late List<ClaudePrompt> _prompts;
   String? _lastRepoPath;
   Timer? _debounce;
 
@@ -1089,7 +1069,7 @@ class _CustomLinksSectionState extends State<_CustomLinksSection> {
     super.initState();
     final repo = context.read<RepoProvider>().selectedRepo;
     _lastRepoPath = repo?.path;
-    _links = List.from(repo?.customLinks ?? []);
+    _prompts = List.from(repo?.claudePrompts ?? []);
   }
 
   @override
@@ -1098,315 +1078,7 @@ class _CustomLinksSectionState extends State<_CustomLinksSection> {
     final repo = context.read<RepoProvider>().selectedRepo;
     if (repo != null && repo.path != _lastRepoPath) {
       _lastRepoPath = repo.path;
-      _links = List.from(repo.customLinks);
-    }
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  void _save() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<RepoProvider>();
-      final repo = provider.selectedRepo;
-      if (repo == null) return;
-      final cleaned = _links
-          .where((l) => l.name.trim().isNotEmpty || l.url.trim().isNotEmpty)
-          .map(
-            (l) => CustomLink(
-              name: l.name.trim(),
-              url: l.url.trim(),
-              iconName: l.iconName,
-              colorHex: l.colorHex,
-            ),
-          )
-          .toList();
-      provider.updateRepoCustomLinks(repo, cleaned);
-    });
-  }
-
-  void _addLink() {
-    setState(() {
-      _links.add(CustomLink(name: '', url: ''));
-    });
-  }
-
-  void _removeLink(int index) {
-    setState(() {
-      _links.removeAt(index);
-    });
-    _save();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Custom Links',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'URLs that open in your browser with {{SLOT}} substitution',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _AddButton(
-                label: 'Add Link',
-                color: AppColors.accent,
-                bgColor: AppColors.accentMuted,
-                onTap: _addLink,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          if (_links.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.surface0,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.borderSubtle),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.link_rounded,
-                    size: 32,
-                    color: AppColors.textMuted.withValues(alpha: 0.4),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No custom links',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Add links to open them directly from worktree cards.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                  ),
-                ],
-              ),
-            )
-          else
-            ...List.generate(_links.length, (index) {
-              return _CustomLinkCard(
-                key: ValueKey('link_$index'),
-                link: _links[index],
-                index: index,
-                onChanged: (link) {
-                  setState(() => _links[index] = link);
-                  _save();
-                },
-                onRemove: () => _removeLink(index),
-              );
-            }),
-        ],
-      ),
-    );
-  }
-}
-
-class _CustomLinkCard extends StatefulWidget {
-  final CustomLink link;
-  final int index;
-  final ValueChanged<CustomLink> onChanged;
-  final VoidCallback onRemove;
-
-  const _CustomLinkCard({
-    super.key,
-    required this.link,
-    required this.index,
-    required this.onChanged,
-    required this.onRemove,
-  });
-
-  @override
-  State<_CustomLinkCard> createState() => _CustomLinkCardState();
-}
-
-class _CustomLinkCardState extends State<_CustomLinkCard> {
-  late final TextEditingController _nameController;
-  late final TextEditingController _urlController;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.link.name);
-    _urlController = TextEditingController(text: widget.link.url);
-  }
-
-  @override
-  void didUpdateWidget(_CustomLinkCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Cards are keyed by index, so removing one reuses State for a different
-    // link. Re-sync controllers when the underlying link differs.
-    if (widget.link.name != _nameController.text) {
-      _nameController.text = widget.link.name;
-    }
-    if (widget.link.url != _urlController.text) {
-      _urlController.text = widget.link.url;
-    }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _urlController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final effectiveIcon = getCommandIcon(widget.link.iconName);
-    final effectiveColor = getCommandColor(
-      widget.link.colorHex,
-      widget.index,
-    );
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface0,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _IconColorPicker(
-                icon: effectiveIcon,
-                color: effectiveColor,
-                iconName: widget.link.iconName,
-                colorHex: widget.link.colorHex,
-                onIconChanged: (name) =>
-                    widget.onChanged(widget.link.copyWith(iconName: name)),
-                onColorChanged: (hex) =>
-                    widget.onChanged(widget.link.copyWith(colorHex: hex)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'NAME',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textMuted,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    SizedBox(
-                      width: 300,
-                      child: TextField(
-                        style: appFormFieldTextStyle(context),
-                        decoration: const InputDecoration(
-                          hintText: 'e.g. Dashboard',
-                        ),
-                        controller: _nameController,
-                        onChanged: (v) =>
-                            widget.onChanged(widget.link.copyWith(name: v)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _RemoveButton(onTap: widget.onRemove),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'URL',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-              letterSpacing: 1.0,
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            style: appFormFieldTextStyle(context, monospace: true, height: 1.5),
-            maxLines: 2,
-            minLines: 1,
-            decoration: InputDecoration(
-              hintText: 'e.g. https://example.com/{{SLOT}}/dashboard',
-              hintStyle: appFormFieldHintStyle(context, monospace: true),
-            ),
-            controller: _urlController,
-            onChanged: (v) =>
-                widget.onChanged(widget.link.copyWith(url: v)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// --- Copilot Prompts Section ---
-
-class _CopilotPromptsSection extends StatefulWidget {
-  const _CopilotPromptsSection();
-
-  @override
-  State<_CopilotPromptsSection> createState() => _CopilotPromptsSectionState();
-}
-
-class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
-  late List<CopilotPrompt> _prompts;
-  String? _lastRepoPath;
-  Timer? _debounce;
-
-  @override
-  void initState() {
-    super.initState();
-    final repo = context.read<RepoProvider>().selectedRepo;
-    _lastRepoPath = repo?.path;
-    _prompts = List.from(repo?.copilotPrompts ?? []);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final repo = context.read<RepoProvider>().selectedRepo;
-    if (repo != null && repo.path != _lastRepoPath) {
-      _lastRepoPath = repo.path;
-      _prompts = List.from(repo.copilotPrompts);
+      _prompts = List.from(repo.claudePrompts);
     }
   }
 
@@ -1425,16 +1097,16 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
       final cleaned = _prompts
           .where((p) => p.name.trim().isNotEmpty || p.prompt.trim().isNotEmpty)
           .map(
-            (p) => CopilotPrompt(name: p.name.trim(), prompt: p.prompt.trim()),
+            (p) => ClaudePrompt(name: p.name.trim(), prompt: p.prompt.trim()),
           )
           .toList();
-      provider.updateRepoCopilotPrompts(repo, cleaned);
+      provider.updateRepoClaudePrompts(repo, cleaned);
     });
   }
 
   void _addPrompt() {
     setState(() {
-      _prompts.add(CopilotPrompt(name: '', prompt: ''));
+      _prompts.add(ClaudePrompt(name: '', prompt: ''));
     });
   }
 
@@ -1459,7 +1131,7 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'AI Prompts',
+                      'Claude Prompts',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -1469,7 +1141,7 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Prompt templates for Copilot or Claude sessions. '
+                      'Prompt templates offered by the Claude button on a worktree. '
                       'Substitutions: {issue}, {base_branch}, {worktree}, {path}, {repo}.',
                       style: TextStyle(
                         fontSize: 13,
@@ -1481,8 +1153,8 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
               ),
               _AddButton(
                 label: 'Add Prompt',
-                color: AppColors.copilot,
-                bgColor: AppColors.copilotBg,
+                color: AppColors.claude,
+                bgColor: AppColors.claudeBg,
                 onTap: _addPrompt,
               ),
             ],
@@ -1506,7 +1178,7 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'No copilot prompts',
+                    'No Claude prompts',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -1515,7 +1187,7 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Add prompt templates to use when creating worktrees.',
+                    'Add prompt templates to pick from when launching Claude.',
                     style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
                 ],
@@ -1523,7 +1195,7 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
             )
           else
             ...List.generate(_prompts.length, (index) {
-              return _CopilotPromptCard(
+              return _ClaudePromptCard(
                 key: ValueKey('prompt_$index'),
                 prompt: _prompts[index],
                 onChanged: (p) {
@@ -1539,12 +1211,12 @@ class _CopilotPromptsSectionState extends State<_CopilotPromptsSection> {
   }
 }
 
-class _CopilotPromptCard extends StatefulWidget {
-  final CopilotPrompt prompt;
-  final ValueChanged<CopilotPrompt> onChanged;
+class _ClaudePromptCard extends StatefulWidget {
+  final ClaudePrompt prompt;
+  final ValueChanged<ClaudePrompt> onChanged;
   final VoidCallback onRemove;
 
-  const _CopilotPromptCard({
+  const _ClaudePromptCard({
     super.key,
     required this.prompt,
     required this.onChanged,
@@ -1552,10 +1224,10 @@ class _CopilotPromptCard extends StatefulWidget {
   });
 
   @override
-  State<_CopilotPromptCard> createState() => _CopilotPromptCardState();
+  State<_ClaudePromptCard> createState() => _ClaudePromptCardState();
 }
 
-class _CopilotPromptCardState extends State<_CopilotPromptCard> {
+class _ClaudePromptCardState extends State<_ClaudePromptCard> {
   late final TextEditingController _nameController;
   late final TextEditingController _promptController;
 
@@ -1567,7 +1239,7 @@ class _CopilotPromptCardState extends State<_CopilotPromptCard> {
   }
 
   @override
-  void didUpdateWidget(_CopilotPromptCard oldWidget) {
+  void didUpdateWidget(_ClaudePromptCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Cards are keyed by index, so removing one reuses State for a different
     // prompt. Re-sync controllers when the underlying prompt differs.
@@ -2317,432 +1989,6 @@ class _BackButtonState extends State<_BackButton> {
   }
 }
 
-// --- Builds Section ---
-
-class _BuildsSection extends StatefulWidget {
-  const _BuildsSection();
-
-  @override
-  State<_BuildsSection> createState() => _BuildsSectionState();
-}
-
-class _BuildsSectionState extends State<_BuildsSection> {
-  late TextEditingController _serverUrlController;
-  late TextEditingController _projectController;
-  late TextEditingController _patController;
-  late TextEditingController _searchController;
-  String? _lastRepoPath;
-  Timer? _debounce;
-  Set<int> _selectedPipelineIds = {};
-  bool _pipelinesLoaded = false;
-  String _searchQuery = '';
-
-  @override
-  void initState() {
-    super.initState();
-    final repo = context.read<RepoProvider>().selectedRepo;
-    _lastRepoPath = repo?.path;
-    final config = repo?.azureDevopsConfig;
-    _serverUrlController = TextEditingController(text: config?.serverUrl ?? '');
-    _projectController = TextEditingController(text: config?.project ?? '');
-    _patController = TextEditingController(text: config?.pat ?? '');
-    _searchController = TextEditingController();
-    _searchController.addListener(() {
-      setState(() => _searchQuery = _searchController.text.toLowerCase());
-    });
-    _selectedPipelineIds = config?.selectedPipelines.map((p) => p.id).toSet() ?? {};
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final repo = context.read<RepoProvider>().selectedRepo;
-    if (repo != null && repo.path != _lastRepoPath) {
-      _lastRepoPath = repo.path;
-      final config = repo.azureDevopsConfig;
-      _serverUrlController.text = config?.serverUrl ?? '';
-      _projectController.text = config?.project ?? '';
-      _patController.text = config?.pat ?? '';
-      _searchController.clear();
-      _selectedPipelineIds = config?.selectedPipelines.map((p) => p.id).toSet() ?? {};
-      _pipelinesLoaded = false;
-    }
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _serverUrlController.dispose();
-    _projectController.dispose();
-    _patController.dispose();
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _saveConfig() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<RepoProvider>();
-      final repo = provider.selectedRepo;
-      if (repo == null) return;
-
-      final builds = context.read<BuildsController>();
-      final currentPipelines = builds.availableDefinitions
-          .where((d) => _selectedPipelineIds.contains(d.id))
-          .map((d) => BuildPipelineRef(id: d.id, name: d.name))
-          .toList();
-
-      // Keep previously saved pipelines that are still selected but not in availableDefinitions
-      final existingPipelines = repo.azureDevopsConfig?.selectedPipelines ?? [];
-      final fetchedIds = builds.availableDefinitions.map((d) => d.id).toSet();
-      for (final p in existingPipelines) {
-        if (_selectedPipelineIds.contains(p.id) && !fetchedIds.contains(p.id)) {
-          currentPipelines.add(p);
-        }
-      }
-
-      final config = AzureDevopsConfig(
-        serverUrl: _serverUrlController.text.trim(),
-        project: _projectController.text.trim(),
-        pat: _patController.text.trim(),
-        selectedPipelines: currentPipelines,
-      );
-      provider.updateAzureDevopsConfig(repo, config);
-    });
-  }
-
-  void _fetchPipelines() {
-    final config = AzureDevopsConfig(
-      serverUrl: _serverUrlController.text.trim(),
-      project: _projectController.text.trim(),
-      pat: _patController.text.trim(),
-    );
-    if (!config.isConfigured) return;
-    context.read<BuildsController>().fetchDefinitions(config).then((_) {
-      setState(() => _pipelinesLoaded = true);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final builds = context.watch<BuildsController>();
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Azure DevOps Builds',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Configure Azure DevOps connection and select build pipelines',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Server URL
-          Text(
-            'SERVER URL',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _serverUrlController,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textPrimary,
-              fontFamily: 'monospace',
-            ),
-            decoration: InputDecoration(
-              hintText: 'https://dev.azure.com/your-org',
-              hintStyle: TextStyle(
-                fontSize: 13,
-                color: AppColors.textMuted,
-                fontFamily: 'monospace',
-              ),
-            ),
-            onChanged: (_) => _saveConfig(),
-          ),
-          const SizedBox(height: 16),
-
-          // Project
-          Text(
-            'PROJECT',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _projectController,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textPrimary,
-              fontFamily: 'monospace',
-            ),
-            decoration: InputDecoration(
-              hintText: 'MyProject',
-              hintStyle: TextStyle(
-                fontSize: 13,
-                color: AppColors.textMuted,
-                fontFamily: 'monospace',
-              ),
-            ),
-            onChanged: (_) => _saveConfig(),
-          ),
-          const SizedBox(height: 16),
-
-          // PAT Token
-          Text(
-            'PERSONAL ACCESS TOKEN',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textMuted,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _patController,
-            obscureText: true,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textPrimary,
-              fontFamily: 'monospace',
-            ),
-            decoration: InputDecoration(
-              hintText: 'PAT token with Build read & execute scope',
-              hintStyle: TextStyle(
-                fontSize: 13,
-                color: AppColors.textMuted,
-                fontFamily: 'monospace',
-              ),
-            ),
-            onChanged: (_) => _saveConfig(),
-          ),
-          const SizedBox(height: 24),
-
-          // Fetch Pipelines button
-          Row(
-            children: [
-              GestureDetector(
-                onTap: builds.isFetchingDefinitions ? null : _fetchPipelines,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: builds.isFetchingDefinitions
-                        ? AppColors.accent.withValues(alpha: 0.5)
-                        : AppColors.accent,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: builds.isFetchingDefinitions
-                      ? SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.base,
-                          ),
-                        )
-                      : Text(
-                          'Fetch Pipelines',
-                          style: TextStyle(
-                            color: AppColors.base,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                ),
-              ),
-              if (builds.definitionsError != null) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    builds.definitionsError!,
-                    style: TextStyle(color: AppColors.error, fontSize: 12),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Pipeline selection list
-          if (_pipelinesLoaded && builds.availableDefinitions.isNotEmpty) ...[
-            Text(
-              'SELECT PIPELINES',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _searchController,
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Search pipelines...',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                ),
-                prefixIcon: Icon(Icons.search, size: 18, color: AppColors.textMuted),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () => _searchController.clear(),
-                        child: Icon(Icons.close, size: 16, color: AppColors.textMuted),
-                      )
-                    : null,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Builder(
-              builder: (context) {
-                final filteredDefinitions = _searchQuery.isEmpty
-                    ? builds.availableDefinitions
-                    : builds.availableDefinitions.where((d) {
-                        final name = d.name.toLowerCase();
-                        final path = (d.path ?? '').toLowerCase();
-                        return name.contains(_searchQuery) || path.contains(_searchQuery);
-                      }).toList();
-
-                if (filteredDefinitions.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'No matching pipelines',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                    ),
-                  );
-                }
-
-                return Container(
-                  constraints: const BoxConstraints(maxHeight: 400),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface0,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.borderSubtle),
-                  ),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: filteredDefinitions.length,
-                    itemBuilder: (context, index) {
-                      final def = filteredDefinitions[index];
-                      final isSelected = _selectedPipelineIds.contains(def.id);
-                      return InkWell(
-                        onTap: () {
-                          setState(() {
-                            if (isSelected) {
-                              _selectedPipelineIds.remove(def.id);
-                            } else {
-                              _selectedPipelineIds.add(def.id);
-                            }
-                          });
-                          _saveConfig();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            border: index < filteredDefinitions.length - 1
-                                ? Border(
-                                    bottom: BorderSide(
-                                        color: AppColors.borderSubtle, width: 0.5),
-                                  )
-                                : null,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                isSelected
-                                    ? Icons.check_box_rounded
-                                    : Icons.check_box_outline_blank_rounded,
-                                size: 18,
-                                color: isSelected
-                                    ? AppColors.accent
-                                    : AppColors.textMuted,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      def.name,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    if (def.path != null &&
-                                        def.path!.isNotEmpty &&
-                                        def.path != '\\')
-                                      Text(
-                                        def.path!,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          ],
-
-          if (_pipelinesLoaded && builds.availableDefinitions.isEmpty && builds.definitionsError == null) ...[
-            const SizedBox(height: 8),
-            Text(
-              'No pipeline definitions found in this project.',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// --- GitHub Section ---
-
 class _GithubSection extends StatefulWidget {
   const _GithubSection();
 
@@ -2755,7 +2001,6 @@ class _GithubSectionState extends State<_GithubSection> {
   late TextEditingController _repoController;
   late TextEditingController _tokenController;
   late TextEditingController _intervalController;
-  bool _autoCreateWorktree = true;
   String? _lastRepoPath;
   Timer? _debounce;
 
@@ -2771,7 +2016,6 @@ class _GithubSectionState extends State<_GithubSection> {
     _intervalController = TextEditingController(
       text: (config?.prRefreshIntervalMinutes ?? 5).toString(),
     );
-    _autoCreateWorktree = config?.autoCreateWorktreeOnReviewRequest ?? true;
   }
 
   @override
@@ -2786,7 +2030,6 @@ class _GithubSectionState extends State<_GithubSection> {
       _tokenController.text = config?.token ?? '';
       _intervalController.text =
           (config?.prRefreshIntervalMinutes ?? 5).toString();
-      _autoCreateWorktree = config?.autoCreateWorktreeOnReviewRequest ?? true;
     }
   }
 
@@ -2825,7 +2068,6 @@ class _GithubSectionState extends State<_GithubSection> {
             repo: parsed.$2,
             token: token,
             prRefreshIntervalMinutes: interval,
-            autoCreateWorktreeOnReviewRequest: _autoCreateWorktree,
           );
           provider.updateGithubConfig(repo, config);
           return;
@@ -2839,7 +2081,6 @@ class _GithubSectionState extends State<_GithubSection> {
               repo: repoName,
               token: token,
               prRefreshIntervalMinutes: interval,
-              autoCreateWorktreeOnReviewRequest: _autoCreateWorktree,
             );
       provider.updateGithubConfig(repo, config);
     });
@@ -3030,50 +2271,6 @@ class _GithubSectionState extends State<_GithubSection> {
               color: AppColors.textMuted,
               height: 1.5,
             ),
-          ),
-          const SizedBox(height: 24),
-
-          // Auto-create worktree + launch Claude on review request
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AUTO-CREATE WORKTREE + LAUNCH CLAUDE WHEN ASSIGNED AS '
-                      'REVIEWER',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textMuted,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'When you are requested to review a PR, a worktree for its '
-                      'branch is created automatically and Claude is launched in '
-                      'the built-in terminal with the PR prompt configured in '
-                      'Settings → Pull Requests.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Switch(
-                value: _autoCreateWorktree,
-                onChanged: (value) {
-                  setState(() => _autoCreateWorktree = value);
-                  _saveConfig();
-                },
-              ),
-            ],
           ),
         ],
       ),

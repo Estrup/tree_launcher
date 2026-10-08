@@ -10,10 +10,9 @@ import 'package:tree_launcher/features/jira/presentation/widgets/jira_issue_dial
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
-import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
-import 'package:tree_launcher/models/copilot_prompt.dart';
+import 'package:tree_launcher/models/claude_prompt.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
@@ -43,11 +42,10 @@ String? kickoffPromptLaunchPrompt(Worktree wt) => wt.kickoffPromptPath == null
     ? null
     : 'Read and follow the implementation plan in $kickoffPromptRelativePath.';
 
-/// Fills a saved [CopilotPrompt]'s placeholders from an existing worktree's
-/// recorded fields. Mirrors the substitution used by the create-worktree dialog.
-/// Returns null when the resolved text is empty.
+/// Fills a saved [ClaudePrompt]'s placeholders from an existing worktree's
+/// recorded fields. Returns null when the resolved text is empty.
 String? resolveWorktreePrompt(
-  CopilotPrompt prompt,
+  ClaudePrompt prompt,
   Worktree wt, {
   String? repoName,
 }) {
@@ -795,7 +793,7 @@ class _ClaudeButtonState extends State<ClaudeButton> {
     );
   }
 
-  void _showDropdown(BuildContext context, List<CopilotPrompt> prompts) {
+  void _showDropdown(BuildContext context, List<ClaudePrompt> prompts) {
     final repoName = context.read<RepoProvider>().selectedRepo?.name;
     final claudeIcon = SvgPicture.asset(
       'assets/icons/claude.svg',
@@ -892,7 +890,7 @@ class _ClaudeButtonState extends State<ClaudeButton> {
   @override
   Widget build(BuildContext context) {
     final repo = context.watch<RepoProvider>().selectedRepo;
-    final prompts = repo?.copilotPrompts ?? const <CopilotPrompt>[];
+    final prompts = repo?.claudePrompts ?? const <ClaudePrompt>[];
     final hasKickoff = widget.wt.kickoffPromptPath != null;
     // The dropdown is worth showing when there are configured prompts or this
     // worktree has an API-supplied kickoff prompt to launch.
@@ -1311,104 +1309,6 @@ class _RunSelectedButton extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Custom links button
-// ---------------------------------------------------------------------------
-
-class CustomLinksButton extends StatefulWidget {
-  final List<CustomLink> links;
-  final String slot;
-  final bool compact;
-
-  const CustomLinksButton({
-    super.key,
-    required this.links,
-    required this.slot,
-    this.compact = false,
-  });
-
-  @override
-  State<CustomLinksButton> createState() => _CustomLinksButtonState();
-}
-
-class _CustomLinksButtonState extends State<CustomLinksButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final size = widget.compact ? 28.0 : 36.0;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () => _showDropdown(context),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: _hovered
-                ? AppColors.accent.withValues(alpha: 0.2)
-                : AppColors.accentMuted,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: _hovered
-                  ? AppColors.accent.withValues(alpha: 0.4)
-                  : AppColors.accent.withValues(alpha: 0.15),
-            ),
-          ),
-          child: Center(
-            child: Icon(
-              Icons.link_rounded,
-              size: widget.compact ? 16 : 18,
-              color: AppColors.accent,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showDropdown(BuildContext context) {
-    _showMenuBelow<CustomLink>(
-      context,
-      minWidth: 220,
-      items: widget.links.map((link) {
-        return PopupMenuItem<CustomLink>(
-          value: link,
-          height: 36,
-          child: Row(
-            children: [
-              Icon(
-                Icons.open_in_new_rounded,
-                size: 13,
-                color: AppColors.accent,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  link.name,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    ).then((selected) {
-      if (selected != null) {
-        final url = selected.url.replaceAll('{{SLOT}}', widget.slot);
-        Process.run('open', [url]);
-      }
-    });
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Delete icon
 // ---------------------------------------------------------------------------
 
@@ -1702,7 +1602,7 @@ class _PullButtonState extends State<PullButton> {
 }
 
 // ---------------------------------------------------------------------------
-// Generic action button (copilot, claude, vscode-no-configs)
+// Generic action button (claude, vscode-no-configs)
 // ---------------------------------------------------------------------------
 
 class ActionButton extends StatefulWidget {

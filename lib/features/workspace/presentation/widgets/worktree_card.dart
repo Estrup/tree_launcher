@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
 import 'package:tree_launcher/models/worktree_slot.dart';
-import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
-import 'package:tree_launcher/providers/settings_provider.dart';
 
 class WorktreeCard extends StatefulWidget {
   final Worktree worktree;
@@ -25,10 +22,8 @@ class _WorktreeCardState extends State<WorktreeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>().settings;
     final repo = context.watch<RepoProvider>().selectedRepo;
     final customCommands = repo?.customCommands ?? [];
-    final customLinks = repo?.customLinks ?? [];
     final wt = widget.worktree;
 
     return MouseRegion(
@@ -109,10 +104,10 @@ class _WorktreeCardState extends State<WorktreeCard> {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.copilotBg,
+                            color: AppColors.branchBg,
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: AppColors.copilot.withValues(alpha: 0.2),
+                              color: AppColors.branch.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Row(
@@ -121,7 +116,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                               Icon(
                                 Icons.call_split_rounded,
                                 size: 12,
-                                color: AppColors.copilot,
+                                color: AppColors.branch,
                               ),
                               const SizedBox(width: 6),
                               Flexible(
@@ -130,7 +125,7 @@ class _WorktreeCardState extends State<WorktreeCard> {
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
-                                    color: AppColors.copilot,
+                                    color: AppColors.branch,
                                     fontFamily: 'monospace',
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -228,41 +223,11 @@ class _WorktreeCardState extends State<WorktreeCard> {
                       compact: true,
                     ),
                     const SizedBox(width: 6),
-                    ActionButton(
-                      compact: true,
-                      icon: Icons.auto_awesome_rounded,
-                      color: AppColors.copilot,
-                      bgColor: AppColors.copilotBg,
-                      onPressed: () {
-                        if (settings.copilotButtonMode ==
-                            CopilotButtonMode.inApp) {
-                          final repo = context
-                              .read<RepoProvider>()
-                              .selectedRepo;
-                          context.read<CopilotProvider>().createSession(
-                            repo?.path ?? wt.path,
-                            wt.path,
-                            wt.name,
-                          );
-                        } else {
-                          _launcherService.openCopilotCli(wt.path, settings);
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 6),
                     ClaudeButton(
                       wt: wt,
                       launcherService: _launcherService,
                       compact: true,
                     ),
-                    if (customLinks.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      CustomLinksButton(
-                        links: customLinks,
-                        slot: wt.slot,
-                        compact: true,
-                      ),
-                    ],
                     if (customCommands.isNotEmpty) ...[
                       const SizedBox(width: 6),
                       CustomCommandsButton(

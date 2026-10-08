@@ -2,14 +2,11 @@ import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
-import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
-import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
-import 'package:tree_launcher/features/workspace/domain/copilot_prompt.dart';
+import 'package:tree_launcher/features/workspace/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
-import 'package:tree_launcher/features/workspace/domain/custom_link.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
@@ -98,8 +95,6 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
   String? get error => worktreesController.error;
   bool get showSettings => selection.showSettings;
   bool get isBareLayout => worktreesController.isBareLayout;
-  List<CopilotSession> get allCopilotSessions =>
-      repos.expand((repo) => repo.copilotSessions).toList();
 
   void _relay() => notifyListeners();
 
@@ -187,15 +182,6 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     return updated;
   }
 
-  Future<RepoConfig?> updateRepoCustomLinks(
-    RepoConfig repo,
-    List<CustomLink> links,
-  ) async {
-    final updated = await preferences.updateRepoCustomLinks(repo, links);
-    _replaceSelection(repo, updated);
-    return updated;
-  }
-
   Future<RepoConfig?> updateLastBaseBranch(
     RepoConfig repo,
     String branch,
@@ -205,32 +191,11 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     return updated;
   }
 
-  Future<RepoConfig?> updateDefaultRunCommands(
+  Future<RepoConfig?> updateRepoClaudePrompts(
     RepoConfig repo,
-    List<String> commandNames,
+    List<ClaudePrompt> prompts,
   ) async {
-    final updated = await preferences.updateDefaultRunCommands(
-      repo,
-      commandNames,
-    );
-    _replaceSelection(repo, updated);
-    return updated;
-  }
-
-  Future<RepoConfig?> updateRepoCopilotSessions(
-    RepoConfig repo,
-    List<CopilotSession> sessions,
-  ) async {
-    final updated = await preferences.updateRepoCopilotSessions(repo, sessions);
-    _replaceSelection(repo, updated);
-    return updated;
-  }
-
-  Future<RepoConfig?> updateRepoCopilotPrompts(
-    RepoConfig repo,
-    List<CopilotPrompt> prompts,
-  ) async {
-    final updated = await preferences.updateRepoCopilotPrompts(repo, prompts);
+    final updated = await preferences.updateRepoClaudePrompts(repo, prompts);
     _replaceSelection(repo, updated);
     return updated;
   }
@@ -240,24 +205,6 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     List<PredefinedIssue> issues,
   ) async {
     final updated = await preferences.updateRepoPredefinedIssues(repo, issues);
-    _replaceSelection(repo, updated);
-    return updated;
-  }
-
-  Future<RepoConfig?> updateAzureDevopsConfig(
-    RepoConfig repo,
-    AzureDevopsConfig? config,
-  ) async {
-    final updated = await preferences.updateAzureDevopsConfig(repo, config);
-    _replaceSelection(repo, updated);
-    return updated;
-  }
-
-  Future<RepoConfig?> updateLastAzureDevopsBranch(
-    RepoConfig repo,
-    String branch,
-  ) async {
-    final updated = await preferences.updateLastAzureDevopsBranch(repo, branch);
     _replaceSelection(repo, updated);
     return updated;
   }

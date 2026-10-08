@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/features/copilot/domain/copilot_session.dart';
-import 'package:tree_launcher/features/copilot/presentation/widgets/copilot_status_dot.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_context_menu.dart';
-import 'package:tree_launcher/providers/copilot_provider.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
@@ -119,7 +116,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
             ),
           ),
 
-          // Repo list (with nested copilot sessions)
+          // Repo list
           Expanded(
             child: repos.isEmpty
                 ? Padding(
@@ -153,11 +150,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
                       return _RepoTile(
                         repo: repo,
                         isSelected: isSelected,
-                        sessions: repo.copilotSessions,
                         onTap: () {
-                          final copilotProvider = context
-                              .read<CopilotProvider>();
-                          copilotProvider.deselectSession();
                           context.read<TerminalProvider>().hide();
                           repoProvider.selectRepo(repo);
                         },
@@ -245,9 +238,6 @@ class _RepoSidebarState extends State<RepoSidebar> {
                       repo: repo,
                       isSelected: isSelected,
                       onTap: () {
-                        final copilotProvider = context
-                            .read<CopilotProvider>();
-                        copilotProvider.deselectSession();
                         context.read<TerminalProvider>().hide();
                         repoProvider.selectRepo(repo);
                       },
@@ -537,7 +527,6 @@ class _RailIconButtonState extends State<_RailIconButton> {
 class _RepoTile extends StatefulWidget {
   final RepoConfig repo;
   final bool isSelected;
-  final List<CopilotSession> sessions;
   final VoidCallback onTap;
   final VoidCallback onSettings;
   final void Function(Offset position) onContextMenu;
@@ -545,7 +534,6 @@ class _RepoTile extends StatefulWidget {
   const _RepoTile({
     required this.repo,
     required this.isSelected,
-    required this.sessions,
     required this.onTap,
     required this.onSettings,
     required this.onContextMenu,
@@ -560,110 +548,88 @@ class _RepoTileState extends State<_RepoTile> {
 
   @override
   Widget build(BuildContext context) {
-    final copilotProvider = context.watch<CopilotProvider>();
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Repo header
-        MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
-          child: GestureDetector(
-            onTap: widget.onTap,
-            onSecondaryTapDown: (d) => widget.onContextMenu(d.globalPosition),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              margin: const EdgeInsets.only(bottom: 2),
-              decoration: BoxDecoration(
-                color: widget.isSelected
-                    ? AppColors.surface2
-                    : _hovered
-                    ? AppColors.surface1
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: IntrinsicHeight(
-                child: Row(
-                  children: [
-                    // Left accent bar
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      width: 3,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: widget.isSelected
-                            ? AppColors.accent
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Content
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.repo.name,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: widget.isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.w500,
-                                color: widget.isSelected
-                                    ? AppColors.textPrimary
-                                    : AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              widget.repo.path.replaceFirst(
-                                RegExp(r'^/Users/[^/]+'),
-                                '~',
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: AppColors.textMuted,
-                                fontFamily: 'monospace',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Action icons (only on hover)
-                    if (_hovered || widget.isSelected)
-                      _TinyIconButton(
-                        icon: Icons.edit_rounded,
-                        onTap: widget.onSettings,
-                      ),
-                    const SizedBox(width: 4),
-                  ],
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onSecondaryTapDown: (d) => widget.onContextMenu(d.globalPosition),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          margin: const EdgeInsets.only(bottom: 2),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? AppColors.surface2
+                : _hovered
+                ? AppColors.surface1
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                // Left accent bar
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: widget.isSelected
+                        ? AppColors.accent
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 10),
+                // Content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.repo.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: widget.isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                            color: widget.isSelected
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.repo.path.replaceFirst(
+                            RegExp(r'^/Users/[^/]+'),
+                            '~',
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textMuted,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Action icons (only on hover)
+                if (_hovered || widget.isSelected)
+                  _TinyIconButton(
+                    icon: Icons.edit_rounded,
+                    onTap: widget.onSettings,
+                  ),
+                const SizedBox(width: 4),
+              ],
             ),
           ),
         ),
-        // Nested copilot sessions
-        ...widget.sessions.map((session) {
-          final isActive = copilotProvider.activeSession?.id == session.id;
-          return Padding(
-            padding: const EdgeInsets.only(left: 20),
-            child: _CopilotTile(
-              session: session,
-              isActive: isActive,
-              activityStatus: copilotProvider.statusForSession(session.id),
-              onTap: () => copilotProvider.selectSession(session),
-              onRemove: () => copilotProvider.removeSession(session),
-            ),
-          );
-        }),
-      ],
+      ),
     );
   }
 }
@@ -899,108 +865,6 @@ class _TerminalToggleButtonState extends State<_TerminalToggleButton> {
           ? (isActive ? 'Hide terminals' : 'Show terminals ($count)')
           : 'No active terminals',
       child: button,
-    );
-  }
-}
-
-// --- Copilot session tile ---
-
-class _CopilotTile extends StatefulWidget {
-  final CopilotSession session;
-  final bool isActive;
-  final CopilotActivityStatus activityStatus;
-  final VoidCallback onTap;
-  final VoidCallback onRemove;
-
-  const _CopilotTile({
-    required this.session,
-    required this.isActive,
-    required this.activityStatus,
-    required this.onTap,
-    required this.onRemove,
-  });
-
-  @override
-  State<_CopilotTile> createState() => _CopilotTileState();
-}
-
-class _CopilotTileState extends State<_CopilotTile> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          margin: const EdgeInsets.only(bottom: 2),
-          decoration: BoxDecoration(
-            color: widget.isActive
-                ? AppColors.copilot.withValues(alpha: 0.12)
-                : _hovered
-                ? AppColors.surface1
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 3,
-                  margin: const EdgeInsets.symmetric(vertical: 6),
-                  decoration: BoxDecoration(
-                    color: widget.isActive
-                        ? AppColors.copilot
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 12,
-                  color: widget.isActive
-                      ? AppColors.copilot
-                      : AppColors.textMuted,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      widget.session.name,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: widget.isActive
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        color: widget.isActive
-                            ? AppColors.copilot
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-                if (widget.activityStatus != CopilotActivityStatus.idle) ...[
-                  CopilotStatusDot(status: widget.activityStatus, size: 7),
-                  const SizedBox(width: 4),
-                ],
-                if (_hovered || widget.isActive)
-                  _TinyIconButton(
-                    icon: Icons.close_rounded,
-                    onTap: widget.onRemove,
-                  ),
-                const SizedBox(width: 4),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

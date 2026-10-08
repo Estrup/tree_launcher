@@ -1,23 +1,24 @@
-import 'package:tree_launcher/features/builds/domain/azure_devops_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 
-import 'copilot_prompt.dart';
-import 'copilot_session.dart';
+import 'claude_prompt.dart';
 import 'custom_command.dart';
-import 'custom_link.dart';
 import 'predefined_issue.dart';
 import 'vscode_config.dart';
+
+/// Config key for [RepoConfig.claudePrompts]. Kept as the legacy
+/// `copilotPrompts` name so prompts saved before the rename still load, and so
+/// older builds sharing the same config file keep seeing them.
+const _claudePromptsKey = 'copilotPrompts';
 
 class RepoConfig {
   final String name;
   final String path;
   final List<VscodeConfig> vscodeConfigs;
   final List<CustomCommand> customCommands;
-  final List<CustomLink> customLinks;
   final String? lastBaseBranch;
-  final List<String> defaultRunCommands;
-  final List<CopilotSession> copilotSessions;
-  final List<CopilotPrompt> copilotPrompts;
+
+  /// Saved prompt templates offered when launching Claude in a worktree.
+  final List<ClaudePrompt> claudePrompts;
   final Map<String, String> slotAssignments;
 
   /// JIRA issue keys per worktree path (worktree path -> issue key).
@@ -39,8 +40,6 @@ class RepoConfig {
 
   /// Worktree paths the user has snoozed.
   final List<String> snoozedWorktrees;
-  final AzureDevopsConfig? azureDevopsConfig;
-  final String? lastAzureDevopsBranch;
   final GithubConfig? githubConfig;
 
   /// Reusable issue key + description presets, used as the picker source when
@@ -57,11 +56,8 @@ class RepoConfig {
     required this.path,
     this.vscodeConfigs = const [],
     this.customCommands = const [],
-    this.customLinks = const [],
     this.lastBaseBranch,
-    this.defaultRunCommands = const [],
-    this.copilotSessions = const [],
-    this.copilotPrompts = const [],
+    this.claudePrompts = const [],
     this.slotAssignments = const {},
     this.jiraIssues = const {},
     this.baseBranches = const {},
@@ -69,8 +65,6 @@ class RepoConfig {
     this.kickoffPrompts = const {},
     this.hiddenWorktrees = const [],
     this.snoozedWorktrees = const [],
-    this.azureDevopsConfig,
-    this.lastAzureDevopsBranch,
     this.githubConfig,
     this.predefinedIssues = const [],
     this.useNestedWorktrees = false,
@@ -90,25 +84,10 @@ class RepoConfig {
               ?.map((e) => CustomCommand.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      customLinks:
-          (json['customLinks'] as List<dynamic>?)
-              ?.map((e) => CustomLink.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
       lastBaseBranch: json['lastBaseBranch'] as String?,
-      defaultRunCommands:
-          (json['defaultRunCommands'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          [],
-      copilotSessions:
-          (json['copilotSessions'] as List<dynamic>?)
-              ?.map((e) => CopilotSession.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      copilotPrompts:
-          (json['copilotPrompts'] as List<dynamic>?)
-              ?.map((e) => CopilotPrompt.fromJson(e as Map<String, dynamic>))
+      claudePrompts:
+          (json[_claudePromptsKey] as List<dynamic>?)
+              ?.map((e) => ClaudePrompt.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       slotAssignments:
@@ -136,11 +115,6 @@ class RepoConfig {
       snoozedWorktrees:
           (json['snoozedWorktrees'] as List<dynamic>?)?.cast<String>() ??
           const [],
-      azureDevopsConfig: json['azureDevopsConfig'] != null
-          ? AzureDevopsConfig.fromJson(
-              json['azureDevopsConfig'] as Map<String, dynamic>)
-          : null,
-      lastAzureDevopsBranch: json['lastAzureDevopsBranch'] as String?,
       githubConfig: json['githubConfig'] != null
           ? GithubConfig.fromJson(
               json['githubConfig'] as Map<String, dynamic>)
@@ -159,11 +133,8 @@ class RepoConfig {
     'path': path,
     'vscodeConfigs': vscodeConfigs.map((c) => c.toJson()).toList(),
     'customCommands': customCommands.map((c) => c.toJson()).toList(),
-    'customLinks': customLinks.map((l) => l.toJson()).toList(),
     'lastBaseBranch': lastBaseBranch,
-    'defaultRunCommands': defaultRunCommands,
-    'copilotSessions': copilotSessions.map((s) => s.toJson()).toList(),
-    'copilotPrompts': copilotPrompts.map((p) => p.toJson()).toList(),
+    _claudePromptsKey: claudePrompts.map((p) => p.toJson()).toList(),
     'slotAssignments': slotAssignments,
     'jiraIssues': jiraIssues,
     'baseBranches': baseBranches,
@@ -171,10 +142,6 @@ class RepoConfig {
     'kickoffPrompts': kickoffPrompts,
     'hiddenWorktrees': hiddenWorktrees,
     'snoozedWorktrees': snoozedWorktrees,
-    if (azureDevopsConfig != null)
-      'azureDevopsConfig': azureDevopsConfig!.toJson(),
-    if (lastAzureDevopsBranch != null)
-      'lastAzureDevopsBranch': lastAzureDevopsBranch,
     if (githubConfig != null)
       'githubConfig': githubConfig!.toJson(),
     'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
@@ -186,11 +153,8 @@ class RepoConfig {
     String? path,
     List<VscodeConfig>? vscodeConfigs,
     List<CustomCommand>? customCommands,
-    List<CustomLink>? customLinks,
     String? lastBaseBranch,
-    List<String>? defaultRunCommands,
-    List<CopilotSession>? copilotSessions,
-    List<CopilotPrompt>? copilotPrompts,
+    List<ClaudePrompt>? claudePrompts,
     Map<String, String>? slotAssignments,
     Map<String, String>? jiraIssues,
     Map<String, String>? baseBranches,
@@ -198,8 +162,6 @@ class RepoConfig {
     Map<String, String>? kickoffPrompts,
     List<String>? hiddenWorktrees,
     List<String>? snoozedWorktrees,
-    AzureDevopsConfig? azureDevopsConfig,
-    String? lastAzureDevopsBranch,
     GithubConfig? githubConfig,
     List<PredefinedIssue>? predefinedIssues,
     bool? useNestedWorktrees,
@@ -209,11 +171,8 @@ class RepoConfig {
       path: path ?? this.path,
       vscodeConfigs: vscodeConfigs ?? this.vscodeConfigs,
       customCommands: customCommands ?? this.customCommands,
-      customLinks: customLinks ?? this.customLinks,
       lastBaseBranch: lastBaseBranch ?? this.lastBaseBranch,
-      defaultRunCommands: defaultRunCommands ?? this.defaultRunCommands,
-      copilotSessions: copilotSessions ?? this.copilotSessions,
-      copilotPrompts: copilotPrompts ?? this.copilotPrompts,
+      claudePrompts: claudePrompts ?? this.claudePrompts,
       slotAssignments: slotAssignments ?? this.slotAssignments,
       jiraIssues: jiraIssues ?? this.jiraIssues,
       baseBranches: baseBranches ?? this.baseBranches,
@@ -221,9 +180,6 @@ class RepoConfig {
       kickoffPrompts: kickoffPrompts ?? this.kickoffPrompts,
       hiddenWorktrees: hiddenWorktrees ?? this.hiddenWorktrees,
       snoozedWorktrees: snoozedWorktrees ?? this.snoozedWorktrees,
-      azureDevopsConfig: azureDevopsConfig ?? this.azureDevopsConfig,
-      lastAzureDevopsBranch:
-          lastAzureDevopsBranch ?? this.lastAzureDevopsBranch,
       githubConfig: githubConfig ?? this.githubConfig,
       predefinedIssues: predefinedIssues ?? this.predefinedIssues,
       useNestedWorktrees: useNestedWorktrees ?? this.useNestedWorktrees,

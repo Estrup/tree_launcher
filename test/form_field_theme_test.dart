@@ -5,10 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/features/copilot/data/sound_service.dart';
-import 'package:tree_launcher/features/copilot/presentation/controllers/copilot_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
-import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
@@ -105,24 +102,14 @@ void main() {
 Widget _buildHarness({required Widget child}) {
   final workspace = WorkspaceController(gitService: _FakeGitService());
   final settings = SettingsController();
-  final terminal = TerminalController();
-  final copilot = CopilotController.create(
-    workspaceController: workspace,
-    settingsController: settings,
-    soundService: SoundService(),
-  );
 
   return MultiProvider(
     providers: [
       ChangeNotifierProvider<WorkspaceController>.value(value: workspace),
       ChangeNotifierProvider<SettingsController>.value(value: settings),
-      ChangeNotifierProvider<TerminalController>.value(value: terminal),
-      ChangeNotifierProvider<CopilotController>.value(value: copilot),
     ],
     child: _DisposableTestApp(
       disposers: [
-        copilot.dispose,
-        terminal.dispose,
         settings.dispose,
         workspace.dispose,
       ],

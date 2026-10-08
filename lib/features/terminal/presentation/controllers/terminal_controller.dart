@@ -179,31 +179,6 @@ class TerminalController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> gracefulCloseCommandSessionsForRepo(String repoPath) async {
-    final targets = _sessions
-        .where(
-          (session) =>
-              session.repoPath == repoPath &&
-              session.command != null &&
-              !session.isDisposed,
-        )
-        .toList();
-    if (targets.isEmpty) return;
-
-    for (final session in targets) {
-      _sessions.remove(session);
-    }
-    if (_activeIndex >= _sessions.length) {
-      _activeIndex = (_sessions.length - 1).clamp(0, maxSessions);
-    }
-    if (_sessions.isEmpty) {
-      _visible = false;
-    }
-    notifyListeners();
-
-    await Future.wait(targets.map((session) => session.gracefulClose()));
-  }
-
   void closeSessionsForRepo(String repoPath) {
     _sessions.where((session) => session.repoPath == repoPath).toList().forEach(
       (session) {
