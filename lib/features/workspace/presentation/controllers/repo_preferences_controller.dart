@@ -135,24 +135,38 @@ class RepoPreferencesController extends ChangeNotifier {
     RepoConfig repo,
     GithubConfig? config,
   ) async {
-    final updated = RepoConfig(
-      name: repo.name,
-      path: repo.path,
-      vscodeConfigs: repo.vscodeConfigs,
-      customCommands: repo.customCommands,
-      lastBaseBranch: repo.lastBaseBranch,
-      claudePrompts: repo.claudePrompts,
-      slotAssignments: repo.slotAssignments,
-      jiraIssues: repo.jiraIssues,
-      baseBranches: repo.baseBranches,
-      prAuthors: repo.prAuthors,
-      kickoffPrompts: repo.kickoffPrompts,
-      hiddenWorktrees: repo.hiddenWorktrees,
-      snoozedWorktrees: repo.snoozedWorktrees,
+    final updated = repo.copyWith(
       githubConfig: config,
-      predefinedIssues: repo.predefinedIssues,
-      useNestedWorktrees: repo.useNestedWorktrees,
+      clearGithubConfig: config == null,
     );
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  /// Sets (or clears, for null/empty) the Jira project key. A different project
+  /// has different fixVersions, so the remembered fixVersion is reset too.
+  Future<RepoConfig?> updateJiraProjectKey(
+    RepoConfig repo,
+    String? projectKey,
+  ) async {
+    final trimmed = projectKey?.trim().toUpperCase();
+    final key = trimmed == null || trimmed.isEmpty ? null : trimmed;
+    final updated = repo.copyWith(
+      jiraProjectKey: key,
+      clearJiraProjectKey: key == null,
+      clearJiraFixVersionId: key != repo.jiraProjectKey,
+    );
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  Future<RepoConfig?> updateJiraFixVersion(
+    RepoConfig repo,
+    String versionId,
+  ) async {
+    final updated = repo.copyWith(jiraFixVersionId: versionId);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;

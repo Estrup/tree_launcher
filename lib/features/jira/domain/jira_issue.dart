@@ -49,6 +49,10 @@ class JiraIssue {
   final String key;
   final String summary;
   final String? status;
+
+  /// Jira's status category key: `new`, `indeterminate` or `done`. Lets the UI
+  /// colour statuses without knowing each workflow's status names.
+  final String? statusCategory;
   final String? issueType;
   final String? assignee;
   final String? priority;
@@ -60,6 +64,7 @@ class JiraIssue {
     required this.key,
     required this.summary,
     this.status,
+    this.statusCategory,
     this.issueType,
     this.assignee,
     this.priority,
@@ -80,6 +85,10 @@ class JiraIssue {
         (json['fields'] as Map<String, dynamic>?) ?? const <String, dynamic>{};
 
     final assignee = fields['assignee'];
+    final status = fields['status'];
+    final category = status is Map<String, dynamic>
+        ? status['statusCategory']
+        : null;
     final comment = fields['comment'];
     final rawComments = comment is Map<String, dynamic>
         ? (comment['comments'] as List<dynamic>? ?? const [])
@@ -89,6 +98,9 @@ class JiraIssue {
       key: json['key'] as String? ?? '',
       summary: fields['summary'] as String? ?? '',
       status: _nestedName(fields, 'status'),
+      statusCategory: category is Map<String, dynamic>
+          ? category['key'] as String?
+          : null,
       issueType: _nestedName(fields, 'issuetype'),
       assignee: assignee is Map<String, dynamic>
           ? assignee['displayName'] as String?
@@ -110,6 +122,7 @@ class JiraIssue {
       key: json['key'] as String? ?? '',
       summary: json['summary'] as String? ?? '',
       status: json['status'] as String?,
+      statusCategory: json['statusCategory'] as String?,
       issueType: json['issueType'] as String?,
       assignee: json['assignee'] as String?,
       priority: json['priority'] as String?,
@@ -126,6 +139,7 @@ class JiraIssue {
     'key': key,
     'summary': summary,
     if (status != null) 'status': status,
+    if (statusCategory != null) 'statusCategory': statusCategory,
     if (issueType != null) 'issueType': issueType,
     if (assignee != null) 'assignee': assignee,
     if (priority != null) 'priority': priority,
@@ -138,6 +152,7 @@ class JiraIssue {
     String? key,
     String? summary,
     String? status,
+    String? statusCategory,
     String? issueType,
     String? assignee,
     String? priority,
@@ -149,6 +164,7 @@ class JiraIssue {
       key: key ?? this.key,
       summary: summary ?? this.summary,
       status: status ?? this.status,
+      statusCategory: statusCategory ?? this.statusCategory,
       issueType: issueType ?? this.issueType,
       assignee: assignee ?? this.assignee,
       priority: priority ?? this.priority,

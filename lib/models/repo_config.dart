@@ -42,6 +42,13 @@ class RepoConfig {
   final List<String> snoozedWorktrees;
   final GithubConfig? githubConfig;
 
+  /// Jira project key (e.g. `AU2`) whose issues the Jira tab lists. The tab is
+  /// only shown when this is set.
+  final String? jiraProjectKey;
+
+  /// Id of the fixVersion last picked in the Jira tab, so it is remembered.
+  final String? jiraFixVersionId;
+
   /// Reusable issue key + description presets, used as the picker source when
   /// logging a manual activity post.
   final List<PredefinedIssue> predefinedIssues;
@@ -66,6 +73,8 @@ class RepoConfig {
     this.hiddenWorktrees = const [],
     this.snoozedWorktrees = const [],
     this.githubConfig,
+    this.jiraProjectKey,
+    this.jiraFixVersionId,
     this.predefinedIssues = const [],
     this.useNestedWorktrees = false,
   });
@@ -119,6 +128,8 @@ class RepoConfig {
           ? GithubConfig.fromJson(
               json['githubConfig'] as Map<String, dynamic>)
           : null,
+      jiraProjectKey: json['jiraProjectKey'] as String?,
+      jiraFixVersionId: json['jiraFixVersionId'] as String?,
       predefinedIssues:
           (json['predefinedIssues'] as List<dynamic>?)
               ?.map((e) => PredefinedIssue.fromJson(e as Map<String, dynamic>))
@@ -144,6 +155,8 @@ class RepoConfig {
     'snoozedWorktrees': snoozedWorktrees,
     if (githubConfig != null)
       'githubConfig': githubConfig!.toJson(),
+    if (jiraProjectKey != null) 'jiraProjectKey': jiraProjectKey,
+    if (jiraFixVersionId != null) 'jiraFixVersionId': jiraFixVersionId,
     'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
     'useNestedWorktrees': useNestedWorktrees,
   };
@@ -163,6 +176,11 @@ class RepoConfig {
     List<String>? hiddenWorktrees,
     List<String>? snoozedWorktrees,
     GithubConfig? githubConfig,
+    bool clearGithubConfig = false,
+    String? jiraProjectKey,
+    bool clearJiraProjectKey = false,
+    String? jiraFixVersionId,
+    bool clearJiraFixVersionId = false,
     List<PredefinedIssue>? predefinedIssues,
     bool? useNestedWorktrees,
   }) {
@@ -180,7 +198,15 @@ class RepoConfig {
       kickoffPrompts: kickoffPrompts ?? this.kickoffPrompts,
       hiddenWorktrees: hiddenWorktrees ?? this.hiddenWorktrees,
       snoozedWorktrees: snoozedWorktrees ?? this.snoozedWorktrees,
-      githubConfig: githubConfig ?? this.githubConfig,
+      githubConfig: clearGithubConfig
+          ? null
+          : (githubConfig ?? this.githubConfig),
+      jiraProjectKey: clearJiraProjectKey
+          ? null
+          : (jiraProjectKey ?? this.jiraProjectKey),
+      jiraFixVersionId: clearJiraFixVersionId
+          ? null
+          : (jiraFixVersionId ?? this.jiraFixVersionId),
       predefinedIssues: predefinedIssues ?? this.predefinedIssues,
       useNestedWorktrees: useNestedWorktrees ?? this.useNestedWorktrees,
     );

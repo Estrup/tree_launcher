@@ -17,18 +17,23 @@ class AddWorktreeResult {
 
 class AddWorktreeDialog extends StatefulWidget {
   final String? initialName;
+  final String? initialJiraKey;
 
-  const AddWorktreeDialog({super.key, this.initialName});
+  const AddWorktreeDialog({super.key, this.initialName, this.initialJiraKey});
 
   static Future<AddWorktreeResult?> show(
     BuildContext context, {
     String? initialName,
+    String? initialJiraKey,
   }) {
     return showDialog<AddWorktreeResult>(
       context: context,
       builder: (_) => ChangeNotifierProvider.value(
         value: context.read<RepoProvider>(),
-        child: AddWorktreeDialog(initialName: initialName),
+        child: AddWorktreeDialog(
+          initialName: initialName,
+          initialJiraKey: initialJiraKey,
+        ),
       ),
     );
   }
@@ -52,6 +57,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialJiraKey != null) {
+      _jiraController.text = widget.initialJiraKey!;
+    }
     if (widget.initialName != null) {
       _nameController.text = widget.initialName!;
       WidgetsBinding.instance.addPostFrameCallback((_) {

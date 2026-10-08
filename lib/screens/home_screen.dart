@@ -5,6 +5,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/widgets/activity_tab.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_prs_tab.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/pr_review_toast.dart';
+import 'package:tree_launcher/features/jira/presentation/widgets/jira_issues_tab.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/settings_dialog.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/running_commands_bar.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_panel.dart';
@@ -46,9 +47,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         repoProvider.selectedRepo?.githubConfig != null &&
         repoProvider.selectedRepo!.githubConfig!.isConfigured;
     final githubPrsTabCount = hasGithubPrsTab ? 1 : 0;
-    // Worktrees + [PRs] + Activity
-    final activityTabIndex = 1 + githubPrsTabCount;
-    final tabCount = 2 + githubPrsTabCount;
+    final hasJiraTab = repoProvider.selectedRepo?.jiraProjectKey != null;
+    final jiraTabIndex = 1 + githubPrsTabCount;
+    // Worktrees + [PRs] + [Jira] + Activity
+    final activityTabIndex = jiraTabIndex + (hasJiraTab ? 1 : 0);
+    final tabCount = activityTabIndex + 1;
 
     if (_tabController == null || _lastTabCount != tabCount) {
       final oldIndex = _tabController?.index ?? 0;
@@ -179,6 +182,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                                               1,
                                                                             ),
                                                                   ),
+                                                                if (hasJiraTab)
+                                                                  _buildSegmentTab(
+                                                                    text:
+                                                                        'Jira',
+                                                                    index:
+                                                                        jiraTabIndex,
+                                                                    currentIndex:
+                                                                        currentIndex,
+                                                                    icon: Icons
+                                                                        .confirmation_number_outlined,
+                                                                    onTap: () =>
+                                                                        _tabController!.animateTo(
+                                                                          jiraTabIndex,
+                                                                        ),
+                                                                  ),
                                                                 _buildSegmentTab(
                                                                   text:
                                                                       "Activity",
@@ -222,6 +240,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               const WorktreeGrid(),
                                               if (hasGithubPrsTab)
                                                 const GithubPrsTab(),
+                                              if (hasJiraTab)
+                                                const JiraIssuesTab(),
                                               const ActivityTab(),
                                             ],
                                           ),

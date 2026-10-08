@@ -218,6 +218,24 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     return updated;
   }
 
+  Future<RepoConfig?> updateJiraProjectKey(
+    RepoConfig repo,
+    String? projectKey,
+  ) async {
+    final updated = await preferences.updateJiraProjectKey(repo, projectKey);
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
+  Future<RepoConfig?> updateJiraFixVersion(
+    RepoConfig repo,
+    String versionId,
+  ) async {
+    final updated = await preferences.updateJiraFixVersion(repo, versionId);
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
   Future<List<String>> listBranches() async {
     return worktreesController.listBranches(selectedRepo?.path);
   }

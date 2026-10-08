@@ -44,6 +44,47 @@ String buildBranchName(String suffix, String? prefix) {
   return suffix;
 }
 
+/// Letters folded to ASCII before slugging, so Danish (and a few other) words
+/// stay readable in names: "Værksted på" -> "vaerksted-paa".
+const Map<String, String> _asciiFolds = {
+  'æ': 'ae',
+  'ø': 'oe',
+  'å': 'aa',
+  'ä': 'ae',
+  'ö': 'oe',
+  'ü': 'ue',
+  'é': 'e',
+  'è': 'e',
+  'ß': 'ss',
+};
+
+/// Builds a worktree name for a Jira issue: the lowercased [key] followed by a
+/// slug of the first words of [summary], e.g. `AU2-5928` + "Værksted kontakt"
+/// -> `au2-5928-vaerksted-kontakt`. Whole words are added while the name stays
+/// within [maxLength] and [maxWords]; the result always passes
+/// [validateWorktreeName].
+String worktreeNameForJiraIssue(
+  String key,
+  String summary, {
+  int maxLength = 48,
+  int maxWords = 5,
+}) {
+  var text = summary.toLowerCase();
+  _asciiFolds.forEach((from, to) => text = text.replaceAll(from, to));
+  final words = text
+      .split(RegExp(r'[^a-z0-9]+'))
+      .where((w) => w.isNotEmpty)
+      .take(maxWords);
+
+  var name = key.toLowerCase();
+  for (final word in words) {
+    final next = '$name-$word';
+    if (next.length > maxLength) break;
+    name = next;
+  }
+  return name;
+}
+
 /// Relative path (within a worktree) of the API-supplied kickoff-prompt file.
 ///
 /// The agent API writes a worktree's kickoff prompt here; the Claude launcher

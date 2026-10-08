@@ -3,6 +3,25 @@ import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 
 void main() {
   group('JiraIssue.fromApiJson', () {
+    test('reads the status category key', () {
+      final issue = JiraIssue.fromApiJson({
+        'key': 'AU2-1',
+        'fields': {
+          'summary': 's',
+          'status': {
+            'name': 'Review',
+            'statusCategory': {'key': 'indeterminate'},
+          },
+        },
+      });
+      expect(issue.status, 'Review');
+      expect(issue.statusCategory, 'indeterminate');
+      expect(
+        JiraIssue.fromJson(issue.toJson()).statusCategory,
+        'indeterminate',
+      );
+    });
+
     test('parses nested fields and comments', () {
       final issue = JiraIssue.fromApiJson({
         'key': 'AU2-1234',

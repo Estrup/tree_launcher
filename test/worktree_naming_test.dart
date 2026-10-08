@@ -48,4 +48,47 @@ void main() {
       expect(buildBranchName('my-feature', ''), 'my-feature');
     });
   });
+
+  group('worktreeNameForJiraIssue', () {
+    test('combines the lowercased key with a slug of the summary', () {
+      expect(
+        worktreeNameForJiraIssue('AU2-5928', 'Værksted kontakt'),
+        'au2-5928-vaerksted-kontakt',
+      );
+    });
+
+    test('folds Danish letters and drops punctuation', () {
+      expect(
+        worktreeNameForJiraIssue('AU2-1', 'Én e-mail på kunden (Ø/Å)!'),
+        'au2-1-en-e-mail-paa-kunden',
+      );
+    });
+
+    test('stops at whole words within the length and word limits', () {
+      final name = worktreeNameForJiraIssue(
+        'AU2-5905',
+        'Arbejdskort vælger forkert au2web-konto når værkstedet har 3',
+      );
+      expect(name, 'au2-5905-arbejdskort-vaelger-forkert-au2web');
+      expect(name.length, lessThanOrEqualTo(48));
+    });
+
+    test('falls back to just the key for an empty summary', () {
+      expect(worktreeNameForJiraIssue('AU2-7', '  —  '), 'au2-7');
+    });
+
+    test('always produces a valid worktree name', () {
+      for (final summary in [
+        'System: Natlige SQL Agent-jobs for åbne timeregistreringer',
+        'S1 — Udgående Autodesktop-klient + konfiguration',
+        '2.41.3 Release-noter',
+      ]) {
+        expect(
+          validateWorktreeName(worktreeNameForJiraIssue('AU2-5950', summary)),
+          isNull,
+          reason: summary,
+        );
+      }
+    });
+  });
 }

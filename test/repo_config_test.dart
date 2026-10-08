@@ -107,4 +107,38 @@ void main() {
       }
     });
   });
+
+  group('RepoConfig Jira settings', () {
+    test('round-trip through JSON and are omitted when unset', () {
+      final repo = RepoConfig(
+        name: 'demo',
+        path: '/repos/demo',
+        jiraProjectKey: 'AU2',
+        jiraFixVersionId: '29501',
+      );
+      final restored = RepoConfig.fromJson(repo.toJson());
+      expect(restored.jiraProjectKey, 'AU2');
+      expect(restored.jiraFixVersionId, '29501');
+
+      final bare = RepoConfig(name: 'demo', path: '/repos/demo').toJson();
+      expect(bare.containsKey('jiraProjectKey'), isFalse);
+      expect(bare.containsKey('jiraFixVersionId'), isFalse);
+    });
+
+    test('copyWith keeps them unless cleared', () {
+      final repo = RepoConfig(
+        name: 'demo',
+        path: '/repos/demo',
+        jiraProjectKey: 'AU2',
+        jiraFixVersionId: '29501',
+      );
+      expect(repo.copyWith(name: 'x').jiraProjectKey, 'AU2');
+      final cleared = repo.copyWith(
+        clearJiraProjectKey: true,
+        clearJiraFixVersionId: true,
+      );
+      expect(cleared.jiraProjectKey, isNull);
+      expect(cleared.jiraFixVersionId, isNull);
+    });
+  });
 }

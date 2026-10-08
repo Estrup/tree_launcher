@@ -8,6 +8,7 @@ import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
+import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
@@ -58,6 +59,22 @@ class TreeLauncherApp extends StatelessWidget {
             final controller = previous ?? GithubPrsController();
             controller.onRequestedMeTransition = (pr) =>
                 workspace.clearSnoozeForBranch(pr.headBranch);
+            controller.syncToRepo(workspace.selectedRepo);
+            return controller;
+          },
+        ),
+        ChangeNotifierProxyProvider<WorkspaceController, JiraIssuesController>(
+          create: (_) => JiraIssuesController(),
+          update: (context, workspace, previous) {
+            final controller = previous ?? JiraIssuesController();
+            controller.onVersionSelected = (repoPath, version) {
+              final repo = workspace.repos
+                  .where((r) => r.path == repoPath)
+                  .firstOrNull;
+              if (repo != null) {
+                workspace.updateJiraFixVersion(repo, version.id);
+              }
+            };
             controller.syncToRepo(workspace.selectedRepo);
             return controller;
           },
