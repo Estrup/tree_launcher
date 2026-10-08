@@ -72,7 +72,7 @@ Future<void> _pumpTab(WidgetTester tester, {required double width}) async {
         ChangeNotifierProvider<JiraIssuesController>.value(value: jira),
       ],
       child: MaterialApp(
-        theme: AppTheme.dark,
+        theme: AppTheme.current,
         home: const Scaffold(body: JiraIssuesTab()),
       ),
     ),

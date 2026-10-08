@@ -8,13 +8,48 @@ class MainFlutterWindow: NSWindow {
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
 
-    // Make the title bar match the app's dark theme (#14171C)
+    // Dark title bar until Flutter loads the theme and sends its colors over
+    // the tree_launcher/window channel below.
     self.titleVisibility = .hidden
     self.titlebarAppearsTransparent = true
     self.backgroundColor = NSColor(calibratedRed: 0.078, green: 0.090, blue: 0.110, alpha: 1.0)
     self.isMovableByWindowBackground = true
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+
+    let windowChannel = FlutterMethodChannel(
+      name: "tree_launcher/window",
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+    windowChannel.setMethodCallHandler { [weak self] (call, result) in
+      if call.method == "setAppearance" {
+        guard
+          let arguments = call.arguments as? [String: Any],
+          let argb = (arguments["color"] as? NSNumber)?.uint32Value,
+          let isDark = arguments["dark"] as? Bool
+        else {
+          result(
+            FlutterError(
+              code: "invalid_arguments",
+              message: "Expected color and dark arguments.",
+              details: nil
+            )
+          )
+          return
+        }
+
+        self?.backgroundColor = NSColor(
+          srgbRed: CGFloat((argb >> 16) & 0xFF) / 255,
+          green: CGFloat((argb >> 8) & 0xFF) / 255,
+          blue: CGFloat(argb & 0xFF) / 255,
+          alpha: CGFloat((argb >> 24) & 0xFF) / 255
+        )
+        self?.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
+        result(nil)
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
 
     let channel = FlutterMethodChannel(
       name: "tree_launcher/directory_picker",

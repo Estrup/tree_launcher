@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 /// Immutable color palette that defines all app + terminal colors.
 class AppColorPalette {
+  /// Whether the palette is light or dark; drives Material defaults and the
+  /// native window appearance.
+  final Brightness brightness;
+
   // App surface layers
   final Color base;
   final Color? terminalSurface;
@@ -58,6 +62,7 @@ class AppColorPalette {
   final Color ansiBrightWhite;
 
   const AppColorPalette({
+    this.brightness = Brightness.dark,
     required this.base,
     this.terminalSurface,
     required this.surface0,
@@ -306,6 +311,50 @@ const palettes = <String, AppColorPalette>{
     ansiBrightCyan: Color(0xFF7FBFBF),
     ansiBrightWhite: Color(0xFFFFFFFF),
   ),
+  'light': AppColorPalette(
+    brightness: Brightness.light,
+    base: Color(0xFFF7F8FA),
+    terminalSurface: Color(0xFFFFFFFF),
+    surface0: Color(0xFFF0F2F5),
+    surface1: Color(0xFFFFFFFF),
+    surface2: Color(0xFFE6E9ED),
+    surfaceHover: Color(0xFFDCE0E5),
+    border: Color(0xFFD0D5DC),
+    borderSubtle: Color(0xFFE1E4E8),
+    textPrimary: Color(0xFF1F2328),
+    textSecondary: Color(0xFF59636E),
+    textMuted: Color(0xFF818B98),
+    accent: Color(0xFFB45309),
+    accentMuted: Color(0x26B45309),
+    terminal: Color(0xFF047857),
+    terminalBg: Color(0x1A047857),
+    branch: Color(0xFF7C3AED),
+    branchBg: Color(0x1A7C3AED),
+    vscode: Color(0xFF2563EB),
+    vscodeBg: Color(0x1A2563EB),
+    claude: Color(0xFFC15F3C),
+    claudeBg: Color(0x1AC15F3C),
+    error: Color(0xFFDC2626),
+    success: Color(0xFF047857),
+    // ANSI colors tuned for a light background: "white" is a mid grey so
+    // text printed in it stays readable.
+    ansiBlack: Color(0xFF24292F),
+    ansiRed: Color(0xFFCF222E),
+    ansiGreen: Color(0xFF116329),
+    ansiYellow: Color(0xFF4D2D00),
+    ansiBlue: Color(0xFF0969DA),
+    ansiMagenta: Color(0xFF8250DF),
+    ansiCyan: Color(0xFF1B7C83),
+    ansiWhite: Color(0xFF6E7781),
+    ansiBrightBlack: Color(0xFF57606A),
+    ansiBrightRed: Color(0xFFA40E26),
+    ansiBrightGreen: Color(0xFF1A7F37),
+    ansiBrightYellow: Color(0xFF633C01),
+    ansiBrightBlue: Color(0xFF218BFF),
+    ansiBrightMagenta: Color(0xFFA475F9),
+    ansiBrightCyan: Color(0xFF3192AA),
+    ansiBrightWhite: Color(0xFF8C959F),
+  ),
 };
 
 /// Human-readable names for the theme picker UI.
@@ -315,6 +364,7 @@ const paletteDisplayNames = <String, String>{
   'nord': 'Nord',
   'catppuccin': 'Catppuccin',
   'minimal': 'Minimal',
+  'light': 'Light',
 };
 
 // ---------------------------------------------------------------------------
@@ -329,6 +379,8 @@ class AppColors {
   }
 
   static AppColorPalette get current => _current;
+
+  static Brightness get brightness => _current.brightness;
 
   // Surfaces
   static Color get base => _current.base;
@@ -366,12 +418,19 @@ class AppColors {
 }
 
 class AppTheme {
-  static ThemeData get dark {
+  /// Theme for the active palette, light or dark per its [Brightness].
+  static ThemeData get current {
+    final brightness = AppColors.brightness;
+    // Both constructors take the same parameters; only their defaults for
+    // the colors not set below differ.
+    final colorScheme = brightness == Brightness.light
+        ? ColorScheme.light
+        : ColorScheme.dark;
     return ThemeData(
-      brightness: Brightness.dark,
+      brightness: brightness,
       useMaterial3: true,
       scaffoldBackgroundColor: AppColors.base,
-      colorScheme: ColorScheme.dark(
+      colorScheme: colorScheme(
         surface: AppColors.surface0,
         primary: AppColors.accent,
         secondary: AppColors.textSecondary,

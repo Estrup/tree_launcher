@@ -533,9 +533,14 @@ Color _colorForName(String name) {
   return HSLColor.fromAHSL(1.0, hue, 0.55, 0.65).toColor();
 }
 
-/// Brightens a label color so its text stays legible on the dark surface.
+/// Brightens (dark themes) or darkens (light themes) a label color so its
+/// text stays legible on the surface.
 Color _readableForeground(Color color) {
   final hsl = HSLColor.fromColor(color);
+  if (AppColors.brightness == Brightness.light) {
+    if (hsl.lightness <= 0.4) return color;
+    return hsl.withLightness(0.35).toColor();
+  }
   if (hsl.lightness >= 0.65) return color;
   return hsl.withLightness(0.72).toColor();
 }

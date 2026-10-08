@@ -87,9 +87,7 @@ class TreeLauncherApp extends StatelessWidget {
             title: 'TreeLauncher',
             debugShowCheckedModeBanner: false,
             scaffoldMessengerKey: appMessengerKey,
-            theme: AppTheme.dark,
-            darkTheme: AppTheme.dark,
-            themeMode: ThemeMode.dark,
+            theme: AppTheme.current,
             home: const WorkspaceFlowCoordinator(child: WorkspaceShell()),
           );
         },

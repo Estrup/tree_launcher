@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/design_system/window_chrome.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/services/config_service.dart';
@@ -16,8 +19,13 @@ class SettingsController extends ChangeNotifier {
 
   Future<void> loadSettings() async {
     _settings = await _store.load();
-    AppColors.setTheme(_settings.themeName);
+    _applyTheme(_settings.themeName);
     notifyListeners();
+  }
+
+  void _applyTheme(String name) {
+    AppColors.setTheme(name);
+    unawaited(WindowChrome.sync(AppColors.current));
   }
 
   Future<void> updateTerminalApp(TerminalApp app) async {
@@ -39,7 +47,7 @@ class SettingsController extends ChangeNotifier {
   }
 
   Future<void> updateTheme(String name) async {
-    AppColors.setTheme(name);
+    _applyTheme(name);
     _settings = _settings.copyWith(themeName: name);
     await _store.save(_settings);
     notifyListeners();

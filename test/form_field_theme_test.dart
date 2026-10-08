@@ -18,7 +18,7 @@ void main() {
     (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.dark,
+          theme: AppTheme.current,
           home: Scaffold(
             body: Center(
               child: SizedBox(
@@ -86,7 +86,7 @@ void main() {
       final errorBorder =
           nameField.decoration!.enabledBorder! as OutlineInputBorder;
       final defaultBorder =
-          AppTheme.dark.inputDecorationTheme.enabledBorder!
+          AppTheme.current.inputDecorationTheme.enabledBorder!
               as OutlineInputBorder;
 
       expect(errorBorder.borderSide.color, AppColors.error);
@@ -140,7 +140,7 @@ class _DisposableTestAppState extends State<_DisposableTestApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: AppTheme.dark,
+      theme: AppTheme.current,
       home: Scaffold(body: Center(child: widget.child)),
     );
   }
