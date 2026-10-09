@@ -7,7 +7,6 @@ import 'package:tree_launcher/features/github_prs/presentation/widgets/github_pr
 import 'package:tree_launcher/features/github_prs/presentation/widgets/pr_review_toast.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issues_tab.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/settings_dialog.dart';
-import 'package:tree_launcher/features/terminal/presentation/widgets/running_commands_bar.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_panel.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_repo_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
@@ -247,7 +246,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       ],
                                     ),
                             ),
-                            const RunningCommandsBar(),
                           ],
                         ),
                       ),

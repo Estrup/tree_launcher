@@ -10,57 +10,32 @@ import 'package:tree_launcher/providers/terminal_provider.dart'
 import 'terminal_context_menu.dart';
 import 'terminal_key_handler.dart';
 
-class TerminalFullView extends StatefulWidget {
+/// The built-in terminal: a header bar over the active session. Sessions are
+/// switched from the sidebar and the worktree rows, not from tabs here.
+class TerminalFullView extends StatelessWidget {
   const TerminalFullView({super.key});
-
-  @override
-  State<TerminalFullView> createState() => _TerminalFullViewState();
-}
-
-class _TerminalFullViewState extends State<TerminalFullView> {
-  static const double _defaultSidebarWidth = 120.0;
-  static const double _minSidebarWidth = 80.0;
-  static const double _maxSidebarWidth = 260.0;
-
-  double _sidebarWidth = _defaultSidebarWidth;
 
   @override
   Widget build(BuildContext context) {
     final tp = context.watch<TerminalProvider>();
     if (!tp.isVisible || tp.sessions.isEmpty) return const SizedBox.shrink();
+    final active = tp.activeSession;
 
     return Container(
       color: AppColors.base,
       child: Column(
         children: [
-          _HeaderBar(onHide: () => tp.toggleVisibility()),
+          _HeaderBar(
+            title: active?.title,
+            onClose: active == null
+                ? null
+                : () => tp.closeTerminal(tp.activeIndex),
+            onHide: () => tp.toggleVisibility(),
+          ),
           Expanded(
-            child: Row(
-              children: [
-                _VerticalTabList(
-                  width: _sidebarWidth,
-                  sessions: tp.sessions,
-                  activeIndex: tp.activeIndex,
-                  onSelect: (i) => tp.setActive(i),
-                  onClose: (i) => tp.closeTerminal(i),
-                ),
-                _SidebarResizeHandle(
-                  onDrag: (dx) {
-                    setState(() {
-                      _sidebarWidth = (_sidebarWidth + dx).clamp(
-                        _minSidebarWidth,
-                        _maxSidebarWidth,
-                      );
-                    });
-                  },
-                ),
-                Expanded(
-                  child: tp.activeSession != null
-                      ? _TerminalBody(session: tp.activeSession!)
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ),
+            child: active != null
+                ? _TerminalBody(session: active)
+                : const SizedBox.shrink(),
           ),
         ],
       ),
@@ -69,9 +44,14 @@ class _TerminalFullViewState extends State<TerminalFullView> {
 }
 
 class _HeaderBar extends StatelessWidget {
+  /// Title of the active session, shown after the TERMINAL label.
+  final String? title;
+
+  /// Closes the active session; null hides the button.
+  final VoidCallback? onClose;
   final VoidCallback onHide;
 
-  const _HeaderBar({required this.onHide});
+  const _HeaderBar({this.title, this.onClose, required this.onHide});
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +77,25 @@ class _HeaderBar extends StatelessWidget {
               letterSpacing: 0.8,
             ),
           ),
+          if (title != null) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                title!,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              ),
+            ),
+          ],
           const Spacer(),
+          if (onClose != null) ...[
+            _IconBtn(
+              icon: Icons.close_rounded,
+              tooltip: 'Close session',
+              onPressed: onClose!,
+            ),
+            const SizedBox(width: 2),
+          ],
           _IconBtn(
             icon: Icons.remove_rounded,
             tooltip: 'Hide terminal',
@@ -105,152 +103,6 @@ class _HeaderBar extends StatelessWidget {
           ),
           const SizedBox(width: 4),
         ],
-      ),
-    );
-  }
-}
-
-class _VerticalTabList extends StatelessWidget {
-  final double width;
-  final List<dynamic> sessions;
-  final int activeIndex;
-  final ValueChanged<int> onSelect;
-  final ValueChanged<int> onClose;
-
-  const _VerticalTabList({
-    required this.width,
-    required this.sessions,
-    required this.activeIndex,
-    required this.onSelect,
-    required this.onClose,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      decoration: BoxDecoration(color: AppColors.surface0),
-      child: ListView.builder(
-        itemCount: sessions.length,
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        itemBuilder: (context, i) {
-          final session = sessions[i];
-          final tooltipLines = [session.title];
-          tooltipLines.add(session.workingDirectory);
-          if (session.command != null) {
-            tooltipLines.add('cmd: ${session.command}');
-          }
-          return _Tab(
-            title: session.title,
-            tooltip: tooltipLines.join('\n'),
-            isActive: i == activeIndex,
-            onTap: () => onSelect(i),
-            onClose: () => onClose(i),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _SidebarResizeHandle extends StatelessWidget {
-  final ValueChanged<double> onDrag;
-  const _SidebarResizeHandle({required this.onDrag});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.resizeColumn,
-        child: Container(width: 4, color: AppColors.borderSubtle),
-      ),
-    );
-  }
-}
-
-class _Tab extends StatefulWidget {
-  final String title;
-  final String tooltip;
-  final bool isActive;
-  final VoidCallback onTap;
-  final VoidCallback onClose;
-
-  const _Tab({
-    required this.title,
-    required this.tooltip,
-    required this.isActive,
-    required this.onTap,
-    required this.onClose,
-  });
-
-  @override
-  State<_Tab> createState() => _TabState();
-}
-
-class _TabState extends State<_Tab> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: widget.tooltip,
-      waitDuration: const Duration(milliseconds: 400),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: Container(
-            height: 30,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            decoration: BoxDecoration(
-              color: widget.isActive
-                  ? AppColors.base
-                  : (_hovered ? AppColors.surface2 : Colors.transparent),
-              borderRadius: BorderRadius.circular(4),
-              border: widget.isActive
-                  ? Border(
-                      left: BorderSide(color: AppColors.terminal, width: 2),
-                    )
-                  : null,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: widget.isActive
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                      color: widget.isActive
-                          ? AppColors.textPrimary
-                          : AppColors.textMuted,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-                if (_hovered || widget.isActive) ...[
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: widget.onClose,
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 12,
-                      color: _hovered
-                          ? AppColors.textSecondary
-                          : AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
