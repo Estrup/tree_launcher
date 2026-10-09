@@ -56,7 +56,6 @@ class _FakeWorktreeCreator implements WorktreeCreator {
     return CreatedWorktree(
       worktreePath: '/repos/$worktreeName',
       branch: newBranch,
-      slot: 'alpha',
       kickoffPromptPath: kickoffPrompt == null
           ? null
           : '/repos/$worktreeName/.tree-launcher/kickoff-prompt.md',
@@ -223,7 +222,7 @@ void main() {
       expect(body['worktreePath'], '/repos/my-feature');
       // defaultBranchPrefix 'feature' is applied to the supplied suffix.
       expect(body['branch'], 'feature/my-feature');
-      expect(body['slot'], 'alpha');
+      expect(body.containsKey('slot'), isFalse);
       expect(body['issueKey'], 'AU2-1234');
       expect(creator.lastCall!['newBranch'], 'feature/my-feature');
       expect(creator.lastCall!['jiraIssue'], 'AU2-1234');

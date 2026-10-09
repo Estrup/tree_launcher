@@ -19,9 +19,12 @@ import 'package:tree_launcher/providers/terminal_provider.dart';
 
 /// Builds the standard Claude launch context prompt from a worktree's recorded
 /// JIRA issue and base branch. Returns null when neither is known.
-String? claudeContextPrompt(Worktree wt) {
-  final issue = wt.jiraIssue;
-  final base = wt.baseBranch;
+String? claudeContextPrompt(Worktree wt) =>
+    claudeContextPromptFor(issue: wt.jiraIssue, base: wt.baseBranch);
+
+/// [claudeContextPrompt] from bare values, for a worktree that may not be in
+/// the list yet.
+String? claudeContextPromptFor({String? issue, String? base}) {
   if (issue != null && issue.isNotEmpty && base != null && base.isNotEmpty) {
     return 'Context: Working on issue $issue where the base branch is $base.';
   }
@@ -48,12 +51,30 @@ String? resolveWorktreePrompt(
   ClaudePrompt prompt,
   Worktree wt, {
   String? repoName,
+}) => resolveClaudePrompt(
+  prompt,
+  issue: wt.jiraIssue,
+  baseBranch: wt.baseBranch,
+  worktreeName: wt.name,
+  worktreePath: wt.path,
+  repoName: repoName,
+);
+
+/// [resolveWorktreePrompt] from bare values, for a worktree that may not be in
+/// the list yet.
+String? resolveClaudePrompt(
+  ClaudePrompt prompt, {
+  String? issue,
+  String? baseBranch,
+  required String worktreeName,
+  required String worktreePath,
+  String? repoName,
 }) {
   var p = prompt.prompt;
-  p = p.replaceAll('{issue}', wt.jiraIssue ?? '');
-  p = p.replaceAll('{base_branch}', wt.baseBranch ?? '');
-  p = p.replaceAll('{worktree}', wt.name);
-  p = p.replaceAll('{path}', wt.path);
+  p = p.replaceAll('{issue}', issue ?? '');
+  p = p.replaceAll('{base_branch}', baseBranch ?? '');
+  p = p.replaceAll('{worktree}', worktreeName);
+  p = p.replaceAll('{path}', worktreePath);
   p = p.replaceAll('{repo}', repoName ?? '');
   p = p.replaceAll(RegExp(r'\s+'), ' ').trim();
   return p.isEmpty ? null : p;
@@ -1074,7 +1095,6 @@ class CustomCommandsButton extends StatefulWidget {
   final String worktreePath;
   final String worktreeName;
   final List<CustomCommand> commands;
-  final String slot;
   final bool compact;
 
   const CustomCommandsButton({
@@ -1082,7 +1102,6 @@ class CustomCommandsButton extends StatefulWidget {
     required this.worktreePath,
     required this.worktreeName,
     required this.commands,
-    required this.slot,
     this.compact = false,
   });
 
@@ -1147,12 +1166,11 @@ class _CustomCommandsButtonState extends State<CustomCommandsButton> {
       Navigator.pop(context);
       for (final cmd in widget.commands) {
         if (!selected.contains(cmd.name)) continue;
-        final command = cmd.command.replaceAll('{{SLOT}}', widget.slot);
         tp.openTerminalWithCommand(
           '${cmd.name}: ${widget.worktreeName}',
           widget.worktreePath,
           repo?.path ?? widget.worktreePath,
-          command,
+          cmd.command,
         );
       }
     }
@@ -1356,11 +1374,12 @@ class _DeleteIconButtonState extends State<DeleteIconButton> {
 }
 
 // ---------------------------------------------------------------------------
-// Worktree options menu (hide / snooze / delete)
+// Worktree options menu (Jira / copy path / hide / snooze / delete)
 // ---------------------------------------------------------------------------
 
 /// Overflow "more options" button for a worktree row. Opens a menu offering
-/// Hide/Unhide, Snooze/Unsnooze, and (for non-main worktrees) Delete.
+/// Attach/Edit JIRA ticket, Copy path, Hide/Unhide, Snooze/Unsnooze, and (for
+/// non-main worktrees) Delete.
 class WorktreeOptionsButton extends StatefulWidget {
   final Worktree worktree;
   const WorktreeOptionsButton({super.key, required this.worktree});
@@ -1414,6 +1433,7 @@ class _WorktreeOptionsButtonState extends State<WorktreeOptionsButton> {
               ? 'Attach JIRA ticket'
               : 'Edit JIRA ticket',
         ),
+        item('copyPath', Icons.content_copy_rounded, 'Copy path'),
         const PopupMenuDivider(height: 1),
         item(
           'hide',
@@ -1446,6 +1466,9 @@ class _WorktreeOptionsButtonState extends State<WorktreeOptionsButton> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) editJiraIssueDialog(context, wt);
           });
+          break;
+        case 'copyPath':
+          if (context.mounted) copyToClipboard(context, wt.path, 'Path');
           break;
         case 'hide':
           repoProvider.setWorktreeHidden(wt.path, !wt.isHidden);

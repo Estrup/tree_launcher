@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
+import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
@@ -16,20 +17,19 @@ const double _kActionsWidth = 296;
 const double _kColumnGap = 16;
 const int _kNameFlex = 3;
 const int _kBranchFlex = 3;
-const int _kPathFlex = 4;
+const int _kJiraTitleFlex = 4;
 
 /// Width breakpoints for responsive column hiding. PR is dropped first (it is
-/// the least essential), then Path. PR threshold sits above Path's so the two
-/// columns disappear one at a time as the table narrows.
-const double _kHidePathBelow = 760;
+/// the least essential), then the Jira title. PR threshold sits above the
+/// title's so the two columns disappear one at a time as the table narrows.
+const double _kHideJiraTitleBelow = 760;
 const double _kHidePrBelow = 920;
 
-/// Compact list/table view of worktrees. An alternative to [WorktreeGrid]'s
-/// tile layout, easier to scan when there are many worktrees.
+/// Compact list/table view of worktrees.
 ///
 /// Rows are grouped into "My worktrees" and "To review" (worktrees created from
-/// another user's PR, identified by [Worktree.prAuthor]). PR and Path columns
-/// hide on narrow widths.
+/// another user's PR, identified by [Worktree.prAuthor]). PR and Jira title
+/// columns hide on narrow widths.
 class WorktreeTable extends StatefulWidget {
   final List<Worktree> worktrees;
 
@@ -45,8 +45,25 @@ class _WorktreeTableState extends State<WorktreeTable> {
   final Set<String> _selected = {};
 
   @override
+  void initState() {
+    super.initState();
+    _requestJiraTitles();
+  }
+
+  /// Asks for the titles of the rows' Jira issues; already-known keys are
+  /// skipped by the controller.
+  void _requestJiraTitles() {
+    final keys = widget.worktrees
+        .map((w) => w.jiraIssue)
+        .whereType<String>()
+        .where((k) => k.isNotEmpty);
+    context.read<JiraTitlesController>().ensureTitles(keys);
+  }
+
+  @override
   void didUpdateWidget(WorktreeTable oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _requestJiraTitles();
     // Drop selections whose rows left the table — covers deletions, hides
     // (when "Show hidden" is off), repo switches, and background refreshes.
     final paths = widget.worktrees.map((w) => w.path).toSet();
@@ -106,12 +123,12 @@ class _WorktreeTableState extends State<WorktreeTable> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final showPr = constraints.maxWidth >= _kHidePrBelow;
-        final showPath = constraints.maxWidth >= _kHidePathBelow;
+        final showJiraTitle = constraints.maxWidth >= _kHideJiraTitleBelow;
 
         Widget buildRow(Worktree wt) => _WorktreeRow(
           worktree: wt,
           showPr: showPr,
-          showPath: showPath,
+          showJiraTitle: showJiraTitle,
           selected: _selected.contains(wt.path),
           selectionActive: selectionActive,
           onSelectedChanged: (value) => _toggle(wt.path, value),
@@ -153,7 +170,7 @@ class _WorktreeTableState extends State<WorktreeTable> {
               ),
             _HeaderRow(
               showPr: showPr,
-              showPath: showPath,
+              showJiraTitle: showJiraTitle,
               selectAllState: selectAllState,
               selectionActive: selectionActive,
               onToggleSelectAll: _toggleAll,
@@ -412,7 +429,7 @@ class _SectionHeader extends StatelessWidget {
 
 class _HeaderRow extends StatefulWidget {
   final bool showPr;
-  final bool showPath;
+  final bool showJiraTitle;
 
   /// Select-all checkbox state: true = all, null = some, false = none.
   final bool? selectAllState;
@@ -421,7 +438,7 @@ class _HeaderRow extends StatefulWidget {
 
   const _HeaderRow({
     required this.showPr,
-    required this.showPath,
+    required this.showJiraTitle,
     required this.selectAllState,
     required this.selectionActive,
     required this.onToggleSelectAll,
@@ -447,7 +464,7 @@ class _HeaderRowState extends State<_HeaderRow> {
   @override
   Widget build(BuildContext context) {
     final showPr = widget.showPr;
-    final showPath = widget.showPath;
+    final showJiraTitle = widget.showJiraTitle;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -475,13 +492,13 @@ class _HeaderRowState extends State<_HeaderRow> {
             Expanded(flex: _kBranchFlex, child: _label('Branch')),
             const SizedBox(width: _kColumnGap),
             SizedBox(width: _kJiraWidth, child: _label('Jira')),
+            if (showJiraTitle) ...[
+              const SizedBox(width: _kColumnGap),
+              Expanded(flex: _kJiraTitleFlex, child: _label('Jira title')),
+            ],
             if (showPr) ...[
               const SizedBox(width: _kColumnGap),
               SizedBox(width: _kPrWidth, child: _label('PR')),
-            ],
-            if (showPath) ...[
-              const SizedBox(width: _kColumnGap),
-              Expanded(flex: _kPathFlex, child: _label('Path')),
             ],
             const SizedBox(width: _kColumnGap),
             SizedBox(
@@ -501,7 +518,7 @@ class _HeaderRowState extends State<_HeaderRow> {
 class _WorktreeRow extends StatefulWidget {
   final Worktree worktree;
   final bool showPr;
-  final bool showPath;
+  final bool showJiraTitle;
   final bool selected;
   final bool selectionActive;
   final ValueChanged<bool> onSelectedChanged;
@@ -509,7 +526,7 @@ class _WorktreeRow extends StatefulWidget {
   const _WorktreeRow({
     required this.worktree,
     required this.showPr,
-    required this.showPath,
+    required this.showJiraTitle,
     required this.selected,
     required this.selectionActive,
     required this.onSelectedChanged,
@@ -541,6 +558,11 @@ class _WorktreeRowState extends State<_WorktreeRow> {
         }
       }
     }
+
+    final jiraKey = wt.jiraIssue;
+    final jiraTitle = widget.showJiraTitle && jiraKey != null
+        ? context.watch<JiraTitlesController>().titleFor(jiraKey)
+        : null;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -688,6 +710,34 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                       ),
               ),
             ),
+            if (widget.showJiraTitle) ...[
+              const SizedBox(width: _kColumnGap),
+
+              // Jira title (when known)
+              Expanded(
+                flex: _kJiraTitleFlex,
+                child: jiraTitle != null
+                    ? Tooltip(
+                        message: jiraTitle,
+                        waitDuration: const Duration(milliseconds: 300),
+                        child: Text(
+                          jiraTitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      )
+                    : Text(
+                        '—',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+              ),
+            ],
             if (widget.showPr) ...[
               const SizedBox(width: _kColumnGap),
 
@@ -713,32 +763,6 @@ class _WorktreeRowState extends State<_WorktreeRow> {
               ),
             ],
 
-            if (widget.showPath) ...[
-              const SizedBox(width: _kColumnGap),
-
-              // Path (click to copy)
-              Expanded(
-                flex: _kPathFlex,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () => copyToClipboard(context, wt.path, 'Path'),
-                    child: Tooltip(
-                      message: wt.path,
-                      child: Text(
-                        wt.path.replaceFirst(RegExp(r'^/Users/[^/]+'), '~'),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                          fontFamily: 'monospace',
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
             const SizedBox(width: _kColumnGap),
 
             // Actions
@@ -771,7 +795,6 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                       worktreePath: wt.path,
                       worktreeName: wt.name,
                       commands: customCommands,
-                      slot: wt.slot,
                       compact: true,
                     ),
                   ],

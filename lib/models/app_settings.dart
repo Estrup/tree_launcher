@@ -1,6 +1,8 @@
 enum TerminalApp { terminal, ghostty, custom }
 
-enum WorktreeViewMode { grid, list }
+/// Default extra arguments for the Claude CLI sessions started from the Jira
+/// tab: subscribes the session to the Discord channel plugin.
+const defaultClaudeCliArgs = '--channels plugin:discord@claude-plugins-official';
 
 class AppSettings {
   final TerminalApp terminalApp;
@@ -9,7 +11,6 @@ class AppSettings {
   final String themeName;
   final String? terminalFontFamily;
   final double? terminalFontSize;
-  final WorktreeViewMode worktreeViewMode;
   final bool showHiddenWorktrees;
 
   /// Repo paths the user has hidden from the sidebar.
@@ -20,6 +21,11 @@ class AppSettings {
   /// depending on the feature layer).
   final int agentApiPort;
 
+  /// Extra arguments appended to `claude` when starting (or resuming) a Claude
+  /// CLI session in the built-in terminal. Inserted into the shell command
+  /// verbatim; empty means none.
+  final String claudeCliArgs;
+
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
     this.customTerminalCommand,
@@ -27,10 +33,10 @@ class AppSettings {
     this.themeName = 'muted',
     this.terminalFontFamily,
     this.terminalFontSize,
-    this.worktreeViewMode = WorktreeViewMode.grid,
     this.showHiddenWorktrees = false,
     this.hiddenRepos = const [],
     this.agentApiPort = 8765,
+    this.claudeCliArgs = defaultClaudeCliArgs,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -48,14 +54,11 @@ class AppSettings {
       themeName: json['themeName'] as String? ?? 'muted',
       terminalFontFamily: json['terminalFontFamily'] as String?,
       terminalFontSize: (json['terminalFontSize'] as num?)?.toDouble(),
-      worktreeViewMode: WorktreeViewMode.values.firstWhere(
-        (e) => e.name == (json['worktreeViewMode'] as String?),
-        orElse: () => WorktreeViewMode.grid,
-      ),
       showHiddenWorktrees: json['showHiddenWorktrees'] as bool? ?? false,
       hiddenRepos:
           (json['hiddenRepos'] as List<dynamic>?)?.cast<String>() ?? const [],
       agentApiPort: json['agentApiPort'] as int? ?? 8765,
+      claudeCliArgs: json['claudeCliArgs'] as String? ?? defaultClaudeCliArgs,
     );
   }
 
@@ -66,10 +69,10 @@ class AppSettings {
     'themeName': themeName,
     'terminalFontFamily': terminalFontFamily,
     'terminalFontSize': terminalFontSize,
-    'worktreeViewMode': worktreeViewMode.name,
     'showHiddenWorktrees': showHiddenWorktrees,
     'hiddenRepos': hiddenRepos,
     'agentApiPort': agentApiPort,
+    'claudeCliArgs': claudeCliArgs,
   };
 
   AppSettings copyWith({
@@ -81,10 +84,10 @@ class AppSettings {
     double? terminalFontSize,
     bool clearTerminalFontFamily = false,
     bool clearTerminalFontSize = false,
-    WorktreeViewMode? worktreeViewMode,
     bool? showHiddenWorktrees,
     List<String>? hiddenRepos,
     int? agentApiPort,
+    String? claudeCliArgs,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -98,10 +101,10 @@ class AppSettings {
       terminalFontSize: clearTerminalFontSize
           ? null
           : (terminalFontSize ?? this.terminalFontSize),
-      worktreeViewMode: worktreeViewMode ?? this.worktreeViewMode,
       showHiddenWorktrees: showHiddenWorktrees ?? this.showHiddenWorktrees,
       hiddenRepos: hiddenRepos ?? this.hiddenRepos,
       agentApiPort: agentApiPort ?? this.agentApiPort,
+      claudeCliArgs: claudeCliArgs ?? this.claudeCliArgs,
     );
   }
 }

@@ -17,7 +17,7 @@ const double _kTypeWidth = 22;
 const double _kKeyWidth = 120;
 const double _kStatusWidth = 150;
 const double _kAssigneeWidth = 160;
-const double _kActionsWidth = 64;
+const double _kActionsWidth = 98;
 const double _kColumnGap = 12;
 
 /// Below this list width the assignee column is dropped so the summary keeps
@@ -25,7 +25,8 @@ const double _kColumnGap = 12;
 const double _kAssigneeMinListWidth = 760;
 
 /// Lists the selected repo's Jira issues for one fixVersion, with a status
-/// filter and a per-issue button that opens New Worktree prefilled.
+/// filter and per-issue buttons that open New Worktree prefilled or start a
+/// Claude session for the issue.
 class JiraIssuesTab extends StatelessWidget {
   const JiraIssuesTab({super.key});
 
@@ -194,6 +195,17 @@ class JiraIssuesTab extends StatelessWidget {
                     issue.summary,
                   ),
                   initialJiraKey: issue.key,
+                  contextTitle: issue.summary,
+                ),
+                onStartClaude: () => AddWorktreeDialog.startClaudeSession(
+                  context,
+                  existingWorktree: worktreesByIssue[issue.key],
+                  initialName: worktreeNameForJiraIssue(
+                    issue.key,
+                    issue.summary,
+                  ),
+                  initialJiraKey: issue.key,
+                  contextTitle: issue.summary,
                 ),
               );
             },
@@ -344,12 +356,14 @@ class _IssueRow extends StatelessWidget {
   final Worktree? worktree;
   final bool showAssignee;
   final VoidCallback onCreateWorktree;
+  final VoidCallback onStartClaude;
 
   const _IssueRow({
     required this.issue,
     required this.worktree,
     required this.showAssignee,
     required this.onCreateWorktree,
+    required this.onStartClaude,
   });
 
   @override
@@ -460,6 +474,17 @@ class _IssueRow extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                 ],
+                Tooltip(
+                  message: 'Claude session for ${issue.key}…',
+                  child: ActionButton(
+                    compact: true,
+                    svgAsset: 'assets/icons/claude.svg',
+                    color: AppColors.claude,
+                    bgColor: AppColors.claudeBg,
+                    onPressed: onStartClaude,
+                  ),
+                ),
+                const SizedBox(width: 6),
                 Tooltip(
                   message: 'Create worktree for ${issue.key}…',
                   child: ActionButton(

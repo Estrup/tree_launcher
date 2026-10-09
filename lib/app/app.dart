@@ -9,6 +9,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
+import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
@@ -63,6 +64,7 @@ class TreeLauncherApp extends StatelessWidget {
             return controller;
           },
         ),
+        ChangeNotifierProvider(create: (_) => JiraTitlesController()),
         ChangeNotifierProxyProvider<WorkspaceController, JiraIssuesController>(
           create: (_) => JiraIssuesController(),
           update: (context, workspace, previous) {

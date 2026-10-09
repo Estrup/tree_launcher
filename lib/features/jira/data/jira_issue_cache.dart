@@ -46,9 +46,7 @@ class JiraIssueCache {
     try {
       final file = File(await _filePath);
       await file.parent.create(recursive: true);
-      await file.writeAsString(
-        const JsonEncoder.withIndent('  ').convert(map),
-      );
+      await file.writeAsString(const JsonEncoder.withIndent('  ').convert(map));
     } catch (e) {
       debugPrint('JiraIssueCache write failed: $e');
     }
@@ -72,6 +70,24 @@ class JiraIssueCache {
       debugPrint('JiraIssueCache parse failed for $key: $e');
       return null;
     }
+  }
+
+  /// Returns every cached issue that parses, keyed by issue key. Never throws.
+  Future<Map<String, JiraIssue>> readAll() async {
+    final map = await _readMap();
+    final result = <String, JiraIssue>{};
+    for (final entry in map.entries) {
+      final value = entry.value;
+      if (value is! Map<String, dynamic>) continue;
+      final issueJson = value['issue'];
+      if (issueJson is! Map<String, dynamic>) continue;
+      try {
+        result[entry.key] = JiraIssue.fromJson(issueJson);
+      } catch (e) {
+        debugPrint('JiraIssueCache parse failed for ${entry.key}: $e');
+      }
+    }
+    return result;
   }
 
   /// Stores [issue] under its key, stamped with [fetchedAt] (default now).

@@ -175,6 +175,7 @@ class GithubPrsTab extends StatelessWidget {
                     context.read<WorkspaceController>(),
                     pr,
                   ),
+                  onStartClaude: () => _startClaude(context, pr),
                 );
               },
             ),
@@ -188,6 +189,29 @@ class GithubPrsTab extends StatelessWidget {
       context,
       initialName: worktreeNameForPrBranch(pr.headBranch, jiraKey: pr.jiraKey),
       initialJiraKey: pr.jiraKey,
+      contextTitle: '#${pr.number} ${pr.title}',
+    );
+  }
+
+  /// Starts Claude on [pr]'s head branch, reusing the worktree that already
+  /// has it checked out.
+  void _startClaude(BuildContext context, GithubPullRequest pr) {
+    final existing = context
+        .read<WorkspaceController>()
+        .worktrees
+        .where((wt) => wt.branch == pr.headBranch)
+        .firstOrNull;
+    AddWorktreeDialog.startClaudeSession(
+      context,
+      existingWorktree: existing,
+      initialName: worktreeNameForPrBranch(pr.headBranch, jiraKey: pr.jiraKey),
+      initialJiraKey: pr.jiraKey,
+      initialBaseBranch: pr.headBranch,
+      initialCreateNewBranch: false,
+      prAuthor: pr.author,
+      contextPrompt: prClaudeContextPrompt(pr),
+      contextPromptLabel: 'PR context',
+      contextTitle: '#${pr.number} ${pr.title}',
     );
   }
 
@@ -204,12 +228,14 @@ class _PullRequestRow extends StatelessWidget {
   final VoidCallback onOpenInBrowser;
   final VoidCallback onCreateWorktree;
   final Future<void> Function() onQuickCreateWorktree;
+  final VoidCallback onStartClaude;
 
   const _PullRequestRow({
     required this.pr,
     required this.onOpenInBrowser,
     required this.onCreateWorktree,
     required this.onQuickCreateWorktree,
+    required this.onStartClaude,
   });
 
   @override
@@ -263,6 +289,17 @@ class _PullRequestRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              Tooltip(
+                message: 'Claude session for #${pr.number}…',
+                child: ActionButton(
+                  compact: true,
+                  svgAsset: 'assets/icons/claude.svg',
+                  color: AppColors.claude,
+                  bgColor: AppColors.claudeBg,
+                  onPressed: onStartClaude,
+                ),
+              ),
+              const SizedBox(width: 6),
               _QuickCreateButton(
                 headBranch: pr.headBranch,
                 onPressed: onQuickCreateWorktree,

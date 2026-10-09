@@ -61,16 +61,6 @@ class RepoPreferencesController extends ChangeNotifier {
     return updated;
   }
 
-  Future<RepoConfig?> updateSlotAssignments(
-    RepoConfig repo,
-    Map<String, String> slotAssignments,
-  ) async {
-    final updated = repo.copyWith(slotAssignments: slotAssignments);
-    await _registry.replaceRepo(repo, updated);
-    notifyListeners();
-    return updated;
-  }
-
   Future<RepoConfig?> updateJiraIssues(
     RepoConfig repo,
     Map<String, String> jiraIssues,
@@ -126,6 +116,16 @@ class RepoPreferencesController extends ChangeNotifier {
     List<String> snoozedWorktrees,
   ) async {
     final updated = repo.copyWith(snoozedWorktrees: snoozedWorktrees);
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  Future<RepoConfig?> updateClaudeSessions(
+    RepoConfig repo,
+    List<String> claudeSessions,
+  ) async {
+    final updated = repo.copyWith(claudeSessions: claudeSessions);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;

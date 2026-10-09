@@ -13,7 +13,7 @@ import 'package:tree_launcher/features/workspace/presentation/widgets/add_repo_d
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings_view.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
-import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_grid.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_list.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
 
@@ -221,8 +221,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   ),
                                                   if (currentIndex == 0) ...[
                                                     const SizedBox(width: 12),
-                                                    const WorktreeViewModeToggle(),
-                                                    const SizedBox(width: 8),
                                                     const WorktreeListOptionsButton(),
                                                   ],
                                                 ],
@@ -237,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             physics:
                                                 const NeverScrollableScrollPhysics(),
                                             children: [
-                                              const WorktreeGrid(),
+                                              const WorktreeList(),
                                               if (hasGithubPrsTab)
                                                 const GithubPrsTab(),
                                               if (hasJiraTab)

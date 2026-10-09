@@ -27,13 +27,11 @@ class CreatedWorktree {
   const CreatedWorktree({
     required this.worktreePath,
     required this.branch,
-    required this.slot,
     this.kickoffPromptPath,
   });
 
   final String worktreePath;
   final String branch;
-  final String slot;
 
   /// Absolute path to the written kickoff-prompt file, or null when no prompt
   /// was supplied (or the write failed).

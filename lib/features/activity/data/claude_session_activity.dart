@@ -40,7 +40,24 @@ class ClaudeSessionActivity {
     return p.join(root, encodeProjectDir(worktreePath));
   }
 
-  /// Matches the `"timestamp":"<iso8601>"` field that Claude writes on every
+  /// Whether Claude has any session transcript for [worktreePath], i.e.
+  /// whether `claude --continue` there has a conversation to pick up.
+  Future<bool> hasSessions(String worktreePath) async {
+    final dirPath = projectDirFor(worktreePath);
+    if (dirPath == null) return false;
+    try {
+      final dir = Directory(dirPath);
+      if (!await dir.exists()) return false;
+      return await dir.list(followLinks: false).any(
+        (entity) => entity is File && entity.path.endsWith('.jsonl'),
+      );
+    } catch (e) {
+      debugPrint('ClaudeSessionActivity.hasSessions failed: $e');
+      return false;
+    }
+  }
+
+    /// Matches the `"timestamp":"<iso8601>"` field that Claude writes on every
   /// transcript line. We scan for these rather than relying on the file mtime,
   /// because a single session can span several days and the mtime only reflects
   /// the last one — which would silently drop the earlier active days.

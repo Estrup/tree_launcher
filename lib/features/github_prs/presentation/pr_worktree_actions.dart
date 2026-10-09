@@ -31,3 +31,12 @@ Future<void> createWorktreeForPr(
     showAppSnackBar(e.toString().replaceFirst('Exception: ', ''));
   }
 }
+
+/// First message for a Claude session on [pr]: what it is, which branch it
+/// merges where, and its Jira issue when the title names one.
+String prClaudeContextPrompt(GithubPullRequest pr) {
+  final issue = pr.jiraKey;
+  return 'Context: Working on pull request #${pr.number} "${pr.title}" '
+      '(${pr.headBranch} into ${pr.baseBranch})'
+      '${issue != null ? ' for issue $issue' : ''}.';
+}

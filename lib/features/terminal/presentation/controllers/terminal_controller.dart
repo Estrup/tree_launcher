@@ -21,7 +21,9 @@ class TerminalController extends ChangeNotifier {
   void openTerminal(String title, String workingDirectory, String repoPath) {
     final existing = _sessions.indexWhere(
       (session) =>
-          session.workingDirectory == workingDirectory && !session.isDisposed,
+          session.workingDirectory == workingDirectory &&
+          !session.isClaude &&
+          !session.isDisposed,
     );
     if (existing != -1) {
       _activeIndex = existing;
@@ -30,9 +32,7 @@ class TerminalController extends ChangeNotifier {
       return;
     }
 
-    if (_sessions.length >= maxSessions) {
-      _closeSessionAt(0);
-    }
+    _evictIfFull();
 
     final TerminalSession session;
     try {
@@ -67,10 +67,57 @@ class TerminalController extends ChangeNotifier {
     String workingDirectory,
     String repoPath,
     String command,
-  ) {
-    if (_sessions.length >= maxSessions) {
-      _closeSessionAt(0);
+  ) => _openCommandSession(title, workingDirectory, repoPath, command);
+
+  /// The live Claude session running in [workingDirectory], if any.
+  TerminalSession? claudeSessionFor(String workingDirectory) {
+    for (final session in _sessions) {
+      if (session.isClaude &&
+          session.workingDirectory == workingDirectory &&
+          !session.isDisposed) {
+        return session;
+      }
     }
+    return null;
+  }
+
+  /// Shows the live Claude session in [workingDirectory]. Returns false when
+  /// there is none.
+  bool focusClaudeSession(String workingDirectory) {
+    final session = claudeSessionFor(workingDirectory);
+    if (session == null) return false;
+    _activeIndex = _sessions.indexOf(session);
+    _visible = true;
+    notifyListeners();
+    return true;
+  }
+
+  /// Starts a Claude session running [command] in [workingDirectory], or just
+  /// shows the one already running there.
+  void openClaudeSession(
+    String title,
+    String workingDirectory,
+    String repoPath,
+    String command,
+  ) {
+    if (focusClaudeSession(workingDirectory)) return;
+    _openCommandSession(
+      title,
+      workingDirectory,
+      repoPath,
+      command,
+      isClaude: true,
+    );
+  }
+
+  void _openCommandSession(
+    String title,
+    String workingDirectory,
+    String repoPath,
+    String command, {
+    bool isClaude = false,
+  }) {
+    _evictIfFull();
 
     final TerminalSession session;
     try {
@@ -79,6 +126,7 @@ class TerminalController extends ChangeNotifier {
         workingDirectory: workingDirectory,
         repoPath: repoPath,
         command: command,
+        isClaude: isClaude,
       );
     } catch (error) {
       debugPrint('Failed to create terminal session: $error');
@@ -124,6 +172,15 @@ class TerminalController extends ChangeNotifier {
         });
       }
     });
+  }
+
+  /// Makes room for a new session by closing the oldest non-Claude one. A
+  /// running Claude session is never closed silently, so when only Claude
+  /// sessions are open the limit is exceeded instead.
+  void _evictIfFull() {
+    if (_sessions.length < maxSessions) return;
+    final oldest = _sessions.indexWhere((session) => !session.isClaude);
+    if (oldest != -1) _closeSessionAt(oldest);
   }
 
   void closeTerminal(int index) {

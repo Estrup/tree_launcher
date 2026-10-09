@@ -379,6 +379,7 @@ class _TerminalsSection extends StatefulWidget {
 
 class _TerminalsSectionState extends State<_TerminalsSection> {
   late final TextEditingController _customTerminalController;
+  late final TextEditingController _claudeArgsController;
 
   @override
   void initState() {
@@ -387,11 +388,15 @@ class _TerminalsSectionState extends State<_TerminalsSection> {
     _customTerminalController = TextEditingController(
       text: settings.customTerminalCommand ?? '',
     );
+    _claudeArgsController = TextEditingController(
+      text: settings.claudeCliArgs,
+    );
   }
 
   @override
   void dispose() {
     _customTerminalController.dispose();
+    _claudeArgsController.dispose();
     super.dispose();
   }
 
@@ -547,6 +552,36 @@ class _TerminalsSectionState extends State<_TerminalsSection> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'CLAUDE CLI',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            style: appFormFieldTextStyle(context, monospace: true),
+            decoration: InputDecoration(
+              labelText: 'Extra arguments',
+              hintText: defaultClaudeCliArgs,
+              hintStyle: appFormFieldHintStyle(context, monospace: true),
+            ),
+            controller: _claudeArgsController,
+            onChanged: settingsProvider.updateClaudeCliArgs,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Added to `claude` when a session is started from the Jira tab '
+            'or resumed from the sidebar.',
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textMuted.withValues(alpha: 0.8),
+            ),
           ),
         ],
       ),

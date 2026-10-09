@@ -9,6 +9,11 @@ class TerminalSession {
   final String workingDirectory;
   final String repoPath;
   final String? command;
+
+  /// Whether this session runs a Claude CLI session (started from the Jira tab
+  /// or resumed from a sidebar shortcut). Claude sessions are never evicted to
+  /// make room for new terminals and are not reused as plain shells.
+  final bool isClaude;
   final Terminal terminal;
 
   Pty? _pty;
@@ -22,6 +27,7 @@ class TerminalSession {
     required this.workingDirectory,
     required this.repoPath,
     this.command,
+    this.isClaude = false,
   }) : terminal = Terminal(maxLines: 10000);
 
   /// Start the PTY process. Must be called after the TerminalView has been

@@ -71,12 +71,6 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateWorktreeViewMode(WorktreeViewMode mode) async {
-    _settings = _settings.copyWith(worktreeViewMode: mode);
-    await _store.save(_settings);
-    notifyListeners();
-  }
-
   Future<void> updateShowHiddenWorktrees(bool value) async {
     _settings = _settings.copyWith(showHiddenWorktrees: value);
     await _store.save(_settings);
@@ -85,6 +79,12 @@ class SettingsController extends ChangeNotifier {
 
   Future<void> updateAgentApiPort(int port) async {
     _settings = _settings.copyWith(agentApiPort: port);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateClaudeCliArgs(String args) async {
+    _settings = _settings.copyWith(claudeCliArgs: args.trim());
     await _store.save(_settings);
     notifyListeners();
   }

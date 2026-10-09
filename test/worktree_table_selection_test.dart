@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
+import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
@@ -117,6 +118,7 @@ void main() {
           ChangeNotifierProvider<WorkspaceController>.value(value: workspace),
           ChangeNotifierProvider<SettingsController>.value(value: settings),
           ChangeNotifierProvider<GithubPrsController>.value(value: prs),
+          ChangeNotifierProvider(create: (_) => JiraTitlesController()),
         ],
         child: MaterialApp(
           home: Scaffold(body: WorktreeTable(worktrees: worktrees)),

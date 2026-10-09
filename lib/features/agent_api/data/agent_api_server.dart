@@ -371,7 +371,6 @@ class AgentApiServer {
         'worktreeName': worktreeName,
         'worktreePath': created.worktreePath,
         'branch': created.branch,
-        'slot': created.slot,
         'issueKey': issueKey,
         'kickoffPromptPath': created.kickoffPromptPath,
       }, status: 201);

@@ -16,7 +16,6 @@ import 'package:tree_launcher/models/predefined_issue.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_registry_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_selection_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/worktree_controller.dart';
-import 'package:tree_launcher/models/worktree_slot.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
 class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
@@ -111,7 +110,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
         orElse: () => repos.first,
       );
       selection.selectRepo(target);
-      _syncSlotAssignments(target);
+      _syncWorktreeMetadata(target);
       await worktreesController.refreshForRepo(target.path);
     }
     notifyListeners();
@@ -142,7 +141,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     if (selectedRepo == repo) return;
     selection.selectRepo(repo);
     await _persistSelection(repo);
-    _syncSlotAssignments(repo);
+    _syncWorktreeMetadata(repo);
     await worktreesController.refreshForRepo(repo.path);
   }
 
@@ -260,7 +259,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
   }
 
   /// Creates a worktree in an explicit [repo] (not necessarily the selected
-  /// one) and records its slot / JIRA / base-branch / PR-author metadata.
+  /// one) and records its JIRA / base-branch / PR-author metadata.
   ///
   /// All persistence flows through [preferences] (registry → save → notify), so
   /// it stays correct for any repo. The selected-repo view sync and the live
@@ -303,20 +302,6 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     // Persistence matches the in-memory RepoConfig by identity, so resolve the
     // live registry instance and thread it through each update.
     var current = _registryRepoFor(repo);
-
-    // Auto-assign next available slot to the new worktree.
-    final usedSlots = current.slotAssignments.values.toSet();
-    final slot = nextAvailableSlot(usedSlots);
-    final slots = Map<String, String>.from(current.slotAssignments);
-    slots[worktreePath] = slot;
-    final withSlot = await preferences.updateSlotAssignments(current, slots);
-    if (isSelected) {
-      _replaceSelection(current, withSlot);
-      worktreesController.setSlotAssignments(
-        withSlot?.slotAssignments ?? slots,
-      );
-    }
-    current = withSlot ?? current;
 
     // Attach JIRA issue to the new worktree, if provided.
     if (jiraIssue != null && jiraIssue.isNotEmpty) {
@@ -440,7 +425,6 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     return CreatedWorktree(
       worktreePath: worktreePath,
       branch: newBranch,
-      slot: updated.slotAssignments[worktreePath] ?? '',
       kickoffPromptPath: updated.kickoffPrompts[worktreePath],
     );
   }
@@ -473,6 +457,41 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
             : null,
       ),
     );
+  }
+
+  /// Remembers a Claude CLI session for [worktreePath] in the repo at
+  /// [repoPath], so the sidebar shows a shortcut to it. No-op when already
+  /// remembered or the repo isn't registered.
+  Future<void> rememberClaudeSession(
+    String repoPath,
+    String worktreePath,
+  ) async {
+    final repo = _registryRepoForPath(repoPath);
+    if (repo == null || repo.claudeSessions.contains(worktreePath)) return;
+    final updated = await preferences.updateClaudeSessions(repo, [
+      ...repo.claudeSessions,
+      worktreePath,
+    ]);
+    _replaceSelection(repo, updated);
+  }
+
+  /// Drops the Claude session shortcut for [worktreePath] in the repo at
+  /// [repoPath]. Any running terminal is left alone.
+  Future<void> forgetClaudeSession(String repoPath, String worktreePath) async {
+    final repo = _registryRepoForPath(repoPath);
+    if (repo == null || !repo.claudeSessions.contains(worktreePath)) return;
+    final updated = await preferences.updateClaudeSessions(
+      repo,
+      repo.claudeSessions.where((path) => path != worktreePath).toList(),
+    );
+    _replaceSelection(repo, updated);
+  }
+
+  RepoConfig? _registryRepoForPath(String repoPath) {
+    for (final r in registry.repos) {
+      if (r.path == repoPath) return r;
+    }
+    return null;
   }
 
   Future<void> updateJiraIssue(String worktreePath, String? jiraIssue) async {
@@ -588,18 +607,9 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
 
     await worktreesController.deleteWorktree(selectedRepo?.path, worktree);
 
-    // Remove slot assignment and JIRA issue for the deleted worktree
+    // Remove the deleted worktree's per-worktree metadata from config.
     if (selectedRepo != null) {
-      final repo = selectedRepo!;
-      final updated = Map<String, String>.from(repo.slotAssignments);
-      updated.remove(worktree.path);
-      var newRepo = await preferences.updateSlotAssignments(repo, updated);
-      _replaceSelection(repo, newRepo);
-      worktreesController.setSlotAssignments(
-        newRepo?.slotAssignments ?? updated,
-      );
-
-      var current = newRepo ?? selectedRepo!;
+      var current = selectedRepo!;
       if (current.jiraIssues.containsKey(worktree.path)) {
         final issues = Map<String, String>.from(current.jiraIssues);
         issues.remove(worktree.path);
@@ -641,27 +651,27 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
         current = withSnoozed ?? current;
         worktreesController.setSnoozedWorktrees(current.snoozedWorktrees);
       }
+
+      if (current.claudeSessions.contains(worktree.path)) {
+        final sessions = List<String>.from(current.claudeSessions)
+          ..remove(worktree.path);
+        final withSessions = await preferences.updateClaudeSessions(
+          current,
+          sessions,
+        );
+        _replaceSelection(current, withSessions);
+        current = withSessions ?? current;
+      }
     }
   }
 
   Future<void> refreshWorktrees() async {
-    _syncSlotAssignments(selectedRepo);
+    _syncWorktreeMetadata(selectedRepo);
     await worktreesController.refreshForRepo(selectedRepo?.path);
-    _pruneStaleSlotAssignments();
+    _pruneStaleWorktreeMetadata();
   }
 
-  Future<void> updateSlotAssignment(String worktreePath, String slot) async {
-    if (selectedRepo == null) return;
-    final repo = selectedRepo!;
-    final updated = Map<String, String>.from(repo.slotAssignments);
-    updated[worktreePath] = slot;
-    final newRepo = await preferences.updateSlotAssignments(repo, updated);
-    _replaceSelection(repo, newRepo);
-    worktreesController.setSlotAssignments(newRepo?.slotAssignments ?? updated);
-  }
-
-  void _syncSlotAssignments(RepoConfig? repo) {
-    worktreesController.setSlotAssignments(repo?.slotAssignments ?? {});
+  void _syncWorktreeMetadata(RepoConfig? repo) {
     worktreesController.setJiraIssues(repo?.jiraIssues ?? {});
     worktreesController.setBaseBranches(repo?.baseBranches ?? {});
     worktreesController.setPrAuthors(repo?.prAuthors ?? {});
@@ -670,28 +680,18 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     worktreesController.setSnoozedWorktrees(repo?.snoozedWorktrees ?? const []);
   }
 
-  /// Removes slot assignments for worktree paths that no longer exist.
-  Future<void> _pruneStaleSlotAssignments() async {
+  /// Removes per-worktree metadata for worktree paths that no longer exist.
+  Future<void> _pruneStaleWorktreeMetadata() async {
     if (selectedRepo == null) return;
-    final repo = selectedRepo!;
+    // A failed refresh leaves the list empty; don't mistake that for every
+    // worktree having been removed.
+    if (worktreesController.error != null) return;
     final activePaths = worktreesController.worktrees
         .map((w) => w.path)
         .toSet();
-    final staleKeys = repo.slotAssignments.keys
-        .where((path) => !activePaths.contains(path))
-        .toList();
-    if (staleKeys.isEmpty) return;
 
-    final updated = Map<String, String>.from(repo.slotAssignments);
-    for (final key in staleKeys) {
-      updated.remove(key);
-    }
-    var newRepo = await preferences.updateSlotAssignments(repo, updated);
-    _replaceSelection(repo, newRepo);
-    worktreesController.setSlotAssignments(newRepo?.slotAssignments ?? updated);
-
-    // Prune stale JIRA issue assignments too.
-    var current = newRepo ?? selectedRepo!;
+    // Prune stale JIRA issue assignments.
+    var current = selectedRepo!;
     final staleJiraKeys = current.jiraIssues.keys
         .where((path) => !activePaths.contains(path))
         .toList();
@@ -738,6 +738,19 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
       _replaceSelection(current, withKickoff);
       current = withKickoff ?? current;
       worktreesController.setKickoffPrompts(current.kickoffPrompts);
+    }
+
+    // Drop Claude session shortcuts whose worktree is gone.
+    final staleSessions = current.claudeSessions
+        .where((path) => !activePaths.contains(path))
+        .toList();
+    if (staleSessions.isNotEmpty) {
+      final withSessions = await preferences.updateClaudeSessions(
+        current,
+        current.claudeSessions.where(activePaths.contains).toList(),
+      );
+      _replaceSelection(current, withSessions);
+      current = withSessions ?? current;
     }
   }
 

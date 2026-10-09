@@ -4,7 +4,6 @@ class Worktree {
   final String name;
   final bool isMain;
   final String commitHash;
-  final String slot;
 
   /// JIRA issue key attached to this worktree (e.g. AU2-4859), or null.
   final String? jiraIssue;
@@ -36,7 +35,6 @@ class Worktree {
     required this.name,
     required this.isMain,
     required this.commitHash,
-    this.slot = 'alpha',
     this.jiraIssue,
     this.baseBranch,
     this.prAuthor,
@@ -51,7 +49,6 @@ class Worktree {
     String? name,
     bool? isMain,
     String? commitHash,
-    String? slot,
     String? jiraIssue,
     String? baseBranch,
     String? prAuthor,
@@ -65,7 +62,6 @@ class Worktree {
       name: name ?? this.name,
       isMain: isMain ?? this.isMain,
       commitHash: commitHash ?? this.commitHash,
-      slot: slot ?? this.slot,
       jiraIssue: jiraIssue ?? this.jiraIssue,
       baseBranch: baseBranch ?? this.baseBranch,
       prAuthor: prAuthor ?? this.prAuthor,

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/terminal/presentation/claude_session_actions.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_context_menu.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
@@ -116,7 +119,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
             ),
           ),
 
-          // Repo list
+          // Repo list (with nested Claude session shortcuts)
           Expanded(
             child: repos.isEmpty
                 ? Padding(
@@ -162,6 +165,14 @@ class _RepoSidebarState extends State<RepoSidebar> {
                         },
                         onContextMenu: (pos) =>
                             _showRepoMenu(context, repoProvider, repo, pos),
+                        onOpenClaudeSession: (path) => _openClaudeSession(
+                          context,
+                          repoProvider,
+                          repo,
+                          path,
+                        ),
+                        onForgetClaudeSession: (path) =>
+                            repoProvider.forgetClaudeSession(repo.path, path),
                       );
                     },
                   ),
@@ -276,6 +287,19 @@ class _RepoSidebarState extends State<RepoSidebar> {
         ),
       ],
     );
+  }
+
+  /// Selects [repo] and shows (or resumes) its Claude session in
+  /// [worktreePath].
+  Future<void> _openClaudeSession(
+    BuildContext context,
+    RepoProvider provider,
+    RepoConfig repo,
+    String worktreePath,
+  ) async {
+    final launcher = ClaudeSessionLauncher.of(context);
+    await provider.selectRepo(repo);
+    await launcher.resume(repoPath: repo.path, worktreePath: worktreePath);
   }
 
   Future<void> _showRepoMenu(
@@ -530,6 +554,8 @@ class _RepoTile extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onSettings;
   final void Function(Offset position) onContextMenu;
+  final ValueChanged<String> onOpenClaudeSession;
+  final ValueChanged<String> onForgetClaudeSession;
 
   const _RepoTile({
     required this.repo,
@@ -537,6 +563,8 @@ class _RepoTile extends StatefulWidget {
     required this.onTap,
     required this.onSettings,
     required this.onContextMenu,
+    required this.onOpenClaudeSession,
+    required this.onForgetClaudeSession,
   });
 
   @override
@@ -548,6 +576,34 @@ class _RepoTileState extends State<_RepoTile> {
 
   @override
   Widget build(BuildContext context) {
+    final sessions = widget.repo.claudeSessions;
+    if (sessions.isEmpty) return _buildRepoRow();
+
+    final tp = context.watch<TerminalProvider>();
+    final active = tp.isVisible ? tp.activeSession : null;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildRepoRow(),
+        for (final path in sessions)
+          Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: _ClaudeSessionTile(
+              worktreePath: path,
+              isRunning: tp.claudeSessionFor(path) != null,
+              isActive:
+                  active != null &&
+                  active.isClaude &&
+                  active.workingDirectory == path,
+              onTap: () => widget.onOpenClaudeSession(path),
+              onRemove: () => widget.onForgetClaudeSession(path),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRepoRow() {
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -865,6 +921,128 @@ class _TerminalToggleButtonState extends State<_TerminalToggleButton> {
           ? (isActive ? 'Hide terminals' : 'Show terminals ($count)')
           : 'No active terminals',
       child: button,
+    );
+  }
+}
+
+// --- Claude session shortcut ---
+
+class _ClaudeSessionTile extends StatefulWidget {
+  final String worktreePath;
+  final bool isRunning;
+  final bool isActive;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const _ClaudeSessionTile({
+    required this.worktreePath,
+    required this.isRunning,
+    required this.isActive,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  State<_ClaudeSessionTile> createState() => _ClaudeSessionTileState();
+}
+
+class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.isActive ? AppColors.claude : AppColors.textMuted;
+    return Tooltip(
+      message:
+          '${widget.worktreePath}\n'
+          '${widget.isRunning ? 'Running — click to show' : 'Click to resume'}',
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            margin: const EdgeInsets.only(bottom: 2),
+            decoration: BoxDecoration(
+              color: widget.isActive
+                  ? AppColors.claude.withValues(alpha: 0.12)
+                  : _hovered
+                  ? AppColors.surface1
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 3,
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: widget.isActive
+                          ? AppColors.claude
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SvgPicture.asset(
+                    'assets/icons/claude.svg',
+                    width: 12,
+                    height: 12,
+                    colorFilter: ColorFilter.mode(
+                      widget.isRunning ? AppColors.claude : color,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        p.basename(widget.worktreePath),
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: widget.isActive
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          color: widget.isActive
+                              ? AppColors.claude
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (widget.isRunning) ...[
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: AppColors.success,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  if (_hovered)
+                    Tooltip(
+                      message: 'Remove shortcut',
+                      child: _TinyIconButton(
+                        icon: Icons.close_rounded,
+                        onTap: widget.onRemove,
+                      ),
+                    ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

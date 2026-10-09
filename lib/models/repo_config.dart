@@ -19,7 +19,6 @@ class RepoConfig {
 
   /// Saved prompt templates offered when launching Claude in a worktree.
   final List<ClaudePrompt> claudePrompts;
-  final Map<String, String> slotAssignments;
 
   /// JIRA issue keys per worktree path (worktree path -> issue key).
   final Map<String, String> jiraIssues;
@@ -58,6 +57,11 @@ class RepoConfig {
   /// instead of as siblings of the repo directory. Ignored for bare repos.
   final bool useNestedWorktrees;
 
+  /// Worktree paths with a remembered Claude CLI session, shown as shortcuts
+  /// under the repo in the sidebar. Kept across restarts so a session can be
+  /// resumed (`claude --continue`) after its terminal is gone.
+  final List<String> claudeSessions;
+
   RepoConfig({
     required this.name,
     required this.path,
@@ -65,7 +69,6 @@ class RepoConfig {
     this.customCommands = const [],
     this.lastBaseBranch,
     this.claudePrompts = const [],
-    this.slotAssignments = const {},
     this.jiraIssues = const {},
     this.baseBranches = const {},
     this.prAuthors = const {},
@@ -77,6 +80,7 @@ class RepoConfig {
     this.jiraFixVersionId,
     this.predefinedIssues = const [],
     this.useNestedWorktrees = false,
+    this.claudeSessions = const [],
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -99,10 +103,6 @@ class RepoConfig {
               ?.map((e) => ClaudePrompt.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      slotAssignments:
-          (json['slotAssignments'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as String)) ??
-          {},
       jiraIssues:
           (json['jiraIssues'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as String)) ??
@@ -136,6 +136,11 @@ class RepoConfig {
               .toList() ??
           [],
       useNestedWorktrees: json['useNestedWorktrees'] as bool? ?? false,
+      claudeSessions:
+          (json['claudeSessions'] as List<dynamic>?)
+              ?.whereType<String>()
+              .toList() ??
+          const [],
     );
   }
 
@@ -146,7 +151,6 @@ class RepoConfig {
     'customCommands': customCommands.map((c) => c.toJson()).toList(),
     'lastBaseBranch': lastBaseBranch,
     _claudePromptsKey: claudePrompts.map((p) => p.toJson()).toList(),
-    'slotAssignments': slotAssignments,
     'jiraIssues': jiraIssues,
     'baseBranches': baseBranches,
     'prAuthors': prAuthors,
@@ -159,6 +163,7 @@ class RepoConfig {
     if (jiraFixVersionId != null) 'jiraFixVersionId': jiraFixVersionId,
     'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
     'useNestedWorktrees': useNestedWorktrees,
+    'claudeSessions': claudeSessions,
   };
 
   RepoConfig copyWith({
@@ -168,7 +173,6 @@ class RepoConfig {
     List<CustomCommand>? customCommands,
     String? lastBaseBranch,
     List<ClaudePrompt>? claudePrompts,
-    Map<String, String>? slotAssignments,
     Map<String, String>? jiraIssues,
     Map<String, String>? baseBranches,
     Map<String, String>? prAuthors,
@@ -183,6 +187,7 @@ class RepoConfig {
     bool clearJiraFixVersionId = false,
     List<PredefinedIssue>? predefinedIssues,
     bool? useNestedWorktrees,
+    List<String>? claudeSessions,
   }) {
     return RepoConfig(
       name: name ?? this.name,
@@ -191,7 +196,6 @@ class RepoConfig {
       customCommands: customCommands ?? this.customCommands,
       lastBaseBranch: lastBaseBranch ?? this.lastBaseBranch,
       claudePrompts: claudePrompts ?? this.claudePrompts,
-      slotAssignments: slotAssignments ?? this.slotAssignments,
       jiraIssues: jiraIssues ?? this.jiraIssues,
       baseBranches: baseBranches ?? this.baseBranches,
       prAuthors: prAuthors ?? this.prAuthors,
@@ -209,6 +213,7 @@ class RepoConfig {
           : (jiraFixVersionId ?? this.jiraFixVersionId),
       predefinedIssues: predefinedIssues ?? this.predefinedIssues,
       useNestedWorktrees: useNestedWorktrees ?? this.useNestedWorktrees,
+      claudeSessions: claudeSessions ?? this.claudeSessions,
     );
   }
 

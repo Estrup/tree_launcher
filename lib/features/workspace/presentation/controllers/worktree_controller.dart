@@ -19,24 +19,13 @@ class WorktreeController extends ChangeNotifier {
   String? get error => _error;
   bool get isBareLayout => _isBareLayout;
 
-  /// Slot assignments from config, keyed by worktree path.
-  Map<String, String> _slotAssignments = {};
-  Map<String, String> get slotAssignments =>
-      Map.unmodifiable(_slotAssignments);
-
-  void setSlotAssignments(Map<String, String> assignments) {
-    _slotAssignments = Map.of(assignments);
-    _hydrateSlots();
-    notifyListeners();
-  }
-
   /// JIRA issue keys from config, keyed by worktree path.
   Map<String, String> _jiraIssues = {};
   Map<String, String> get jiraIssues => Map.unmodifiable(_jiraIssues);
 
   void setJiraIssues(Map<String, String> issues) {
     _jiraIssues = Map.of(issues);
-    _hydrateSlots();
+    _hydrateMetadata();
     notifyListeners();
   }
 
@@ -46,7 +35,7 @@ class WorktreeController extends ChangeNotifier {
 
   void setBaseBranches(Map<String, String> branches) {
     _baseBranches = Map.of(branches);
-    _hydrateSlots();
+    _hydrateMetadata();
     notifyListeners();
   }
 
@@ -56,7 +45,7 @@ class WorktreeController extends ChangeNotifier {
 
   void setPrAuthors(Map<String, String> authors) {
     _prAuthors = Map.of(authors);
-    _hydrateSlots();
+    _hydrateMetadata();
     notifyListeners();
   }
 
@@ -66,7 +55,7 @@ class WorktreeController extends ChangeNotifier {
 
   void setKickoffPrompts(Map<String, String> prompts) {
     _kickoffPrompts = Map.of(prompts);
-    _hydrateSlots();
+    _hydrateMetadata();
     notifyListeners();
   }
 
@@ -76,7 +65,7 @@ class WorktreeController extends ChangeNotifier {
 
   void setHiddenWorktrees(Iterable<String> paths) {
     _hiddenWorktrees = paths.toSet();
-    _hydrateSlots();
+    _hydrateMetadata();
     notifyListeners();
   }
 
@@ -86,7 +75,7 @@ class WorktreeController extends ChangeNotifier {
 
   void setSnoozedWorktrees(Iterable<String> paths) {
     _snoozedWorktrees = paths.toSet();
-    _hydrateSlots();
+    _hydrateMetadata();
     notifyListeners();
   }
 
@@ -108,7 +97,7 @@ class WorktreeController extends ChangeNotifier {
       final result = await _gitService.getWorktrees(repoPath);
       _worktrees = result.worktrees;
       _isBareLayout = result.isBareLayout;
-      _hydrateSlots();
+      _hydrateMetadata();
       _error = null;
     } catch (error) {
       _worktrees = [];
@@ -119,13 +108,10 @@ class WorktreeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Assigns slots and JIRA issues from config to worktrees.
-  /// Unassigned worktrees get 'alpha' as default slot.
-  void _hydrateSlots() {
+  /// Applies per-worktree metadata from config (JIRA issue, base branch, ...).
+  void _hydrateMetadata() {
     _worktrees = _worktrees.map((wt) {
-      final slot = _slotAssignments[wt.path] ?? 'alpha';
       return wt.copyWith(
-        slot: slot,
         jiraIssue: _jiraIssues[wt.path],
         baseBranch: _baseBranches[wt.path],
         prAuthor: _prAuthors[wt.path],
