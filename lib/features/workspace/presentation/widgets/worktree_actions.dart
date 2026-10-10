@@ -6,6 +6,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
+import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issue_dialog.dart';
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
@@ -1725,18 +1727,55 @@ class _JiraBadgeState extends State<JiraBadge> {
   bool _hovered = false;
 
   @override
+  void initState() {
+    super.initState();
+    _requestTitle();
+  }
+
+  @override
+  void didUpdateWidget(JiraBadge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.issueKey != oldWidget.issueKey) _requestTitle();
+  }
+
+  /// Asks for the issue's title for the tooltip; known keys are skipped by
+  /// the controller. Without one (e.g. in tests) the tooltip has no title.
+  void _requestTitle() {
+    Provider.of<JiraTitlesController?>(
+      context,
+      listen: false,
+    )?.ensureTitles([widget.issueKey]);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final iconSize = widget.compact ? 11.0 : 12.0;
     final fontSize = widget.compact ? 11.0 : 12.0;
+    final title = context.watch<JiraTitlesController?>()?.titleFor(
+      widget.issueKey,
+    );
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        onTap: () =>
-            JiraIssueDialog.show(context, issueKey: widget.issueKey),
+        onTap: () {
+          // Read before opening: this badge may be gone when the issue
+          // changes, e.g. when its row is filtered out.
+          final issues = Provider.of<JiraIssuesController?>(
+            context,
+            listen: false,
+          );
+          JiraIssueDialog.show(
+            context,
+            issueKey: widget.issueKey,
+            onIssueChanged: issues == null ? null : () => issues.refresh(),
+          );
+        },
         child: Tooltip(
-          message: 'View ${widget.issueKey}',
+          message: title == null
+              ? 'View ${widget.issueKey}'
+              : '${widget.issueKey}: $title',
           child: Container(
             padding: EdgeInsets.symmetric(
               horizontal: widget.compact ? 8 : 10,

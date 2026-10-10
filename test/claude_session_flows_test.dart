@@ -13,6 +13,7 @@ import 'package:tree_launcher/features/github_prs/presentation/controllers/githu
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_prs_tab.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
+import 'package:tree_launcher/features/jira/domain/jira_user.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issues_tab.dart';
@@ -37,6 +38,10 @@ const _existingPath = '/tmp/au2-wt';
 const _existingBranch = 'feature/vaerksted-kontakt-au2-5928';
 
 class _FakeJiraService extends JiraApiService {
+  @override
+  Future<JiraUser> fetchMyself() async =>
+      const JiraUser(name: 'me', displayName: 'Me Myself');
+
   @override
   Future<List<JiraVersion>> fetchVersions(String projectKey) async => const [
     JiraVersion(id: '29501', name: 'au2office 2.41.3'),

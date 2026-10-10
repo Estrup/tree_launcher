@@ -26,7 +26,7 @@ Worktree _wt(String name, {bool isMain = false}) => Worktree(
 );
 
 Finder _checkboxes() => find.byWidgetPredicate(
-  (w) => w.runtimeType.toString() == '_SelectCheckbox',
+  (w) => w.runtimeType.toString() == 'SelectCheckbox',
 );
 
 class _FakeConfigService extends ConfigService {

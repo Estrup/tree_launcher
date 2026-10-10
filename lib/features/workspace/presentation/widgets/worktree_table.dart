@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/design_system/selection_controls.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
@@ -226,13 +227,13 @@ class _BulkActionBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          _BulkBarButton(
+          BulkBarButton(
             icon: Icons.visibility_off_rounded,
             label: 'Hide',
             onTap: onHide,
           ),
           const SizedBox(width: 8),
-          _BulkBarButton(
+          BulkBarButton(
             icon: Icons.delete_outline_rounded,
             label: 'Delete',
             color: AppColors.error,
@@ -240,150 +241,12 @@ class _BulkActionBar extends StatelessWidget {
             disabledTooltip: "The primary worktree can't be deleted",
           ),
           const SizedBox(width: 8),
-          _BulkBarButton(
+          BulkBarButton(
             icon: Icons.close_rounded,
             label: 'Clear',
             onTap: onClear,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _BulkBarButton extends StatefulWidget {
-  final IconData icon;
-  final String label;
-
-  /// Foreground while hovered; defaults to the standard text hover color.
-  final Color? color;
-
-  /// Disabled when null.
-  final VoidCallback? onTap;
-  final String? disabledTooltip;
-
-  const _BulkBarButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.color,
-    this.disabledTooltip,
-  });
-
-  @override
-  State<_BulkBarButton> createState() => _BulkBarButtonState();
-}
-
-class _BulkBarButtonState extends State<_BulkBarButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = widget.onTap != null;
-    final foreground = !enabled
-        ? AppColors.textMuted.withValues(alpha: 0.5)
-        : _hovered
-        ? (widget.color ?? AppColors.textPrimary)
-        : AppColors.textMuted;
-
-    Widget button = MouseRegion(
-      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: _hovered && enabled
-                ? AppColors.surface2
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(widget.icon, size: 13, color: foreground),
-              const SizedBox(width: 6),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: foreground,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (!enabled && widget.disabledTooltip != null) {
-      button = Tooltip(message: widget.disabledTooltip!, child: button);
-    }
-    return button;
-  }
-}
-
-/// Hand-rolled 16×16 checkbox matching the app's hover-container controls.
-/// [value] null renders the header's partial (dash) state. While [visible] is
-/// false the checkbox is faded out and ignores pointer events, but its space
-/// stays reserved so columns never shift.
-class _SelectCheckbox extends StatelessWidget {
-  final bool? value;
-  final bool visible;
-  final VoidCallback onTap;
-
-  const _SelectCheckbox({
-    required this.value,
-    required this.visible,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final checked = value != false;
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 120),
-      opacity: visible ? 1 : 0,
-      child: IgnorePointer(
-        ignoring: !visible,
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onTap,
-            child: SizedBox(
-              width: _kCheckboxWidth,
-              height: _kCheckboxWidth,
-              child: Center(
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: checked ? AppColors.accent : Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: checked ? AppColors.accent : AppColors.border,
-                    ),
-                  ),
-                  child: checked
-                      ? Icon(
-                          value == null
-                              ? Icons.remove_rounded
-                              : Icons.check_rounded,
-                          size: 12,
-                          color: AppColors.base,
-                        )
-                      : null,
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -479,7 +342,7 @@ class _HeaderRowState extends State<_HeaderRow> {
               width: _kCheckboxWidth,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: _SelectCheckbox(
+                child: SelectCheckbox(
                   value: widget.selectAllState,
                   visible: _hovered || widget.selectionActive,
                   onTap: widget.onToggleSelectAll,
@@ -585,7 +448,7 @@ class _WorktreeRowState extends State<_WorktreeRow> {
               width: _kCheckboxWidth,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: _SelectCheckbox(
+                child: SelectCheckbox(
                   value: widget.selected,
                   visible:
                       _hovered || widget.selected || widget.selectionActive,

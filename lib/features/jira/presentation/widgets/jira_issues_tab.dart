@@ -1,11 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
+import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/design_system/selection_controls.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
+import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
+import 'package:tree_launcher/features/jira/presentation/widgets/jira_status_menu.dart';
+import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
@@ -17,16 +25,17 @@ const double _kTypeWidth = 22;
 const double _kKeyWidth = 120;
 const double _kStatusWidth = 150;
 const double _kAssigneeWidth = 160;
-const double _kActionsWidth = 98;
+const double _kActionsWidth = 132;
 const double _kColumnGap = 12;
 
 /// Below this list width the assignee column is dropped so the summary keeps
 /// room in a narrow window.
 const double _kAssigneeMinListWidth = 760;
 
-/// Lists the selected repo's Jira issues for one fixVersion, with a status
-/// filter and per-issue buttons that open New Worktree prefilled or start a
-/// Claude session for the issue.
+/// Lists the selected repo's Jira issues for one fixVersion, or the issues a
+/// search by key or text finds, with a status filter and per-issue buttons that open New Worktree prefilled, start a
+/// Claude session for the issue, change its status or assign it to me.
+/// Selected issues can have their status changed together.
 class JiraIssuesTab extends StatelessWidget {
   const JiraIssuesTab({super.key});
 
@@ -51,7 +60,7 @@ class JiraIssuesTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header: fixVersion picker, count, refresh
+        // Header: fixVersion picker, search, count, refresh
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
@@ -61,12 +70,27 @@ class JiraIssuesTab extends StatelessWidget {
                 selected: jira.selectedVersion,
                 onSelected: jira.selectVersion,
               ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 300),
+                  child: _SearchField(
+                    query: jira.searchQuery,
+                    onSearch: jira.search,
+                  ),
+                ),
+              ),
               if (jira.issues.isNotEmpty) ...[
                 const SizedBox(width: 10),
                 _CountBadge(
-                  text: jira.statusFilter.isEmpty
-                      ? '${jira.issues.length}'
-                      : '${visible.length} / ${jira.issues.length}',
+                  text: [
+                    if (jira.statusFilter.isNotEmpty) '${visible.length}',
+                    '${jira.issues.length}${jira.searchTruncated ? '+' : ''}',
+                  ].join(' / '),
+                  tooltip: jira.searchTruncated
+                      ? 'Showing the ${JiraIssuesController.searchLimit} most '
+                            'recently updated matches'
+                      : null,
                 ),
               ],
               const Spacer(),
@@ -122,7 +146,7 @@ class JiraIssuesTab extends StatelessWidget {
                   _StatusChip(
                     label: status.name,
                     count: status.count,
-                    color: _statusColor(status.category),
+                    color: jiraStatusColor(status.category),
                     selected: jira.statusFilter.contains(status.name),
                     onTap: () => jira.toggleStatus(status.name),
                   ),
@@ -145,7 +169,9 @@ class JiraIssuesTab extends StatelessWidget {
                     ? const SizedBox.shrink()
                     : _CenteredMessage(
                         icon: Icons.inbox_outlined,
-                        text: jira.selectedVersion == null
+                        text: jira.isSearching && jira.issues.isEmpty
+                            ? 'No issues match "${jira.searchQuery}"'
+                            : jira.selectedVersion == null && !jira.isSearching
                             ? 'No fixVersions in ${jira.projectKey}'
                             : jira.issues.isEmpty
                             ? 'No issues in ${jira.selectedVersion!.name}'
@@ -171,11 +197,26 @@ class JiraIssuesTab extends StatelessWidget {
     Map<String, Worktree> worktreesByIssue, {
     required bool showAssignee,
   }) {
+    final jira = context.watch<JiraIssuesController>();
+    final selected = jira.selectedKeys;
+    final selectionActive = selected.isNotEmpty;
+    final allSelected = visible.every((i) => selected.contains(i.key));
     return Column(
       children: [
+        if (selectionActive)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: _BulkBar(issues: jira.selectedIssues),
+          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: _HeaderRow(showAssignee: showAssignee),
+          child: _HeaderRow(
+            showAssignee: showAssignee,
+            selectAllState: !selectionActive
+                ? false
+                : (allSelected ? true : null),
+            onToggleSelectAll: jira.toggleSelectAll,
+          ),
         ),
         const SizedBox(height: 6),
         Expanded(
@@ -188,6 +229,13 @@ class JiraIssuesTab extends StatelessWidget {
                 issue: issue,
                 worktree: worktreesByIssue[issue.key],
                 showAssignee: showAssignee,
+                selected: selected.contains(issue.key),
+                selectionActive: selectionActive,
+                assignedToMe:
+                    issue.assignee != null &&
+                    issue.assignee == jira.myDisplayName,
+                onSelectedChanged: (value) =>
+                    jira.setSelected(issue.key, value),
                 onCreateWorktree: () => AddWorktreeDialog.show(
                   context,
                   initialName: worktreeNameForJiraIssue(
@@ -220,38 +268,6 @@ class JiraIssuesTab extends StatelessWidget {
     if (diff.inSeconds < 60) return 'just now';
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     return '${diff.inHours}h ago';
-  }
-}
-
-/// Colour for a Jira status category (`new`, `indeterminate`, `done`).
-Color _statusColor(String? category) {
-  switch (category) {
-    case 'done':
-      return AppColors.success;
-    case 'indeterminate':
-      return AppColors.vscode;
-    default:
-      return AppColors.textSecondary;
-  }
-}
-
-/// Icon and colour for an issue type name.
-(IconData, Color) _typeIcon(String? type) {
-  switch (type?.trim().toLowerCase()) {
-    case 'bug':
-      return (Icons.bug_report_rounded, AppColors.error);
-    case 'story':
-      return (Icons.bookmark_rounded, AppColors.success);
-    case 'task':
-      return (Icons.check_box_rounded, AppColors.vscode);
-    case 'epic':
-      return (Icons.bolt_rounded, AppColors.branch);
-    case 'new feature':
-      return (Icons.add_box_rounded, AppColors.success);
-    case 'improvement':
-      return (Icons.arrow_circle_up_rounded, AppColors.success);
-    default:
-      return (Icons.circle_outlined, AppColors.textMuted);
   }
 }
 
@@ -308,10 +324,100 @@ class _VersionPicker extends StatelessWidget {
   }
 }
 
+/// Searches for an issue key or text: as you type (after a pause), or at once
+/// on Enter. Clearing it, or Escape, goes back to the fixVersion's issues.
+class _SearchField extends StatefulWidget {
+  /// The controller's query; the field follows it when it's cleared from
+  /// outside (a fixVersion picked, another repo selected).
+  final String query;
+  final ValueChanged<String> onSearch;
+
+  const _SearchField({required this.query, required this.onSearch});
+
+  @override
+  State<_SearchField> createState() => _SearchFieldState();
+}
+
+class _SearchFieldState extends State<_SearchField> {
+  static const _pause = Duration(milliseconds: 400);
+
+  late final _text = TextEditingController(text: widget.query);
+  Timer? _timer;
+
+  @override
+  void didUpdateWidget(_SearchField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.query != oldWidget.query &&
+        widget.query != _text.text.trim() &&
+        !(_timer?.isActive ?? false)) {
+      _text.text = widget.query;
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _text.dispose();
+    super.dispose();
+  }
+
+  void _changed(String value) {
+    setState(() {}); // Shows or hides the clear button.
+    _timer?.cancel();
+    _timer = Timer(_pause, () => widget.onSearch(value));
+  }
+
+  void _submit(String value) {
+    _timer?.cancel();
+    widget.onSearch(value);
+  }
+
+  void _clear() {
+    _text.clear();
+    _submit('');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CallbackShortcuts(
+      bindings: {const SingleActivator(LogicalKeyboardKey.escape): _clear},
+      child: TextField(
+        controller: _text,
+        onChanged: _changed,
+        onSubmitted: _submit,
+        style: appFormFieldTextStyle(context),
+        decoration: InputDecoration(
+          hintText: 'Search key or text',
+          prefixIcon: Icon(Icons.search, size: 16, color: AppColors.textMuted),
+          suffixIcon: _text.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Clear search',
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                  onPressed: _clear,
+                ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HeaderRow extends StatelessWidget {
   final bool showAssignee;
 
-  const _HeaderRow({required this.showAssignee});
+  /// The select-all checkbox: all, none, or (null) some selected.
+  final bool? selectAllState;
+  final VoidCallback onToggleSelectAll;
+
+  const _HeaderRow({
+    required this.showAssignee,
+    required this.selectAllState,
+    required this.onToggleSelectAll,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -325,6 +431,16 @@ class _HeaderRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         children: [
+          Tooltip(
+            message: 'Select all',
+            child: SelectCheckbox(
+              value: selectAllState,
+              // Always shown, so all issues can be selected at once.
+              visible: true,
+              onTap: onToggleSelectAll,
+            ),
+          ),
+          const SizedBox(width: _kColumnGap),
           const SizedBox(width: _kTypeWidth + _kColumnGap),
           SizedBox(
             width: _kKeyWidth,
@@ -351,10 +467,16 @@ class _HeaderRow extends StatelessWidget {
   }
 }
 
-class _IssueRow extends StatelessWidget {
+class _IssueRow extends StatefulWidget {
   final JiraIssue issue;
   final Worktree? worktree;
   final bool showAssignee;
+  final bool selected;
+
+  /// Whether any issue is selected, which keeps every checkbox shown.
+  final bool selectionActive;
+  final bool assignedToMe;
+  final ValueChanged<bool> onSelectedChanged;
   final VoidCallback onCreateWorktree;
   final VoidCallback onStartClaude;
 
@@ -362,17 +484,368 @@ class _IssueRow extends StatelessWidget {
     required this.issue,
     required this.worktree,
     required this.showAssignee,
+    required this.selected,
+    required this.selectionActive,
+    required this.assignedToMe,
+    required this.onSelectedChanged,
     required this.onCreateWorktree,
     required this.onStartClaude,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final (typeIcon, typeColor) = _typeIcon(issue.issueType);
-    final statusColor = _statusColor(issue.statusCategory);
+  State<_IssueRow> createState() => _IssueRowState();
+}
 
+class _IssueRowState extends State<_IssueRow> {
+  bool _hovered = false;
+  bool _changingStatus = false;
+  bool _assigning = false;
+
+  /// Offers the issue's status changes below its status pill
+  /// ([pillContext]) and applies the one picked.
+  Future<void> _changeStatus(BuildContext pillContext) async {
+    if (_changingStatus) return;
+    final jira = context.read<JiraIssuesController>();
+    final key = widget.issue.key;
+    setState(() => _changingStatus = true);
+    try {
+      final moves = await jira.statusMovesFor([key]);
+      if (!mounted || !pillContext.mounted) return;
+      if (moves.isEmpty) {
+        showAppSnackBar('No status changes are available for $key.');
+        return;
+      }
+      setState(() => _changingStatus = false);
+      final move = await showJiraStatusMenu(pillContext, moves, issueCount: 1);
+      if (move == null || !mounted) return;
+      setState(() => _changingStatus = true);
+      final failures = await jira.applyStatusMove(move);
+      final reason = failures[key];
+      if (reason != null) showAppSnackBar('$key: $reason');
+    } catch (e) {
+      showAppSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _changingStatus = false);
+    }
+  }
+
+  Future<void> _assignToMe() async {
+    if (_assigning) return;
+    final jira = context.read<JiraIssuesController>();
+    setState(() => _assigning = true);
+    try {
+      await jira.assignToMe(widget.issue.key);
+    } catch (e) {
+      showAppSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _assigning = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final issue = widget.issue;
+    final worktree = widget.worktree;
+    final (typeIcon, typeColor) = jiraTypeIcon(issue.issueType);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: widget.selected ? AppColors.accentMuted : AppColors.surface1,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: widget.selected
+                ? AppColors.accent.withValues(alpha: 0.35)
+                : AppColors.borderSubtle,
+          ),
+        ),
+        child: Row(
+          children: [
+            SelectCheckbox(
+              value: widget.selected,
+              visible: _hovered || widget.selected || widget.selectionActive,
+              onTap: () => widget.onSelectedChanged(!widget.selected),
+            ),
+            const SizedBox(width: _kColumnGap),
+            SizedBox(
+              width: _kTypeWidth,
+              child: Tooltip(
+                message: issue.issueType?.trim() ?? 'Unknown type',
+                child: Icon(typeIcon, size: 16, color: typeColor),
+              ),
+            ),
+            const SizedBox(width: _kColumnGap),
+            SizedBox(
+              width: _kKeyWidth,
+              // Scales a long key down rather than overflowing the column.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: JiraBadge(issueKey: issue.key, compact: true),
+              ),
+            ),
+            const SizedBox(width: _kColumnGap),
+            Expanded(
+              child: Tooltip(
+                message: issue.summary,
+                waitDuration: const Duration(milliseconds: 500),
+                child: Text(
+                  issue.summary,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: _kColumnGap),
+            SizedBox(
+              width: _kStatusWidth,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Builder(
+                  builder: (pillContext) => _StatusPill(
+                    status: issue.status ?? '—',
+                    category: issue.statusCategory,
+                    busy: _changingStatus,
+                    onTap: () => _changeStatus(pillContext),
+                  ),
+                ),
+              ),
+            ),
+            if (widget.showAssignee) ...[
+              const SizedBox(width: _kColumnGap),
+              SizedBox(
+                width: _kAssigneeWidth,
+                child: Text(
+                  issue.assignee ?? 'Unassigned',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: issue.assignee == null
+                        ? AppColors.textMuted
+                        : AppColors.textSecondary,
+                    fontStyle: issue.assignee == null
+                        ? FontStyle.italic
+                        : FontStyle.normal,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(width: _kColumnGap),
+            SizedBox(
+              width: _kActionsWidth,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (worktree != null) ...[
+                    Tooltip(
+                      message: 'Worktree: ${worktree.name}',
+                      child: Icon(
+                        Icons.account_tree_rounded,
+                        size: 15,
+                        color: AppColors.success,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  if (!widget.assignedToMe) ...[
+                    Tooltip(
+                      message: 'Assign to me',
+                      child: _assigning
+                          ? SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: Padding(
+                                padding: const EdgeInsets.all(7),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.accent,
+                                ),
+                              ),
+                            )
+                          : ActionButton(
+                              compact: true,
+                              icon: Icons.person_add_alt_1_rounded,
+                              color: AppColors.accent,
+                              bgColor: AppColors.accentMuted,
+                              onPressed: _assignToMe,
+                            ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Tooltip(
+                    message: 'Claude session for ${issue.key}…',
+                    child: ActionButton(
+                      compact: true,
+                      svgAsset: 'assets/icons/claude.svg',
+                      color: AppColors.claude,
+                      bgColor: AppColors.claudeBg,
+                      onPressed: widget.onStartClaude,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: 'Create worktree for ${issue.key}…',
+                    child: ActionButton(
+                      compact: true,
+                      icon: Icons.add_rounded,
+                      color: AppColors.terminal,
+                      bgColor: AppColors.terminalBg,
+                      onPressed: widget.onCreateWorktree,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// An issue's status, as a button that opens its status menu.
+class _StatusPill extends StatefulWidget {
+  final String status;
+  final String? category;
+  final bool busy;
+  final VoidCallback onTap;
+
+  const _StatusPill({
+    required this.status,
+    required this.category,
+    required this.busy,
+    required this.onTap,
+  });
+
+  @override
+  State<_StatusPill> createState() => _StatusPillState();
+}
+
+class _StatusPillState extends State<_StatusPill> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = jiraStatusColor(widget.category);
+    return Tooltip(
+      message: 'Change status',
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.busy ? null : widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.fromLTRB(8, 3, 4, 3),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: _hovered ? 0.2 : 0.12),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: color.withValues(alpha: _hovered ? 0.5 : 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    widget.status,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 2),
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: widget.busy
+                      ? Padding(
+                          padding: const EdgeInsets.all(2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            color: color,
+                          ),
+                        )
+                      : Icon(Icons.expand_more_rounded, size: 14, color: color),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown above the list while issues are selected: how many, changing their
+/// status together, and clearing the selection.
+class _BulkBar extends StatefulWidget {
+  final List<JiraIssue> issues;
+
+  const _BulkBar({required this.issues});
+
+  @override
+  State<_BulkBar> createState() => _BulkBarState();
+}
+
+class _BulkBarState extends State<_BulkBar> {
+  bool _busy = false;
+
+  Future<void> _changeStatus(BuildContext buttonContext) async {
+    if (_busy) return;
+    final jira = context.read<JiraIssuesController>();
+    final keys = widget.issues.map((i) => i.key).toList();
+    setState(() => _busy = true);
+    try {
+      final moves = await jira.statusMovesFor(keys);
+      if (!mounted || !buttonContext.mounted) return;
+      if (moves.isEmpty) {
+        showAppSnackBar('No status changes are available for these issues.');
+        return;
+      }
+      setState(() => _busy = false);
+      final move = await showJiraStatusMenu(
+        buttonContext,
+        moves,
+        issueCount: keys.length,
+      );
+      if (move == null || !mounted) return;
+      setState(() => _busy = true);
+      final failures = await jira.applyStatusMove(move);
+      showAppSnackBar(bulkMoveSummary(move, keys.length, failures));
+      // Leave the issues that didn't move selected, to retry or handle.
+      jira.clearSelection();
+      for (final key in keys) {
+        if (failures.containsKey(key) || !move.transitions.containsKey(key)) {
+          jira.setSelected(key, true);
+        }
+      }
+    } catch (e) {
+      showAppSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final jira = context.read<JiraIssuesController>();
+    final count = widget.issues.length;
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.surface1,
@@ -381,127 +854,60 @@ class _IssueRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: _kTypeWidth,
-            child: Tooltip(
-              message: issue.issueType?.trim() ?? 'Unknown type',
-              child: Icon(typeIcon, size: 16, color: typeColor),
+          Text(
+            '$count selected',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(width: _kColumnGap),
-          SizedBox(
-            width: _kKeyWidth,
-            // Scales a long key down rather than overflowing the column.
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: JiraBadge(issueKey: issue.key, compact: true),
+          const Spacer(),
+          Builder(
+            builder: (buttonContext) => BulkBarButton(
+              icon: Icons.swap_horiz_rounded,
+              label: 'Change status',
+              busy: _busy,
+              onTap: _busy || count == 0
+                  ? null
+                  : () => _changeStatus(buttonContext),
             ),
           ),
-          const SizedBox(width: _kColumnGap),
-          Expanded(
-            child: Tooltip(
-              message: issue.summary,
-              waitDuration: const Duration(milliseconds: 500),
-              child: Text(
-                issue.summary,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: _kColumnGap),
-          SizedBox(
-            width: _kStatusWidth,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: statusColor.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  issue.status ?? '—',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (showAssignee) ...[
-            const SizedBox(width: _kColumnGap),
-            SizedBox(
-              width: _kAssigneeWidth,
-              child: Text(
-                issue.assignee ?? 'Unassigned',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: issue.assignee == null
-                      ? AppColors.textMuted
-                      : AppColors.textSecondary,
-                  fontStyle: issue.assignee == null
-                      ? FontStyle.italic
-                      : FontStyle.normal,
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(width: _kColumnGap),
-          SizedBox(
-            width: _kActionsWidth,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (worktree != null) ...[
-                  Tooltip(
-                    message: 'Worktree: ${worktree!.name}',
-                    child: Icon(
-                      Icons.account_tree_rounded,
-                      size: 15,
-                      color: AppColors.success,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Tooltip(
-                  message: 'Claude session for ${issue.key}…',
-                  child: ActionButton(
-                    compact: true,
-                    svgAsset: 'assets/icons/claude.svg',
-                    color: AppColors.claude,
-                    bgColor: AppColors.claudeBg,
-                    onPressed: onStartClaude,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Tooltip(
-                  message: 'Create worktree for ${issue.key}…',
-                  child: ActionButton(
-                    compact: true,
-                    icon: Icons.add_rounded,
-                    color: AppColors.terminal,
-                    bgColor: AppColors.terminalBg,
-                    onPressed: onCreateWorktree,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(width: 8),
+          BulkBarButton(
+            icon: Icons.close_rounded,
+            label: 'Clear',
+            onTap: jira.clearSelection,
           ),
         ],
       ),
     );
   }
+}
+
+/// What a status change on [total] selected issues did, e.g. "Moved 3 of 5
+/// issues to Done. AU2-4: Resolution is required. 1 can't move to Done."
+@visibleForTesting
+String bulkMoveSummary(
+  JiraStatusMove move,
+  int total,
+  Map<String, String> failures,
+) {
+  final moved = move.transitions.length - failures.length;
+  final issues = total == 1 ? 'issue' : 'issues';
+  final parts = [
+    moved == total
+        ? 'Moved $total $issues to ${move.toStatus}.'
+        : 'Moved $moved of $total $issues to ${move.toStatus}.',
+    for (final MapEntry(key: key, value: reason) in failures.entries.take(2))
+      '$key: $reason',
+    if (failures.length > 2) '${failures.length - 2} more failed.',
+  ];
+  final unavailable = total - move.transitions.length;
+  if (unavailable > 0) {
+    parts.add("$unavailable can't move to ${move.toStatus}.");
+  }
+  return parts.join(' ');
 }
 
 class _StatusChip extends StatefulWidget {
@@ -584,12 +990,13 @@ class _StatusChipState extends State<_StatusChip> {
 
 class _CountBadge extends StatelessWidget {
   final String text;
+  final String? tooltip;
 
-  const _CountBadge({required this.text});
+  const _CountBadge({required this.text, this.tooltip});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final badge = Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: AppColors.accentMuted,
@@ -604,6 +1011,7 @@ class _CountBadge extends StatelessWidget {
         ),
       ),
     );
+    return tooltip == null ? badge : Tooltip(message: tooltip, child: badge);
   }
 }
 
