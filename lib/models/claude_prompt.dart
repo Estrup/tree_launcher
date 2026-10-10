@@ -1,6 +1,7 @@
 /// A reusable, named prompt template for launching Claude in a worktree.
-/// Placeholders ({issue}, {base_branch}, {worktree}, {path}, {repo}) are filled
-/// from the worktree before launch.
+/// Placeholders ({issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}) are
+/// filled from the worktree before launch; {pr} is the number of its open pull
+/// request.
 class ClaudePrompt {
   final String name;
   final String prompt;

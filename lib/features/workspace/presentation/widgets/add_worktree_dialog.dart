@@ -50,6 +50,10 @@ class AddWorktreeDialog extends StatefulWidget {
   /// PR author recorded on the created worktree.
   final String? prAuthor;
 
+  /// Number of the PR the dialog was opened from, filled into `{pr}` in saved
+  /// prompts. Without it, `{pr}` is the open PR from the worktree's branch.
+  final int? prNumber;
+
   /// In start-Claude mode, replaces the issue-context first message (e.g.
   /// with a PR's context), shown as [contextPromptLabel] in the picker.
   final String? contextPrompt;
@@ -73,6 +77,7 @@ class AddWorktreeDialog extends StatefulWidget {
     this.initialBaseBranch,
     this.initialCreateNewBranch = true,
     this.prAuthor,
+    this.prNumber,
     this.startClaude = false,
     this.existingWorktree,
     this.contextPrompt,
@@ -87,6 +92,7 @@ class AddWorktreeDialog extends StatefulWidget {
     String? initialBaseBranch,
     bool initialCreateNewBranch = true,
     String? prAuthor,
+    int? prNumber,
     bool startClaude = false,
     Worktree? existingWorktree,
     String? contextPrompt,
@@ -103,6 +109,7 @@ class AddWorktreeDialog extends StatefulWidget {
           initialBaseBranch: initialBaseBranch,
           initialCreateNewBranch: initialCreateNewBranch,
           prAuthor: prAuthor,
+          prNumber: prNumber,
           startClaude: startClaude,
           existingWorktree: existingWorktree,
           contextPrompt: contextPrompt,
@@ -124,6 +131,7 @@ class AddWorktreeDialog extends StatefulWidget {
     String? initialBaseBranch,
     bool initialCreateNewBranch = true,
     String? prAuthor,
+    int? prNumber,
     String? contextPrompt,
     String? contextPromptLabel,
     String? contextTitle,
@@ -142,6 +150,7 @@ class AddWorktreeDialog extends StatefulWidget {
       initialBaseBranch: initialBaseBranch,
       initialCreateNewBranch: initialCreateNewBranch,
       prAuthor: prAuthor,
+      prNumber: prNumber,
       startClaude: true,
       existingWorktree: existingWorktree,
       contextPrompt: contextPrompt,
@@ -341,6 +350,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     final index = int.tryParse(_promptKey.substring(_savedPromptPrefix.length));
     final prompts = repo?.claudePrompts ?? const [];
     if (index == null || index >= prompts.length) return null;
+    // A new branch has no PR yet; an existing one may.
+    final branch =
+        _existing?.branch ?? (_createNewBranch ? null : _selectedBranch);
     return resolveClaudePrompt(
       prompts[index],
       issue: issue,
@@ -348,6 +360,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       worktreeName: p.basename(worktreePath),
       worktreePath: worktreePath,
       repoName: repo?.name,
+      prNumber: widget.prNumber ?? openPrNumberForBranch(context, branch),
     );
   }
 

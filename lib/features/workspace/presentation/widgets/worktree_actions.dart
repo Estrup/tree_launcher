@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issue_dialog.dart';
@@ -48,12 +49,24 @@ String? kickoffPromptLaunchPrompt(Worktree wt) => wt.kickoffPromptPath == null
     ? null
     : 'Read and follow the implementation plan in $kickoffPromptRelativePath.';
 
+/// Number of the selected repo's open pull request from [branch], or null
+/// when there is none (or the PR list isn't available).
+int? openPrNumberForBranch(BuildContext context, String? branch) {
+  if (branch == null || branch.isEmpty) return null;
+  return Provider.of<GithubPrsController?>(context, listen: false)
+      ?.pullRequests
+      .where((pr) => pr.headBranch == branch)
+      .firstOrNull
+      ?.number;
+}
+
 /// Fills a saved [ClaudePrompt]'s placeholders from an existing worktree's
 /// recorded fields. Returns null when the resolved text is empty.
 String? resolveWorktreePrompt(
   ClaudePrompt prompt,
   Worktree wt, {
   String? repoName,
+  int? prNumber,
 }) => resolveClaudePrompt(
   prompt,
   issue: wt.jiraIssue,
@@ -61,6 +74,7 @@ String? resolveWorktreePrompt(
   worktreeName: wt.name,
   worktreePath: wt.path,
   repoName: repoName,
+  prNumber: prNumber,
 );
 
 /// [resolveWorktreePrompt] from bare values, for a worktree that may not be in
@@ -72,9 +86,11 @@ String? resolveClaudePrompt(
   required String worktreeName,
   required String worktreePath,
   String? repoName,
+  int? prNumber,
 }) {
   var p = prompt.prompt;
   p = p.replaceAll('{issue}', issue ?? '');
+  p = p.replaceAll('{pr}', prNumber == null ? '' : '$prNumber');
   p = p.replaceAll('{base_branch}', baseBranch ?? '');
   p = p.replaceAll('{worktree}', worktreeName);
   p = p.replaceAll('{path}', worktreePath);
@@ -825,6 +841,7 @@ class _ClaudeButtonState extends State<ClaudeButton> {
 
   void _showDropdown(BuildContext context, List<ClaudePrompt> prompts) {
     final repoName = context.read<RepoProvider>().selectedRepo?.name;
+    final prNumber = openPrNumberForBranch(context, widget.wt.branch);
     final claudeIcon = SvgPicture.asset(
       'assets/icons/claude.svg',
       width: 13,
@@ -912,6 +929,7 @@ class _ClaudeButtonState extends State<ClaudeButton> {
           prompts[value],
           widget.wt,
           repoName: repoName,
+          prNumber: prNumber,
         ),
       );
     });

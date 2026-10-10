@@ -217,6 +217,10 @@ void main() {
             name: 'Implement',
             prompt: 'Implement {issue} in {worktree}',
           ),
+          ClaudePrompt(
+            name: 'Review PR',
+            prompt: 'Review PR #{pr} for {issue}',
+          ),
         ],
       ),
     ]);
@@ -295,6 +299,24 @@ void main() {
       "claude $_discordArgs $_launchFlags -- 'Implement AU2-5928 in au2-wt'",
     );
     expect(workspace.selectedRepo!.claudeSessions, [_existingPath]);
+  });
+
+  testWidgets("fills {pr} from the open PR on the issue worktree's branch", (
+    tester,
+  ) async {
+    await pump(tester, const JiraIssuesTab());
+
+    await tester.tap(find.byTooltip('Claude session for AU2-5928…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review PR'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+
+    expect(
+      terminal.launched.single.command,
+      "claude $_discordArgs $_launchFlags -- 'Review PR #7 for AU2-5928'",
+    );
   });
 
   testWidgets('creates a worktree for an issue without one', (tester) async {
@@ -480,4 +502,21 @@ void main() {
     );
   });
 
+  testWidgets('fills {pr} with the number of the PR started from', (
+    tester,
+  ) async {
+    await pump(tester, const GithubPrsTab());
+
+    await tester.tap(find.byTooltip('Claude session for #42…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review PR'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+
+    expect(
+      terminal.launched.single.command,
+      "claude $_discordArgs $_launchFlags -- 'Review PR #42 for AU2-6001'",
+    );
+  });
 }
