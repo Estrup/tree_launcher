@@ -100,6 +100,18 @@ void main() {
       );
     });
 
+    test('adds --model and --effort after the extra args', () {
+      expect(
+        buildClaudeCliCommand(
+          extraArgs: _discordArgs,
+          prompt: 'Fix AU2-1',
+          model: 'opus',
+          effort: 'high',
+        ),
+        "claude $_discordArgs --model opus --effort high -- 'Fix AU2-1'",
+      );
+    });
+
     test('omits empty args and prompt', () {
       expect(buildClaudeCliCommand(extraArgs: '  ', prompt: ' '), 'claude');
     });
@@ -113,6 +125,29 @@ void main() {
         ),
         'claude $_discordArgs --continue',
       );
+    });
+  });
+
+  group('AppSettings.claudeModel / claudeEffort', () {
+    test('default to null and round-trip', () {
+      expect(AppSettings().claudeModel, isNull);
+      expect(AppSettings().claudeEffort, isNull);
+      final json = AppSettings(
+        claudeModel: 'opus',
+        claudeEffort: 'xhigh',
+      ).toJson();
+      final restored = AppSettings.fromJson(json);
+      expect(restored.claudeModel, 'opus');
+      expect(restored.claudeEffort, 'xhigh');
+    });
+
+    test('copyWith clears them back to the CLI default', () {
+      final cleared = AppSettings(
+        claudeModel: 'opus',
+        claudeEffort: 'max',
+      ).copyWith(clearClaudeModel: true, clearClaudeEffort: true);
+      expect(cleared.claudeModel, isNull);
+      expect(cleared.claudeEffort, isNull);
     });
   });
 

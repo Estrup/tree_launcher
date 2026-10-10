@@ -26,6 +26,14 @@ class AppSettings {
   /// verbatim; empty means none.
   final String claudeCliArgs;
 
+  /// Model alias (`--model`) last picked when starting a Claude session from
+  /// the Jira or PR tab; null uses the CLI's default.
+  final String? claudeModel;
+
+  /// Effort level (`--effort`) last picked alongside [claudeModel]; null uses
+  /// the CLI's default.
+  final String? claudeEffort;
+
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
     this.customTerminalCommand,
@@ -37,6 +45,8 @@ class AppSettings {
     this.hiddenRepos = const [],
     this.agentApiPort = 8765,
     this.claudeCliArgs = defaultClaudeCliArgs,
+    this.claudeModel,
+    this.claudeEffort,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -59,6 +69,8 @@ class AppSettings {
           (json['hiddenRepos'] as List<dynamic>?)?.cast<String>() ?? const [],
       agentApiPort: json['agentApiPort'] as int? ?? 8765,
       claudeCliArgs: json['claudeCliArgs'] as String? ?? defaultClaudeCliArgs,
+      claudeModel: json['claudeModel'] as String?,
+      claudeEffort: json['claudeEffort'] as String?,
     );
   }
 
@@ -73,6 +85,8 @@ class AppSettings {
     'hiddenRepos': hiddenRepos,
     'agentApiPort': agentApiPort,
     'claudeCliArgs': claudeCliArgs,
+    'claudeModel': claudeModel,
+    'claudeEffort': claudeEffort,
   };
 
   AppSettings copyWith({
@@ -88,6 +102,10 @@ class AppSettings {
     List<String>? hiddenRepos,
     int? agentApiPort,
     String? claudeCliArgs,
+    String? claudeModel,
+    String? claudeEffort,
+    bool clearClaudeModel = false,
+    bool clearClaudeEffort = false,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -105,6 +123,10 @@ class AppSettings {
       hiddenRepos: hiddenRepos ?? this.hiddenRepos,
       agentApiPort: agentApiPort ?? this.agentApiPort,
       claudeCliArgs: claudeCliArgs ?? this.claudeCliArgs,
+      claudeModel: clearClaudeModel ? null : (claudeModel ?? this.claudeModel),
+      claudeEffort: clearClaudeEffort
+          ? null
+          : (claudeEffort ?? this.claudeEffort),
     );
   }
 }

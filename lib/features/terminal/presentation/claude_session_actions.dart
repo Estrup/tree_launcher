@@ -44,13 +44,16 @@ class ClaudeSessionLauncher {
   /// there is none.
   bool focus(String worktreePath) => _terminal.focusClaudeSession(worktreePath);
 
-  /// Starts Claude in [worktreePath] with [prompt] as its first message, and
-  /// remembers the session as a sidebar shortcut under the repo at
-  /// [repoPath]. When Claude is already running there, that one is shown.
+  /// Starts Claude in [worktreePath] with [prompt] as its first message, on
+  /// [model] at [effort] (null: the CLI's defaults), and remembers the session
+  /// as a sidebar shortcut under the repo at [repoPath]. When Claude is
+  /// already running there, that one is shown.
   Future<void> start({
     required String repoPath,
     required String worktreePath,
     String? prompt,
+    String? model,
+    String? effort,
   }) async {
     _terminal.openClaudeSession(
       claudeSessionTitle(worktreePath),
@@ -59,6 +62,8 @@ class ClaudeSessionLauncher {
       buildClaudeCliCommand(
         extraArgs: _settings.settings.claudeCliArgs,
         prompt: prompt,
+        model: model,
+        effort: effort,
       ),
     );
     await _workspace.rememberClaudeSession(repoPath, worktreePath);

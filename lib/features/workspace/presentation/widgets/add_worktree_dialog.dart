@@ -21,10 +21,17 @@ class AddWorktreeResult {
   /// or null for no first message.
   final String? claudePrompt;
 
+  /// In start-Claude mode, the picked `--model` alias and `--effort` level;
+  /// null otherwise.
+  final String? claudeModel;
+  final String? claudeEffort;
+
   const AddWorktreeResult({
     required this.worktreePath,
     this.branch,
     this.claudePrompt,
+    this.claudeModel,
+    this.claudeEffort,
   });
 }
 
@@ -124,6 +131,7 @@ class AddWorktreeDialog extends StatefulWidget {
     final repo = context.read<RepoProvider>().selectedRepo;
     if (repo == null) return;
     final launcher = ClaudeSessionLauncher.of(context);
+    final settings = context.read<SettingsProvider>();
     if (existingWorktree != null && launcher.focus(existingWorktree.path)) {
       return;
     }
@@ -141,10 +149,16 @@ class AddWorktreeDialog extends StatefulWidget {
       contextTitle: contextTitle,
     );
     if (result == null) return;
+    await settings.updateClaudeModelAndEffort(
+      result.claudeModel,
+      result.claudeEffort,
+    );
     await launcher.start(
       repoPath: repo.path,
       worktreePath: result.worktreePath,
       prompt: result.claudePrompt,
+      model: result.claudeModel,
+      effort: result.claudeEffort,
     );
   }
 
@@ -169,6 +183,11 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       ? _kickoffPromptKey
       : _contextPromptKey;
 
+  /// Picked `--model` alias and `--effort` level. Start from the last pick
+  /// (see [SettingsController.updateClaudeModelAndEffort]).
+  String _model = defaultClaudeModel;
+  String _effort = defaultClaudeEffort;
+
   static const _contextPromptKey = 'context';
   static const _kickoffPromptKey = 'kickoff';
   static const _noPromptKey = 'none';
@@ -180,6 +199,13 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   @override
   void initState() {
     super.initState();
+    final settings = context.read<SettingsProvider>().settings;
+    final model = settings.claudeModel;
+    if (model != null && claudeModelAliases.contains(model)) _model = model;
+    final effort = settings.claudeEffort;
+    if (effort != null && claudeEffortLevels.contains(effort)) {
+      _effort = effort;
+    }
     if (widget.initialJiraKey != null) {
       _jiraController.text = widget.initialJiraKey!;
     }
@@ -338,6 +364,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
             issue: existing.jiraIssue ?? widget.initialJiraKey,
             baseBranch: existing.baseBranch,
           ),
+          claudeModel: _model,
+          claudeEffort: _effort,
         ),
       );
       return;
@@ -404,6 +432,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                           baseBranch: _selectedBranch,
                         )
                       : null,
+                  claudeModel: widget.startClaude ? _model : null,
+                  claudeEffort: widget.startClaude ? _effort : null,
                 )
               : null,
         );
@@ -893,10 +923,26 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
             ),
+          const SizedBox(height: 14),
+          _sectionLabel('MODEL'),
           const SizedBox(height: 8),
+          _choiceChips(
+            values: claudeModelAliases,
+            selected: _model,
+            onSelected: (v) => setState(() => _model = v),
+          ),
+          const SizedBox(height: 14),
+          _sectionLabel('EFFORT'),
+          const SizedBox(height: 8),
+          _choiceChips(
+            values: claudeEffortLevels,
+            selected: _effort,
+            onSelected: (v) => setState(() => _effort = v),
+          ),
+          const SizedBox(height: 14),
           Text(
-            'Runs ${buildClaudeCliCommand(extraArgs: args)} in the built-in '
-            'terminal.',
+            'Runs ${buildClaudeCliCommand(extraArgs: args, model: _model, effort: _effort)} '
+            'in the built-in terminal.',
             style: TextStyle(
               fontSize: 11,
               color: AppColors.textMuted.withValues(alpha: 0.6),
@@ -904,6 +950,29 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           ),
         ],
       ),
+    );
+  }
+
+  /// A row of single-select chips for [values].
+  Widget _choiceChips({
+    required List<String> values,
+    required String selected,
+    required ValueChanged<String> onSelected,
+  }) {
+    String label(String v) =>
+        v == 'xhigh' ? 'XHigh' : '${v[0].toUpperCase()}${v.substring(1)}';
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final value in values)
+          _ChoiceChip(
+            label: label(value),
+            selected: value == selected,
+            enabled: !_creating,
+            onTap: () => onSelected(value),
+          ),
+      ],
     );
   }
 
@@ -1128,6 +1197,67 @@ class _PromptToggleState extends State<_PromptToggle> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A small single-select chip in the Claude panel's model / effort rows.
+class _ChoiceChip extends StatefulWidget {
+  final String label;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _ChoiceChip({
+    required this.label,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  State<_ChoiceChip> createState() => _ChoiceChipState();
+}
+
+class _ChoiceChipState extends State<_ChoiceChip> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = widget.selected;
+    final color = AppColors.claude;
+    return MouseRegion(
+      cursor: widget.enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.enabled ? widget.onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected
+                ? color.withValues(alpha: 0.14)
+                : _hovered
+                ? AppColors.surface2
+                : AppColors.surface1,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: selected
+                  ? color.withValues(alpha: 0.55)
+                  : AppColors.borderSubtle,
+            ),
+          ),
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              color: selected ? color : AppColors.textSecondary,
+            ),
           ),
         ),
       ),

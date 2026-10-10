@@ -29,6 +29,9 @@ import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sideb
 import 'package:tree_launcher/services/config_service.dart';
 
 const _discordArgs = '--channels plugin:discord@claude-plugins-official';
+
+/// Flags for the dialog's default model and effort.
+const _launchFlags = '--model opus --effort high';
 const _repoPath = '/tmp/au2';
 const _existingPath = '/tmp/au2-wt';
 const _existingBranch = 'feature/vaerksted-kontakt-au2-5928';
@@ -268,7 +271,9 @@ void main() {
     expect(find.text('WORKTREE NAME'), findsNothing);
     expect(find.text('au2-wt'), findsOneWidget);
     expect(
-      find.text('Runs claude $_discordArgs in the built-in terminal.'),
+      find.text(
+        'Runs claude $_discordArgs $_launchFlags in the built-in terminal.',
+      ),
       findsOneWidget,
     );
 
@@ -282,7 +287,7 @@ void main() {
     expect(terminal.launched.single.repo, _repoPath);
     expect(
       terminal.launched.single.command,
-      "claude $_discordArgs -- 'Implement AU2-5928 in au2-wt'",
+      "claude $_discordArgs $_launchFlags -- 'Implement AU2-5928 in au2-wt'",
     );
     expect(workspace.selectedRepo!.claudeSessions, [_existingPath]);
   });
@@ -304,11 +309,46 @@ void main() {
     expect(terminal.launched.single.dir, created);
     expect(
       terminal.launched.single.command,
-      "claude $_discordArgs -- 'Context: Working on issue AU2-5905 where the "
+      "claude $_discordArgs $_launchFlags -- 'Context: Working on issue AU2-5905 where the "
       "base branch is develop.'",
     );
     expect(workspace.selectedRepo!.jiraIssues[created], 'AU2-5905');
     expect(workspace.selectedRepo!.claudeSessions, [created]);
+  });
+
+  testWidgets('starts on the picked model and effort and remembers them', (
+    tester,
+  ) async {
+    await pump(tester, const JiraIssuesTab());
+
+    await tester.tap(find.byTooltip('Claude session for AU2-5928…'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MODEL'), findsOneWidget);
+    expect(find.text('Default'), findsNothing);
+    expect(find.text('Haiku'), findsNothing);
+    expect(find.text('EFFORT'), findsOneWidget);
+    await tester.tap(find.text('Fable'));
+    await tester.tap(find.text('Max'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'Runs claude $_discordArgs --model fable --effort max in the '
+        'built-in terminal.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+
+    expect(
+      terminal.launched.single.command,
+      "claude $_discordArgs --model fable --effort max -- 'Context: Working "
+      "on issue AU2-5928 where the base branch is develop.'",
+    );
+    expect(settings.settings.claudeModel, 'fable');
+    expect(settings.settings.claudeEffort, 'max');
   });
 
   testWidgets('turning the active prompt toggle off starts without a prompt', (
@@ -336,7 +376,10 @@ void main() {
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
 
-    expect(terminal.launched.single.command, 'claude $_discordArgs');
+    expect(
+      terminal.launched.single.command,
+      'claude $_discordArgs $_launchFlags',
+    );
   });
 
   testWidgets('shows the running session instead of asking again', (
@@ -398,7 +441,7 @@ void main() {
     expect(terminal.launched.single.dir, created);
     expect(
       terminal.launched.single.command,
-      "claude $_discordArgs -- 'Context: Working on pull request #42 \"Fix "
+      "claude $_discordArgs $_launchFlags -- 'Context: Working on pull request #42 \"Fix "
       "konto (AU2-6001)\" (feature/au2-6001-fix-konto into develop) for issue "
       "AU2-6001.'",
     );
@@ -431,4 +474,5 @@ void main() {
       contains('pull request #7 "Værksted kontakt (AU2-5928)"'),
     );
   });
+
 }

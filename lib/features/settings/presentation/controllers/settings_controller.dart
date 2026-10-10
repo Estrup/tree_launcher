@@ -89,6 +89,22 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Remembers the model and effort picked for a new Claude session, so the
+  /// next one starts with the same choice. Null means the CLI's default.
+  Future<void> updateClaudeModelAndEffort(String? model, String? effort) async {
+    if (model == _settings.claudeModel && effort == _settings.claudeEffort) {
+      return;
+    }
+    _settings = _settings.copyWith(
+      claudeModel: model,
+      claudeEffort: effort,
+      clearClaudeModel: model == null,
+      clearClaudeEffort: effort == null,
+    );
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
   /// Hides a repo from the sidebar.
   Future<void> hideRepo(String path) async {
     if (_settings.hiddenRepos.contains(path)) return;
