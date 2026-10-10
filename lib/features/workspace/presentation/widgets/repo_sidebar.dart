@@ -6,6 +6,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/terminal/presentation/claude_session_actions.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_context_menu.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
@@ -590,6 +591,7 @@ class _RepoTileState extends State<_RepoTile> {
             padding: const EdgeInsets.only(left: 20),
             child: _ClaudeSessionTile(
               worktreePath: path,
+              jiraIssue: widget.repo.jiraIssues[path],
               isRunning: tp.claudeSessionFor(path) != null,
               isActive:
                   active != null &&
@@ -929,6 +931,9 @@ class _TerminalToggleButtonState extends State<_TerminalToggleButton> {
 
 class _ClaudeSessionTile extends StatefulWidget {
   final String worktreePath;
+
+  /// Jira issue key of the session's worktree, shown below its name.
+  final String? jiraIssue;
   final bool isRunning;
   final bool isActive;
   final VoidCallback onTap;
@@ -936,6 +941,7 @@ class _ClaudeSessionTile extends StatefulWidget {
 
   const _ClaudeSessionTile({
     required this.worktreePath,
+    this.jiraIssue,
     required this.isRunning,
     required this.isActive,
     required this.onTap,
@@ -952,6 +958,9 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
   @override
   Widget build(BuildContext context) {
     final color = widget.isActive ? AppColors.claude : AppColors.textMuted;
+    final jiraIssue = widget.jiraIssue?.isEmpty ?? true
+        ? null
+        : widget.jiraIssue;
     return Tooltip(
       message:
           '${widget.worktreePath}\n'
@@ -975,7 +984,10 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: IntrinsicHeight(
+              // Top-aligned, so the icon, dot and remove button stay level
+              // with the name's first line however many lines follow.
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
@@ -989,51 +1001,70 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  SvgPicture.asset(
-                    'assets/icons/claude.svg',
-                    width: 12,
-                    height: 12,
-                    colorFilter: ColorFilter.mode(
-                      widget.isRunning ? AppColors.claude : color,
-                      BlendMode.srcIn,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: SvgPicture.asset(
+                      'assets/icons/claude.svg',
+                      width: 12,
+                      height: 12,
+                      colorFilter: ColorFilter.mode(
+                        widget.isRunning ? AppColors.claude : color,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(
-                        p.basename(widget.worktreePath),
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: widget.isActive
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                          color: widget.isActive
-                              ? AppColors.claude
-                              : AppColors.textSecondary,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            p.basename(widget.worktreePath),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: widget.isActive
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: widget.isActive
+                                  ? AppColors.claude
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                          if (jiraIssue != null) ...[
+                            const SizedBox(height: 5),
+                            JiraBadge(issueKey: jiraIssue, compact: true),
+                          ],
+                        ],
                       ),
                     ),
                   ),
                   if (widget.isRunning) ...[
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: AppColors.success,
-                        shape: BoxShape.circle,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 13),
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: AppColors.success,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 4),
                   ],
                   if (_hovered)
-                    Tooltip(
-                      message: 'Remove shortcut',
-                      child: _TinyIconButton(
-                        icon: Icons.close_rounded,
-                        onTap: widget.onRemove,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Tooltip(
+                        message: 'Remove shortcut',
+                        child: _TinyIconButton(
+                          icon: Icons.close_rounded,
+                          onTap: widget.onRemove,
+                        ),
                       ),
                     ),
                   const SizedBox(width: 4),
