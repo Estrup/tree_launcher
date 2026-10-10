@@ -32,3 +32,16 @@ Color jiraStatusColor(String? category) {
       return (Icons.circle_outlined, AppColors.textMuted);
   }
 }
+
+/// Colour for a Jira tag's color name (see `jiraTagColors`). Mid-tone, so
+/// it reads on both light and dark palettes.
+Color jiraTagColor(String name) => switch (name) {
+  'blue' => const Color(0xFF3B82F6),
+  'green' => const Color(0xFF22C55E),
+  'yellow' => const Color(0xFFEAB308),
+  'orange' => const Color(0xFFF97316),
+  'red' => const Color(0xFFEF4444),
+  'purple' => const Color(0xFFA855F7),
+  'pink' => const Color(0xFFEC4899),
+  _ => const Color(0xFF9CA3AF),
+};

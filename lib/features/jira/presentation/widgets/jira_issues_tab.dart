@@ -14,11 +14,14 @@ import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_status_menu.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
+import 'package:tree_launcher/features/jira/presentation/widgets/jira_tags.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
+import 'package:tree_launcher/models/jira_tag.dart';
 
 /// Shared column widths so the header lines up with every row.
 const double _kTypeWidth = 22;
@@ -28,14 +31,31 @@ const double _kAssigneeWidth = 160;
 const double _kActionsWidth = 132;
 const double _kColumnGap = 12;
 
-/// Below this list width the assignee column is dropped so the summary keeps
-/// room in a narrow window.
-const double _kAssigneeMinListWidth = 760;
+/// Room the summary keeps before the assignee column is dropped in a narrow
+/// window.
+const double _kSummaryMinWidth = 180;
+
+/// Width of the list's padding and of every column but the summary and the
+/// assignee.
+const double _kFixedListWidth =
+    2 * 24 + // list padding
+    2 * 14 + // row padding
+    selectCheckboxSize +
+    _kColumnGap +
+    _kTypeWidth +
+    _kColumnGap +
+    _kKeyWidth +
+    _kColumnGap +
+    _kColumnGap +
+    _kStatusWidth +
+    _kColumnGap +
+    _kActionsWidth;
 
 /// Lists the selected repo's Jira issues for one fixVersion, or the issues a
 /// search by key or text finds, with a status filter and per-issue buttons that open New Worktree prefilled, start a
 /// Claude session for the issue, change its status or assign it to me.
-/// Selected issues can have their status changed together.
+/// Selected issues can have their status changed together. Issues can also
+/// get the user's own tags (from Settings), kept only on this Mac.
 class JiraIssuesTab extends StatelessWidget {
   const JiraIssuesTab({super.key});
 
@@ -183,7 +203,11 @@ class JiraIssuesTab extends StatelessWidget {
                     visible,
                     worktreesByIssue,
                     showAssignee:
-                        constraints.maxWidth >= _kAssigneeMinListWidth,
+                        constraints.maxWidth >=
+                        _kFixedListWidth +
+                            _kSummaryMinWidth +
+                            _kColumnGap +
+                            _kAssigneeWidth,
                   ),
                 ),
         ),
@@ -198,6 +222,7 @@ class JiraIssuesTab extends StatelessWidget {
     required bool showAssignee,
   }) {
     final jira = context.watch<JiraIssuesController>();
+    final settings = context.watch<SettingsController>();
     final selected = jira.selectedKeys;
     final selectionActive = selected.isNotEmpty;
     final allSelected = visible.every((i) => selected.contains(i.key));
@@ -229,6 +254,10 @@ class JiraIssuesTab extends StatelessWidget {
                 issue: issue,
                 worktree: worktreesByIssue[issue.key],
                 showAssignee: showAssignee,
+                tags: settings.settings.tagsFor(issue.key),
+                allTags: settings.settings.jiraTags,
+                onTagChanged: (tagId, tagged) =>
+                    settings.setJiraTag(issue.key, tagId, tagged),
                 selected: selected.contains(issue.key),
                 selectionActive: selectionActive,
                 assignedToMe:
@@ -471,6 +500,11 @@ class _IssueRow extends StatefulWidget {
   final JiraIssue issue;
   final Worktree? worktree;
   final bool showAssignee;
+
+  /// The issue's tags, and every tag (none hides tagging).
+  final List<JiraTag> tags;
+  final List<JiraTag> allTags;
+  final void Function(String tagId, bool tagged) onTagChanged;
   final bool selected;
 
   /// Whether any issue is selected, which keeps every checkbox shown.
@@ -484,6 +518,9 @@ class _IssueRow extends StatefulWidget {
     required this.issue,
     required this.worktree,
     required this.showAssignee,
+    required this.tags,
+    required this.allTags,
+    required this.onTagChanged,
     required this.selected,
     required this.selectionActive,
     required this.assignedToMe,
@@ -590,17 +627,38 @@ class _IssueRowState extends State<_IssueRow> {
             ),
             const SizedBox(width: _kColumnGap),
             Expanded(
-              child: Tooltip(
-                message: issue.summary,
-                waitDuration: const Duration(milliseconds: 500),
-                child: Text(
-                  issue.summary,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
+              child: LayoutBuilder(
+                builder: (context, constraints) => Row(
+                  children: [
+                    Flexible(
+                      child: Tooltip(
+                        message: issue.summary,
+                        waitDuration: const Duration(milliseconds: 500),
+                        child: Text(
+                          issue.summary,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (widget.allTags.isNotEmpty)
+                      // The summary keeps at least 40% of the cell.
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: constraints.maxWidth * 0.6,
+                        ),
+                        child: IssueTags(
+                          tags: widget.tags,
+                          allTags: widget.allTags,
+                          showHint: _hovered,
+                          onChanged: widget.onTagChanged,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),

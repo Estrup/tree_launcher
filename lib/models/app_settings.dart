@@ -1,3 +1,5 @@
+import 'package:tree_launcher/models/jira_tag.dart';
+
 enum TerminalApp { terminal, ghostty, custom }
 
 /// Default extra arguments for the Claude CLI sessions started from the Jira
@@ -34,6 +36,12 @@ class AppSettings {
   /// the CLI's default.
   final String? claudeEffort;
 
+  /// The user's own tags for Jira issues, in display order.
+  final List<JiraTag> jiraTags;
+
+  /// Issue key -> ids of the [jiraTags] it has.
+  final Map<String, List<String>> jiraTagsByIssue;
+
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
     this.customTerminalCommand,
@@ -47,6 +55,8 @@ class AppSettings {
     this.claudeCliArgs = defaultClaudeCliArgs,
     this.claudeModel,
     this.claudeEffort,
+    this.jiraTags = const [],
+    this.jiraTagsByIssue = const {},
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -71,6 +81,17 @@ class AppSettings {
       claudeCliArgs: json['claudeCliArgs'] as String? ?? defaultClaudeCliArgs,
       claudeModel: json['claudeModel'] as String?,
       claudeEffort: json['claudeEffort'] as String?,
+      jiraTags:
+          (json['jiraTags'] as List<dynamic>?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(JiraTag.fromJson)
+              .toList() ??
+          const [],
+      jiraTagsByIssue: {
+        for (final MapEntry(:key, :value)
+            in (json['jiraTagsByIssue'] as Map<String, dynamic>? ?? {}).entries)
+          if (value is List) key: value.whereType<String>().toList(),
+      },
     );
   }
 
@@ -87,7 +108,16 @@ class AppSettings {
     'claudeCliArgs': claudeCliArgs,
     'claudeModel': claudeModel,
     'claudeEffort': claudeEffort,
+    'jiraTags': [for (final tag in jiraTags) tag.toJson()],
+    'jiraTagsByIssue': jiraTagsByIssue,
   };
+
+  /// The tags [issueKey] has, in [jiraTags] order.
+  List<JiraTag> tagsFor(String issueKey) {
+    final ids = jiraTagsByIssue[issueKey];
+    if (ids == null || ids.isEmpty) return const [];
+    return jiraTags.where((tag) => ids.contains(tag.id)).toList();
+  }
 
   AppSettings copyWith({
     TerminalApp? terminalApp,
@@ -106,6 +136,8 @@ class AppSettings {
     String? claudeEffort,
     bool clearClaudeModel = false,
     bool clearClaudeEffort = false,
+    List<JiraTag>? jiraTags,
+    Map<String, List<String>>? jiraTagsByIssue,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -127,6 +159,8 @@ class AppSettings {
       claudeEffort: clearClaudeEffort
           ? null
           : (claudeEffort ?? this.claudeEffort),
+      jiraTags: jiraTags ?? this.jiraTags,
+      jiraTagsByIssue: jiraTagsByIssue ?? this.jiraTagsByIssue,
     );
   }
 }

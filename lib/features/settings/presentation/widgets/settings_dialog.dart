@@ -6,6 +6,7 @@ import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
+import 'package:tree_launcher/features/settings/presentation/widgets/jira_settings_section.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
@@ -13,6 +14,7 @@ enum _SettingsSection {
   theme,
   terminals,
   repositories,
+  jira,
   agentApi,
   help,
 }
@@ -154,6 +156,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           ),
                         ),
                         _NavItem(
+                          icon: Icons.confirmation_number_outlined,
+                          label: 'Jira',
+                          isSelected: _selectedSection == _SettingsSection.jira,
+                          onTap: () => setState(
+                            () => _selectedSection = _SettingsSection.jira,
+                          ),
+                        ),
+                        _NavItem(
                           icon: Icons.api_rounded,
                           label: 'Agent API',
                           isSelected:
@@ -203,6 +213,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         return const _TerminalsSection();
       case _SettingsSection.repositories:
         return const _RepositoriesSection();
+      case _SettingsSection.jira:
+        return const JiraSettingsSection();
       case _SettingsSection.agentApi:
         return const _AgentApiSection();
       case _SettingsSection.help:

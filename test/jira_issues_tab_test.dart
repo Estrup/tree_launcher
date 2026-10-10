@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,7 +14,10 @@ import 'package:tree_launcher/features/jira/presentation/widgets/jira_issues_tab
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
+import 'package:tree_launcher/models/jira_tag.dart';
 import 'package:tree_launcher/models/repo_config.dart';
+import 'package:tree_launcher/services/config_service.dart';
 import 'package:tree_launcher/models/worktree.dart';
 
 class _FakeJiraService extends JiraApiService {
@@ -105,16 +109,31 @@ class _FakeGitService extends GitService {
   Future<List<String>> listBranches(String repoPath) async => const ['develop'];
 }
 
+class _FakeConfigService extends ConfigService {
+  _FakeConfigService(this.savedSettings);
+
+  AppSettings savedSettings;
+
+  @override
+  Future<AppSettings> loadSettings() async => savedSettings;
+
+  @override
+  Future<void> saveSettings(AppSettings settings) async {
+    savedSettings = settings;
+  }
+}
+
 Future<_FakeJiraService> _pumpTab(
   WidgetTester tester, {
   required double width,
+  SettingsController? settings,
 }) async {
   tester.view.physicalSize = Size(width, 900);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
   final workspace = WorkspaceController(gitService: _FakeGitService());
-  final settings = SettingsController();
+  settings ??= SettingsController();
   final service = _FakeJiraService();
   final jira = JiraIssuesController(service: service)
     ..syncToRepo(
@@ -139,6 +158,39 @@ Future<_FakeJiraService> _pumpTab(
   );
   await tester.pumpAndSettle();
   return service;
+}
+
+/// Pumps the tab with the tags Blocked, Demo, Next up and Extra (ids b, d,
+/// n, x) and [tagsByIssue], and returns the config they are saved to.
+Future<_FakeConfigService> _pumpWithTags(
+  WidgetTester tester,
+  Map<String, List<String>> tagsByIssue, {
+  double width = 1400,
+}) async {
+  final config = _FakeConfigService(
+    AppSettings(
+      jiraTags: const [
+        JiraTag(id: 'b', name: 'Blocked', color: 'red'),
+        JiraTag(id: 'd', name: 'Demo', color: 'purple'),
+        JiraTag(id: 'n', name: 'Next up', color: 'blue'),
+        JiraTag(id: 'x', name: 'Extra', color: 'gray'),
+      ],
+      jiraTagsByIssue: tagsByIssue,
+    ),
+  );
+  final settings = SettingsController(configService: config);
+  await settings.loadSettings();
+  await _pumpTab(tester, width: width, settings: settings);
+  return config;
+}
+
+/// Moves a mouse over [finder], e.g. to reveal a row's hover actions.
+Future<void> _hover(WidgetTester tester, Finder finder) async {
+  final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  await gesture.addPointer(location: Offset.zero);
+  addTearDown(gesture.removePointer);
+  await gesture.moveTo(tester.getCenter(finder));
+  await tester.pumpAndSettle();
 }
 
 /// [text] inside the issue list, not the status filter above it.
@@ -228,6 +280,68 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('No issues match "zzz"'), findsOneWidget);
     expect(find.text('Værksted kontakt'), findsNothing);
+  });
+
+  testWidgets('offers no tags until some are made in Settings', (tester) async {
+    await _pumpTab(tester, width: 1400);
+
+    await _hover(tester, find.text('AU2-5905'));
+
+    expect(find.text('Add tag'), findsNothing);
+  });
+
+  testWidgets('tags an issue with several tags from its row', (tester) async {
+    final config = await _pumpWithTags(tester, {
+      'AU2-5928': ['b'],
+    });
+    expect(_inList('Blocked'), findsOneWidget);
+
+    // The menu stays open while ticking tags on and off.
+    await tester.tap(_inList('Blocked'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Demo').last);
+    await tester.pumpAndSettle();
+    expect(config.savedSettings.jiraTagsByIssue, {
+      'AU2-5928': ['b', 'd'],
+    });
+    await tester.tap(find.text('Blocked').last);
+    await tester.pumpAndSettle();
+    expect(config.savedSettings.jiraTagsByIssue, {
+      'AU2-5928': ['d'],
+    });
+    // Clicking outside closes it.
+    await tester.tapAt(tester.getCenter(find.text('KEY')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CheckboxMenuButton), findsNothing);
+    expect(_inList('Demo'), findsOneWidget);
+    expect(_inList('Blocked'), findsNothing);
+
+    // An issue without tags offers them while hovered.
+    await _hover(tester, find.text('AU2-5905'));
+    await tester.tap(find.text('Add tag'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Next up').last);
+    await tester.pumpAndSettle();
+    expect(config.savedSettings.jiraTagsByIssue['AU2-5905'], ['n']);
+  });
+
+  testWidgets('shows the first three tags and counts the rest', (tester) async {
+    await _pumpWithTags(tester, {
+      'AU2-5928': ['b', 'd', 'n', 'x'],
+    });
+
+    expect(_inList('Next up'), findsOneWidget);
+    expect(_inList('Extra'), findsNothing);
+    expect(_inList('+1'), findsOneWidget);
+  });
+
+  testWidgets('fits tags in a narrow window without overflow', (tester) async {
+    await _pumpWithTags(tester, {
+      'AU2-5928': ['b', 'd', 'n', 'x'],
+    }, width: 700);
+
+    expect(_inList('Blocked'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("changes an issue's status from its row", (tester) async {
