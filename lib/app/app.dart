@@ -47,7 +47,12 @@ class TreeLauncherApp extends StatelessWidget {
               SettingsController(store: dependencies.appSettingsStore)
                 ..loadSettings(),
         ),
-        ChangeNotifierProvider(create: (_) => TerminalController()),
+        ChangeNotifierProxyProvider<SettingsController, TerminalController>(
+          create: (_) => TerminalController(),
+          // Re-report the terminal colors after a palette switch.
+          update: (context, settings, previous) =>
+              (previous ?? TerminalController())..syncColors(),
+        ),
         ChangeNotifierProvider(
           create: (_) => ActivityController(
             eventStore: dependencies.worktreeEventStore,

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
+import 'package:tree_launcher/core/design_system/terminal_theme.dart';
 import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
 
 class TerminalController extends ChangeNotifier {
@@ -45,6 +46,7 @@ class TerminalController extends ChangeNotifier {
       debugPrint('Failed to create terminal session: $error');
       return;
     }
+    _reportColors(session);
 
     session.exitCode.then((_) {
       if (!session.isDisposed) {
@@ -60,6 +62,23 @@ class TerminalController extends ChangeNotifier {
     _activeIndex = _sessions.length - 1;
     _visible = true;
     notifyListeners();
+  }
+
+  /// Reports the active palette's terminal colors to every session, so
+  /// programs that ask (such as the Claude CLI's "auto" theme) can tell a
+  /// light terminal from a dark one. Call again after the palette changes.
+  void syncColors() {
+    for (final session in _sessions) {
+      _reportColors(session);
+    }
+  }
+
+  void _reportColors(TerminalSession session) {
+    final theme = appTerminalTheme;
+    session.terminal.setReportedColors(
+      foreground: theme.foreground.toARGB32(),
+      background: theme.background.toARGB32(),
+    );
   }
 
   void openTerminalWithCommand(
@@ -132,6 +151,7 @@ class TerminalController extends ChangeNotifier {
       debugPrint('Failed to create terminal session: $error');
       return;
     }
+    _reportColors(session);
 
     session.exitCode.then((_) {
       if (!session.isDisposed) {

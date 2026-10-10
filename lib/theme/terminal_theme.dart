@@ -28,5 +28,8 @@ TerminalTheme get appTerminalTheme {
     searchHitBackground: p.accent.withValues(alpha: 0.25),
     searchHitBackgroundCurrent: p.accent.withValues(alpha: 0.45),
     searchHitForeground: p.textPrimary,
+    // Keeps text readable when a program picks colors for the other kind of
+    // background, e.g. the Claude CLI's dark theme on the Light palette.
+    minimumContrast: 3.5,
   );
 }

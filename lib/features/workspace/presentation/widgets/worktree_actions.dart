@@ -10,6 +10,7 @@ import 'package:tree_launcher/features/jira/presentation/widgets/jira_issue_dial
 import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/models/claude_prompt.dart';
@@ -568,11 +569,15 @@ class VscodeButton extends StatefulWidget {
   final LauncherService launcherService;
   final bool compact;
 
+  /// Folders offered in the dropdown; null uses the selected repo's.
+  final List<VscodeConfig>? configs;
+
   const VscodeButton({
     super.key,
     required this.worktreePath,
     required this.launcherService,
     this.compact = false,
+    this.configs,
   });
 
   @override
@@ -667,8 +672,10 @@ class _VscodeButtonState extends State<VscodeButton> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = context.watch<RepoProvider>().selectedRepo;
-    final configs = repo?.vscodeConfigs ?? [];
+    final configs =
+        widget.configs ??
+        context.watch<RepoProvider>().selectedRepo?.vscodeConfigs ??
+        [];
     final hasConfigs = configs.isNotEmpty;
 
     if (widget.compact) {

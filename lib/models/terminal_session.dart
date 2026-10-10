@@ -41,6 +41,15 @@ class TerminalSession {
     final env = Map<String, String>.from(Platform.environment);
     env['TERM'] = 'xterm-256color';
     env['COLORTERM'] = 'truecolor';
+    // Light/dark hint for programs that read it from the environment rather
+    // than asking the terminal (OSC 11). Never inherit the launching
+    // terminal's value, which describes a different background.
+    final dark = terminal.isDarkColorScheme;
+    if (dark == null) {
+      env.remove('COLORFGBG');
+    } else {
+      env['COLORFGBG'] = dark ? '15;0' : '0;15';
+    }
 
     final pty = Pty.start(
       '/bin/zsh',
@@ -105,6 +114,15 @@ class TerminalSession {
   }
 
   bool get isPtyStarted => _ptyStarted;
+
+  /// Pid of the session's shell, or null before the PTY has started.
+  int? get pid => _disposed ? null : _pty?.pid;
+
+  /// Writes [data] to the PTY as if typed, without a trailing newline.
+  void write(String data) {
+    if (_disposed || _pty == null) return;
+    _pty!.write(utf8.encode(data));
+  }
 
   /// Writes an initial command to the PTY (e.g., for custom commands).
   void sendCommand(String command) {
