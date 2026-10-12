@@ -60,6 +60,15 @@ flutter test               # full suite
 - Routes: `GET /health`, `GET /v1/activity`, `POST /v1/activity`,
   `POST /v1/worktrees`, `GET /v1/jira/issues` (by `fixVersion` and/or
   `status`, with local tags), `GET /v1/jira/tags`,
-  `PUT /v1/jira/issues/<key>/tags` (local tags only, never Jira). Adding a
+  `PUT /v1/jira/issues/<key>/tags` (local tags only, never Jira),
+  `GET`/`POST /v1/agents`, `GET /v1/agents/<id>`,
+  `POST /v1/agents/<id>/status` (agent runs, see below). Adding a
   capability is a new `_router` line plus a handler.
+- Agents (`lib/features/agents/`): a run of a Claude session of one kind
+  (build/verify/review/docs). Saved prompts carry the kind, and each kind is a
+  repo tab. Agents register and report through the API (the tree-launcher
+  skill's `scripts/agent.py` helper wraps it). Runs started from a tab get
+  `TREE_LAUNCHER_AGENT_ID` and `TREE_LAUNCHER_URL` in their environment.
+  Runs are stored in `agent_runs.json` and their timelines in
+  `agent_events.jsonl`, both in the app support directory.
 - Quick check while running: `curl http://127.0.0.1:8765/health`.

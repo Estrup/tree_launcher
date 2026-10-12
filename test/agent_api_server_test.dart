@@ -6,6 +6,9 @@ import 'package:tree_launcher/features/activity/data/claude_session_activity.dar
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
+import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
@@ -18,6 +21,7 @@ import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/models/jira_tag.dart';
 import 'package:tree_launcher/models/predefined_issue.dart';
 import 'package:tree_launcher/models/repo_config.dart';
+import 'package:tree_launcher/models/worktree.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
 /// A ConfigService that returns a fixed repo list and settings, so the stores
@@ -136,6 +140,26 @@ class _FakeWorktreeCreator implements WorktreeCreator {
       kickoffPromptPath: kickoffPrompt == null
           ? null
           : '/repos/$worktreeName/.tree-launcher/kickoff-prompt.md',
+    );
+  }
+}
+
+/// Lists one worktree for the repo at `/repos/au2`; fails for any other.
+class _FakeWorktreeGit extends GitService {
+  @override
+  Future<WorktreeListResult> getWorktrees(String repoPath) async {
+    if (repoPath != '/repos/au2') throw Exception('not a repo: $repoPath');
+    return WorktreeListResult(
+      worktrees: [
+        Worktree(
+          path: '/repos/au2-5953',
+          branch: 'sen/au2-5953',
+          name: 'au2-5953',
+          isMain: false,
+          commitHash: 'abc1234',
+        ),
+      ],
+      isBareLayout: true,
     );
   }
 }
@@ -661,6 +685,270 @@ void main() {
         expect((await putTags('AU2-1', {'tags': 'Blocked'})).$1, 400);
         expect((await putTags('AU2-1', {})).$1, 400);
       });
+    });
+  });
+
+  group('Agents', () {
+    late AgentApiServer agentServer;
+    late AgentsController agents;
+    late Directory agentDir;
+
+    setUp(() async {
+      agentDir = await Directory.systemTemp.createTemp('agent_api_agents');
+      final config = _FakeConfigService([
+        RepoConfig(name: 'other', path: '/repos/other'),
+        RepoConfig(name: 'au2office', path: '/repos/au2'),
+      ]);
+      agentServer = AgentApiServer(
+        repoConfigStore: RepoConfigStore(configService: config),
+        gitService: _FakeWorktreeGit(),
+        appSettingsStore: AppSettingsStore(configService: config),
+        eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+        claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
+      );
+      agents = AgentsController(
+        store: AgentRunStore(directoryPath: agentDir.path),
+      );
+      await agentServer.start(port: 0);
+    });
+
+    tearDown(() async {
+      await agentServer.stop();
+      await agents.flush();
+      agents.dispose();
+      if (await agentDir.exists()) await agentDir.delete(recursive: true);
+    });
+
+    Future<(int, Map<String, dynamic>)> getAgents(String path) =>
+        get(path, port: agentServer.port);
+    Future<(int, Map<String, dynamic>)> postAgents(String path, Object body) =>
+        post(path, body, port: agentServer.port);
+
+    Map<String, dynamic> registration() => {
+      'kind': 'build',
+      'repo': 'au2office',
+      'issueKey': 'au2-5953',
+      'prompt': 'Factory track: feature',
+      'worktreePath': '/repos/au2-5953',
+      'branch': 'sen/au2-5953',
+      'stages': ['spec', 'plan', 'implement'],
+    };
+
+    test('answer 503 before the app is up', () async {
+      expect((await getAgents('/v1/agents')).$1, 503);
+      expect((await postAgents('/v1/agents', registration())).$1, 503);
+    });
+
+    group('POST /v1/agents', () {
+      setUp(() => agentServer.registerAgentRegistry(agents));
+
+      test('registers a run', () async {
+        final (status, body) = await postAgents('/v1/agents', registration());
+
+        expect(status, 201);
+        expect(body['id'], startsWith('ag_'));
+        expect(body['kind'], 'build');
+        expect(body['repo'], 'au2office');
+        expect(body['issueKeys'], ['AU2-5953']);
+        expect(body['state'], 'starting');
+        expect(
+          [for (final s in body['stages'] as List) s['name']],
+          ['spec', 'plan', 'implement'],
+        );
+        expect(agents.runById(body['id'] as String), isNotNull);
+      });
+
+      test('finds the repo from the worktree', () async {
+        final (status, body) = await postAgents('/v1/agents', {
+          'kind': 'build',
+          'worktreePath': '/repos/au2-5953/',
+        });
+        expect(status, 201);
+        expect(body['repo'], 'au2office');
+
+        final (missing, error) = await postAgents('/v1/agents', {
+          'kind': 'build',
+          'worktreePath': '/elsewhere',
+        });
+        expect(missing, 400);
+        expect(error['error'], contains('not a worktree of any repo'));
+      });
+
+      test('returns the active run it describes again', () async {
+        final (_, first) = await postAgents('/v1/agents', registration());
+        final (status, again) = await postAgents('/v1/agents', {
+          ...registration(),
+          'title': 'Oprydning',
+        });
+
+        expect(status, 200);
+        expect(again['id'], first['id']);
+        expect(again['title'], 'Oprydning');
+        expect(agents.runs, hasLength(1));
+      });
+
+      test('updates the run the app launched, by id', () async {
+        final launched = await agents.createForLaunch(
+          kind: AgentKind.build,
+          repoName: 'au2office',
+          promptName: 'Factory track: feature',
+        );
+        final (status, body) = await postAgents('/v1/agents', {
+          'id': launched.id,
+          'stages': 'spec, plan',
+          'issueKeys': ['AU2-1'],
+        });
+
+        expect(status, 200);
+        expect(body['id'], launched.id);
+        expect(body['prompt'], 'Factory track: feature');
+        expect(body['issueKeys'], ['AU2-1']);
+        expect(body['stages'], hasLength(2));
+      });
+
+      test('rejects bad registrations', () async {
+        expect(
+          (await postAgents('/v1/agents', {'repo': 'au2office'})).$2['error'],
+          contains('kind'),
+        );
+        expect(
+          (await postAgents('/v1/agents', {
+            'kind': 'deploy',
+            'repo': 'au2office',
+          })).$1,
+          400,
+        );
+        expect(
+          (await postAgents('/v1/agents', {
+            ...registration(),
+            'colour': 'red',
+          })).$2['error'],
+          contains('colour'),
+        );
+        expect(
+          (await postAgents('/v1/agents', {
+            ...registration(),
+            'issueKey': 'nope',
+          })).$1,
+          400,
+        );
+        expect(
+          (await postAgents('/v1/agents', {
+            ...registration(),
+            'repo': 'nope',
+          })).$1,
+          404,
+        );
+        expect((await postAgents('/v1/agents', {'id': 'ag_missing'})).$1, 404);
+      });
+    });
+
+    group('POST /v1/agents/<id>/status', () {
+      late String id;
+
+      setUp(() async {
+        agentServer.registerAgentRegistry(agents);
+        id =
+            (await postAgents('/v1/agents', registration())).$2['id'] as String;
+      });
+
+      Future<(int, Map<String, dynamic>)> status(Object body) =>
+          postAgents('/v1/agents/$id/status', body);
+
+      test('moves through the stages', () async {
+        await status({'stage': 'spec', 'message': 'spec: henter issue'});
+        await status({
+          'state': 'waiting',
+          'message': 'Gate 1: spec klar · 5 AC',
+        });
+        var run = agents.runById(id)!;
+        expect(run.state.name, 'waiting');
+        expect(run.stages.first.state.name, 'waiting');
+        expect(agents.needsYou(run), isTrue);
+
+        final (code, body) = await status({
+          'stage': 'implement',
+          'progress': '4/7',
+          'message': 'trin 4/7 ✓',
+        });
+        expect(code, 200);
+        expect(body['state'], 'running');
+        expect(body['currentStage'], 'implement');
+        final stages = body['stages'] as List;
+        expect(stages[0]['state'], 'done');
+        expect(stages[1]['state'], 'pending');
+        expect(stages[2]['state'], 'running');
+        expect(stages[2]['progress'], {'done': 4, 'total': 7});
+
+        await status({
+          'state': 'done',
+          'result': 'PR #7123',
+          'links': {'PR': 'https://github.com/x/y/pull/7123'},
+        });
+        run = agents.runById(id)!;
+        expect(run.state.name, 'done');
+        expect(run.finishedAt, isNotNull);
+        expect(run.stages[2].state.name, 'done');
+        expect(run.result, 'PR #7123');
+        expect(run.links.single.label, 'PR');
+
+        final (_, detail) = await getAgents('/v1/agents/$id');
+        final messages = [
+          for (final e in detail['events'] as List) e['message'],
+        ];
+        expect(messages, containsAll(['spec: henter issue', 'trin 4/7 ✓']));
+      });
+
+      test('rejects bad reports', () async {
+        expect((await status({})).$1, 400);
+        expect(
+          (await status({'state': 'waiting'})).$2['error'],
+          contains('message'),
+        );
+        expect((await status({'state': 'starting'})).$1, 400);
+        expect(
+          (await status({'progress': '1/2'})).$2['error'],
+          contains('stage'),
+        );
+        expect((await status({'stage': 'spec', 'progress': 'half'})).$1, 400);
+        expect(
+          (await status({
+            'links': ['x'],
+          })).$1,
+          400,
+        );
+        expect((await status({'mood': 'great'})).$1, 400);
+        expect(
+          (await postAgents('/v1/agents/ag_missing/status', {
+            'state': 'done',
+          })).$1,
+          404,
+        );
+      });
+    });
+
+    test('GET /v1/agents filters the runs', () async {
+      agentServer.registerAgentRegistry(agents);
+      final (_, build) = await postAgents('/v1/agents', registration());
+      await postAgents('/v1/agents', {
+        'kind': 'verify',
+        'repo': 'au2office',
+        'issueKey': 'AU2-1',
+        'worktreePath': '/repos/develop',
+      });
+      await postAgents('/v1/agents/${build['id']}/status', {'state': 'done'});
+
+      Future<int> count(String query) async =>
+          (await getAgents('/v1/agents$query')).$2['count'] as int;
+
+      expect(await count(''), 2);
+      expect(await count('?kind=verify'), 1);
+      expect(await count('?active=true'), 1);
+      expect(await count('?active=false'), 1);
+      expect(await count('?issue=au2-5953'), 1);
+      expect(await count('?repo=other'), 0);
+      expect((await getAgents('/v1/agents?kind=deploy')).$1, 400);
+      expect((await getAgents('/v1/agents/ag_missing')).$1, 404);
     });
   });
 }

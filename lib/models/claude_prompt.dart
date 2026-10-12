@@ -1,3 +1,5 @@
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+
 /// A reusable, named prompt template for launching Claude in a worktree.
 /// Placeholders ({issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}) are
 /// filled from the worktree before launch; {pr} is the number of its open pull
@@ -6,18 +8,36 @@ class ClaudePrompt {
   final String name;
   final String prompt;
 
-  ClaudePrompt({required this.name, required this.prompt});
+  /// The kind of agent this prompt starts, making it one of that kind's
+  /// subtypes in its repo tab; null for an ordinary prompt.
+  final AgentKind? kind;
+
+  ClaudePrompt({required this.name, required this.prompt, this.kind});
 
   factory ClaudePrompt.fromJson(Map<String, dynamic> json) {
     return ClaudePrompt(
       name: json['name'] as String,
       prompt: json['prompt'] as String,
+      kind: AgentKind.tryParse(json['kind'] as String?),
     );
   }
 
-  Map<String, dynamic> toJson() => {'name': name, 'prompt': prompt};
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'prompt': prompt,
+    if (kind != null) 'kind': kind!.name,
+  };
 
-  ClaudePrompt copyWith({String? name, String? prompt}) {
-    return ClaudePrompt(name: name ?? this.name, prompt: prompt ?? this.prompt);
+  ClaudePrompt copyWith({
+    String? name,
+    String? prompt,
+    AgentKind? kind,
+    bool clearKind = false,
+  }) {
+    return ClaudePrompt(
+      name: name ?? this.name,
+      prompt: prompt ?? this.prompt,
+      kind: clearKind ? null : (kind ?? this.kind),
+    );
   }
 }

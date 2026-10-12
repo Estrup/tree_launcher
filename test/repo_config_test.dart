@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/models/claude_prompt.dart';
 import 'package:tree_launcher/models/repo_config.dart';
 
@@ -9,7 +10,8 @@ void main() {
         name: 'demo',
         path: '/repos/demo',
         kickoffPrompts: {
-          '/repos/demo/feat-x': '/repos/demo/feat-x/.tree-launcher/kickoff-prompt.md',
+          '/repos/demo/feat-x':
+              '/repos/demo/feat-x/.tree-launcher/kickoff-prompt.md',
         },
       );
 
@@ -35,7 +37,10 @@ void main() {
       );
 
       // Unrelated copyWith keeps the map.
-      expect(repo.copyWith(name: 'renamed').kickoffPrompts, repo.kickoffPrompts);
+      expect(
+        repo.copyWith(name: 'renamed').kickoffPrompts,
+        repo.kickoffPrompts,
+      );
 
       // Explicit copyWith replaces it.
       final updated = repo.copyWith(kickoffPrompts: const {'/b': '/b/file.md'});
@@ -70,6 +75,38 @@ void main() {
         {'name': 'Plan', 'prompt': 'Plan {worktree}'},
       ]);
       expect(RepoConfig.fromJson(json).claudePrompts.single.name, 'Plan');
+    });
+  });
+
+  group('RepoConfig agents', () {
+    test('keeps a prompt\'s agent kind and the agent working directory', () {
+      final repo = RepoConfig(
+        name: 'demo',
+        path: '/repos/demo',
+        claudePrompts: [
+          ClaudePrompt(
+            name: 'Verify',
+            prompt: 'Verify {issue}',
+            kind: AgentKind.verify,
+          ),
+          ClaudePrompt(name: 'Plain', prompt: 'Hi'),
+        ],
+        agentWorkingDirectory: '/repos/develop',
+      );
+
+      final json = repo.toJson();
+      expect(json['copilotPrompts'], [
+        {'name': 'Verify', 'prompt': 'Verify {issue}', 'kind': 'verify'},
+        {'name': 'Plain', 'prompt': 'Hi'},
+      ]);
+      final restored = RepoConfig.fromJson(json);
+      expect(restored.claudePrompts.first.kind, AgentKind.verify);
+      expect(restored.claudePrompts.last.kind, isNull);
+      expect(restored.agentWorkingDirectory, '/repos/develop');
+      expect(
+        restored.claudePrompts.first.copyWith(clearKind: true).kind,
+        isNull,
+      );
     });
   });
 

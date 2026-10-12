@@ -14,6 +14,15 @@ class TerminalSession {
   /// or resumed from a sidebar shortcut). Claude sessions are never evicted to
   /// make room for new terminals and are not reused as plain shells.
   final bool isClaude;
+
+  /// The agent run this Claude session belongs to, when it was started as an
+  /// agent. Agent sessions are looked up by this id rather than by working
+  /// directory, so several can share one directory.
+  final String? agentId;
+
+  /// Extra environment variables for the shell (and so for the command it
+  /// runs), such as the agent's id and the agent API's address.
+  final Map<String, String> environment;
   final Terminal terminal;
 
   Pty? _pty;
@@ -28,6 +37,8 @@ class TerminalSession {
     required this.repoPath,
     this.command,
     this.isClaude = false,
+    this.agentId,
+    this.environment = const {},
   }) : terminal = Terminal(maxLines: 10000);
 
   /// Start the PTY process. Must be called after the TerminalView has been
@@ -38,7 +49,8 @@ class TerminalSession {
     if (_ptyStarted || _disposed) return;
     _ptyStarted = true;
 
-    final env = Map<String, String>.from(Platform.environment);
+    final env = Map<String, String>.from(Platform.environment)
+      ..addAll(environment);
     env['TERM'] = 'xterm-256color';
     env['COLORTERM'] = 'truecolor';
     // Light/dark hint for programs that read it from the environment rather

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
+import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
@@ -21,12 +22,14 @@ class AppDependencies {
     AppSettingsStore? appSettingsStore,
     WorktreeEventStore? worktreeEventStore,
     ManualPostStore? manualPostStore,
+    AgentRunStore? agentRunStore,
     AgentApiServer? agentApiServer,
   }) : gitService = gitService ?? GitService(),
        repoConfigStore = repoConfigStore ?? RepoConfigStore(),
        appSettingsStore = appSettingsStore ?? AppSettingsStore(),
        worktreeEventStore = worktreeEventStore ?? WorktreeEventStore(),
-       manualPostStore = manualPostStore ?? ManualPostStore() {
+       manualPostStore = manualPostStore ?? ManualPostStore(),
+       agentRunStore = agentRunStore ?? AgentRunStore() {
     this.agentApiServer =
         agentApiServer ??
         AgentApiServer(
@@ -43,6 +46,7 @@ class AppDependencies {
   final AppSettingsStore appSettingsStore;
   final WorktreeEventStore worktreeEventStore;
   final ManualPostStore manualPostStore;
+  final AgentRunStore agentRunStore;
 
   /// Loopback-only HTTP API that exposes app data to local AI agents.
   late final AgentApiServer agentApiServer;

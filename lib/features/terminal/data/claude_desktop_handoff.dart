@@ -64,24 +64,36 @@ class ClaudeCliRegistry {
 
   /// The interactive Claude CLI running in the process tree under
   /// [shellPid] (the terminal's shell), or null when there is none.
-  Future<ClaudeCliProcess?> runningUnder(int shellPid) async {
+  Future<ClaudeCliProcess?> runningUnder(int shellPid) async =>
+      (await runningUnderEach([shellPid]))[shellPid];
+
+  /// The interactive Claude CLI under each of [shellPids], by shell pid;
+  /// shells without one are left out. Reads the process table once.
+  Future<Map<int, ClaudeCliProcess>> runningUnderEach(
+    Iterable<int> shellPids,
+  ) async {
+    final found = <int, ClaudeCliProcess>{};
     final dirPath = _sessionsDir;
-    if (dirPath == null) return null;
+    if (dirPath == null || shellPids.isEmpty) return found;
     try {
       final dir = Directory(dirPath);
-      if (!await dir.exists()) return null;
+      if (!await dir.exists()) return found;
       final parents = await _parentPids();
       await for (final entity in dir.list(followLinks: false)) {
         if (entity is! File || !entity.path.endsWith('.json')) continue;
         final cli = _parse(await entity.readAsString());
-        if (cli != null && _descendsFrom(cli.pid, shellPid, parents)) {
-          return cli;
+        if (cli == null) continue;
+        for (final shellPid in shellPids) {
+          if (!found.containsKey(shellPid) &&
+              _descendsFrom(cli.pid, shellPid, parents)) {
+            found[shellPid] = cli;
+          }
         }
       }
     } catch (e) {
-      debugPrint('ClaudeCliRegistry.runningUnder failed: $e');
+      debugPrint('ClaudeCliRegistry.runningUnderEach failed: $e');
     }
-    return null;
+    return found;
   }
 
   static ClaudeCliProcess? _parse(String source) {

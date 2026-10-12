@@ -19,20 +19,24 @@ const defaultClaudeEffort = 'high';
 /// A non-empty [prompt] becomes the session's first message,
 /// shell-quoted and placed after `--` so a variadic flag in [extraArgs] (such
 /// as `--channels`) can't swallow it. [resume] continues the most recent
-/// conversation in the working directory instead, and ignores [prompt].
+/// conversation in the working directory instead, and [resumeSessionId]
+/// resumes that conversation; both ignore [prompt].
 String buildClaudeCliCommand({
   String extraArgs = '',
   String? prompt,
   String? model,
   String? effort,
   bool resume = false,
+  String? resumeSessionId,
 }) {
   final parts = ['claude'];
   final args = extraArgs.trim();
   if (args.isNotEmpty) parts.add(args);
   if (model != null && model.isNotEmpty) parts.addAll(['--model', model]);
   if (effort != null && effort.isNotEmpty) parts.addAll(['--effort', effort]);
-  if (resume) {
+  if (resumeSessionId != null && resumeSessionId.isNotEmpty) {
+    parts.addAll(['--resume', shellQuote(resumeSessionId)]);
+  } else if (resume) {
     parts.add('--continue');
   } else {
     final text = prompt?.trim() ?? '';

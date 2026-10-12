@@ -1,8 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/widgets/activity_tab.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
+import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
+import 'package:tree_launcher/features/agents/presentation/widgets/agents_tab.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_prs_tab.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/pr_review_toast.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issues_tab.dart';
@@ -16,6 +21,26 @@ import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_l
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
 
+/// One of the repo's tabs. [key] identifies it across rebuilds, so the
+/// selection follows the tab when others appear or disappear.
+class _RepoTab {
+  const _RepoTab({
+    required this.key,
+    required this.label,
+    required this.body,
+    this.icon,
+    this.badge = 0,
+  });
+
+  final String key;
+  final String label;
+  final IconData? icon;
+  final Widget body;
+
+  /// Count shown on the tab (agents waiting for a human); 0 hides it.
+  final int badge;
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -27,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   static const double _collapseBreakpoint = 800;
   bool _sidebarOpen = false;
   TabController? _tabController;
-  int _lastTabCount = 0;
+  List<String> _tabKeys = const [];
 
   @override
   void dispose() {
@@ -42,28 +67,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final isTerminalActive =
         terminalProvider.isVisible && terminalProvider.sessions.isNotEmpty;
 
-    final hasGithubPrsTab =
-        repoProvider.selectedRepo?.githubConfig != null &&
-        repoProvider.selectedRepo!.githubConfig!.isConfigured;
-    final githubPrsTabCount = hasGithubPrsTab ? 1 : 0;
-    final hasJiraTab = repoProvider.selectedRepo?.jiraProjectKey != null;
-    final jiraTabIndex = 1 + githubPrsTabCount;
-    // Worktrees + [PRs] + [Jira] + Activity
-    final activityTabIndex = jiraTabIndex + (hasJiraTab ? 1 : 0);
-    final tabCount = activityTabIndex + 1;
+    final agents = context.watch<AgentsController>();
+    final repo = repoProvider.selectedRepo;
 
-    if (_tabController == null || _lastTabCount != tabCount) {
-      final oldIndex = _tabController?.index ?? 0;
-      _tabController?.dispose();
-      _tabController = TabController(
-        length: tabCount,
-        initialIndex: oldIndex >= tabCount
-            ? (tabCount > 0 ? tabCount - 1 : 0)
-            : oldIndex,
-        vsync: this,
-      );
-      _lastTabCount = tabCount;
-    }
+    final hasGithubPrsTab =
+        repo?.githubConfig != null && repo!.githubConfig!.isConfigured;
+    final hasJiraTab = repo?.jiraProjectKey != null;
+    final tabs = <_RepoTab>[
+      const _RepoTab(
+        key: 'worktrees',
+        label: 'Worktrees',
+        body: WorktreeList(),
+      ),
+      if (hasGithubPrsTab)
+        const _RepoTab(
+          key: 'prs',
+          label: 'PRs',
+          icon: Icons.merge_type_rounded,
+          body: GithubPrsTab(),
+        ),
+      if (hasJiraTab)
+        const _RepoTab(
+          key: 'jira',
+          label: 'Jira',
+          icon: Icons.confirmation_number_outlined,
+          body: JiraIssuesTab(),
+        ),
+      if (repo != null)
+        for (final kind in AgentKind.values)
+          if (showsAgentTab(repo.name, repo.claudePrompts, agents, kind))
+            _RepoTab(
+              key: 'agents:${kind.name}',
+              label: kind.label,
+              icon: kind.icon,
+              body: AgentsTab(key: ValueKey(kind), kind: kind),
+              badge: agents.needsYouCount(repo.name, kind),
+            ),
+      const _RepoTab(
+        key: 'activity',
+        label: 'Activity',
+        icon: Icons.history_rounded,
+        body: ActivityTab(),
+      ),
+    ];
+    _syncTabController([for (final tab in tabs) tab.key]);
 
     return CallbackShortcuts(
       bindings: {
@@ -155,62 +202,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                                   MainAxisSize
                                                                       .min,
                                                               children: [
-                                                                _buildSegmentTab(
-                                                                  text:
-                                                                      "Worktrees",
-                                                                  index: 0,
-                                                                  currentIndex:
-                                                                      currentIndex,
-                                                                  onTap: () =>
-                                                                      _tabController!
-                                                                          .animateTo(
-                                                                            0,
-                                                                          ),
-                                                                ),
-                                                                if (hasGithubPrsTab)
+                                                                for (
+                                                                  var i = 0;
+                                                                  i < tabs.length;
+                                                                  i++
+                                                                )
                                                                   _buildSegmentTab(
-                                                                    text: 'PRs',
-                                                                    index: 1,
+                                                                    text: tabs[i]
+                                                                        .label,
+                                                                    index: i,
                                                                     currentIndex:
                                                                         currentIndex,
-                                                                    icon: Icons
-                                                                        .merge_type_rounded,
+                                                                    icon: tabs[i]
+                                                                        .icon,
+                                                                    badge: tabs[i]
+                                                                        .badge,
                                                                     onTap: () =>
                                                                         _tabController!
                                                                             .animateTo(
-                                                                              1,
+                                                                              i,
                                                                             ),
                                                                   ),
-                                                                if (hasJiraTab)
-                                                                  _buildSegmentTab(
-                                                                    text:
-                                                                        'Jira',
-                                                                    index:
-                                                                        jiraTabIndex,
-                                                                    currentIndex:
-                                                                        currentIndex,
-                                                                    icon: Icons
-                                                                        .confirmation_number_outlined,
-                                                                    onTap: () =>
-                                                                        _tabController!.animateTo(
-                                                                          jiraTabIndex,
-                                                                        ),
-                                                                  ),
-                                                                _buildSegmentTab(
-                                                                  text:
-                                                                      "Activity",
-                                                                  index:
-                                                                      activityTabIndex,
-                                                                  currentIndex:
-                                                                      currentIndex,
-                                                                  icon: Icons
-                                                                      .history_rounded,
-                                                                  onTap: () =>
-                                                                      _tabController!
-                                                                          .animateTo(
-                                                                            activityTabIndex,
-                                                                          ),
-                                                                ),
                                                               ],
                                                             ),
                                                           ),
@@ -218,7 +230,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                       ),
                                                     ),
                                                   ),
-                                                  if (currentIndex == 0) ...[
+                                                  if (_tabKeys[currentIndex] ==
+                                                      'worktrees') ...[
                                                     const SizedBox(width: 12),
                                                     const WorktreeListOptionsButton(),
                                                   ],
@@ -234,12 +247,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             physics:
                                                 const NeverScrollableScrollPhysics(),
                                             children: [
-                                              const WorktreeList(),
-                                              if (hasGithubPrsTab)
-                                                const GithubPrsTab(),
-                                              if (hasJiraTab)
-                                                const JiraIssuesTab(),
-                                              const ActivityTab(),
+                                              for (final tab in tabs) tab.body,
                                             ],
                                           ),
                                         ),
@@ -297,6 +305,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Recreates the tab controller when the tabs change, keeping the selected
+  /// tab selected when it still exists.
+  void _syncTabController(List<String> keys) {
+    if (_tabController != null && listEquals(keys, _tabKeys)) return;
+    final oldIndex = _tabController?.index ?? 0;
+    final selectedKey = oldIndex < _tabKeys.length ? _tabKeys[oldIndex] : null;
+    var index = selectedKey == null ? -1 : keys.indexOf(selectedKey);
+    if (index == -1) index = oldIndex.clamp(0, keys.length - 1);
+    _tabController?.dispose();
+    _tabController = TabController(
+      length: keys.length,
+      initialIndex: index,
+      vsync: this,
+    );
+    _tabKeys = keys;
+  }
+
   Widget _buildSegmentTab({
     required String text,
     required int index,
@@ -305,6 +330,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     GestureTapUpCallback? onSecondaryTapUp,
     IconData? icon,
     Color? activeColor,
+    int badge = 0,
   }) {
     final isSelected = index == currentIndex;
     final color = activeColor ?? AppColors.textPrimary;
@@ -340,6 +366,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: isSelected ? color : AppColors.textMuted,
                 ),
               ),
+              if (badge > 0) ...[
+                const SizedBox(width: 6),
+                Tooltip(
+                  message: '$badge waiting for you',
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: agentWaitingColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$badge',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.base,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

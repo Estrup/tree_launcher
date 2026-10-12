@@ -129,12 +129,64 @@ class TerminalController extends ChangeNotifier {
     );
   }
 
+  /// The live Claude session of agent run [agentId], if any.
+  TerminalSession? claudeSessionForAgent(String agentId) {
+    for (final session in _sessions) {
+      if (session.agentId == agentId && !session.isDisposed) return session;
+    }
+    return null;
+  }
+
+  /// Shows agent [agentId]'s Claude session. Returns false when there is
+  /// none.
+  bool focusAgentSession(String agentId) {
+    final session = claudeSessionForAgent(agentId);
+    if (session == null) return false;
+    _activeIndex = _sessions.indexOf(session);
+    _visible = true;
+    notifyListeners();
+    return true;
+  }
+
+  /// Starts agent [agentId]'s Claude session running [command] in
+  /// [workingDirectory] with [environment] added to the shell's, or shows the
+  /// one already running. Unlike [openClaudeSession], other Claude sessions
+  /// in the same directory don't stop it from starting.
+  void openAgentSession(
+    String title,
+    String workingDirectory,
+    String repoPath,
+    String command, {
+    required String agentId,
+    Map<String, String> environment = const {},
+  }) {
+    if (focusAgentSession(agentId)) return;
+    _openCommandSession(
+      title,
+      workingDirectory,
+      repoPath,
+      command,
+      isClaude: true,
+      agentId: agentId,
+      environment: environment,
+    );
+  }
+
+  /// Closes agent [agentId]'s session, interrupting Claude first.
+  void closeAgentSession(String agentId) {
+    final session = claudeSessionForAgent(agentId);
+    if (session == null) return;
+    closeTerminal(_sessions.indexOf(session));
+  }
+
   void _openCommandSession(
     String title,
     String workingDirectory,
     String repoPath,
     String command, {
     bool isClaude = false,
+    String? agentId,
+    Map<String, String> environment = const {},
   }) {
     _evictIfFull();
 
@@ -146,6 +198,8 @@ class TerminalController extends ChangeNotifier {
         repoPath: repoPath,
         command: command,
         isClaude: isClaude,
+        agentId: agentId,
+        environment: environment,
       );
     } catch (error) {
       debugPrint('Failed to create terminal session: $error');

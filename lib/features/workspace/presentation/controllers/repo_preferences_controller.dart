@@ -51,6 +51,16 @@ class RepoPreferencesController extends ChangeNotifier {
     return updated;
   }
 
+  Future<RepoConfig?> updateAgentWorkingDirectory(
+    RepoConfig repo,
+    String path,
+  ) async {
+    final updated = repo.copyWith(agentWorkingDirectory: path);
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
   Future<RepoConfig?> updateRepoClaudePrompts(
     RepoConfig repo,
     List<ClaudePrompt> prompts,

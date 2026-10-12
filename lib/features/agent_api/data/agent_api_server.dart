@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
@@ -12,6 +13,10 @@ import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 import 'package:tree_launcher/features/activity/domain/activity_filter.dart';
 import 'package:tree_launcher/features/activity/domain/activity_service.dart';
+import 'package:tree_launcher/features/agents/domain/agent_event.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
+import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_constants.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
@@ -30,9 +35,10 @@ import 'package:tree_launcher/models/manual_post.dart';
 /// A small read-only HTTP server, bound to loopback only, that exposes app data
 /// to local AI agents (for use in Claude Code skills).
 ///
-/// v1 surfaces the Activity timeline, worktree creation, and Jira issues with
-/// the user's local tags (which it can set, but never anything in Jira). The
-/// router is the extension point — adding a capability is a new `_router` line
+/// v1 surfaces the Activity timeline, worktree creation, Jira issues with the
+/// user's local tags (which it can set, but never anything in Jira), and agent
+/// runs, which agents register and report their progress to. The router is
+/// the extension point — adding a capability is a new `_router` line
 /// plus a handler.
 class AgentApiServer {
   AgentApiServer({
@@ -85,6 +91,16 @@ class AgentApiServer {
     _jiraTagEditor = editor;
   }
 
+  /// Set by the live app once its agents controller exists. Until then the
+  /// agent routes answer 503.
+  AgentRegistry? _agentRegistry;
+
+  /// Registers the live agent runs. Called from app wiring after the
+  /// `AgentsController` is constructed.
+  void registerAgentRegistry(AgentRegistry registry) {
+    _agentRegistry = registry;
+  }
+
   HttpServer? _server;
   bool get isRunning => _server != null;
   int? get port => _server?.port;
@@ -130,7 +146,11 @@ class AgentApiServer {
     ..post('/v1/worktrees', _createWorktree)
     ..get('/v1/jira/issues', _jiraIssues)
     ..get('/v1/jira/tags', _jiraTags)
-    ..put('/v1/jira/issues/<key>/tags', _setJiraIssueTags);
+    ..put('/v1/jira/issues/<key>/tags', _setJiraIssueTags)
+    ..get('/v1/agents', _listAgents)
+    ..post('/v1/agents', _registerAgent)
+    ..get('/v1/agents/<id>', _getAgent)
+    ..post('/v1/agents/<id>/status', _reportAgentStatus);
 
   Response _health(Request request) =>
       _json({'status': 'ok', 'service': 'tree_launcher', 'version': 1});
@@ -581,6 +601,456 @@ class AgentApiServer {
         'AgentApiServer: PUT /v1/jira/issues/$issueKey/tags failed: $e',
       );
       return _json({'error': 'failed to save tags: $e'}, status: 500);
+    }
+  }
+
+  /// `GET /v1/agents?repo=<name>&kind=<kind>&active=true|false&issue=<key>&archived=true`
+  ///
+  /// Lists agent runs, newest update first. Every filter is optional;
+  /// archived runs are left out unless `archived=true`.
+  Future<Response> _listAgents(Request request) async {
+    final registry = _agentRegistry;
+    if (registry == null) return _json({'error': 'app not ready'}, status: 503);
+    final query = request.url.queryParameters;
+
+    final kindParam = query['kind']?.trim();
+    AgentKind? kind;
+    if (kindParam != null && kindParam.isNotEmpty) {
+      kind = AgentKind.tryParse(kindParam);
+      if (kind == null) return _unknownKind(kindParam);
+    }
+    final activeParam = query['active']?.trim();
+    if (activeParam != null &&
+        activeParam != 'true' &&
+        activeParam != 'false') {
+      return _json({'error': 'active must be true or false'}, status: 400);
+    }
+    final repo = query['repo']?.trim();
+    final issue = query['issue']?.trim().toUpperCase();
+    final includeArchived = query['archived'] == 'true';
+
+    final runs = [
+      for (final run in registry.runs)
+        if ((repo == null || repo.isEmpty || run.repoName == repo) &&
+            (kind == null || run.kind == kind) &&
+            (activeParam == null ||
+                run.state.isFinished == (activeParam == 'false')) &&
+            (issue == null || issue.isEmpty || run.issueKeys.contains(issue)) &&
+            (includeArchived || !run.archived))
+          run,
+    ];
+    return _json({
+      'count': runs.length,
+      'agents': [for (final run in runs) run.toJson()],
+    });
+  }
+
+  /// `GET /v1/agents/<id>` — one run with its latest timeline events.
+  Response _getAgent(Request request, String id) {
+    final registry = _agentRegistry;
+    if (registry == null) return _json({'error': 'app not ready'}, status: 503);
+    final run = registry.runById(id);
+    if (run == null) {
+      return _json({'error': 'agent not found: $id'}, status: 404);
+    }
+    final events = registry.eventsFor(id);
+    final recent = events.length > 50
+        ? events.sublist(events.length - 50)
+        : events;
+    return _json({
+      ...run.toJson(),
+      'events': [for (final event in recent) event.toJson()],
+    });
+  }
+
+  static const _registerFields = {
+    'id',
+    'kind',
+    'repo',
+    'prompt',
+    'title',
+    'issueKey',
+    'issueKeys',
+    'worktreePath',
+    'branch',
+    'prNumber',
+    'stages',
+    'model',
+    'effort',
+  };
+
+  /// `POST /v1/agents`
+  ///
+  /// Registers an agent run. JSON body:
+  /// - `id` (optional) — a run the app created when it launched the agent
+  ///   (`$TREE_LAUNCHER_AGENT_ID`); the other fields update it. 404 if unknown.
+  /// - `kind` and `repo` — required without `id`: `build`, `verify`,
+  ///   `review` or `docs`, and a repo name. Without `repo`, the repo whose
+  ///   worktree `worktreePath` is.
+  /// - `prompt`, `title`, `worktreePath`, `branch`, `model`, `effort` —
+  ///   optional strings; `prNumber` an optional number.
+  /// - `issueKey` / `issueKeys` — one key, or a list (or comma-separated).
+  /// - `stages` — the agent's stage names in order (list or comma-separated).
+  ///
+  /// Without `id`, an active run with the same kind, repo, worktree and
+  /// issues is updated instead of creating another (200); a new run is 201.
+  Future<Response> _registerAgent(Request request) async {
+    final registry = _agentRegistry;
+    if (registry == null) return _json({'error': 'app not ready'}, status: 503);
+    final parsed = await _readJsonObject(request);
+    if (parsed.error != null) return parsed.error!;
+    final body = parsed.body!;
+
+    final unknown = body.keys.where((k) => !_registerFields.contains(k));
+    if (unknown.isNotEmpty) return _unsupportedFields(unknown, _registerFields);
+
+    String? field(String key) {
+      final value = body[key];
+      if (value == null) return null;
+      final s = value.toString().trim();
+      return s.isEmpty ? null : s;
+    }
+
+    final id = field('id');
+    final kindName = field('kind');
+    final kind = AgentKind.tryParse(kindName);
+    if (kindName != null && kind == null) return _unknownKind(kindName);
+    var repo = field('repo');
+    final worktreePath = field('worktreePath');
+    if (id == null && repo == null && worktreePath != null) {
+      repo = await _repoOfWorktree(worktreePath);
+    }
+    if (id == null) {
+      final missing = [if (kind == null) 'kind', if (repo == null) 'repo'];
+      if (missing.isNotEmpty) {
+        return _json({
+          'error':
+              'missing required field(s): ${missing.join(', ')}'
+              '${repo == null && worktreePath != null ? ' ($worktreePath is not a worktree of any repo)' : ''}',
+        }, status: 400);
+      }
+    }
+    if (repo != null) {
+      final repos = await _repoConfigStore.load();
+      if (!repos.any((r) => r.name == repo)) {
+        return _json({'error': 'repo not found: $repo'}, status: 404);
+      }
+    }
+
+    final List<String>? issueKeys;
+    final List<String>? stages;
+    try {
+      final keys = <String>[
+        ...?_names(body['issueKeys'], 'issueKeys'),
+        ...?_names(body['issueKey'], 'issueKey'),
+      ];
+      issueKeys = body.containsKey('issueKeys') || body.containsKey('issueKey')
+          ? [
+              ...{for (final key in keys) key.toUpperCase()},
+            ]
+          : null;
+      stages = _names(body['stages'], 'stages')?.toSet().toList();
+    } on FormatException catch (e) {
+      return _json({'error': e.message}, status: 400);
+    }
+    for (final key in issueKeys ?? const <String>[]) {
+      final error = validateJiraKey(key);
+      if (error != null) {
+        return _json({'error': 'issue key $key: $error'}, status: 400);
+      }
+    }
+
+    int? prNumber;
+    final prRaw = body['prNumber'];
+    if (prRaw != null) {
+      prNumber = prRaw is int ? prRaw : int.tryParse(prRaw.toString().trim());
+      if (prNumber == null) {
+        return _json({'error': 'prNumber must be a number'}, status: 400);
+      }
+    }
+
+    try {
+      final result = await registry.register(
+        AgentRegistration(
+          kind: kind,
+          repoName: repo,
+          promptName: field('prompt'),
+          title: field('title'),
+          issueKeys: issueKeys,
+          worktreePath: worktreePath,
+          branch: field('branch'),
+          prNumber: prNumber,
+          stages: stages,
+          model: field('model'),
+          effort: field('effort'),
+        ),
+        id: id,
+      );
+      return _json(result.run.toJson(), status: result.created ? 201 : 200);
+    } on AgentNotFoundException catch (e) {
+      return _json({'error': e.toString()}, status: 404);
+    } on ArgumentError catch (e) {
+      return _json({'error': '${e.message}'}, status: 400);
+    } catch (e) {
+      debugPrint('AgentApiServer: POST /v1/agents failed: $e');
+      return _json({'error': 'failed to register agent: $e'}, status: 500);
+    }
+  }
+
+  static const _statusFields = {
+    'state',
+    'stage',
+    'stageState',
+    'progress',
+    'stages',
+    'message',
+    'level',
+    'links',
+    'result',
+  };
+
+  /// Longest `message` kept; longer ones are cut.
+  static const _maxMessageLength = 2000;
+
+  /// `POST /v1/agents/<id>/status`
+  ///
+  /// Reports an agent's progress. Every field is optional, but at least one
+  /// is needed:
+  /// - `state` — `running`, `waiting` (needs a human; requires `message`),
+  ///   `done`, `failed` or `stopped`.
+  /// - `stage` — the stage this is about, with optional `stageState`
+  ///   (`pending`, `running`, `waiting`, `done`, `failed`, `skipped`) and
+  ///   `progress` (`"4/7"` or `{"done": 4, "total": 7}`).
+  /// - `stages` — re-declares the stage names.
+  /// - `message` — one line for the timeline and the card; `level` — `info`,
+  ///   `success`, `warning`, `error` or `action`.
+  /// - `links` — `{"label": "url or path"}`, added to the run's links.
+  /// - `result` — the outcome in a few words.
+  Future<Response> _reportAgentStatus(Request request, String id) async {
+    final registry = _agentRegistry;
+    if (registry == null) return _json({'error': 'app not ready'}, status: 503);
+    if (registry.runById(id) == null) {
+      return _json({'error': 'agent not found: $id'}, status: 404);
+    }
+    final parsed = await _readJsonObject(request);
+    if (parsed.error != null) return parsed.error!;
+    final body = parsed.body!;
+
+    final unknown = body.keys.where((k) => !_statusFields.contains(k));
+    if (unknown.isNotEmpty) return _unsupportedFields(unknown, _statusFields);
+    if (body.isEmpty) {
+      return _json({
+        'error':
+            'nothing to report; give at least one of: '
+            '${_statusFields.join(', ')}',
+      }, status: 400);
+    }
+
+    String? field(String key) {
+      final value = body[key];
+      if (value == null) return null;
+      final s = value.toString().trim();
+      return s.isEmpty ? null : s;
+    }
+
+    final stateName = field('state');
+    final state = AgentState.tryParse(stateName);
+    if (stateName != null && (state == null || state == AgentState.starting)) {
+      return _json({
+        'error':
+            'unknown state "$stateName" — expected one of: '
+            'running, waiting, done, failed, stopped',
+      }, status: 400);
+    }
+    final stage = field('stage');
+    final stageStateName = field('stageState');
+    final stageState = AgentStageState.tryParse(stageStateName);
+    if (stageStateName != null && stageState == null) {
+      return _json({
+        'error':
+            'unknown stageState "$stageStateName" — expected one of: '
+            '${AgentStageState.values.map((s) => s.name).join(', ')}',
+      }, status: 400);
+    }
+    final levelName = field('level');
+    final level = AgentEventLevel.tryParse(levelName);
+    if (levelName != null && level == null) {
+      return _json({
+        'error':
+            'unknown level "$levelName" — expected one of: '
+            '${AgentEventLevel.values.map((l) => l.name).join(', ')}',
+      }, status: 400);
+    }
+
+    var message = field('message');
+    if (message != null && message.length > _maxMessageLength) {
+      message = '${message.substring(0, _maxMessageLength)}…';
+    }
+    if (state == AgentState.waiting && message == null) {
+      return _json({
+        'error': 'state waiting needs a message saying what is needed',
+      }, status: 400);
+    }
+
+    int? progressDone;
+    int? progressTotal;
+    final progress = body['progress'];
+    if (progress != null) {
+      if (progress is String) {
+        final match = RegExp(r'^\s*(\d+)\s*/\s*(\d+)\s*$').firstMatch(progress);
+        if (match == null) {
+          return _json({
+            'error': 'progress must be "done/total", e.g. "4/7"',
+          }, status: 400);
+        }
+        progressDone = int.parse(match.group(1)!);
+        progressTotal = int.parse(match.group(2)!);
+      } else if (progress is Map &&
+          (progress['done'] == null || progress['done'] is int) &&
+          (progress['total'] == null || progress['total'] is int)) {
+        progressDone = progress['done'] as int?;
+        progressTotal = progress['total'] as int?;
+      } else {
+        return _json({
+          'error': 'progress must be "4/7" or {"done": 4, "total": 7}',
+        }, status: 400);
+      }
+    }
+    if (stage == null && (stageState != null || progress != null)) {
+      return _json({
+        'error': 'stageState and progress need a stage',
+      }, status: 400);
+    }
+
+    final links = <AgentLink>[];
+    final linksRaw = body['links'];
+    if (linksRaw != null) {
+      if (linksRaw is! Map ||
+          linksRaw.values.any((v) => v is! String || v.trim().isEmpty)) {
+        return _json({
+          'error': 'links must be an object of label → URL or path',
+        }, status: 400);
+      }
+      for (final MapEntry(:key, :value) in linksRaw.entries) {
+        final label = key.toString().trim();
+        if (label.isEmpty) continue;
+        links.add(AgentLink(label: label, target: (value as String).trim()));
+      }
+    }
+
+    final List<String>? stages;
+    try {
+      stages = _names(body['stages'], 'stages')?.toSet().toList();
+    } on FormatException catch (e) {
+      return _json({'error': e.message}, status: 400);
+    }
+
+    var result = field('result');
+    if (result != null && result.length > 200) {
+      result = '${result.substring(0, 200)}…';
+    }
+
+    try {
+      final run = await registry.report(
+        id,
+        AgentReport(
+          state: state,
+          stage: stage,
+          stageState: stageState,
+          progressDone: progressDone,
+          progressTotal: progressTotal,
+          stages: stages,
+          message: message,
+          level: level,
+          links: links,
+          result: result,
+        ),
+      );
+      return _json(run.toJson());
+    } on AgentNotFoundException catch (e) {
+      return _json({'error': e.toString()}, status: 404);
+    } catch (e) {
+      debugPrint('AgentApiServer: POST /v1/agents/$id/status failed: $e');
+      return _json({'error': 'failed to report status: $e'}, status: 500);
+    }
+  }
+
+  /// The name of the repo [worktreePath] is a worktree of (or the repo's own
+  /// directory), or null. Asks git for every repo's worktrees at once.
+  Future<String?> _repoOfWorktree(String worktreePath) async {
+    final target = p.normalize(worktreePath);
+    final repos = await _repoConfigStore.load();
+    final found = await Future.wait([
+      for (final repo in repos)
+        () async {
+          if (p.equals(repo.path, target)) return repo.name;
+          try {
+            final result = await _gitService.getWorktrees(repo.path);
+            if (result.worktrees.any((w) => p.equals(w.path, target))) {
+              return repo.name;
+            }
+          } catch (_) {
+            // An unreadable repo can't be the match.
+          }
+          return null;
+        }(),
+    ]);
+    return found.nonNulls.firstOrNull;
+  }
+
+  /// Names from a JSON list of strings or a comma-separated string, trimmed
+  /// and without blanks; null when [value] is null. Throws [FormatException]
+  /// naming [field] for anything else.
+  static List<String>? _names(Object? value, String field) {
+    if (value == null) return null;
+    final Iterable<String> raw;
+    if (value is String) {
+      raw = value.split(',');
+    } else if (value is List && value.every((v) => v is String)) {
+      raw = value.cast<String>();
+    } else {
+      throw FormatException('$field must be a list of strings');
+    }
+    return [
+      for (final name in raw)
+        if (name.trim().isNotEmpty) name.trim(),
+    ];
+  }
+
+  static Response _unknownKind(String kind) => _json({
+    'error':
+        'unknown kind "$kind" — expected one of: '
+        '${AgentKind.values.map((k) => k.name).join(', ')}',
+  }, status: 400);
+
+  static Response _unsupportedFields(
+    Iterable<String> fields,
+    Set<String> allowed,
+  ) => _json({
+    'error': 'unsupported field(s): ${fields.join(', ')}',
+    'fields': allowed.toList(),
+  }, status: 400);
+
+  /// The request's JSON object body, or the 400 response to send.
+  static Future<({Map<String, dynamic>? body, Response? error})>
+  _readJsonObject(Request request) async {
+    try {
+      final raw = await request.readAsString();
+      final decoded = raw.isEmpty ? null : jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return (
+          body: null,
+          error: _json({
+            'error': 'request body must be a JSON object',
+          }, status: 400),
+        );
+      }
+      return (body: decoded, error: null);
+    } catch (e) {
+      return (
+        body: null,
+        error: _json({'error': 'invalid JSON body: $e'}, status: 400),
+      );
     }
   }
 

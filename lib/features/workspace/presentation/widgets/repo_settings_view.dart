@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/workspace/domain/command_style.dart';
 import 'package:tree_launcher/features/workspace/domain/claude_prompt.dart';
@@ -1112,7 +1114,7 @@ class _ClaudePromptsSectionState extends State<_ClaudePromptsSection> {
       final cleaned = _prompts
           .where((p) => p.name.trim().isNotEmpty || p.prompt.trim().isNotEmpty)
           .map(
-            (p) => ClaudePrompt(name: p.name.trim(), prompt: p.prompt.trim()),
+            (p) => p.copyWith(name: p.name.trim(), prompt: p.prompt.trim()),
           )
           .toList();
       provider.updateRepoClaudePrompts(repo, cleaned);
@@ -1185,6 +1187,7 @@ class _ClaudePromptsSectionState extends State<_ClaudePromptsSection> {
                     SizedBox(height: 4),
                     Text(
                       'Prompt templates offered by the Claude button on a worktree. '
+                      'A prompt with an agent kind starts that kind of agent from its tab. '
                       'Substitutions: {issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}.',
                       style: TextStyle(
                         fontSize: 13,
@@ -1313,6 +1316,10 @@ class _ClaudePromptRowState extends State<_ClaudePromptRow> {
                   ),
                 ),
               ),
+              if (widget.prompt.kind case final kind?) ...[
+                AgentKindChip(kind: kind),
+                const SizedBox(width: 8),
+              ],
               _RemoveButton(onTap: widget.onRemove),
               const SizedBox(width: 4),
               Icon(
@@ -1420,6 +1427,41 @@ class _ClaudePromptEditorState extends State<_ClaudePromptEditor> {
             ),
           ),
           const SizedBox(height: 20),
+          _label('AGENT KIND'),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _KindOption(
+                label: 'None',
+                icon: Icons.auto_awesome_rounded,
+                color: AppColors.claude,
+                selected: widget.prompt.kind == null,
+                onTap: () =>
+                    widget.onChanged(widget.prompt.copyWith(clearKind: true)),
+              ),
+              for (final kind in AgentKind.values)
+                _KindOption(
+                  label: kind.label,
+                  icon: kind.icon,
+                  color: kind.color,
+                  selected: widget.prompt.kind == kind,
+                  onTap: () =>
+                      widget.onChanged(widget.prompt.copyWith(kind: kind)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            widget.prompt.kind == null
+                ? 'An ordinary prompt, offered when starting Claude.'
+                : 'Starts a ${widget.prompt.kind!.label.toLowerCase()} agent: '
+                      'offered in the ${widget.prompt.kind!.label} tab, which '
+                      'shows what the agent reports.',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 20),
           _label('PROMPT'),
           const SizedBox(height: 6),
           Expanded(
@@ -1446,6 +1488,67 @@ class _ClaudePromptEditorState extends State<_ClaudePromptEditor> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One choice in the prompt editor's agent-kind picker.
+class _KindOption extends StatelessWidget {
+  const _KindOption({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected
+                ? color.withValues(alpha: 0.15)
+                : AppColors.surface0,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected
+                  ? color.withValues(alpha: 0.5)
+                  : AppColors.borderSubtle,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: selected ? color : AppColors.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  color: selected ? color : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

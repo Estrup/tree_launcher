@@ -190,6 +190,17 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     return updated;
   }
 
+  /// Remembers [path] as the working directory for [repo]'s agents that run
+  /// outside an issue's worktree.
+  Future<RepoConfig?> updateAgentWorkingDirectory(
+    RepoConfig repo,
+    String path,
+  ) async {
+    final updated = await preferences.updateAgentWorkingDirectory(repo, path);
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
   Future<RepoConfig?> updateRepoClaudePrompts(
     RepoConfig repo,
     List<ClaudePrompt> prompts,

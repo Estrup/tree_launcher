@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
+import 'package:tree_launcher/features/agents/presentation/agent_launcher.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
@@ -23,22 +24,28 @@ class ClaudeSessionLauncher {
     required WorkspaceController workspace,
     required SettingsController settings,
     ClaudeSessionActivity? claudeActivity,
+    AgentLauncher? agents,
   }) : _terminal = terminal,
        _workspace = workspace,
        _settings = settings,
-       _claudeActivity = claudeActivity ?? ClaudeSessionActivity();
+       _claudeActivity = claudeActivity ?? ClaudeSessionActivity(),
+       _agents = agents;
 
   factory ClaudeSessionLauncher.of(BuildContext context) =>
       ClaudeSessionLauncher(
         terminal: context.read<TerminalController>(),
         workspace: context.read<WorkspaceController>(),
         settings: context.read<SettingsController>(),
+        agents: AgentLauncher.maybeOf(context),
       );
 
   final TerminalController _terminal;
   final WorkspaceController _workspace;
   final SettingsController _settings;
   final ClaudeSessionActivity _claudeActivity;
+
+  /// Resumes a worktree's unfinished agent as that agent (same run id).
+  final AgentLauncher? _agents;
 
   /// Shows the Claude session running in [worktreePath]. Returns false when
   /// there is none.
@@ -71,8 +78,9 @@ class ClaudeSessionLauncher {
 
   /// Opens a remembered session from its sidebar shortcut: shows the running
   /// one, or starts a terminal that continues the worktree's latest
-  /// conversation (a fresh session when there is none). A shortcut whose
-  /// worktree is gone is dropped.
+  /// conversation (a fresh session when there is none). A worktree with an
+  /// unfinished agent resumes that agent. A shortcut whose worktree is gone
+  /// is dropped.
   Future<void> resume({
     required String repoPath,
     required String worktreePath,
@@ -81,6 +89,11 @@ class ClaudeSessionLauncher {
     if (!await Directory(worktreePath).exists()) {
       await _workspace.forgetClaudeSession(repoPath, worktreePath);
       showAppSnackBar('Worktree ${p.basename(worktreePath)} no longer exists');
+      return;
+    }
+    final agentRun = _agents?.unfinishedRunIn(worktreePath);
+    if (agentRun != null) {
+      await _agents!.resume(agentRun);
       return;
     }
     final canContinue = await _claudeActivity.hasSessions(worktreePath);

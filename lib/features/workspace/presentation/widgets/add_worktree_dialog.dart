@@ -4,8 +4,11 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/agents/presentation/agent_launcher.dart';
+import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
 import 'package:tree_launcher/features/terminal/presentation/claude_session_actions.dart';
+import 'package:tree_launcher/features/workspace/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
@@ -26,12 +29,21 @@ class AddWorktreeResult {
   final String? claudeModel;
   final String? claudeEffort;
 
+  /// In start-Claude mode, the saved prompt that was picked, if any. One with
+  /// an agent kind starts that kind of agent.
+  final ClaudePrompt? savedPrompt;
+
+  /// The Jira issue the worktree is for, if known.
+  final String? issueKey;
+
   const AddWorktreeResult({
     required this.worktreePath,
     this.branch,
     this.claudePrompt,
     this.claudeModel,
     this.claudeEffort,
+    this.savedPrompt,
+    this.issueKey,
   });
 }
 
@@ -139,6 +151,7 @@ class AddWorktreeDialog extends StatefulWidget {
     final repo = context.read<RepoProvider>().selectedRepo;
     if (repo == null) return;
     final launcher = ClaudeSessionLauncher.of(context);
+    final agentLauncher = AgentLauncher.maybeOf(context);
     final settings = context.read<SettingsProvider>();
     if (existingWorktree != null && launcher.focus(existingWorktree.path)) {
       return;
@@ -162,6 +175,23 @@ class AddWorktreeDialog extends StatefulWidget {
       result.claudeModel,
       result.claudeEffort,
     );
+    final agentPrompt = result.savedPrompt;
+    if (agentLauncher != null && agentPrompt?.kind != null) {
+      await agentLauncher.start(
+        repoPath: repo.path,
+        repoName: repo.name,
+        prompt: agentPrompt!,
+        worktreePath: result.worktreePath,
+        resolvedPrompt: result.claudePrompt,
+        branch: result.branch ?? existingWorktree?.branch,
+        issueKey: result.issueKey,
+        title: contextTitle,
+        prNumber: prNumber,
+        model: result.claudeModel,
+        effort: result.claudeEffort,
+      );
+      return;
+    }
     await launcher.start(
       repoPath: repo.path,
       worktreePath: result.worktreePath,
@@ -319,10 +349,22 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         _PromptOption(
           key: '$_savedPromptPrefix$i',
           label: prompts[i].name,
-          icon: Icons.bookmark_border_rounded,
-          preview: _firstLine(prompts[i].prompt),
+          icon: prompts[i].kind?.icon ?? Icons.bookmark_border_rounded,
+          preview: prompts[i].kind == null
+              ? _firstLine(prompts[i].prompt)
+              : '${prompts[i].kind!.label} agent · '
+                    '${_firstLine(prompts[i].prompt)}',
         ),
     ];
+  }
+
+  /// The saved prompt picked in the prompt panel, if any.
+  ClaudePrompt? get _selectedSavedPrompt {
+    if (!_promptKey.startsWith(_savedPromptPrefix)) return null;
+    final index = int.tryParse(_promptKey.substring(_savedPromptPrefix.length));
+    final prompts =
+        context.read<RepoProvider>().selectedRepo?.claudePrompts ?? const [];
+    return index == null || index >= prompts.length ? null : prompts[index];
   }
 
   static String? _firstLine(String? text) => text
@@ -379,6 +421,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           ),
           claudeModel: _model,
           claudeEffort: _effort,
+          savedPrompt: _selectedSavedPrompt,
+          issueKey: existing.jiraIssue ?? widget.initialJiraKey,
         ),
       );
       return;
@@ -447,6 +491,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                       : null,
                   claudeModel: widget.startClaude ? _model : null,
                   claudeEffort: widget.startClaude ? _effort : null,
+                  savedPrompt: widget.startClaude ? _selectedSavedPrompt : null,
+                  issueKey: jira.isNotEmpty ? jira : null,
                 )
               : null,
         );
@@ -955,7 +1001,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           const SizedBox(height: 14),
           Text(
             'Runs ${buildClaudeCliCommand(extraArgs: args, model: _model, effort: _effort)} '
-            'in the built-in terminal.',
+            'in the built-in terminal'
+            '${_selectedSavedPrompt?.kind == null ? '' : ' as a ${_selectedSavedPrompt!.kind!.label.toLowerCase()} agent'}.',
             style: TextStyle(
               fontSize: 11,
               color: AppColors.textMuted.withValues(alpha: 0.6),

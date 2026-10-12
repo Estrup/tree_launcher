@@ -62,6 +62,11 @@ class RepoConfig {
   /// resumed (`claude --continue`) after its terminal is gone.
   final List<String> claudeSessions;
 
+  /// Working directory last used for an agent that runs outside an issue's
+  /// worktree (verify, review, docs), offered first next time. The repo path
+  /// itself can't serve when the repo is bare.
+  final String? agentWorkingDirectory;
+
   RepoConfig({
     required this.name,
     required this.path,
@@ -81,6 +86,7 @@ class RepoConfig {
     this.predefinedIssues = const [],
     this.useNestedWorktrees = false,
     this.claudeSessions = const [],
+    this.agentWorkingDirectory,
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -141,6 +147,7 @@ class RepoConfig {
               ?.whereType<String>()
               .toList() ??
           const [],
+      agentWorkingDirectory: json['agentWorkingDirectory'] as String?,
     );
   }
 
@@ -164,6 +171,8 @@ class RepoConfig {
     'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
     'useNestedWorktrees': useNestedWorktrees,
     'claudeSessions': claudeSessions,
+    if (agentWorkingDirectory != null)
+      'agentWorkingDirectory': agentWorkingDirectory,
   };
 
   RepoConfig copyWith({
@@ -188,6 +197,7 @@ class RepoConfig {
     List<PredefinedIssue>? predefinedIssues,
     bool? useNestedWorktrees,
     List<String>? claudeSessions,
+    String? agentWorkingDirectory,
   }) {
     return RepoConfig(
       name: name ?? this.name,
@@ -214,6 +224,8 @@ class RepoConfig {
       predefinedIssues: predefinedIssues ?? this.predefinedIssues,
       useNestedWorktrees: useNestedWorktrees ?? this.useNestedWorktrees,
       claudeSessions: claudeSessions ?? this.claudeSessions,
+      agentWorkingDirectory:
+          agentWorkingDirectory ?? this.agentWorkingDirectory,
     );
   }
 

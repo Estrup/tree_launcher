@@ -7,6 +7,7 @@ import 'package:tree_launcher/app/shell/workspace_shell.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
+import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
@@ -58,6 +59,20 @@ class TreeLauncherApp extends StatelessWidget {
           // Re-report the terminal colors after a palette switch.
           update: (context, settings, previous) =>
               (previous ?? TerminalController())..syncColors(),
+        ),
+        ChangeNotifierProxyProvider<TerminalController, AgentsController>(
+          create: (_) {
+            final controller = AgentsController(
+              store: dependencies.agentRunStore,
+            )..load();
+            // Agents register and report through the live controller, so
+            // their cards update at once.
+            dependencies.agentApiServer.registerAgentRegistry(controller);
+            return controller;
+          },
+          // Watch the terminal's agent sessions (busy / waiting / exited).
+          update: (context, terminal, previous) =>
+              previous!..attachTerminal(terminal),
         ),
         ChangeNotifierProvider(
           create: (_) => ActivityController(

@@ -116,6 +116,18 @@ void main() {
       expect(buildClaudeCliCommand(extraArgs: '  ', prompt: ' '), 'claude');
     });
 
+    test('resumes a session by id, quoted', () {
+      expect(
+        buildClaudeCliCommand(
+          prompt: 'ignored',
+          model: 'opus',
+          resume: true,
+          resumeSessionId: 'abc-123',
+        ),
+        "claude --model opus --resume 'abc-123'",
+      );
+    });
+
     test('resume continues the last conversation and ignores the prompt', () {
       expect(
         buildClaudeCliCommand(
