@@ -12,9 +12,13 @@ import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_run.dart';
+import 'package:tree_launcher/features/workspace/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
@@ -148,5 +152,124 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('AU2-5788: Udlån sker til en kontakt'), findsOneWidget);
+  });
+
+  testWidgets('the selected repo lists its pages with sessions under them', (
+    tester,
+  ) async {
+    await workspace.updateJiraProjectKey(workspace.selectedRepo!, 'AU2');
+    await pumpSidebar(tester);
+
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(find.text('Worktrees'), findsOneWidget);
+    expect(find.text('Jira'), findsOneWidget);
+    expect(find.text('Activity'), findsOneWidget);
+    // The issue's session goes under Jira, the other under Worktrees.
+    expect(top('spike'), greaterThan(top('Worktrees')));
+    expect(top('spike'), lessThan(top('Jira')));
+    final issueSession = top('udlaan-sker-til-en-kontakt-au2-5788');
+    expect(issueSession, greaterThan(top('Jira')));
+    expect(issueSession, lessThan(top('Activity')));
+  });
+
+  testWidgets('tapping a page shows it', (tester) async {
+    await workspace.updateJiraProjectKey(workspace.selectedRepo!, 'AU2');
+    await pumpSidebar(tester);
+    expect(workspace.repoPageKey, worktreesPageKey);
+
+    await tester.tap(find.text('Jira'));
+    await tester.pump();
+
+    expect(workspace.repoPageKey, jiraPageKey);
+  });
+
+  group('sessionPageKey', () {
+    final repo = RepoConfig(
+      name: 'r',
+      path: '/r',
+      claudePrompts: [
+        ClaudePrompt(name: 'Implement', prompt: 'Implement {issue}'),
+        ClaudePrompt(
+          name: 'Verify',
+          prompt: 'Verify {issue}',
+          kind: AgentKind.verify,
+        ),
+      ],
+      prAuthors: const {'/w/pr': 'kim'},
+      jiraIssues: const {'/w/pr': 'AU2-1', '/w/issue': 'AU2-2'},
+      claudeSessionPrompts: const {
+        '/w/verified': 'Verify',
+        '/w/from-pr-tab': prContextPromptId,
+        '/w/issue': 'Implement',
+        '/w/pr': issueContextPromptId,
+      },
+    );
+    final all = {
+      worktreesPageKey,
+      prsPageKey,
+      jiraPageKey,
+      agentPageKey(AgentKind.verify),
+      agentPageKey(AgentKind.review),
+    };
+    final t0 = DateTime(2026, 10, 1);
+    AgentRun run(String id, AgentKind kind, String path, DateTime at) =>
+        AgentRun(
+          id: id,
+          kind: kind,
+          repoName: 'r',
+          worktreePath: path,
+          startedAt: at,
+          updatedAt: at,
+        );
+
+    test('goes by the prompt it was started with first', () {
+      expect(
+        sessionPageKey(repo, '/w/verified', all),
+        agentPageKey(AgentKind.verify),
+      );
+      expect(sessionPageKey(repo, '/w/from-pr-tab', all), prsPageKey);
+      // The issue context wins over the worktree being a PR's.
+      expect(sessionPageKey(repo, '/w/pr', all), jiraPageKey);
+    });
+
+    test('then by the newest agent in the worktree', () {
+      final runs = [
+        run('a', AgentKind.verify, '/w/other', t0),
+        run(
+          'b',
+          AgentKind.review,
+          '/w/other',
+          t0.add(const Duration(hours: 1)),
+        ),
+      ];
+      expect(
+        sessionPageKey(repo, '/w/other', all, runs: runs),
+        agentPageKey(AgentKind.review),
+      );
+      // A prompt without a kind says nothing; the agent decides.
+      expect(
+        sessionPageKey(
+          repo,
+          '/w/issue',
+          all,
+          runs: [run('c', AgentKind.verify, '/w/issue', t0)],
+        ),
+        agentPageKey(AgentKind.verify),
+      );
+    });
+
+    test('then by where the worktree came from', () {
+      expect(sessionPageKey(repo, '/w/issue', all), jiraPageKey);
+      expect(sessionPageKey(repo, '/w/other', all), worktreesPageKey);
+      // Without a page for it, the next rule decides.
+      expect(
+        sessionPageKey(repo, '/w/verified', {worktreesPageKey}),
+        worktreesPageKey,
+      );
+      expect(
+        sessionPageKey(repo, '/w/pr', {worktreesPageKey, prsPageKey}),
+        prsPageKey,
+      );
+    });
   });
 }

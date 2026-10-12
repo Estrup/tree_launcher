@@ -208,6 +208,18 @@ void main() {
       );
     });
 
+    test('round-trips the prompts sessions were started with', () {
+      final repo = RepoConfig(
+        name: 'demo',
+        path: '/repos/demo',
+        claudeSessions: const ['/repos/demo-a'],
+        claudeSessionPrompts: const {'/repos/demo-a': 'Verify'},
+      );
+      expect(RepoConfig.fromJson(repo.toJson()).claudeSessionPrompts, {
+        '/repos/demo-a': 'Verify',
+      });
+    });
+
     test('ignores malformed entries', () {
       final restored = RepoConfig.fromJson({
         'name': 'demo',
@@ -343,12 +355,21 @@ void main() {
         expect(config.savedRepos.single.claudeSessions, [worktree]);
         expect(workspace.selectedRepo!.claudeSessions, [worktree]);
 
-        // Starting again doesn't duplicate the shortcut.
-        await workspace.rememberClaudeSession('/repos/demo', worktree);
+        // Starting again doesn't duplicate the shortcut, and records the
+        // latest prompt.
+        await workspace.rememberClaudeSession(
+          '/repos/demo',
+          worktree,
+          promptId: 'Verify',
+        );
         expect(config.savedRepos.single.claudeSessions, [worktree]);
+        expect(config.savedRepos.single.claudeSessionPrompts, {
+          worktree: 'Verify',
+        });
 
         await workspace.forgetClaudeSession('/repos/demo', worktree);
         expect(config.savedRepos.single.claudeSessions, isEmpty);
+        expect(config.savedRepos.single.claudeSessionPrompts, isEmpty);
       },
     );
 

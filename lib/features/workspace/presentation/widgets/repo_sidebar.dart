@@ -3,8 +3,14 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_run.dart';
+import 'package:tree_launcher/features/agents/presentation/agent_launcher.dart';
+import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
+import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/terminal/presentation/claude_session_actions.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_context_menu.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
@@ -154,9 +160,15 @@ class _RepoSidebarState extends State<RepoSidebar> {
                       return _RepoTile(
                         repo: repo,
                         isSelected: isSelected,
+                        pageKey: repoProvider.repoPageKey,
                         onTap: () {
                           context.read<TerminalProvider>().hide();
                           repoProvider.selectRepo(repo);
+                        },
+                        onOpenPage: (key) {
+                          context.read<TerminalProvider>().hide();
+                          repoProvider.selectRepo(repo);
+                          repoProvider.showRepoPage(key);
                         },
                         onSettings: () {
                           repoProvider.selectRepo(repo);
@@ -166,12 +178,16 @@ class _RepoSidebarState extends State<RepoSidebar> {
                         },
                         onContextMenu: (pos) =>
                             _showRepoMenu(context, repoProvider, repo, pos),
-                        onOpenClaudeSession: (path) => _openClaudeSession(
-                          context,
-                          repoProvider,
-                          repo,
-                          path,
-                        ),
+                        onOpenClaudeSession: (path, pageKey) =>
+                            _openClaudeSession(
+                              context,
+                              repoProvider,
+                              repo,
+                              path,
+                              pageKey,
+                            ),
+                        onOpenAgent: (run) =>
+                            _openAgent(context, repoProvider, repo, run),
                         onForgetClaudeSession: (path) =>
                             repoProvider.forgetClaudeSession(repo.path, path),
                       );
@@ -290,17 +306,33 @@ class _RepoSidebarState extends State<RepoSidebar> {
     );
   }
 
-  /// Selects [repo] and shows (or resumes) its Claude session in
-  /// [worktreePath].
+  /// Selects [repo] and the page the session is under, and shows (or
+  /// resumes) its Claude session in [worktreePath].
   Future<void> _openClaudeSession(
     BuildContext context,
     RepoProvider provider,
     RepoConfig repo,
     String worktreePath,
+    String pageKey,
   ) async {
     final launcher = ClaudeSessionLauncher.of(context);
     await provider.selectRepo(repo);
+    provider.showRepoPage(pageKey);
     await launcher.resume(repoPath: repo.path, worktreePath: worktreePath);
+  }
+
+  /// Selects [repo] and [run]'s agent page, and shows (or resumes) the run's
+  /// Claude session.
+  Future<void> _openAgent(
+    BuildContext context,
+    RepoProvider provider,
+    RepoConfig repo,
+    AgentRun run,
+  ) async {
+    final launcher = AgentLauncher.of(context);
+    await provider.selectRepo(repo);
+    provider.showRepoPage(agentPageKey(run.kind));
+    await launcher.resume(run);
   }
 
   Future<void> _showRepoMenu(
@@ -552,20 +584,30 @@ class _RailIconButtonState extends State<_RailIconButton> {
 class _RepoTile extends StatefulWidget {
   final RepoConfig repo;
   final bool isSelected;
+
+  /// Key of the page shown for the selected repo.
+  final String pageKey;
   final VoidCallback onTap;
+  final ValueChanged<String> onOpenPage;
   final VoidCallback onSettings;
   final void Function(Offset position) onContextMenu;
-  final ValueChanged<String> onOpenClaudeSession;
+
+  /// Opens the session in a worktree, given the page it is under.
+  final void Function(String worktreePath, String pageKey) onOpenClaudeSession;
   final ValueChanged<String> onForgetClaudeSession;
+  final ValueChanged<AgentRun> onOpenAgent;
 
   const _RepoTile({
     required this.repo,
     required this.isSelected,
+    required this.pageKey,
     required this.onTap,
+    required this.onOpenPage,
     required this.onSettings,
     required this.onContextMenu,
     required this.onOpenClaudeSession,
     required this.onForgetClaudeSession,
+    required this.onOpenAgent,
   });
 
   @override
@@ -575,32 +617,99 @@ class _RepoTile extends StatefulWidget {
 class _RepoTileState extends State<_RepoTile> {
   bool _hovered = false;
 
+  /// Under the repo: its pages (all of them for the selected repo, else only
+  /// those with sessions), each with the Claude sessions that belong to it.
   @override
   Widget build(BuildContext context) {
-    final sessions = widget.repo.claudeSessions;
-    if (sessions.isEmpty) return _buildRepoRow();
-
+    final repo = widget.repo;
+    final agents = Provider.of<AgentsController?>(context);
     final tp = context.watch<TerminalProvider>();
     final active = tp.isVisible ? tp.activeSession : null;
+    final pages = repoPagesFor(repo, agents);
+    final pageKeys = {for (final page in pages) page.key};
+
+    final agentRuns = <String, List<AgentRun>>{};
+    // A build agent's worktree is also a shortcut; the agent stands for it.
+    final buildAgentPaths = <String>{};
+    for (final run in agents?.runs ?? const <AgentRun>[]) {
+      if (run.repoName != repo.name) continue;
+      final isOpen = tp.claudeSessionForAgent(run.id) != null;
+      if (!showsAgentSession(run, isOpen: isOpen)) continue;
+      agentRuns.putIfAbsent(agentPageKey(run.kind), () => []).add(run);
+      final path = run.worktreePath;
+      if (run.kind == AgentKind.build && !run.state.isFinished && path != null) {
+        buildAgentPaths.add(path);
+      }
+    }
+    final shortcuts = <String, List<String>>{};
+    for (final path in repo.claudeSessions) {
+      if (buildAgentPaths.contains(path)) continue;
+      final pageKey = sessionPageKey(
+        repo,
+        path,
+        pageKeys,
+        runs: agents?.runs ?? const [],
+      );
+      shortcuts.putIfAbsent(pageKey, () => []).add(path);
+    }
+
+    final shown = [
+      for (final page in pages)
+        if (widget.isSelected ||
+            agentRuns.containsKey(page.key) ||
+            shortcuts.containsKey(page.key))
+          page,
+    ];
+    if (shown.isEmpty) return _buildRepoRow();
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildRepoRow(),
-        for (final path in sessions)
+        for (final page in shown) ...[
           Padding(
-            padding: const EdgeInsets.only(left: 20),
-            child: _ClaudeSessionTile(
-              worktreePath: path,
-              jiraIssue: widget.repo.jiraIssues[path],
-              isRunning: tp.claudeSessionFor(path) != null,
+            padding: const EdgeInsets.only(left: 12),
+            child: _PageTile(
+              page: page,
               isActive:
-                  active != null &&
-                  active.isClaude &&
-                  active.workingDirectory == path,
-              onTap: () => widget.onOpenClaudeSession(path),
-              onRemove: () => widget.onForgetClaudeSession(path),
+                  widget.isSelected &&
+                  active == null &&
+                  widget.pageKey == page.key,
+              onTap: () => widget.onOpenPage(page.key),
             ),
           ),
+          for (final path in shortcuts[page.key] ?? const <String>[])
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _ClaudeSessionTile(
+                worktreePath: path,
+                jiraIssue: repo.jiraIssues[path],
+                isRunning: tp.claudeSessionFor(path) != null,
+                isActive:
+                    active != null &&
+                    active.isClaude &&
+                    active.agentId == null &&
+                    active.workingDirectory == path,
+                onTap: () => widget.onOpenClaudeSession(path, page.key),
+                onRemove: () => widget.onForgetClaudeSession(path),
+              ),
+            ),
+          for (final run in agentRuns[page.key] ?? const <AgentRun>[])
+            Padding(
+              padding: const EdgeInsets.only(left: 24),
+              child: _ClaudeSessionTile(
+                worktreePath: run.worktreePath ?? '',
+                label: run.title ?? run.promptName ?? run.kind.label,
+                icon: run.kind.icon,
+                jiraIssue: run.issueKeys.firstOrNull,
+                isRunning: tp.claudeSessionForAgent(run.id) != null,
+                needsYou: agents!.needsYou(run),
+                isActive: active?.agentId == run.id,
+                onTap: () => widget.onOpenAgent(run),
+              ),
+            ),
+        ],
+        const SizedBox(height: 4),
       ],
     );
   }
@@ -932,20 +1041,34 @@ class _TerminalToggleButtonState extends State<_TerminalToggleButton> {
 class _ClaudeSessionTile extends StatefulWidget {
   final String worktreePath;
 
-  /// Jira issue key of the session's worktree, shown below its name.
+  /// Name shown; the worktree's folder name by default.
+  final String? label;
+
+  /// Icon instead of Claude's (an agent's kind).
+  final IconData? icon;
+
+  /// Jira issue key of the session, shown below its name.
   final String? jiraIssue;
   final bool isRunning;
   final bool isActive;
+
+  /// Whether the session waits for a human (an agent at a gate).
+  final bool needsYou;
   final VoidCallback onTap;
-  final VoidCallback onRemove;
+
+  /// Removes the shortcut; null when it can't be removed here.
+  final VoidCallback? onRemove;
 
   const _ClaudeSessionTile({
     required this.worktreePath,
+    this.label,
+    this.icon,
     this.jiraIssue,
     required this.isRunning,
     required this.isActive,
+    this.needsYou = false,
     required this.onTap,
-    required this.onRemove,
+    this.onRemove,
   });
 
   @override
@@ -964,7 +1087,7 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
     return Tooltip(
       message:
           '${widget.worktreePath}\n'
-          '${widget.isRunning ? 'Running — click to show' : 'Click to resume'}',
+          '${widget.needsYou ? 'Waiting for you — click to show' : widget.isRunning ? 'Running — click to show' : 'Click to resume'}',
       waitDuration: const Duration(milliseconds: 500),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -1003,15 +1126,21 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
                   const SizedBox(width: 10),
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
-                    child: SvgPicture.asset(
-                      'assets/icons/claude.svg',
-                      width: 12,
-                      height: 12,
-                      colorFilter: ColorFilter.mode(
-                        widget.isRunning ? AppColors.claude : color,
-                        BlendMode.srcIn,
-                      ),
-                    ),
+                    child: widget.icon != null
+                        ? Icon(
+                            widget.icon,
+                            size: 13,
+                            color: widget.isRunning ? AppColors.claude : color,
+                          )
+                        : SvgPicture.asset(
+                            'assets/icons/claude.svg',
+                            width: 12,
+                            height: 12,
+                            colorFilter: ColorFilter.mode(
+                              widget.isRunning ? AppColors.claude : color,
+                              BlendMode.srcIn,
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -1021,7 +1150,7 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            p.basename(widget.worktreePath),
+                            widget.label ?? p.basename(widget.worktreePath),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -1042,28 +1171,30 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
                       ),
                     ),
                   ),
-                  if (widget.isRunning) ...[
+                  if (widget.isRunning || widget.needsYou) ...[
                     Padding(
                       padding: const EdgeInsets.only(top: 13),
                       child: Container(
                         width: 6,
                         height: 6,
                         decoration: BoxDecoration(
-                          color: AppColors.success,
+                          color: widget.needsYou
+                              ? agentWaitingColor
+                              : AppColors.success,
                           shape: BoxShape.circle,
                         ),
                       ),
                     ),
                     const SizedBox(width: 4),
                   ],
-                  if (_hovered)
+                  if (_hovered && widget.onRemove != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 5),
                       child: Tooltip(
                         message: 'Remove shortcut',
                         child: _TinyIconButton(
                           icon: Icons.close_rounded,
-                          onTap: widget.onRemove,
+                          onTap: widget.onRemove!,
                         ),
                       ),
                     ),
@@ -1071,6 +1202,98 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Repo page entry ---
+
+/// One of a repo's pages in the sidebar; tapping shows it.
+class _PageTile extends StatefulWidget {
+  final RepoPage page;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _PageTile({
+    required this.page,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  State<_PageTile> createState() => _PageTileState();
+}
+
+class _PageTileState extends State<_PageTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final page = widget.page;
+    final isActive = widget.isActive;
+    final color = page.agentKind?.color ?? AppColors.accent;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          margin: const EdgeInsets.only(bottom: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: isActive
+                ? color.withValues(alpha: 0.12)
+                : _hovered
+                ? AppColors.surface1
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                page.icon,
+                size: 14,
+                color: isActive ? color : AppColors.textMuted,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  page.label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                    color: isActive
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              if (page.badge > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: agentWaitingColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${page.badge}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.base,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),

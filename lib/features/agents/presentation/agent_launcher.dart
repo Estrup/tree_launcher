@@ -122,7 +122,11 @@ class AgentLauncher {
       environment: _environment(run),
     );
     if (kind == AgentKind.build) {
-      await _workspace.rememberClaudeSession(repoPath, worktreePath);
+      await _workspace.rememberClaudeSession(
+        repoPath,
+        worktreePath,
+        promptId: prompt.name,
+      );
     }
     return run;
   }

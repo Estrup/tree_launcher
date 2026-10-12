@@ -62,7 +62,8 @@ class ClaudeSessionLauncher {
   /// [model] at [effort] (null: the CLI's defaults), and remembers the session
   /// as a sidebar shortcut under the repo at [repoPath]. It starts next to any
   /// Claude session already running there, e.g. in a shared checkout used
-  /// for several issues; [issueKey] goes in its tab title.
+  /// for several issues; [issueKey] goes in its tab title. [promptId] is
+  /// the prompt it was started with, remembered with the shortcut.
   Future<void> start({
     required String repoPath,
     required String worktreePath,
@@ -70,6 +71,7 @@ class ClaudeSessionLauncher {
     String? model,
     String? effort,
     String? issueKey,
+    String? promptId,
   }) async {
     _terminal.openClaudeSession(
       claudeSessionTitle(worktreePath, issueKey: issueKey),
@@ -83,7 +85,11 @@ class ClaudeSessionLauncher {
       ),
       reuseRunning: false,
     );
-    await _workspace.rememberClaudeSession(repoPath, worktreePath);
+    await _workspace.rememberClaudeSession(
+      repoPath,
+      worktreePath,
+      promptId: promptId,
+    );
   }
 
   /// Opens a remembered session from its sidebar shortcut: shows the running

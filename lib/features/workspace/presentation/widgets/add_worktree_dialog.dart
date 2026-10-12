@@ -37,6 +37,10 @@ class AddWorktreeResult {
   /// The Jira issue the worktree is for, if known.
   final String? issueKey;
 
+  /// In start-Claude mode, the prompt picked: a saved prompt's name or a
+  /// built-in prompt id (see [issueContextPromptId]); null for none.
+  final String? promptId;
+
   const AddWorktreeResult({
     required this.worktreePath,
     this.branch,
@@ -45,6 +49,7 @@ class AddWorktreeResult {
     this.claudeEffort,
     this.savedPrompt,
     this.issueKey,
+    this.promptId,
   });
 }
 
@@ -72,6 +77,10 @@ class AddWorktreeDialog extends StatefulWidget {
   final String? contextPrompt;
   final String? contextPromptLabel;
 
+  /// Id recorded for a session started with the context prompt (see
+  /// [issueContextPromptId]).
+  final String contextPromptId;
+
   /// Title of the issue or PR the dialog was opened from, shown in the header.
   final String? contextTitle;
 
@@ -95,6 +104,7 @@ class AddWorktreeDialog extends StatefulWidget {
     this.existingWorktree,
     this.contextPrompt,
     this.contextPromptLabel,
+    this.contextPromptId = issueContextPromptId,
     this.contextTitle,
   });
 
@@ -110,6 +120,7 @@ class AddWorktreeDialog extends StatefulWidget {
     Worktree? existingWorktree,
     String? contextPrompt,
     String? contextPromptLabel,
+    String contextPromptId = issueContextPromptId,
     String? contextTitle,
   }) {
     return showDialog<AddWorktreeResult>(
@@ -127,6 +138,7 @@ class AddWorktreeDialog extends StatefulWidget {
           existingWorktree: existingWorktree,
           contextPrompt: contextPrompt,
           contextPromptLabel: contextPromptLabel,
+          contextPromptId: contextPromptId,
           contextTitle: contextTitle,
         ),
       ),
@@ -147,6 +159,7 @@ class AddWorktreeDialog extends StatefulWidget {
     int? prNumber,
     String? contextPrompt,
     String? contextPromptLabel,
+    String contextPromptId = issueContextPromptId,
     String? contextTitle,
   }) async {
     final repo = context.read<RepoProvider>().selectedRepo;
@@ -169,6 +182,7 @@ class AddWorktreeDialog extends StatefulWidget {
       existingWorktree: existingWorktree,
       contextPrompt: contextPrompt,
       contextPromptLabel: contextPromptLabel,
+      contextPromptId: contextPromptId,
       contextTitle: contextTitle,
     );
     if (result == null) return;
@@ -200,6 +214,7 @@ class AddWorktreeDialog extends StatefulWidget {
       model: result.claudeModel,
       effort: result.claudeEffort,
       issueKey: result.issueKey,
+      promptId: result.promptId,
     );
   }
 
@@ -403,6 +418,14 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     ];
   }
 
+  /// What the picked prompt is recorded as (see [AddWorktreeResult.promptId]).
+  String? get _promptId => switch (_promptKey) {
+    _contextPromptKey => widget.contextPromptId,
+    _kickoffPromptKey => kickoffPromptId,
+    _noPromptKey => null,
+    _ => _selectedSavedPrompt?.name,
+  };
+
   /// The saved prompt picked in the prompt panel, if any.
   ClaudePrompt? get _selectedSavedPrompt {
     if (!_promptKey.startsWith(_savedPromptPrefix)) return null;
@@ -484,6 +507,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           claudeEffort: _effort,
           savedPrompt: _selectedSavedPrompt,
           issueKey: issue,
+          promptId: _promptId,
         ),
       );
       return;
@@ -554,6 +578,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                   claudeEffort: widget.startClaude ? _effort : null,
                   savedPrompt: widget.startClaude ? _selectedSavedPrompt : null,
                   issueKey: jira.isNotEmpty ? jira : null,
+                  promptId: widget.startClaude ? _promptId : null,
                 )
               : null,
         );

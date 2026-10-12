@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/widgets/activity_tab.dart';
-import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agents_tab.dart';
@@ -17,29 +16,10 @@ import 'package:tree_launcher/features/workspace/presentation/widgets/add_repo_d
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings_view.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
+import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_list.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
-
-/// One of the repo's tabs. [key] identifies it across rebuilds, so the
-/// selection follows the tab when others appear or disappear.
-class _RepoTab {
-  const _RepoTab({
-    required this.key,
-    required this.label,
-    required this.body,
-    this.icon,
-    this.badge = 0,
-  });
-
-  final String key;
-  final String label;
-  final IconData? icon;
-  final Widget body;
-
-  /// Count shown on the tab (agents waiting for a human); 0 hides it.
-  final int badge;
-}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -70,47 +50,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final agents = context.watch<AgentsController>();
     final repo = repoProvider.selectedRepo;
 
-    final hasGithubPrsTab =
-        repo?.githubConfig != null && repo!.githubConfig!.isConfigured;
-    final hasJiraTab = repo?.jiraProjectKey != null;
-    final tabs = <_RepoTab>[
-      const _RepoTab(
-        key: 'worktrees',
-        label: 'Worktrees',
-        body: WorktreeList(),
-      ),
-      if (hasGithubPrsTab)
-        const _RepoTab(
-          key: 'prs',
-          label: 'PRs',
-          icon: Icons.merge_type_rounded,
-          body: GithubPrsTab(),
-        ),
-      if (hasJiraTab)
-        const _RepoTab(
-          key: 'jira',
-          label: 'Jira',
-          icon: Icons.confirmation_number_outlined,
-          body: JiraIssuesTab(),
-        ),
-      if (repo != null)
-        for (final kind in AgentKind.values)
-          if (showsAgentTab(repo.name, repo.claudePrompts, agents, kind))
-            _RepoTab(
-              key: 'agents:${kind.name}',
-              label: kind.label,
-              icon: kind.icon,
-              body: AgentsTab(key: ValueKey(kind), kind: kind),
-              badge: agents.needsYouCount(repo.name, kind),
-            ),
-      const _RepoTab(
-        key: 'activity',
-        label: 'Activity',
-        icon: Icons.history_rounded,
-        body: ActivityTab(),
-      ),
-    ];
-    _syncTabController([for (final tab in tabs) tab.key]);
+    final tabs = repoPagesFor(repo, agents);
+    _syncTabController([
+      for (final tab in tabs) tab.key,
+    ], repoProvider.repoPageKey);
 
     return CallbackShortcuts(
       bindings: {
@@ -218,10 +161,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                                     badge: tabs[i]
                                                                         .badge,
                                                                     onTap: () =>
-                                                                        _tabController!
-                                                                            .animateTo(
-                                                                              i,
-                                                                            ),
+                                                                        repoProvider.showRepoPage(
+                                                                          tabs[i]
+                                                                              .key,
+                                                                        ),
                                                                   ),
                                                               ],
                                                             ),
@@ -231,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     ),
                                                   ),
                                                   if (_tabKeys[currentIndex] ==
-                                                      'worktrees') ...[
+                                                      worktreesPageKey) ...[
                                                     const SizedBox(width: 12),
                                                     const WorktreeListOptionsButton(),
                                                   ],
@@ -247,7 +190,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             physics:
                                                 const NeverScrollableScrollPhysics(),
                                             children: [
-                                              for (final tab in tabs) tab.body,
+                                              for (final tab in tabs)
+                                                _pageBody(tab),
                                             ],
                                           ),
                                         ),
@@ -305,14 +249,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Recreates the tab controller when the tabs change, keeping the selected
-  /// tab selected when it still exists.
-  void _syncTabController(List<String> keys) {
-    if (_tabController != null && listEquals(keys, _tabKeys)) return;
-    final oldIndex = _tabController?.index ?? 0;
-    final selectedKey = oldIndex < _tabKeys.length ? _tabKeys[oldIndex] : null;
-    var index = selectedKey == null ? -1 : keys.indexOf(selectedKey);
-    if (index == -1) index = oldIndex.clamp(0, keys.length - 1);
+  /// The content of [page].
+  Widget _pageBody(RepoPage page) {
+    final kind = page.agentKind;
+    if (kind != null) return AgentsTab(key: ValueKey(kind), kind: kind);
+    return switch (page.key) {
+      prsPageKey => const GithubPrsTab(),
+      jiraPageKey => const JiraIssuesTab(),
+      activityPageKey => const ActivityTab(),
+      _ => const WorktreeList(),
+    };
+  }
+
+  /// Recreates the tab controller when the tabs change, and shows the
+  /// [selectedKey] tab (the first when the repo doesn't have it).
+  void _syncTabController(List<String> keys, String selectedKey) {
+    final index = keys.indexOf(selectedKey).clamp(0, keys.length - 1);
+    if (_tabController != null && listEquals(keys, _tabKeys)) {
+      if (_tabController!.index != index) _tabController!.index = index;
+      return;
+    }
     _tabController?.dispose();
     _tabController = TabController(
       length: keys.length,

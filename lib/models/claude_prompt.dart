@@ -1,5 +1,12 @@
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 
+/// Recorded for a Claude session started with the issue-context first
+/// message; [prContextPromptId] and [kickoffPromptId] likewise. A session
+/// started with a saved prompt records the prompt's name instead.
+const issueContextPromptId = ':issue-context';
+const prContextPromptId = ':pr-context';
+const kickoffPromptId = ':kickoff';
+
 /// A reusable, named prompt template for launching Claude in a worktree.
 /// Placeholders ({issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}) are
 /// filled from the worktree before launch; {pr} is the number of its open pull

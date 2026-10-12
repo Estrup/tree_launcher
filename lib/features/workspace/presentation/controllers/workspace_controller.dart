@@ -101,6 +101,12 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
 
   void closeSettings() => selection.closeSettings();
 
+  /// Key of the selected repo's page that is shown (a tab, and an entry under
+  /// the repo in the sidebar).
+  String get repoPageKey => selection.pageKey;
+
+  void showRepoPage(String key) => selection.showPage(key);
+
   Future<void> loadRepos() async {
     await registry.loadRepos();
     if (repos.isNotEmpty && selectedRepo == null) {
@@ -471,18 +477,25 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
   }
 
   /// Remembers a Claude CLI session for [worktreePath] in the repo at
-  /// [repoPath], so the sidebar shows a shortcut to it. No-op when already
-  /// remembered or the repo isn't registered.
+  /// [repoPath], so the sidebar shows a shortcut to it, along with the
+  /// [promptId] it was started with (see [RepoConfig.claudeSessionPrompts]).
+  /// No-op when the repo isn't registered.
   Future<void> rememberClaudeSession(
     String repoPath,
-    String worktreePath,
-  ) async {
+    String worktreePath, {
+    String? promptId,
+  }) async {
     final repo = _registryRepoForPath(repoPath);
-    if (repo == null || repo.claudeSessions.contains(worktreePath)) return;
-    final updated = await preferences.updateClaudeSessions(repo, [
-      ...repo.claudeSessions,
-      worktreePath,
-    ]);
+    if (repo == null) return;
+    final known = repo.claudeSessions.contains(worktreePath);
+    if (known && repo.claudeSessionPrompts[worktreePath] == promptId) return;
+    final prompts = {...repo.claudeSessionPrompts}..remove(worktreePath);
+    if (promptId != null) prompts[worktreePath] = promptId;
+    final updated = await preferences.updateClaudeSessions(
+      repo,
+      [...repo.claudeSessions, if (!known) worktreePath],
+      prompts: prompts,
+    );
     _replaceSelection(repo, updated);
   }
 

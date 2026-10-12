@@ -62,6 +62,11 @@ class RepoConfig {
   /// resumed (`claude --continue`) after its terminal is gone.
   final List<String> claudeSessions;
 
+  /// The prompt each remembered session was started with, by worktree path:
+  /// a saved prompt's name, or one of the built-in prompt ids (see
+  /// [issueContextPromptId]). Decides where the sidebar groups the session.
+  final Map<String, String> claudeSessionPrompts;
+
   /// Working directory last used for an agent that runs outside an issue's
   /// worktree (verify, review, docs), offered first next time. The repo path
   /// itself can't serve when the repo is bare.
@@ -86,6 +91,7 @@ class RepoConfig {
     this.predefinedIssues = const [],
     this.useNestedWorktrees = false,
     this.claudeSessions = const [],
+    this.claudeSessionPrompts = const {},
     this.agentWorkingDirectory,
   });
 
@@ -147,6 +153,10 @@ class RepoConfig {
               ?.whereType<String>()
               .toList() ??
           const [],
+      claudeSessionPrompts:
+          (json['claudeSessionPrompts'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v as String)) ??
+          {},
       agentWorkingDirectory: json['agentWorkingDirectory'] as String?,
     );
   }
@@ -171,6 +181,7 @@ class RepoConfig {
     'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
     'useNestedWorktrees': useNestedWorktrees,
     'claudeSessions': claudeSessions,
+    'claudeSessionPrompts': claudeSessionPrompts,
     if (agentWorkingDirectory != null)
       'agentWorkingDirectory': agentWorkingDirectory,
   };
@@ -197,6 +208,7 @@ class RepoConfig {
     List<PredefinedIssue>? predefinedIssues,
     bool? useNestedWorktrees,
     List<String>? claudeSessions,
+    Map<String, String>? claudeSessionPrompts,
     String? agentWorkingDirectory,
   }) {
     return RepoConfig(
@@ -224,6 +236,7 @@ class RepoConfig {
       predefinedIssues: predefinedIssues ?? this.predefinedIssues,
       useNestedWorktrees: useNestedWorktrees ?? this.useNestedWorktrees,
       claudeSessions: claudeSessions ?? this.claudeSessions,
+      claudeSessionPrompts: claudeSessionPrompts ?? this.claudeSessionPrompts,
       agentWorkingDirectory:
           agentWorkingDirectory ?? this.agentWorkingDirectory,
     );

@@ -306,6 +306,9 @@ void main() {
       "claude $_discordArgs $_launchFlags -- 'Implement AU2-5928 in au2-wt'",
     );
     expect(workspace.selectedRepo!.claudeSessions, [_existingPath]);
+    expect(workspace.selectedRepo!.claudeSessionPrompts, {
+      _existingPath: 'Implement',
+    });
   });
 
   testWidgets("fills {pr} from the open PR on the issue worktree's branch", (
@@ -555,6 +558,9 @@ void main() {
       terminal.launched.single.command,
       contains('pull request #7 "Værksted kontakt (AU2-5928)"'),
     );
+    expect(workspace.selectedRepo!.claudeSessionPrompts, {
+      _existingPath: prContextPromptId,
+    });
   });
 
   testWidgets('fills {pr} with the number of the PR started from', (
