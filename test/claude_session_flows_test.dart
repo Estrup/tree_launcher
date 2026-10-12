@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
@@ -173,8 +174,9 @@ class _RecordingTerminal extends TerminalController {
     String title,
     String workingDirectory,
     String repoPath,
-    String command,
-  ) {
+    String command, {
+    bool reuseRunning = true,
+  }) {
     launched.add((dir: workingDirectory, repo: repoPath, command: command));
   }
 
@@ -220,6 +222,11 @@ void main() {
           ClaudePrompt(
             name: 'Review PR',
             prompt: 'Review PR #{pr} for {issue}',
+          ),
+          ClaudePrompt(
+            name: 'Verify',
+            prompt: 'Verify {issue}',
+            kind: AgentKind.verify,
           ),
         ],
       ),
@@ -278,7 +285,7 @@ void main() {
 
     expect(find.text('Start Claude Session'), findsOneWidget);
     expect(find.text('WORKTREE NAME'), findsNothing);
-    expect(find.text('au2-wt'), findsOneWidget);
+    expect(find.text('au2-wt  AU2-5928  ($_existingBranch)'), findsOneWidget);
     expect(
       find.text(
         'Runs claude $_discordArgs $_launchFlags in the built-in terminal.',
@@ -341,6 +348,54 @@ void main() {
     );
     expect(workspace.selectedRepo!.jiraIssues[created], 'AU2-5905');
     expect(workspace.selectedRepo!.claudeSessions, [created]);
+  });
+
+  testWidgets('starts in an existing worktree without creating one', (
+    tester,
+  ) async {
+    await pump(tester, const JiraIssuesTab());
+
+    await tester.tap(find.byTooltip('Claude session for AU2-5905…'));
+    await tester.pumpAndSettle();
+    expect(find.text('WORKTREE NAME'), findsOneWidget);
+
+    await tester.tap(find.text('Existing worktree'));
+    await tester.pumpAndSettle();
+    expect(find.text('WORKTREE NAME'), findsNothing);
+    expect(find.text('au2-wt  AU2-5928  ($_existingBranch)'), findsOneWidget);
+
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+
+    expect(git.created, isEmpty);
+    expect(terminal.launched.single.dir, _existingPath);
+    // The session is about the issue it was started from.
+    expect(
+      terminal.launched.single.command,
+      "claude $_discordArgs $_launchFlags -- 'Context: Working on issue "
+      "AU2-5905 where the base branch is develop.'",
+    );
+    // Remembered as the shared checkout for next time.
+    expect(workspace.selectedRepo!.agentWorkingDirectory, _existingPath);
+  });
+
+  testWidgets('a verify prompt runs in an existing worktree by default', (
+    tester,
+  ) async {
+    await pump(tester, const JiraIssuesTab());
+
+    await tester.tap(find.byTooltip('Claude session for AU2-5905…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Verify'));
+    await tester.pumpAndSettle();
+    expect(find.text('WORKTREE NAME'), findsNothing);
+
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+
+    expect(git.created, isEmpty);
+    expect(terminal.launched.single.dir, _existingPath);
+    expect(terminal.launched.single.command, contains("'Verify AU2-5905'"));
   });
 
   testWidgets('starts on the picked model and effort and remembers them', (
@@ -489,7 +544,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('WORKTREE NAME'), findsNothing);
-    expect(find.text('au2-wt'), findsOneWidget);
+    expect(find.text('au2-wt  AU2-5928  ($_existingBranch)'), findsOneWidget);
 
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();

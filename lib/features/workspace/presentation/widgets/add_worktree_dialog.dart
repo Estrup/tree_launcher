@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/presentation/agent_launcher.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
@@ -78,8 +79,8 @@ class AddWorktreeDialog extends StatefulWidget {
   /// prompt in [AddWorktreeResult.claudePrompt]. The caller starts the session.
   final bool startClaude;
 
-  /// In start-Claude mode, start in this worktree instead of creating one; the
-  /// worktree fields are replaced by a summary of it.
+  /// In start-Claude mode, the issue's own worktree: preselected under
+  /// "Existing worktree" instead of creating one.
   final Worktree? existingWorktree;
 
   const AddWorktreeDialog({
@@ -198,6 +199,7 @@ class AddWorktreeDialog extends StatefulWidget {
       prompt: result.claudePrompt,
       model: result.claudeModel,
       effort: result.claudeEffort,
+      issueKey: result.issueKey,
     );
   }
 
@@ -217,6 +219,17 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   bool _branchManuallyEdited = false;
   late bool _createNewBranch = widget.initialCreateNewBranch;
 
+  /// Start-Claude mode: run in an existing worktree as-is (e.g. a skill that
+  /// only reads the code) instead of creating one.
+  late bool _useExisting = widget.existingWorktree != null;
+
+  /// Whether the user picked new / existing themselves, so picking an agent
+  /// prompt doesn't switch it.
+  bool _targetChosen = false;
+
+  /// The existing worktree picked under "Existing worktree".
+  String? _existingPath;
+
   /// Selected entry of the Claude prompt picker (see [_promptOptions]).
   late String _promptKey = widget.existingWorktree?.kickoffPromptPath != null
       ? _kickoffPromptKey
@@ -232,8 +245,17 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   static const _noPromptKey = 'none';
   static const _savedPromptPrefix = 'saved:';
 
-  Worktree? get _existing =>
-      widget.startClaude ? widget.existingWorktree : null;
+  /// The worktree the session starts in instead of a new one, if any.
+  Worktree? get _existing {
+    if (!widget.startClaude || !_useExisting) return null;
+    final picked = widget.existingWorktree;
+    if (picked != null && picked.path == _existingPath) return picked;
+    return context
+        .read<RepoProvider>()
+        .worktrees
+        .where((w) => w.path == _existingPath)
+        .firstOrNull;
+  }
 
   @override
   void initState() {
@@ -248,9 +270,14 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     if (widget.initialJiraKey != null) {
       _jiraController.text = widget.initialJiraKey!;
     }
-    if (_existing != null) {
-      _loadingBranches = false;
-      return;
+    if (widget.startClaude) {
+      final repoProvider = context.read<RepoProvider>();
+      _existingPath =
+          widget.existingWorktree?.path ??
+          defaultSharedWorktree(
+            repoProvider.worktrees,
+            remembered: repoProvider.selectedRepo?.agentWorkingDirectory,
+          )?.path;
     }
     if (widget.initialName != null) {
       _nameController.text = widget.initialName!;
@@ -319,17 +346,35 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     return _nameController.text.trim();
   }
 
+  /// The issue the session is for: the Jira field, else the picked existing
+  /// worktree's issue.
+  String? get _issueKey {
+    final jira = _jiraController.text.trim();
+    return jira.isNotEmpty ? jira : _existing?.jiraIssue;
+  }
+
+  /// Picks [option] in the prompt panel. Unless the user chose new / existing
+  /// themselves, a verify, review or docs agent runs in an existing worktree
+  /// (it only reads the code); anything else goes back to the default.
+  void _pickPrompt(_PromptOption option, String? active) {
+    _promptKey = option.key == active ? _noPromptKey : option.key;
+    if (_targetChosen) return;
+    final kind = _selectedSavedPrompt?.kind;
+    _useExisting =
+        widget.existingWorktree != null ||
+        (kind != null && kind != AgentKind.build);
+  }
+
   /// The Claude prompt toggles. None selected means no first message.
   List<_PromptOption> _promptOptions() {
     final prompts =
         context.read<RepoProvider>().selectedRepo?.claudePrompts ?? const [];
     final existing = _existing;
-    final jira = _jiraController.text.trim();
     final contextPrompt =
         widget.contextPrompt ??
         claudeContextPromptFor(
-          issue: existing?.jiraIssue ?? (jira.isNotEmpty ? jira : null),
-          base: existing?.baseBranch ?? _selectedBranch,
+          issue: _issueKey,
+          base: existing != null ? existing.baseBranch : _selectedBranch,
         );
     return [
       _PromptOption(
@@ -407,8 +452,24 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   }
 
   Future<void> _submit() async {
-    final existing = _existing;
-    if (existing != null) {
+    if (widget.startClaude && _useExisting) {
+      final existing = _existing;
+      if (existing == null) {
+        setState(() => _error = 'Pick a worktree');
+        return;
+      }
+      // The Jira field shows its own error.
+      if (validateJiraKey(_jiraController.text.trim()) != null) return;
+      // A shared checkout (not the issue's own) is remembered for next time.
+      if (existing.path != widget.existingWorktree?.path) {
+        final repoProvider = context.read<RepoProvider>();
+        final repo = repoProvider.selectedRepo;
+        if (repo != null) {
+          await repoProvider.updateAgentWorkingDirectory(repo, existing.path);
+        }
+        if (!mounted) return;
+      }
+      final issue = _issueKey;
       Navigator.pop(
         context,
         AddWorktreeResult(
@@ -416,13 +477,13 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           branch: existing.branch,
           claudePrompt: _resolvePrompt(
             worktreePath: existing.path,
-            issue: existing.jiraIssue ?? widget.initialJiraKey,
+            issue: issue,
             baseBranch: existing.baseBranch,
           ),
           claudeModel: _model,
           claudeEffort: _effort,
           savedPrompt: _selectedSavedPrompt,
-          issueKey: existing.jiraIssue ?? widget.initialJiraKey,
+          issueKey: issue,
         ),
       );
       return;
@@ -509,7 +570,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final existing = _existing;
     return Dialog(
       backgroundColor: AppColors.surface1,
       insetPadding: const EdgeInsets.all(32),
@@ -534,9 +594,17 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: existing != null
-                                ? _existingWorktreeFields(existing)
-                                : _worktreeFields(context),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _targetSwitch(),
+                                const SizedBox(height: 18),
+                                _useExisting
+                                    ? _existingWorktreeFields(context)
+                                    : _worktreeFields(context),
+                              ],
+                            ),
                           ),
                           const SizedBox(width: 24),
                           SizedBox(width: 300, child: _promptPanel()),
@@ -663,7 +731,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       child: Row(
         children: [
           Expanded(
-            child: _existing != null
+            child: widget.startClaude && _useExisting
                 ? const SizedBox.shrink()
                 : Text(
                     nested
@@ -689,7 +757,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   /// The worktree name / Jira / branch fields for a new worktree.
   Widget _worktreeFields(BuildContext context) {
     final nameError = validateWorktreeName(_nameController.text);
-    final jiraError = validateJiraKey(_jiraController.text);
     final hasError = _error != null || nameError != null;
     final displayError = _error ?? nameError;
 
@@ -733,31 +800,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
         const SizedBox(height: 16),
 
-        // JIRA Issue No.
-        _sectionLabel('JIRA ISSUE NO. (OPTIONAL)'),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _jiraController,
-          enabled: !_creating,
-          style: appFormFieldTextStyle(context, monospace: true),
-          textCapitalization: TextCapitalization.characters,
-          decoration: _inputDecoration(
-            context: context,
-            hint: 'e.g. AU2-0001',
-            hasError: jiraError != null,
-          ),
-          onChanged: (_) {
-            setState(() => _error = null);
-            _updateAutoFillBranch();
-          },
-        ),
-        if (jiraError != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            jiraError,
-            style: TextStyle(fontSize: 11, color: AppColors.error),
-          ),
-        ],
+        _jiraField(context),
 
         const SizedBox(height: 16),
 
@@ -871,16 +914,129 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     });
   }
 
-  /// Start-Claude mode for an issue that already has a worktree: the left
-  /// side only summarises it.
-  Widget _existingWorktreeFields(Worktree existing) {
+  /// The JIRA issue field, shared by the new and existing worktree fields.
+  Widget _jiraField(BuildContext context) {
+    final jiraError = validateJiraKey(_jiraController.text);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('JIRA ISSUE NO. (OPTIONAL)'),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _jiraController,
+          enabled: !_creating,
+          style: appFormFieldTextStyle(context, monospace: true),
+          textCapitalization: TextCapitalization.characters,
+          decoration: _inputDecoration(
+            context: context,
+            hint: 'e.g. AU2-0001',
+            hasError: jiraError != null,
+          ),
+          onChanged: (_) {
+            setState(() => _error = null);
+            _updateAutoFillBranch();
+          },
+        ),
+        if (jiraError != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            jiraError,
+            style: TextStyle(fontSize: 11, color: AppColors.error),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Start-Claude mode: create a new worktree, or run in an existing one.
+  Widget _targetSwitch() {
+    void pick(bool useExisting) => setState(() {
+      _useExisting = useExisting;
+      _targetChosen = true;
+      _error = null;
+    });
+    return Row(
+      children: [
+        Expanded(
+          child: _TargetOption(
+            label: 'New worktree',
+            icon: Icons.add_rounded,
+            selected: !_useExisting,
+            enabled: !_creating,
+            onTap: () => pick(false),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _TargetOption(
+            label: 'Existing worktree',
+            icon: Icons.account_tree_rounded,
+            selected: _useExisting,
+            enabled: !_creating,
+            onTap: () => pick(true),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Start-Claude mode in an existing worktree: pick it, plus the issue the
+  /// session is about.
+  Widget _existingWorktreeFields(BuildContext context) {
+    final worktrees = context.watch<RepoProvider>().worktrees;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionLabel('WORKTREE'),
         const SizedBox(height: 8),
-        _existingWorktreeSummary(existing),
+        DropdownButtonFormField<String>(
+          initialValue: worktrees.any((w) => w.path == _existingPath)
+              ? _existingPath
+              : null,
+          isExpanded: true,
+          dropdownColor: AppColors.surface1,
+          style: appFormFieldTextStyle(context, monospace: true),
+          hint: Text(
+            'Pick a worktree',
+            style: appFormFieldHintStyle(context, monospace: true),
+          ),
+          items: [
+            for (final w in worktrees)
+              DropdownMenuItem(
+                value: w.path,
+                child: Text(
+                  [
+                    w.name,
+                    if (w.jiraIssue != null &&
+                        !w.name.toUpperCase().contains(w.jiraIssue!))
+                      w.jiraIssue!,
+                    '(${w.branch})',
+                  ].join('  '),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          onChanged: _creating
+              ? null
+              : (path) => setState(() {
+                  _existingPath = path;
+                  _error = null;
+                }),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Claude runs in this checkout as it is — no branch is created or '
+          'switched. Handy for skills that only use the code as a reference.',
+          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 6),
+          Text(_error!, style: TextStyle(fontSize: 11, color: AppColors.error)),
+        ],
+        const SizedBox(height: 16),
+        _jiraField(context),
       ],
     );
   }
@@ -966,11 +1122,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
               option: option,
               selected: option.key == active,
               enabled: !_creating,
-              onTap: () => setState(
-                () => _promptKey = option.key == active
-                    ? _noPromptKey
-                    : option.key,
-              ),
+              onTap: () => setState(() => _pickPrompt(option, active)),
             ),
             const SizedBox(height: 6),
           ],
@@ -1036,46 +1188,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     );
   }
 
-  Widget _existingWorktreeSummary(Worktree wt) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface0,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.account_tree_rounded, size: 15, color: AppColors.success),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  wt.name,
-                  overflow: TextOverflow.ellipsis,
-                  style: appFormFieldTextStyle(context, monospace: true),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  wt.branch,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _sectionLabel(String text) {
     return Text(
       text,
@@ -1126,6 +1238,71 @@ class _SpaceToDashFormatter extends TextInputFormatter {
     final newText = newValue.text.replaceAll(' ', '-');
     if (newText == newValue.text) return newValue;
     return newValue.copyWith(text: newText, selection: newValue.selection);
+  }
+}
+
+/// One half of the new / existing worktree switch in start-Claude mode.
+class _TargetOption extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _TargetOption({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppColors.claude;
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: selected
+                ? color.withValues(alpha: 0.12)
+                : AppColors.surface0,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected
+                  ? color.withValues(alpha: 0.55)
+                  : AppColors.borderSubtle,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? color : AppColors.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    color: selected ? color : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

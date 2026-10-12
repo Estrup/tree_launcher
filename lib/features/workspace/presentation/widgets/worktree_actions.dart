@@ -60,6 +60,20 @@ int? openPrNumberForBranch(BuildContext context, String? branch) {
       ?.number;
 }
 
+/// The shared checkout a session that only reads the code runs in by
+/// default: the [remembered] one, else the worktree on the main line.
+Worktree? defaultSharedWorktree(
+  List<Worktree> worktrees, {
+  String? remembered,
+}) {
+  return worktrees.where((w) => w.path == remembered).firstOrNull ??
+      worktrees
+          .where((w) => const ['develop', 'main', 'master'].contains(w.branch))
+          .firstOrNull ??
+      worktrees.where((w) => w.isMain).firstOrNull ??
+      worktrees.firstOrNull;
+}
+
 /// Fills a saved [ClaudePrompt]'s placeholders from an existing worktree's
 /// recorded fields. Returns null when the resolved text is empty.
 String? resolveWorktreePrompt(

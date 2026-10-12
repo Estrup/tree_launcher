@@ -112,14 +112,16 @@ class TerminalController extends ChangeNotifier {
   }
 
   /// Starts a Claude session running [command] in [workingDirectory], or just
-  /// shows the one already running there.
+  /// shows the one already running there. With [reuseRunning] off it starts
+  /// next to any running there (several sessions can share a checkout).
   void openClaudeSession(
     String title,
     String workingDirectory,
     String repoPath,
-    String command,
-  ) {
-    if (focusClaudeSession(workingDirectory)) return;
+    String command, {
+    bool reuseRunning = true,
+  }) {
+    if (reuseRunning && focusClaudeSession(workingDirectory)) return;
     _openCommandSession(
       title,
       workingDirectory,

@@ -54,7 +54,15 @@ class _FakeGitService extends GitService {
 /// Records Claude launches instead of spawning a shell.
 class _RecordingTerminal extends TerminalController {
   final launched =
-      <({String title, String dir, String repo, String command})>[];
+      <
+        ({
+          String title,
+          String dir,
+          String repo,
+          String command,
+          bool reuseRunning,
+        })
+      >[];
   final running = <String>{};
   final focused = <String>[];
 
@@ -63,13 +71,15 @@ class _RecordingTerminal extends TerminalController {
     String title,
     String workingDirectory,
     String repoPath,
-    String command,
-  ) {
+    String command, {
+    bool reuseRunning = true,
+  }) {
     launched.add((
       title: title,
       dir: workingDirectory,
       repo: repoPath,
       command: command,
+      reuseRunning: reuseRunning,
     ));
     running.add(workingDirectory);
   }
@@ -249,6 +259,24 @@ void main() {
       expect(terminal.activeSession!.workingDirectory, '/w/a');
       expect(terminal.focusClaudeSession('/w/b'), isFalse);
     });
+
+    test('starts a second session in the same checkout on request', () {
+      terminal.openClaudeSession('Claude: a', '/w/a', '/r', 'claude');
+      terminal.openClaudeSession(
+        'Claude: a · AU2-2',
+        '/w/a',
+        '/r',
+        'claude',
+        reuseRunning: false,
+      );
+
+      expect(terminal.sessions, hasLength(2));
+      expect(terminal.sessions.map((s) => s.workingDirectory), [
+        '/w/a',
+        '/w/a',
+      ]);
+      expect(terminal.activeSession!.title, 'Claude: a · AU2-2');
+    });
   });
 
   group('ClaudeSessionLauncher', () {
@@ -323,6 +351,27 @@ void main() {
         expect(config.savedRepos.single.claudeSessions, isEmpty);
       },
     );
+
+    test('start runs next to a session already in the worktree', () async {
+      terminal.running.add(worktree);
+      await launcher().start(
+        repoPath: '/repos/demo',
+        worktreePath: worktree,
+        prompt: 'Fix AU2-2',
+        issueKey: 'AU2-2',
+      );
+
+      expect(terminal.focused, isEmpty);
+      expect(terminal.launched.single.title, 'Claude: repo-a · AU2-2');
+      expect(terminal.launched.single.reuseRunning, isFalse);
+    });
+
+    test('claudeSessionTitle leaves out an issue the name already has', () {
+      expect(
+        claudeSessionTitle('/w/fix-au2-2', issueKey: 'AU2-2'),
+        'Claude: fix-au2-2',
+      );
+    });
 
     test('resume shows a running session without starting another', () async {
       terminal.running.add(worktree);

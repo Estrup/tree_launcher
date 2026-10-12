@@ -157,18 +157,10 @@ class _StartAgentDialogState extends State<StartAgentDialog> {
 
   /// Where a verify, review or docs agent runs by default: the last one's
   /// directory, else the worktree on the main line.
-  Worktree? _defaultSharedWorktree() {
-    final worktrees = _worktrees;
-    final remembered = widget.repo.agentWorkingDirectory;
-    return worktrees.where((w) => w.path == remembered).firstOrNull ??
-        worktrees
-            .where(
-              (w) => const ['develop', 'main', 'master'].contains(w.branch),
-            )
-            .firstOrNull ??
-        worktrees.where((w) => w.isMain).firstOrNull ??
-        worktrees.firstOrNull;
-  }
+  Worktree? _defaultSharedWorktree() => defaultSharedWorktree(
+    _worktrees,
+    remembered: widget.repo.agentWorkingDirectory,
+  );
 
   void _selectWorktree(Worktree worktree) {
     _worktreePath = worktree.path;

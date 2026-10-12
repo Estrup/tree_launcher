@@ -11,9 +11,16 @@ import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
-/// Terminal tab title for the Claude session in [worktreePath].
-String claudeSessionTitle(String worktreePath) =>
-    'Claude: ${p.basename(worktreePath)}';
+/// Terminal tab title for the Claude session in [worktreePath], naming
+/// [issueKey] too when the worktree's name doesn't, so sessions sharing a
+/// checkout can be told apart.
+String claudeSessionTitle(String worktreePath, {String? issueKey}) {
+  final name = p.basename(worktreePath);
+  if (issueKey == null || name.toUpperCase().contains(issueKey.toUpperCase())) {
+    return 'Claude: $name';
+  }
+  return 'Claude: $name · $issueKey';
+}
 
 /// Starts and resumes Claude CLI sessions in the built-in terminal, and keeps
 /// their sidebar shortcuts. Holds the controllers it needs, so it can be
@@ -53,17 +60,19 @@ class ClaudeSessionLauncher {
 
   /// Starts Claude in [worktreePath] with [prompt] as its first message, on
   /// [model] at [effort] (null: the CLI's defaults), and remembers the session
-  /// as a sidebar shortcut under the repo at [repoPath]. When Claude is
-  /// already running there, that one is shown.
+  /// as a sidebar shortcut under the repo at [repoPath]. It starts next to any
+  /// Claude session already running there, e.g. in a shared checkout used
+  /// for several issues; [issueKey] goes in its tab title.
   Future<void> start({
     required String repoPath,
     required String worktreePath,
     String? prompt,
     String? model,
     String? effort,
+    String? issueKey,
   }) async {
     _terminal.openClaudeSession(
-      claudeSessionTitle(worktreePath),
+      claudeSessionTitle(worktreePath, issueKey: issueKey),
       worktreePath,
       repoPath,
       buildClaudeCliCommand(
@@ -72,6 +81,7 @@ class ClaudeSessionLauncher {
         model: model,
         effort: effort,
       ),
+      reuseRunning: false,
     );
     await _workspace.rememberClaudeSession(repoPath, worktreePath);
   }
