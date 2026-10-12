@@ -103,6 +103,26 @@ void main() {
       expect(config.savedSettings.jiraTagsByIssue, isEmpty);
     });
 
+    test('replaces an issue\'s tags for the agent API', () async {
+      final (settings, config) = await _settings(
+        AppSettings(
+          jiraTags: const [_blocked, _demo],
+          jiraTagsByIssue: const {
+            'AU2-1': ['b'],
+          },
+        ),
+      );
+
+      await settings.setJiraTagsFor('AU2-1', ['d', 'gone', 'd']);
+      expect(config.savedSettings.jiraTagsByIssue, {
+        'AU2-1': ['d'],
+      });
+      expect(settings.jiraTagsFor('AU2-1'), [_demo]);
+
+      await settings.setJiraTagsFor('AU2-1', []);
+      expect(config.savedSettings.jiraTagsByIssue, isEmpty);
+    });
+
     test('deleting a tag takes it off its issues', () async {
       final (settings, config) = await _settings(
         AppSettings(

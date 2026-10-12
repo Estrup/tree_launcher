@@ -43,9 +43,15 @@ class TreeLauncherApp extends StatelessWidget {
           },
         ),
         ChangeNotifierProvider(
-          create: (_) =>
-              SettingsController(store: dependencies.appSettingsStore)
-                ..loadSettings(),
+          create: (_) {
+            final controller = SettingsController(
+              store: dependencies.appSettingsStore,
+            )..loadSettings();
+            // Tag changes from the agent API go through the live controller,
+            // like worktree creation above.
+            dependencies.agentApiServer.registerJiraTagEditor(controller);
+            return controller;
+          },
         ),
         ChangeNotifierProxyProvider<SettingsController, TerminalController>(
           create: (_) => TerminalController(),

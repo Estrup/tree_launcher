@@ -52,8 +52,25 @@ JiraVersion? pickVersion(List<JiraVersion> ordered, String? rememberedId) {
   return ordered.first;
 }
 
+/// JQL for the issues in [projectKey] (no sub-tasks), narrowed to the
+/// fixVersion [versionId] and to the status names [statuses] when given, in
+/// rank order.
+String jiraIssuesJql(
+  String projectKey, {
+  String? versionId,
+  List<String> statuses = const [],
+}) {
+  String quote(String value) =>
+      '"${value.replaceAll(r'\', r'\\').replaceAll('"', r'\"')}"';
+  return [
+    'project = ${quote(projectKey)}',
+    if (versionId != null) 'fixVersion = $versionId',
+    if (statuses.isNotEmpty) 'status in (${statuses.map(quote).join(', ')})',
+    'issuetype not in subTaskIssueTypes() ORDER BY Rank ASC',
+  ].join(' AND ');
+}
+
 /// JQL for the issues in one fixVersion of [projectKey], in board (Rank) order.
 /// Sub-tasks are left out: worktrees are made for their parent issues.
 String fixVersionIssuesJql(String projectKey, String versionId) =>
-    'project = "$projectKey" AND fixVersion = $versionId '
-    'AND issuetype not in subTaskIssueTypes() ORDER BY Rank ASC';
+    jiraIssuesJql(projectKey, versionId: versionId);

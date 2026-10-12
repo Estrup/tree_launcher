@@ -4,12 +4,13 @@ import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/window_chrome.dart';
+import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/models/jira_tag.dart';
 import 'package:tree_launcher/services/config_service.dart';
 
-class SettingsController extends ChangeNotifier {
+class SettingsController extends ChangeNotifier implements JiraTagEditor {
   SettingsController({AppSettingsStore? store, ConfigService? configService})
     : _store = store ?? AppSettingsStore(configService: configService);
 
@@ -173,6 +174,27 @@ class SettingsController extends ChangeNotifier {
       byIssue.remove(issueKey);
     } else {
       byIssue[issueKey] = updated;
+    }
+    _settings = _settings.copyWith(jiraTagsByIssue: byIssue);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  @override
+  List<JiraTag> get jiraTags => _settings.jiraTags;
+
+  @override
+  List<JiraTag> jiraTagsFor(String issueKey) => _settings.tagsFor(issueKey);
+
+  @override
+  Future<void> setJiraTagsFor(String issueKey, List<String> tagIds) async {
+    final known = {for (final tag in _settings.jiraTags) tag.id};
+    final ids = tagIds.where(known.contains).toSet().toList();
+    final byIssue = Map.of(_settings.jiraTagsByIssue);
+    if (ids.isEmpty) {
+      byIssue.remove(issueKey);
+    } else {
+      byIssue[issueKey] = ids;
     }
     _settings = _settings.copyWith(jiraTagsByIssue: byIssue);
     await _store.save(_settings);

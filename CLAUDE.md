@@ -58,5 +58,8 @@ flutter test               # full suite
   `start({port})` / `stop()` / `restart({port})`, `isRunning` / `port` getters.
 - Started at boot from `AppDependencies.startServers()` (`lib/app/dependencies.dart`).
 - Routes: `GET /health`, `GET /v1/activity`, `POST /v1/activity`,
-  `POST /v1/worktrees`. Adding a capability is a new `_router` line plus a handler.
+  `POST /v1/worktrees`, `GET /v1/jira/issues` (by `fixVersion` and/or
+  `status`, with local tags), `GET /v1/jira/tags`,
+  `PUT /v1/jira/issues/<key>/tags` (local tags only, never Jira). Adding a
+  capability is a new `_router` line plus a handler.
 - Quick check while running: `curl http://127.0.0.1:8765/health`.
