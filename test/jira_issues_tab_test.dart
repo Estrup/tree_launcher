@@ -25,11 +25,14 @@ class _FakeJiraService extends JiraApiService {
   Future<JiraUser> fetchMyself() async =>
       const JiraUser(name: 'me', displayName: 'Me Myself');
 
-  @override
-  Future<List<JiraVersion>> fetchVersions(String projectKey) async => const [
+  /// The project's versions.
+  List<JiraVersion> versions = const [
     JiraVersion(id: '29501', name: 'au2office 2.41.3'),
     JiraVersion(id: '29207', name: 'au2office 2.41.2', released: true),
   ];
+
+  @override
+  Future<List<JiraVersion>> fetchVersions(String projectKey) async => versions;
 
   @override
   Future<List<JiraIssue>> searchIssues(String jql) async => const [
@@ -230,6 +233,44 @@ void main() {
         .toList();
     expect(fields, contains('vaerksted-kontakt-au2-5928'));
     expect(fields, contains('AU2-5928'));
+  });
+
+  testWidgets('lists unreleased versions, and released ones when searched', (
+    tester,
+  ) async {
+    await _pumpTab(tester, width: 1400);
+    final picker = find.byType(DropdownMenu<JiraVersion>);
+
+    await tester.tap(picker);
+    await tester.pumpAndSettle();
+    expect(find.text('au2office 2.41.2'), findsNothing);
+
+    await tester.enterText(picker, '2.41');
+    await tester.pumpAndSettle();
+    expect(find.text('au2office 2.41.2'), findsOneWidget);
+    expect(find.text('released'), findsOneWidget);
+  });
+
+  testWidgets('shows a renamed version after a refresh', (tester) async {
+    final service = await _pumpTab(tester, width: 1400);
+    String fieldText() => tester
+        .widget<TextField>(
+          find.descendant(
+            of: find.byType(DropdownMenu<JiraVersion>),
+            matching: find.byType(TextField),
+          ),
+        )
+        .controller!
+        .text;
+    expect(fieldText(), 'au2office 2.41.3');
+
+    service.versions = const [
+      JiraVersion(id: '29501', name: 'au2office 2.42.0'),
+    ];
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.pumpAndSettle();
+
+    expect(fieldText(), 'au2office 2.42.0');
   });
 
   testWidgets('drops the assignee column in a narrow window without overflow', (

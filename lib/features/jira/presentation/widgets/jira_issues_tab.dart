@@ -86,6 +86,13 @@ class JiraIssuesTab extends StatelessWidget {
           child: Row(
             children: [
               _VersionPicker(
+                // Rebuilt when the selection changes from outside (repo
+                // switch, refresh, a rename in Jira) so the field shows the
+                // current version's name.
+                key: ValueKey((
+                  jira.selectedVersion?.id,
+                  jira.selectedVersion?.name,
+                )),
                 versions: jira.versions,
                 selected: jira.selectedVersion,
                 onSelected: jira.selectVersion,
@@ -300,25 +307,56 @@ class JiraIssuesTab extends StatelessWidget {
   }
 }
 
-class _VersionPicker extends StatelessWidget {
+/// The fixVersion picker. Lists the unreleased versions; typing searches
+/// the released ones too.
+class _VersionPicker extends StatefulWidget {
   final List<JiraVersion> versions;
   final JiraVersion? selected;
   final ValueChanged<JiraVersion> onSelected;
 
   const _VersionPicker({
+    super.key,
     required this.versions,
     required this.selected,
     required this.onSelected,
   });
 
   @override
+  State<_VersionPicker> createState() => _VersionPickerState();
+}
+
+class _VersionPickerState extends State<_VersionPicker> {
+  final _controller = TextEditingController();
+
+  /// Whether the field holds something typed rather than the selection's
+  /// name, so released versions are searched too.
+  bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final text = _controller.text.trim();
+    final searching = text.isNotEmpty && text != widget.selected?.name;
+    if (searching != _searching) setState(() => _searching = searching);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final selected = widget.selected;
     return DropdownMenu<JiraVersion>(
-      // Rebuilt when the selection changes from outside (repo switch, refresh)
-      // so the field shows the current version.
-      key: ValueKey(selected?.id),
+      controller: _controller,
       initialSelection: selected,
-      enabled: versions.isNotEmpty,
+      enabled: widget.versions.isNotEmpty,
       width: 300,
       menuHeight: 380,
       enableFilter: true,
@@ -334,20 +372,24 @@ class _VersionPicker extends StatelessWidget {
         backgroundColor: WidgetStatePropertyAll(AppColors.surface1),
       ),
       dropdownMenuEntries: [
-        for (final version in versions)
-          DropdownMenuEntry(
-            value: version,
-            label: version.name,
-            trailingIcon: version.released
-                ? Text(
-                    'released',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                  )
-                : null,
-          ),
+        for (final version in widget.versions)
+          if (_searching || !version.released || version == selected)
+            DropdownMenuEntry(
+              value: version,
+              label: version.name,
+              trailingIcon: version.released
+                  ? Text(
+                      'released',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    )
+                  : null,
+            ),
       ],
       onSelected: (version) {
-        if (version != null) onSelected(version);
+        if (version != null) widget.onSelected(version);
       },
     );
   }
