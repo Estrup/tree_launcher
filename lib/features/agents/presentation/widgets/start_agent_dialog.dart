@@ -155,7 +155,7 @@ class _StartAgentDialogState extends State<StartAgentDialog> {
   Worktree? get _worktree =>
       _worktrees.where((w) => w.path == _worktreePath).firstOrNull;
 
-  /// Where a verify, review or docs agent runs by default: the last one's
+  /// Where an agent other than build runs by default: the last one's
   /// directory, else the worktree on the main line.
   Worktree? _defaultSharedWorktree() => defaultSharedWorktree(
     _worktrees,

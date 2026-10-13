@@ -67,8 +67,12 @@ class RepoConfig {
   /// [issueContextPromptId]). Decides where the sidebar groups the session.
   final Map<String, String> claudeSessionPrompts;
 
+  /// When each remembered session was first started, by worktree path (ISO
+  /// 8601). Orders the sidebar's sessions, newest first.
+  final Map<String, String> claudeSessionStarts;
+
   /// Working directory last used for an agent that runs outside an issue's
-  /// worktree (verify, review, docs), offered first next time. The repo path
+  /// worktree (any kind but build), offered first next time. The repo path
   /// itself can't serve when the repo is bare.
   final String? agentWorkingDirectory;
 
@@ -92,6 +96,7 @@ class RepoConfig {
     this.useNestedWorktrees = false,
     this.claudeSessions = const [],
     this.claudeSessionPrompts = const {},
+    this.claudeSessionStarts = const {},
     this.agentWorkingDirectory,
   });
 
@@ -157,6 +162,10 @@ class RepoConfig {
           (json['claudeSessionPrompts'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as String)) ??
           {},
+      claudeSessionStarts:
+          (json['claudeSessionStarts'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(k, v as String)) ??
+          {},
       agentWorkingDirectory: json['agentWorkingDirectory'] as String?,
     );
   }
@@ -182,6 +191,7 @@ class RepoConfig {
     'useNestedWorktrees': useNestedWorktrees,
     'claudeSessions': claudeSessions,
     'claudeSessionPrompts': claudeSessionPrompts,
+    'claudeSessionStarts': claudeSessionStarts,
     if (agentWorkingDirectory != null)
       'agentWorkingDirectory': agentWorkingDirectory,
   };
@@ -209,6 +219,7 @@ class RepoConfig {
     bool? useNestedWorktrees,
     List<String>? claudeSessions,
     Map<String, String>? claudeSessionPrompts,
+    Map<String, String>? claudeSessionStarts,
     String? agentWorkingDirectory,
   }) {
     return RepoConfig(
@@ -237,6 +248,7 @@ class RepoConfig {
       useNestedWorktrees: useNestedWorktrees ?? this.useNestedWorktrees,
       claudeSessions: claudeSessions ?? this.claudeSessions,
       claudeSessionPrompts: claudeSessionPrompts ?? this.claudeSessionPrompts,
+      claudeSessionStarts: claudeSessionStarts ?? this.claudeSessionStarts,
       agentWorkingDirectory:
           agentWorkingDirectory ?? this.agentWorkingDirectory,
     );

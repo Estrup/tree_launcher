@@ -107,6 +107,27 @@ class SettingsController extends ChangeNotifier implements JiraTagEditor {
     notifyListeners();
   }
 
+  /// Remembers the [prompt] and the new-or-existing worktree choice last used
+  /// to start a Claude session, to offer them first next time. A null
+  /// [useExistingWorktree] keeps the remembered choice.
+  Future<void> updateClaudeStartChoices({
+    required String prompt,
+    bool? useExistingWorktree,
+  }) async {
+    final useExisting =
+        useExistingWorktree ?? _settings.claudeUseExistingWorktree;
+    if (prompt == _settings.claudePrompt &&
+        useExisting == _settings.claudeUseExistingWorktree) {
+      return;
+    }
+    _settings = _settings.copyWith(
+      claudePrompt: prompt,
+      claudeUseExistingWorktree: useExisting,
+    );
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
   /// Adds a Jira tag named [name], in the first color no tag has yet.
   Future<void> addJiraTag(String name) async {
     final trimmed = name.trim();

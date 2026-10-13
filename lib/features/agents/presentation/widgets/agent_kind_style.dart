@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/agents/presentation/controllers/agents_co
 
 extension AgentKindStyle on AgentKind {
   IconData get icon => switch (this) {
+    AgentKind.refine => Icons.edit_note_rounded,
     AgentKind.build => Icons.construction_rounded,
     AgentKind.verify => Icons.fact_check_outlined,
     AgentKind.review => Icons.rate_review_outlined,
@@ -14,6 +15,7 @@ extension AgentKindStyle on AgentKind {
   };
 
   Color get color => switch (this) {
+    AgentKind.refine => AppColors.current.ansiMagenta,
     AgentKind.build => AppColors.accent,
     AgentKind.verify => AppColors.success,
     AgentKind.review => AppColors.vscode,

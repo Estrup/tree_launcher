@@ -2,6 +2,7 @@
 /// prompt tagged with a kind is one of that kind's subtypes (e.g. "Factory
 /// track: feature" is a build agent).
 enum AgentKind {
+  refine('Refinement'),
   build('Build'),
   verify('Verify'),
   review('Review'),

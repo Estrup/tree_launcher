@@ -478,8 +478,8 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
 
   /// Remembers a Claude CLI session for [worktreePath] in the repo at
   /// [repoPath], so the sidebar shows a shortcut to it, along with the
-  /// [promptId] it was started with (see [RepoConfig.claudeSessionPrompts]).
-  /// No-op when the repo isn't registered.
+  /// [promptId] it was started with (see [RepoConfig.claudeSessionPrompts])
+  /// and, the first time, when. No-op when the repo isn't registered.
   Future<void> rememberClaudeSession(
     String repoPath,
     String worktreePath, {
@@ -495,6 +495,10 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
       repo,
       [...repo.claudeSessions, if (!known) worktreePath],
       prompts: prompts,
+      starts: {
+        ...repo.claudeSessionStarts,
+        if (!known) worktreePath: DateTime.now().toIso8601String(),
+      },
     );
     _replaceSelection(repo, updated);
   }

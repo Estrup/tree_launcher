@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
@@ -78,7 +78,8 @@ class AgentLauncher {
 
   /// Creates a run for [prompt] (which must have a kind) and starts its
   /// Claude session in [worktreePath] with [resolvedPrompt] as the first
-  /// message. A build agent's worktree is remembered as a sidebar session.
+  /// message, in the background (a notice offers to show it). A build
+  /// agent's worktree is remembered as a sidebar session.
   Future<AgentRun> start({
     required String repoPath,
     required String repoName,
@@ -108,7 +109,7 @@ class AgentLauncher {
       model: model,
       effort: effort,
     );
-    _terminal.openAgentSession(
+    final session = _terminal.openAgentSession(
       titleFor(run),
       worktreePath,
       repoPath,
@@ -120,7 +121,17 @@ class AgentLauncher {
       ),
       agentId: run.id,
       environment: _environment(run),
+      show: false,
     );
+    if (session != null) {
+      showAppSnackBar(
+        'Started ${titleFor(run)}',
+        action: SnackBarAction(
+          label: 'Show',
+          onPressed: () => _terminal.showSession(session),
+        ),
+      );
+    }
     if (kind == AgentKind.build) {
       await _workspace.rememberClaudeSession(
         repoPath,

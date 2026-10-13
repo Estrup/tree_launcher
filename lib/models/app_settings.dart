@@ -4,7 +4,8 @@ enum TerminalApp { terminal, ghostty, custom }
 
 /// Default extra arguments for the Claude CLI sessions started from the Jira
 /// tab: subscribes the session to the Discord channel plugin.
-const defaultClaudeCliArgs = '--channels plugin:discord@claude-plugins-official';
+const defaultClaudeCliArgs =
+    '--channels plugin:discord@claude-plugins-official';
 
 class AppSettings {
   final TerminalApp terminalApp;
@@ -36,6 +37,15 @@ class AppSettings {
   /// the CLI's default.
   final String? claudeEffort;
 
+  /// The prompt last picked when starting a Claude session from the Jira or
+  /// PR tab: a saved prompt's name or a built-in prompt id (see
+  /// `issueContextPromptId`, `noClaudePromptId`); null when none was yet.
+  final String? claudePrompt;
+
+  /// Whether "Existing worktree" was last picked there instead of creating
+  /// one (for an issue that had no worktree of its own).
+  final bool claudeUseExistingWorktree;
+
   /// The user's own tags for Jira issues, in display order.
   final List<JiraTag> jiraTags;
 
@@ -55,6 +65,8 @@ class AppSettings {
     this.claudeCliArgs = defaultClaudeCliArgs,
     this.claudeModel,
     this.claudeEffort,
+    this.claudePrompt,
+    this.claudeUseExistingWorktree = false,
     this.jiraTags = const [],
     this.jiraTagsByIssue = const {},
   });
@@ -81,6 +93,9 @@ class AppSettings {
       claudeCliArgs: json['claudeCliArgs'] as String? ?? defaultClaudeCliArgs,
       claudeModel: json['claudeModel'] as String?,
       claudeEffort: json['claudeEffort'] as String?,
+      claudePrompt: json['claudePrompt'] as String?,
+      claudeUseExistingWorktree:
+          json['claudeUseExistingWorktree'] as bool? ?? false,
       jiraTags:
           (json['jiraTags'] as List<dynamic>?)
               ?.whereType<Map<String, dynamic>>()
@@ -108,6 +123,8 @@ class AppSettings {
     'claudeCliArgs': claudeCliArgs,
     'claudeModel': claudeModel,
     'claudeEffort': claudeEffort,
+    'claudePrompt': claudePrompt,
+    'claudeUseExistingWorktree': claudeUseExistingWorktree,
     'jiraTags': [for (final tag in jiraTags) tag.toJson()],
     'jiraTagsByIssue': jiraTagsByIssue,
   };
@@ -136,6 +153,8 @@ class AppSettings {
     String? claudeEffort,
     bool clearClaudeModel = false,
     bool clearClaudeEffort = false,
+    String? claudePrompt,
+    bool? claudeUseExistingWorktree,
     List<JiraTag>? jiraTags,
     Map<String, List<String>>? jiraTagsByIssue,
   }) {
@@ -159,6 +178,9 @@ class AppSettings {
       claudeEffort: clearClaudeEffort
           ? null
           : (claudeEffort ?? this.claudeEffort),
+      claudePrompt: claudePrompt ?? this.claudePrompt,
+      claudeUseExistingWorktree:
+          claudeUseExistingWorktree ?? this.claudeUseExistingWorktree,
       jiraTags: jiraTags ?? this.jiraTags,
       jiraTagsByIssue: jiraTagsByIssue ?? this.jiraTagsByIssue,
     );

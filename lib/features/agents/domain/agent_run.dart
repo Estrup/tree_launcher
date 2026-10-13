@@ -179,8 +179,8 @@ class AgentReport {
   final String? result;
 }
 
-/// One launch of an agent: a Claude session doing a kind of work (build,
-/// verify, review, docs), and what it has reported about its progress.
+/// One launch of an agent: a Claude session doing a kind of work (refine,
+/// build, verify, review, docs), and what it has reported about its progress.
 class AgentRun {
   const AgentRun({
     required this.id,

@@ -7,6 +7,9 @@ const issueContextPromptId = ':issue-context';
 const prContextPromptId = ':pr-context';
 const kickoffPromptId = ':kickoff';
 
+/// Remembered when a Claude session was last started without a prompt.
+const noClaudePromptId = ':none';
+
 /// A reusable, named prompt template for launching Claude in a worktree.
 /// Placeholders ({issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}) are
 /// filled from the worktree before launch; {pr} is the number of its open pull

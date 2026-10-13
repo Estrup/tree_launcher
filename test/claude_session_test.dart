@@ -9,6 +9,7 @@ import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
 import 'package:tree_launcher/features/terminal/presentation/claude_session_actions.dart';
+import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
@@ -67,12 +68,13 @@ class _RecordingTerminal extends TerminalController {
   final focused = <String>[];
 
   @override
-  void openClaudeSession(
+  TerminalSession? openClaudeSession(
     String title,
     String workingDirectory,
     String repoPath,
     String command, {
     bool reuseRunning = true,
+    bool show = true,
   }) {
     launched.add((
       title: title,
@@ -82,6 +84,7 @@ class _RecordingTerminal extends TerminalController {
       reuseRunning: reuseRunning,
     ));
     running.add(workingDirectory);
+    return null;
   }
 
   @override
@@ -270,6 +273,44 @@ void main() {
       expect(terminal.sessions, hasLength(2));
       expect(terminal.activeSession!.workingDirectory, '/w/a');
       expect(terminal.focusClaudeSession('/w/b'), isFalse);
+    });
+
+    test('starts a session in the background without showing it', () {
+      terminal.openTerminal('t', '/w/t', '/r');
+      terminal.hide();
+
+      final session = terminal.openClaudeSession(
+        'Claude: a',
+        '/w/a',
+        '/r',
+        'claude',
+        show: false,
+      );
+
+      expect(terminal.sessions, hasLength(2));
+      expect(terminal.isVisible, isFalse);
+      expect(terminal.activeSession!.title, 't');
+
+      terminal.showSession(session!);
+      expect(terminal.isVisible, isTrue);
+      expect(terminal.activeSession, same(session));
+    });
+
+    test("stopping a worktree's sessions leaves agents and terminals", () {
+      terminal.openClaudeSession('Claude: a', '/w/a', '/r', 'claude');
+      terminal.openAgentSession(
+        'Docs: AU2-1',
+        '/w/a',
+        '/r',
+        'claude',
+        agentId: 'ag_1',
+      );
+      terminal.openTerminal('a', '/w/a', '/r');
+
+      terminal.closeClaudeSessions('/w/a');
+
+      expect(terminal.claudeSessionFor('/w/a')!.agentId, 'ag_1');
+      expect(terminal.sessions.map((s) => s.title), ['Docs: AU2-1', 'a']);
     });
 
     test('starts a second session in the same checkout on request', () {

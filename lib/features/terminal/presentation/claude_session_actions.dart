@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
@@ -63,7 +63,8 @@ class ClaudeSessionLauncher {
   /// as a sidebar shortcut under the repo at [repoPath]. It starts next to any
   /// Claude session already running there, e.g. in a shared checkout used
   /// for several issues; [issueKey] goes in its tab title. [promptId] is
-  /// the prompt it was started with, remembered with the shortcut.
+  /// the prompt it was started with, remembered with the shortcut. It starts
+  /// in the background; a notice offers to show it.
   Future<void> start({
     required String repoPath,
     required String worktreePath,
@@ -73,8 +74,9 @@ class ClaudeSessionLauncher {
     String? issueKey,
     String? promptId,
   }) async {
-    _terminal.openClaudeSession(
-      claudeSessionTitle(worktreePath, issueKey: issueKey),
+    final title = claudeSessionTitle(worktreePath, issueKey: issueKey);
+    final session = _terminal.openClaudeSession(
+      title,
       worktreePath,
       repoPath,
       buildClaudeCliCommand(
@@ -84,7 +86,17 @@ class ClaudeSessionLauncher {
         effort: effort,
       ),
       reuseRunning: false,
+      show: false,
     );
+    if (session != null) {
+      showAppSnackBar(
+        'Started $title',
+        action: SnackBarAction(
+          label: 'Show',
+          onPressed: () => _terminal.showSession(session),
+        ),
+      );
+    }
     await _workspace.rememberClaudeSession(
       repoPath,
       worktreePath,

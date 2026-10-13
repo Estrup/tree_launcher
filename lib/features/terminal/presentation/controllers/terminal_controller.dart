@@ -114,20 +114,24 @@ class TerminalController extends ChangeNotifier {
   /// Starts a Claude session running [command] in [workingDirectory], or just
   /// shows the one already running there. With [reuseRunning] off it starts
   /// next to any running there (several sessions can share a checkout).
-  void openClaudeSession(
+  /// With [show] off it starts in the background, leaving the view as it is.
+  /// Returns the new session, or null when none was started.
+  TerminalSession? openClaudeSession(
     String title,
     String workingDirectory,
     String repoPath,
     String command, {
     bool reuseRunning = true,
+    bool show = true,
   }) {
-    if (reuseRunning && focusClaudeSession(workingDirectory)) return;
-    _openCommandSession(
+    if (reuseRunning && focusClaudeSession(workingDirectory)) return null;
+    return _openCommandSession(
       title,
       workingDirectory,
       repoPath,
       command,
       isClaude: true,
+      show: show,
     );
   }
 
@@ -153,17 +157,20 @@ class TerminalController extends ChangeNotifier {
   /// Starts agent [agentId]'s Claude session running [command] in
   /// [workingDirectory] with [environment] added to the shell's, or shows the
   /// one already running. Unlike [openClaudeSession], other Claude sessions
-  /// in the same directory don't stop it from starting.
-  void openAgentSession(
+  /// in the same directory don't stop it from starting. With [show] off it
+  /// starts in the background, leaving the view as it is. Returns the new
+  /// session, or null when none was started.
+  TerminalSession? openAgentSession(
     String title,
     String workingDirectory,
     String repoPath,
     String command, {
     required String agentId,
     Map<String, String> environment = const {},
+    bool show = true,
   }) {
-    if (focusAgentSession(agentId)) return;
-    _openCommandSession(
+    if (focusAgentSession(agentId)) return null;
+    return _openCommandSession(
       title,
       workingDirectory,
       repoPath,
@@ -171,7 +178,29 @@ class TerminalController extends ChangeNotifier {
       isClaude: true,
       agentId: agentId,
       environment: environment,
+      show: show,
     );
+  }
+
+  /// Shows [session] in the terminal view, if it is still open.
+  void showSession(TerminalSession session) {
+    final index = _sessions.indexOf(session);
+    if (index == -1) return;
+    _activeIndex = index;
+    _visible = true;
+    notifyListeners();
+  }
+
+  /// Closes the Claude sessions in [workingDirectory] that aren't an agent's,
+  /// interrupting Claude first.
+  void closeClaudeSessions(String workingDirectory) {
+    for (final session in _sessions.toList()) {
+      if (session.isClaude &&
+          session.agentId == null &&
+          session.workingDirectory == workingDirectory) {
+        closeTerminal(_sessions.indexOf(session));
+      }
+    }
   }
 
   /// Closes agent [agentId]'s session, interrupting Claude first.
@@ -181,7 +210,7 @@ class TerminalController extends ChangeNotifier {
     closeTerminal(_sessions.indexOf(session));
   }
 
-  void _openCommandSession(
+  TerminalSession? _openCommandSession(
     String title,
     String workingDirectory,
     String repoPath,
@@ -189,6 +218,7 @@ class TerminalController extends ChangeNotifier {
     bool isClaude = false,
     String? agentId,
     Map<String, String> environment = const {},
+    bool show = true,
   }) {
     _evictIfFull();
 
@@ -205,7 +235,7 @@ class TerminalController extends ChangeNotifier {
       );
     } catch (error) {
       debugPrint('Failed to create terminal session: $error');
-      return;
+      return null;
     }
     _reportColors(session);
 
@@ -220,8 +250,8 @@ class TerminalController extends ChangeNotifier {
     });
 
     _sessions.add(session);
-    _activeIndex = _sessions.length - 1;
-    _visible = true;
+    if (show || _sessions.length == 1) _activeIndex = _sessions.length - 1;
+    if (show) _visible = true;
     notifyListeners();
 
     // Start the PTY and run the command for every command session up front,
@@ -232,6 +262,7 @@ class TerminalController extends ChangeNotifier {
     // laid out and reports correct dimensions before startPty(). The
     // !isPtyStarted guards here and in the view make the start idempotent.
     _scheduleCommandStart(session);
+    return session;
   }
 
   void _scheduleCommandStart(TerminalSession session) {

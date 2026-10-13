@@ -65,7 +65,7 @@ flutter test               # full suite
   `POST /v1/agents/<id>/status` (agent runs, see below). Adding a
   capability is a new `_router` line plus a handler.
 - Agents (`lib/features/agents/`): a run of a Claude session of one kind
-  (build/verify/review/docs). Saved prompts carry the kind, and each kind is a
+  (refine/build/verify/review/docs). Saved prompts carry the kind, and each kind is a
   repo tab. Agents register and report through the API (the tree-launcher
   skill's `scripts/agent.py` helper wraps it). Runs started from a tab get
   `TREE_LAUNCHER_AGENT_ID` and `TREE_LAUNCHER_URL` in their environment.

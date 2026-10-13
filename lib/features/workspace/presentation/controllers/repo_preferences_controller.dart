@@ -132,19 +132,22 @@ class RepoPreferencesController extends ChangeNotifier {
   }
 
   /// Sets the remembered Claude sessions, and the prompts they were started
-  /// with ([prompts], else the current ones) for those still remembered.
+  /// with ([prompts]) and when ([starts]) — else the current ones — for
+  /// those still remembered.
   Future<RepoConfig?> updateClaudeSessions(
     RepoConfig repo,
     List<String> claudeSessions, {
     Map<String, String>? prompts,
+    Map<String, String>? starts,
   }) async {
+    Map<String, String> kept(Map<String, String> byPath) => {
+      for (final MapEntry(:key, :value) in byPath.entries)
+        if (claudeSessions.contains(key)) key: value,
+    };
     final updated = repo.copyWith(
       claudeSessions: claudeSessions,
-      claudeSessionPrompts: {
-        for (final MapEntry(:key, :value)
-            in (prompts ?? repo.claudeSessionPrompts).entries)
-          if (claudeSessions.contains(key)) key: value,
-      },
+      claudeSessionPrompts: kept(prompts ?? repo.claudeSessionPrompts),
+      claudeSessionStarts: kept(starts ?? repo.claudeSessionStarts),
     );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();

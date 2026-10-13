@@ -41,6 +41,10 @@ class AddWorktreeResult {
   /// built-in prompt id (see [issueContextPromptId]); null for none.
   final String? promptId;
 
+  /// In start-Claude mode, whether "Existing worktree" was picked; null when
+  /// the dialog opened on the issue's own worktree (not a choice to keep).
+  final bool? useExistingWorktree;
+
   const AddWorktreeResult({
     required this.worktreePath,
     this.branch,
@@ -50,6 +54,7 @@ class AddWorktreeResult {
     this.savedPrompt,
     this.issueKey,
     this.promptId,
+    this.useExistingWorktree,
   });
 }
 
@@ -190,6 +195,10 @@ class AddWorktreeDialog extends StatefulWidget {
       result.claudeModel,
       result.claudeEffort,
     );
+    await settings.updateClaudeStartChoices(
+      prompt: result.promptId ?? noClaudePromptId,
+      useExistingWorktree: result.useExistingWorktree,
+    );
     final agentPrompt = result.savedPrompt;
     if (agentLauncher != null && agentPrompt?.kind != null) {
       await agentLauncher.start(
@@ -235,8 +244,13 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   late bool _createNewBranch = widget.initialCreateNewBranch;
 
   /// Start-Claude mode: run in an existing worktree as-is (e.g. a skill that
-  /// only reads the code) instead of creating one.
-  late bool _useExisting = widget.existingWorktree != null;
+  /// only reads the code) instead of creating one. Starts on the issue's own
+  /// worktree, else on the last choice ([_defaultUseExisting]).
+  late bool _useExisting = _defaultUseExisting;
+
+  late final bool _defaultUseExisting =
+      widget.existingWorktree != null ||
+      context.read<SettingsProvider>().settings.claudeUseExistingWorktree;
 
   /// Whether the user picked new / existing themselves, so picking an agent
   /// prompt doesn't switch it.
@@ -246,9 +260,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   String? _existingPath;
 
   /// Selected entry of the Claude prompt picker (see [_promptOptions]).
-  late String _promptKey = widget.existingWorktree?.kickoffPromptPath != null
-      ? _kickoffPromptKey
-      : _contextPromptKey;
+  late String _promptKey = _initialPromptKey();
 
   /// Picked `--model` alias and `--effort` level. Start from the last pick
   /// (see [SettingsController.updateClaudeModelAndEffort]).
@@ -259,6 +271,25 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   static const _kickoffPromptKey = 'kickoff';
   static const _noPromptKey = 'none';
   static const _savedPromptPrefix = 'saved:';
+
+  /// The kickoff prompt when the issue's worktree has one, else the prompt
+  /// picked last time (see [SettingsController.updateClaudeStartChoices]).
+  String _initialPromptKey() {
+    if (widget.existingWorktree?.kickoffPromptPath != null) {
+      return _kickoffPromptKey;
+    }
+    final remembered = context.read<SettingsProvider>().settings.claudePrompt;
+    switch (remembered) {
+      case noClaudePromptId:
+        return _noPromptKey;
+      case null || issueContextPromptId || prContextPromptId || kickoffPromptId:
+        return _contextPromptKey;
+    }
+    final prompts =
+        context.read<RepoProvider>().selectedRepo?.claudePrompts ?? const [];
+    final index = prompts.indexWhere((p) => p.name == remembered);
+    return index == -1 ? _contextPromptKey : '$_savedPromptPrefix$index';
+  }
 
   /// The worktree the session starts in instead of a new one, if any.
   Worktree? get _existing {
@@ -369,15 +400,14 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   }
 
   /// Picks [option] in the prompt panel. Unless the user chose new / existing
-  /// themselves, a verify, review or docs agent runs in an existing worktree
+  /// themselves, an agent other than build runs in an existing worktree
   /// (it only reads the code); anything else goes back to the default.
   void _pickPrompt(_PromptOption option, String? active) {
     _promptKey = option.key == active ? _noPromptKey : option.key;
     if (_targetChosen) return;
     final kind = _selectedSavedPrompt?.kind;
     _useExisting =
-        widget.existingWorktree != null ||
-        (kind != null && kind != AgentKind.build);
+        _defaultUseExisting || (kind != null && kind != AgentKind.build);
   }
 
   /// The Claude prompt toggles. None selected means no first message.
@@ -508,6 +538,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           savedPrompt: _selectedSavedPrompt,
           issueKey: issue,
           promptId: _promptId,
+          useExistingWorktree: widget.existingWorktree == null ? true : null,
         ),
       );
       return;
@@ -579,6 +610,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                   savedPrompt: widget.startClaude ? _selectedSavedPrompt : null,
                   issueKey: jira.isNotEmpty ? jira : null,
                   promptId: widget.startClaude ? _promptId : null,
+                  useExistingWorktree: widget.startClaude ? false : null,
                 )
               : null,
         );
@@ -604,7 +636,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         side: BorderSide(color: AppColors.border),
       ),
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: widget.startClaude ? 820 : 480),
+        constraints: BoxConstraints(maxWidth: widget.startClaude ? 1040 : 480),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -632,7 +664,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                             ),
                           ),
                           const SizedBox(width: 24),
-                          SizedBox(width: 300, child: _promptPanel()),
+                          SizedBox(width: 440, child: _promptPanel()),
                         ],
                       )
                     : _worktreeFields(context),

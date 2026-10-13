@@ -628,21 +628,23 @@ class _RepoTileState extends State<_RepoTile> {
     final pages = repoPagesFor(repo, agents);
     final pageKeys = {for (final page in pages) page.key};
 
-    final agentRuns = <String, List<AgentRun>>{};
+    // Each page's sessions: agent runs and remembered shortcuts.
+    final sessions = <String, List<_PageSession>>{};
     // A build agent's worktree is also a shortcut; the agent stands for it.
     final buildAgentPaths = <String>{};
     for (final run in agents?.runs ?? const <AgentRun>[]) {
       if (run.repoName != repo.name) continue;
       final isOpen = tp.claudeSessionForAgent(run.id) != null;
       if (!showsAgentSession(run, isOpen: isOpen)) continue;
-      agentRuns.putIfAbsent(agentPageKey(run.kind), () => []).add(run);
+      sessions
+          .putIfAbsent(agentPageKey(run.kind), () => [])
+          .add((startedAt: run.startedAt, order: 0, path: null, run: run));
       final path = run.worktreePath;
       if (run.kind == AgentKind.build && !run.state.isFinished && path != null) {
         buildAgentPaths.add(path);
       }
     }
-    final shortcuts = <String, List<String>>{};
-    for (final path in repo.claudeSessions) {
+    for (final (index, path) in repo.claudeSessions.indexed) {
       if (buildAgentPaths.contains(path)) continue;
       final pageKey = sessionPageKey(
         repo,
@@ -650,15 +652,27 @@ class _RepoTileState extends State<_RepoTile> {
         pageKeys,
         runs: agents?.runs ?? const [],
       );
-      shortcuts.putIfAbsent(pageKey, () => []).add(path);
+      final started = DateTime.tryParse(repo.claudeSessionStarts[path] ?? '');
+      sessions.putIfAbsent(pageKey, () => []).add((
+        // Shortcuts from before start times were kept count as oldest, in
+        // the order they were remembered.
+        startedAt: started ?? DateTime.fromMillisecondsSinceEpoch(0),
+        order: index,
+        path: path,
+        run: null,
+      ));
+    }
+    // Newest first, in a fixed order: not moved by status or updates.
+    for (final list in sessions.values) {
+      list.sort((a, b) {
+        final byStart = b.startedAt.compareTo(a.startedAt);
+        return byStart != 0 ? byStart : b.order.compareTo(a.order);
+      });
     }
 
     final shown = [
       for (final page in pages)
-        if (widget.isSelected ||
-            agentRuns.containsKey(page.key) ||
-            shortcuts.containsKey(page.key))
-          page,
+        if (widget.isSelected || sessions.containsKey(page.key)) page,
     ];
     if (shown.isEmpty) return _buildRepoRow();
 
@@ -678,41 +692,124 @@ class _RepoTileState extends State<_RepoTile> {
               onTap: () => widget.onOpenPage(page.key),
             ),
           ),
-          for (final path in shortcuts[page.key] ?? const <String>[])
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _ClaudeSessionTile(
-                worktreePath: path,
-                jiraIssue: repo.jiraIssues[path],
-                isRunning: tp.claudeSessionFor(path) != null,
-                isActive:
-                    active != null &&
-                    active.isClaude &&
-                    active.agentId == null &&
-                    active.workingDirectory == path,
-                onTap: () => widget.onOpenClaudeSession(path, page.key),
-                onRemove: () => widget.onForgetClaudeSession(path),
+          for (final session in sessions[page.key] ?? const <_PageSession>[])
+            if (session.run case final run?)
+              Padding(
+                padding: const EdgeInsets.only(left: 24),
+                child: _ClaudeSessionTile(
+                  worktreePath: run.worktreePath ?? '',
+                  label: run.title ?? run.promptName ?? run.kind.label,
+                  icon: run.kind.icon,
+                  jiraIssue: run.issueKeys.firstOrNull,
+                  isRunning: tp.claudeSessionForAgent(run.id) != null,
+                  needsYou: agents!.needsYou(run),
+                  isActive: active?.agentId == run.id,
+                  onTap: () => widget.onOpenAgent(run),
+                  onContextMenu: (position) => _showAgentMenu(position, run),
+                ),
+              )
+            else if (session.path case final path?)
+              Padding(
+                padding: const EdgeInsets.only(left: 24),
+                child: _ClaudeSessionTile(
+                  worktreePath: path,
+                  jiraIssue: repo.jiraIssues[path],
+                  isRunning: tp.claudeSessionFor(path) != null,
+                  onContextMenu: (position) =>
+                      _showSessionMenu(position, path, page.key),
+                  isActive:
+                      active != null &&
+                      active.isClaude &&
+                      active.agentId == null &&
+                      active.workingDirectory == path,
+                  onTap: () => widget.onOpenClaudeSession(path, page.key),
+                  onRemove: () => widget.onForgetClaudeSession(path),
+                ),
               ),
-            ),
-          for (final run in agentRuns[page.key] ?? const <AgentRun>[])
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _ClaudeSessionTile(
-                worktreePath: run.worktreePath ?? '',
-                label: run.title ?? run.promptName ?? run.kind.label,
-                icon: run.kind.icon,
-                jiraIssue: run.issueKeys.firstOrNull,
-                isRunning: tp.claudeSessionForAgent(run.id) != null,
-                needsYou: agents!.needsYou(run),
-                isActive: active?.agentId == run.id,
-                onTap: () => widget.onOpenAgent(run),
-              ),
-            ),
         ],
         const SizedBox(height: 4),
       ],
     );
   }
+
+  /// Right-click menu of a remembered session in [path] under [pageKey].
+  Future<void> _showSessionMenu(
+    Offset position,
+    String path,
+    String pageKey,
+  ) async {
+    final terminal = context.read<TerminalProvider>();
+    final running = terminal.claudeSessionFor(path) != null;
+    final action = await _showMenuAt(position, [
+      _menuItem('show', Icons.open_in_new_rounded, 'Show'),
+      if (running) _menuItem('stop', Icons.stop_rounded, 'Stop session'),
+      _menuItem('remove', Icons.close_rounded, 'Remove shortcut'),
+    ]);
+    switch (action) {
+      case 'show':
+        widget.onOpenClaudeSession(path, pageKey);
+      case 'stop':
+        terminal.closeClaudeSessions(path);
+      case 'remove':
+        widget.onForgetClaudeSession(path);
+    }
+  }
+
+  /// Right-click menu of an agent's session.
+  Future<void> _showAgentMenu(Offset position, AgentRun run) async {
+    final launcher = AgentLauncher.of(context);
+    final agents = context.read<AgentsController>();
+    final action = await _showMenuAt(position, [
+      _menuItem('show', Icons.open_in_new_rounded, 'Show'),
+      if (launcher.isOpen(run) || !run.state.isFinished)
+        _menuItem('stop', Icons.stop_rounded, 'Stop agent'),
+      _menuItem('archive', Icons.archive_outlined, 'Archive'),
+    ]);
+    switch (action) {
+      case 'show':
+        widget.onOpenAgent(run);
+      case 'stop':
+        await launcher.stop(run);
+      case 'archive':
+        await agents.setArchived(run.id, true);
+    }
+  }
+
+  Future<String?> _showMenuAt(
+    Offset position,
+    List<PopupMenuEntry<String>> items,
+  ) => showMenu<String>(
+    context: context,
+    color: AppColors.surface1,
+    constraints: const BoxConstraints(minWidth: 180),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+      side: BorderSide(color: AppColors.border),
+    ),
+    position: RelativeRect.fromLTRB(
+      position.dx,
+      position.dy,
+      position.dx,
+      position.dy,
+    ),
+    items: items,
+  );
+
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String text) =>
+      PopupMenuItem(
+        value: value,
+        height: 36,
+        child: Row(
+          children: [
+            Icon(icon, size: 15, color: AppColors.textSecondary),
+            const SizedBox(width: 10),
+            Text(
+              text,
+              style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+            ),
+          ],
+        ),
+      );
 
   Widget _buildRepoRow() {
     return MouseRegion(
@@ -1059,6 +1156,9 @@ class _ClaudeSessionTile extends StatefulWidget {
   /// Removes the shortcut; null when it can't be removed here.
   final VoidCallback? onRemove;
 
+  /// Opens the right-click menu at a global position.
+  final void Function(Offset position)? onContextMenu;
+
   const _ClaudeSessionTile({
     required this.worktreePath,
     this.label,
@@ -1069,6 +1169,7 @@ class _ClaudeSessionTile extends StatefulWidget {
     this.needsYou = false,
     required this.onTap,
     this.onRemove,
+    this.onContextMenu,
   });
 
   @override
@@ -1095,6 +1196,9 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           onTap: widget.onTap,
+          onSecondaryTapDown: widget.onContextMenu == null
+              ? null
+              : (d) => widget.onContextMenu!(d.globalPosition),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             margin: const EdgeInsets.only(bottom: 2),
@@ -1208,6 +1312,15 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
     );
   }
 }
+
+/// A session under a page in the sidebar: an agent [run], or a remembered
+/// shortcut to the session in [path]. [order] breaks ties in [startedAt].
+typedef _PageSession = ({
+  DateTime startedAt,
+  int order,
+  String? path,
+  AgentRun? run,
+});
 
 // --- Repo page entry ---
 

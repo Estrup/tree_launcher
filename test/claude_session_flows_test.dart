@@ -20,6 +20,7 @@ import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issues_tab.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/claude_prompt.dart';
@@ -170,14 +171,16 @@ class _RecordingTerminal extends TerminalController {
   final focused = <String>[];
 
   @override
-  void openClaudeSession(
+  TerminalSession? openClaudeSession(
     String title,
     String workingDirectory,
     String repoPath,
     String command, {
     bool reuseRunning = true,
+    bool show = true,
   }) {
     launched.add((dir: workingDirectory, repo: repoPath, command: command));
+    return null;
   }
 
   @override
@@ -380,6 +383,57 @@ void main() {
     );
     // Remembered as the shared checkout for next time.
     expect(workspace.selectedRepo!.agentWorkingDirectory, _existingPath);
+  });
+
+  testWidgets('remembers the existing worktree and prompt for next time', (
+    tester,
+  ) async {
+    await pump(tester, const JiraIssuesTab());
+
+    await tester.tap(find.byTooltip('Claude session for AU2-5905…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Existing worktree'));
+    await tester.tap(find.text('Implement'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+
+    expect(settings.settings.claudeUseExistingWorktree, isTrue);
+    expect(settings.settings.claudePrompt, 'Implement');
+
+    await tester.tap(find.byTooltip('Claude session for AU2-5905…'));
+    await tester.pumpAndSettle();
+    expect(find.text('WORKTREE NAME'), findsNothing);
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+
+    expect(terminal.launched, hasLength(2));
+    expect(terminal.launched.last.dir, _existingPath);
+    expect(terminal.launched.last.command, contains("'Implement AU2-5905"));
+  });
+
+  testWidgets('choosing a new worktree is remembered too', (tester) async {
+    await settings.updateClaudeStartChoices(
+      prompt: noClaudePromptId,
+      useExistingWorktree: true,
+    );
+    await pump(tester, const JiraIssuesTab());
+
+    await tester.tap(find.byTooltip('Claude session for AU2-5905…'));
+    await tester.pumpAndSettle();
+    expect(find.text('WORKTREE NAME'), findsNothing);
+    expect(
+      find.text('No prompt — Claude starts without a first message.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('New worktree'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+
+    expect(git.created, hasLength(1));
+    expect(settings.settings.claudeUseExistingWorktree, isFalse);
   });
 
   testWidgets('a verify prompt runs in an existing worktree by default', (

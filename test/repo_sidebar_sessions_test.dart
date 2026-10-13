@@ -172,6 +172,39 @@ void main() {
     expect(issueSession, lessThan(top('Activity')));
   });
 
+  testWidgets('sessions under a page are newest first', (tester) async {
+    await pumpSidebar(tester);
+
+    // Both are under Worktrees (no Jira page); spike was started last.
+    expect(
+      workspace.selectedRepo!.claudeSessionStarts.keys,
+      containsAll([withIssue, withoutIssue]),
+    );
+    expect(
+      tester.getTopLeft(find.text('spike')).dy,
+      lessThan(
+        tester.getTopLeft(find.text('udlaan-sker-til-en-kontakt-au2-5788')).dy,
+      ),
+    );
+  });
+
+  testWidgets('right-clicking a session offers to remove its shortcut', (
+    tester,
+  ) async {
+    await pumpSidebar(tester);
+
+    await tester.tap(find.text('spike'), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Show'), findsOneWidget);
+    // Not running, so there is nothing to stop.
+    expect(find.text('Stop session'), findsNothing);
+
+    await tester.tap(find.text('Remove shortcut'));
+    await tester.pumpAndSettle();
+
+    expect(workspace.selectedRepo!.claudeSessions, [withIssue]);
+  });
+
   testWidgets('tapping a page shows it', (tester) async {
     await workspace.updateJiraProjectKey(workspace.selectedRepo!, 'AU2');
     await pumpSidebar(tester);

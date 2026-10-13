@@ -7,19 +7,17 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 final GlobalKey<ScaffoldMessengerState> appMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
 
-/// Shows a SnackBar from anywhere via [appMessengerKey]. No-op if the messenger
-/// isn't mounted yet.
-void showAppSnackBar(String message) {
+/// Shows a SnackBar from anywhere via [appMessengerKey], with an optional
+/// [action] button. No-op if the messenger isn't mounted yet.
+void showAppSnackBar(String message, {SnackBarAction? action}) {
   final messenger = appMessengerKey.currentState;
   if (messenger == null) return;
   messenger
     ..clearSnackBars()
     ..showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
+        content: Text(message, style: TextStyle(color: AppColors.textPrimary)),
+        action: action,
       ),
     );
 }
