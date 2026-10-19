@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:tree_launcher/core/presentation/issue_list_controller.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_search.dart';
@@ -25,7 +26,7 @@ class JiraStatusCount {
 /// Backs the Jira tab: the selected repo's project versions, the issues in the
 /// selected fixVersion or found by a search, the status filter, the selected
 /// issues, and changing issues' status or assignee.
-class JiraIssuesController extends ChangeNotifier {
+class JiraIssuesController extends IssueListController<JiraIssue, String> {
   JiraIssuesController({JiraApiService? service})
     : _service = service ?? JiraApiService();
 
@@ -43,23 +44,10 @@ class JiraIssuesController extends ChangeNotifier {
   List<JiraVersion> _versions = const [];
   JiraVersion? _selectedVersion;
   List<JiraIssue> _issues = const [];
-  String _searchQuery = '';
-  List<JiraIssue> _searchResults = const [];
-  bool _isLoading = false;
-  String? _error;
-  DateTime? _lastRefreshed;
   final Set<String> _statusFilter = {};
-
-  /// Keys of the selected issues; always a subset of [visibleIssues].
-  final Set<String> _selected = {};
 
   /// The token's user, once looked up; null until then or when that failed.
   JiraUser? _me;
-  bool _disposed = false;
-
-  /// Bumped on every load, so a slow response for an earlier repo or version
-  /// is dropped instead of overwriting newer results.
-  int _generation = 0;
 
   /// Persists an explicit fixVersion pick for the repo at [repoPath]. Wired at
   /// the app level so the choice is remembered across restarts.
@@ -71,36 +59,29 @@ class JiraIssuesController extends ChangeNotifier {
   List<JiraVersion> get versions => _versions;
   JiraVersion? get selectedVersion => _selectedVersion;
 
-  /// The search's results while searching, otherwise the fixVersion's issues.
-  List<JiraIssue> get issues => isSearching ? _searchResults : _issues;
+  @override
+  String keyOf(JiraIssue issue) => issue.key;
 
-  /// What was searched for; empty when not searching.
-  String get searchQuery => _searchQuery;
+  /// The fixVersion's issues.
+  @override
+  List<JiraIssue> get listedIssues => _issues;
 
   /// Whether [issues] are search results rather than the fixVersion's issues.
+  @override
   bool get isSearching => _searchJql != null;
 
   /// Whether the search may have found more issues than [searchLimit].
   bool get searchTruncated =>
-      isSearching && _searchResults.length >= searchLimit;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-  DateTime? get lastRefreshed => _lastRefreshed;
+      isSearching && searchResults.length >= searchLimit;
 
   /// Statuses currently filtered on. Empty means every status is shown.
   Set<String> get statusFilter => Set.unmodifiable(_statusFilter);
-
-  /// Keys of the selected issues.
-  Set<String> get selectedKeys => Set.unmodifiable(_selected);
-
-  /// The selected issues, in list order.
-  List<JiraIssue> get selectedIssues =>
-      visibleIssues.where((i) => _selected.contains(i.key)).toList();
 
   /// Display name of the token's user, once known.
   String? get myDisplayName => _me?.displayName;
 
   /// Issues that pass the status filter.
+  @override
   List<JiraIssue> get visibleIssues => _statusFilter.isEmpty
       ? issues
       : issues.where((i) => _statusFilter.contains(i.status)).toList();
@@ -158,12 +139,13 @@ class JiraIssuesController extends ChangeNotifier {
   }
 
   /// Reloads the project's versions and the selected version's issues, or
-  /// the search's results while searching.
+  /// the search's results while searching (an issue key or words, see
+  /// [jiraSearchJql]).
+  @override
   Future<void> refresh() async {
     final key = _projectKey;
     if (key == null) return;
-    final generation = _startLoad();
-    try {
+    await load((generation) async {
       final jql = _searchJql;
       if (jql != null) {
         await _fetchSearchResults(jql, generation);
@@ -172,35 +154,14 @@ class JiraIssuesController extends ChangeNotifier {
       final versions = orderVersionsForPicker(
         await _service.fetchVersions(key),
       );
-      if (generation != _generation) return;
+      if (!isCurrent(generation)) return;
       _versions = versions;
       _selectedVersion = pickVersion(
         versions,
         _selectedVersion?.id ?? _rememberedVersionId,
       );
       await _fetchIssues(generation);
-    } catch (e) {
-      _fail(generation, e);
-    } finally {
-      _finishLoad(generation);
-    }
-  }
-
-  /// Shows the issues matching [query] (an issue key or words, see
-  /// [jiraSearchJql]) instead of the fixVersion's. A query with nothing to
-  /// search for goes back to the fixVersion, reloading its issues.
-  Future<void> search(String query) async {
-    final trimmed = query.trim();
-    if (trimmed == _searchQuery) return;
-    final wasSearching = isSearching;
-    _searchQuery = trimmed;
-    // The previous results stay up while a changed search loads.
-    if (!isSearching) _searchResults = const [];
-    if (isSearching || wasSearching) {
-      await refresh();
-    } else {
-      _notify();
-    }
+    });
   }
 
   /// Switches to [version], remembers it for the repo, and loads its issues.
@@ -208,60 +169,29 @@ class JiraIssuesController extends ChangeNotifier {
   /// across versions.
   Future<void> selectVersion(JiraVersion version) async {
     if (isSearching) {
-      _searchQuery = '';
-      _searchResults = const [];
+      endSearch();
     } else if (version.id == _selectedVersion?.id) {
       return;
     }
     _selectedVersion = version;
     _issues = const [];
-    _selected.clear();
+    dropSelection();
     final repoPath = _repoPath;
     if (repoPath != null) onVersionSelected?.call(repoPath, version);
 
-    final generation = _startLoad();
-    try {
-      await _fetchIssues(generation);
-    } catch (e) {
-      _fail(generation, e);
-    } finally {
-      _finishLoad(generation);
-    }
+    await load(_fetchIssues);
   }
 
   void toggleStatus(String status) {
     if (!_statusFilter.remove(status)) _statusFilter.add(status);
-    _pruneSelection();
-    _notify();
+    pruneSelection();
+    notify();
   }
 
   void clearStatusFilter() {
     if (_statusFilter.isEmpty) return;
     _statusFilter.clear();
-    _notify();
-  }
-
-  void setSelected(String key, bool selected) {
-    selected ? _selected.add(key) : _selected.remove(key);
-    _notify();
-  }
-
-  /// Selects every visible issue, or clears the selection when all already
-  /// are.
-  void toggleSelectAll() {
-    final keys = visibleIssues.map((i) => i.key);
-    if (keys.every(_selected.contains)) {
-      _selected.clear();
-    } else {
-      _selected.addAll(keys);
-    }
-    _notify();
-  }
-
-  void clearSelection() {
-    if (_selected.isEmpty) return;
-    _selected.clear();
-    _notify();
+    notify();
   }
 
   /// The statuses the issues [keys] can move to, each with the transition
@@ -282,7 +212,7 @@ class JiraIssuesController extends ChangeNotifier {
         try {
           await _service.transitionIssue(entry.key, entry.value.id);
         } catch (e) {
-          failures[entry.key] = _message(e);
+          failures[entry.key] = userMessage(e);
         }
       }),
     );
@@ -302,15 +232,11 @@ class JiraIssuesController extends ChangeNotifier {
   Future<void> _loadMe() async {
     try {
       _me = await _service.fetchMyself();
-      _notify();
+      notify();
     } catch (e) {
       // "Assign to me" stays offered everywhere and reports the problem.
       debugPrint('Jira user lookup failed: $e');
     }
-  }
-
-  void _pruneSelection() {
-    _selected.retainAll(visibleIssues.map((i) => i.key));
   }
 
   Future<void> _fetchIssues(int generation) async {
@@ -323,75 +249,35 @@ class JiraIssuesController extends ChangeNotifier {
     final issues = await _service.searchIssues(
       fixVersionIssuesJql(key, version.id),
     );
-    if (generation != _generation) return;
+    if (!isCurrent(generation)) return;
     _issues = issues;
-    _lastRefreshed = DateTime.now();
-    _pruneSelection();
+    loaded();
     if (_me == null) _loadMe();
   }
 
   Future<void> _fetchSearchResults(String jql, int generation) async {
     final results = await _service.findIssues(jql, limit: searchLimit);
-    if (generation != _generation) return;
+    if (!isCurrent(generation)) return;
     // The issue the query names comes first.
-    final key = jiraKeyInQuery(_projectKey!, _searchQuery);
-    _searchResults = [
+    final key = jiraKeyInQuery(_projectKey!, searchQuery);
+    showSearchResults([
       ...results.where((i) => i.key == key),
       ...results.where((i) => i.key != key),
-    ];
-    _lastRefreshed = DateTime.now();
-    _pruneSelection();
+    ]);
     if (_me == null) _loadMe();
   }
 
   String? get _searchJql {
     final key = _projectKey;
-    return key == null ? null : jiraSearchJql(key, _searchQuery);
-  }
-
-  int _startLoad() {
-    _isLoading = true;
-    _error = null;
-    _notify();
-    return ++_generation;
-  }
-
-  void _fail(int generation, Object e) {
-    if (generation != _generation) return;
-    _error = _message(e);
-  }
-
-  static String _message(Object e) =>
-      userMessage(e);
-
-  void _finishLoad(int generation) {
-    if (generation != _generation) return;
-    _isLoading = false;
-    _notify();
+    return key == null ? null : jiraSearchJql(key, searchQuery);
   }
 
   void _reset() {
-    _generation++;
+    resetList();
     _versions = const [];
     _selectedVersion = null;
     _issues = const [];
-    _searchQuery = '';
-    _searchResults = const [];
-    _isLoading = false;
-    _error = null;
-    _lastRefreshed = null;
     _statusFilter.clear();
-    _selected.clear();
-    _notify();
-  }
-
-  void _notify() {
-    if (!_disposed) notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
+    notify();
   }
 }

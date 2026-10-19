@@ -1,5 +1,4 @@
-import 'package:flutter/foundation.dart';
-
+import 'package:tree_launcher/core/presentation/issue_list_controller.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issues_api_service.dart';
 import 'package:tree_launcher/features/github_issues/domain/github_issue.dart';
 import 'package:tree_launcher/features/github_issues/domain/github_issue_search.dart';
@@ -21,7 +20,7 @@ class GithubLabelCount {
 /// selected milestone (or every open issue) or found by a search, the state
 /// and label filters, the selected issues, and changing issues' state or
 /// assignees.
-class GithubIssuesController extends ChangeNotifier {
+class GithubIssuesController extends IssueListController<GithubIssue, int> {
   GithubIssuesController({GithubIssuesApiService? service})
     : _service = service ?? GithubIssuesApiService();
 
@@ -45,26 +44,13 @@ class GithubIssuesController extends ChangeNotifier {
   int? _selectedMilestoneNumber;
   List<GithubIssue> _issues = const [];
   bool _issuesTruncated = false;
-  String _searchQuery = '';
-  List<GithubIssue> _searchResults = const [];
-  bool _isLoading = false;
-  String? _error;
-  DateTime? _lastRefreshed;
   final Set<GithubIssueState> _stateFilter = {};
 
   /// Names of the labels filtered on.
   final Set<String> _labelFilter = {};
 
-  /// Numbers of the selected issues; always a subset of [visibleIssues].
-  final Set<int> _selected = {};
-
   /// The token's login, once looked up.
   String? _myLogin;
-  bool _disposed = false;
-
-  /// Bumped on every load, so a slow response for an earlier repo or
-  /// milestone is dropped instead of overwriting newer results.
-  int _generation = 0;
 
   /// Persists an explicit milestone pick (null for all open issues) for the
   /// repo at [repoPath]. Wired at the app level so it is remembered.
@@ -86,21 +72,20 @@ class GithubIssuesController extends ChangeNotifier {
       .where((m) => m.number == _selectedMilestoneNumber)
       .firstOrNull;
 
-  /// The search's results while searching, otherwise the milestone's issues.
-  List<GithubIssue> get issues => isSearching ? _searchResults : _issues;
+  @override
+  int keyOf(GithubIssue issue) => issue.number;
 
-  /// What was searched for; empty when not searching.
-  String get searchQuery => _searchQuery;
+  /// The milestone's issues (or every open issue).
+  @override
+  List<GithubIssue> get listedIssues => _issues;
 
   /// Whether [issues] are search results rather than the milestone's issues.
+  @override
   bool get isSearching => _searchQ != null;
 
   /// Whether GitHub may have more issues than are loaded.
   bool get truncated =>
-      isSearching ? _searchResults.length >= searchLimit : _issuesTruncated;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-  DateTime? get lastRefreshed => _lastRefreshed;
+      isSearching ? searchResults.length >= searchLimit : _issuesTruncated;
 
   /// States filtered on; empty means every state is shown.
   Set<GithubIssueState> get stateFilter => Set.unmodifiable(_stateFilter);
@@ -110,16 +95,14 @@ class GithubIssuesController extends ChangeNotifier {
 
   bool get hasFilter => _stateFilter.isNotEmpty || _labelFilter.isNotEmpty;
 
-  Set<int> get selectedNumbers => Set.unmodifiable(_selected);
-
-  /// The selected issues, in list order.
-  List<GithubIssue> get selectedIssues =>
-      visibleIssues.where((i) => _selected.contains(i.number)).toList();
+  /// Numbers of the selected issues.
+  Set<int> get selectedNumbers => selectedKeys;
 
   /// The token's login, once known.
   String? get myLogin => _myLogin;
 
   /// Issues in a filtered state that have any filtered label.
+  @override
   List<GithubIssue> get visibleIssues => issues
       .where(
         (i) =>
@@ -195,12 +178,12 @@ class GithubIssuesController extends ChangeNotifier {
       a?.owner == b?.owner && a?.repo == b?.repo && a?.token == b?.token;
 
   /// Reloads the milestones and the selected milestone's issues, or the
-  /// search's results while searching.
+  /// search's results while searching (see [githubIssueSearchQuery]).
+  @override
   Future<void> refresh() async {
     final config = _config;
     if (config == null) return;
-    final generation = _startLoad();
-    try {
+    await load((generation) async {
       final q = _searchQ;
       if (q != null) {
         await _fetchSearchResults(config, q, generation);
@@ -209,7 +192,7 @@ class GithubIssuesController extends ChangeNotifier {
       final milestones = orderMilestonesForPicker(
         await _service.fetchMilestones(config),
       );
-      if (generation != _generation) return;
+      if (!isCurrent(generation)) return;
       final wanted = _milestonesLoaded
           ? _selectedMilestoneNumber
           : _rememberedMilestone;
@@ -220,36 +203,14 @@ class GithubIssuesController extends ChangeNotifier {
           ? wanted
           : null;
       await _fetchIssues(config, generation);
-    } catch (e) {
-      _fail(generation, e);
-    } finally {
-      _finishLoad(generation);
-    }
-  }
-
-  /// Shows the issues matching [query] (see [githubIssueSearchQuery])
-  /// instead of the milestone's. An empty query goes back to the milestone,
-  /// reloading its issues.
-  Future<void> search(String query) async {
-    final trimmed = query.trim();
-    if (trimmed == _searchQuery) return;
-    final wasSearching = isSearching;
-    _searchQuery = trimmed;
-    // The previous results stay up while a changed search loads.
-    if (!isSearching) _searchResults = const [];
-    if (isSearching || wasSearching) {
-      await refresh();
-    } else {
-      _notify();
-    }
+    });
   }
 
   /// Switches to milestone [number] (null for all open issues), remembers it
   /// for the repo, and loads its issues. Ends a search; the filters are kept.
   Future<void> selectMilestone(int? number) async {
     if (isSearching) {
-      _searchQuery = '';
-      _searchResults = const [];
+      endSearch();
     } else if (number == _selectedMilestoneNumber) {
       return;
     }
@@ -257,32 +218,25 @@ class GithubIssuesController extends ChangeNotifier {
     _rememberedMilestone = number;
     _issues = const [];
     _issuesTruncated = false;
-    _selected.clear();
+    dropSelection();
     final repoPath = _repoPath;
     if (repoPath != null) onMilestoneSelected?.call(repoPath, number);
 
     final config = _config;
     if (config == null) return;
-    final generation = _startLoad();
-    try {
-      await _fetchIssues(config, generation);
-    } catch (e) {
-      _fail(generation, e);
-    } finally {
-      _finishLoad(generation);
-    }
+    await load((generation) => _fetchIssues(config, generation));
   }
 
   void toggleState(GithubIssueState state) {
     if (!_stateFilter.remove(state)) _stateFilter.add(state);
-    _pruneSelection();
-    _notify();
+    pruneSelection();
+    notify();
   }
 
   void toggleLabel(String name) {
     if (!_labelFilter.remove(name)) _labelFilter.add(name);
-    _pruneSelection();
-    _notify();
+    pruneSelection();
+    notify();
   }
 
   /// Clears the state and label filters.
@@ -290,30 +244,7 @@ class GithubIssuesController extends ChangeNotifier {
     if (!hasFilter) return;
     _stateFilter.clear();
     _labelFilter.clear();
-    _notify();
-  }
-
-  void setSelected(int number, bool selected) {
-    selected ? _selected.add(number) : _selected.remove(number);
-    _notify();
-  }
-
-  /// Selects every visible issue, or clears the selection when all already
-  /// are.
-  void toggleSelectAll() {
-    final numbers = visibleIssues.map((i) => i.number);
-    if (numbers.every(_selected.contains)) {
-      _selected.clear();
-    } else {
-      _selected.addAll(numbers);
-    }
-    _notify();
-  }
-
-  void clearSelection() {
-    if (_selected.isEmpty) return;
-    _selected.clear();
-    _notify();
+    notify();
   }
 
   /// Moves the issues [numbers] to [state], then reloads the list. Returns
@@ -330,7 +261,7 @@ class GithubIssuesController extends ChangeNotifier {
         try {
           await _service.setState(config, number, state);
         } catch (e) {
-          failures[number] = _message(e);
+          failures[number] = userMessage(e);
         }
       }),
     );
@@ -361,11 +292,7 @@ class GithubIssuesController extends ChangeNotifier {
     final login = await _service.fetchMyLogin(config);
     if (login == null || _config != config) return;
     _myLogin = login;
-    _notify();
-  }
-
-  void _pruneSelection() {
-    _selected.retainAll(visibleIssues.map((i) => i.number));
+    notify();
   }
 
   Future<void> _fetchIssues(GithubConfig config, int generation) async {
@@ -373,11 +300,10 @@ class GithubIssuesController extends ChangeNotifier {
       config,
       milestone: _selectedMilestoneNumber,
     );
-    if (generation != _generation) return;
+    if (!isCurrent(generation)) return;
     _issues = result.issues;
     _issuesTruncated = result.truncated;
-    _lastRefreshed = DateTime.now();
-    _pruneSelection();
+    loaded();
     if (_myLogin == null) _loadMe(config);
   }
 
@@ -386,7 +312,7 @@ class GithubIssuesController extends ChangeNotifier {
     String q,
     int generation,
   ) async {
-    final number = githubIssueNumberInQuery(_searchQuery);
+    final number = githubIssueNumberInQuery(searchQuery);
     final found = _service.searchIssues(config, q, limit: searchLimit);
     // The issue the query names, if it exists; its lookup failing must not
     // fail the search.
@@ -400,13 +326,11 @@ class GithubIssuesController extends ChangeNotifier {
     }();
     final results = await found;
     final issue = await named;
-    if (generation != _generation) return;
-    _searchResults = [
+    if (!isCurrent(generation)) return;
+    showSearchResults([
       ?issue,
       ...results.where((i) => i.number != issue?.number),
-    ];
-    _lastRefreshed = DateTime.now();
-    _pruneSelection();
+    ]);
     if (_myLogin == null) _loadMe(config);
   }
 
@@ -414,55 +338,18 @@ class GithubIssuesController extends ChangeNotifier {
     final config = _config;
     return config == null
         ? null
-        : githubIssueSearchQuery(config.owner, config.repo, _searchQuery);
-  }
-
-  int _startLoad() {
-    _isLoading = true;
-    _error = null;
-    _notify();
-    return ++_generation;
-  }
-
-  void _fail(int generation, Object e) {
-    if (generation != _generation) return;
-    _error = _message(e);
-  }
-
-  static String _message(Object e) =>
-      userMessage(e);
-
-  void _finishLoad(int generation) {
-    if (generation != _generation) return;
-    _isLoading = false;
-    _notify();
+        : githubIssueSearchQuery(config.owner, config.repo, searchQuery);
   }
 
   void _reset() {
-    _generation++;
+    resetList();
     _milestones = const [];
     _milestonesLoaded = false;
     _selectedMilestoneNumber = null;
     _issues = const [];
     _issuesTruncated = false;
-    _searchQuery = '';
-    _searchResults = const [];
-    _isLoading = false;
-    _error = null;
-    _lastRefreshed = null;
     _stateFilter.clear();
     _labelFilter.clear();
-    _selected.clear();
-    _notify();
-  }
-
-  void _notify() {
-    if (!_disposed) notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
+    notify();
   }
 }
