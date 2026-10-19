@@ -13,6 +13,7 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/worksp
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/action_buttons.dart';
 import 'package:tree_launcher/core/platform/open_external.dart';
+import 'package:tree_launcher/core/widgets/issue_list.dart';
 
 class GithubPrsTab extends StatelessWidget {
   const GithubPrsTab({super.key});
@@ -84,7 +85,7 @@ class GithubPrsTab extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: Text(
-                    _formatLastRefreshed(prs.lastRefreshed!),
+                    formatLastRefreshed(prs.lastRefreshed!),
                     style: TextStyle(
                       fontSize: 13,
                       color: AppColors.textMuted,
@@ -118,27 +119,7 @@ class GithubPrsTab extends StatelessWidget {
         if (prs.error != null)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border:
-                    Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, size: 16, color: AppColors.error),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      prs.error!,
-                      style: TextStyle(color: AppColors.error, fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            child: IssueErrorBanner(message: prs.error!),
           ),
         if (!prs.isLoading && prs.error == null && prs.pullRequests.isEmpty)
           Expanded(
@@ -216,13 +197,6 @@ class GithubPrsTab extends StatelessWidget {
       contextPromptId: prContextPromptId,
       contextTitle: '#${pr.number} ${pr.title}',
     );
-  }
-
-  String _formatLastRefreshed(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inSeconds < 60) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    return '${diff.inHours}h ago';
   }
 }
 

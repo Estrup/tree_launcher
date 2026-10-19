@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
+import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/design_system/selection_controls.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// Pieces shared by the issue tabs (Jira, GitHub) and their issue dialogs.
 
@@ -91,6 +94,101 @@ class _IssueSearchFieldState extends State<IssueSearchField> {
                   onPressed: _clear,
                 ),
         ),
+      ),
+    );
+  }
+}
+
+/// What a bulk action does with the selected issues. [buttonContext] places
+/// a menu under its button; [setBusy] shows the button busy, e.g. around a
+/// request but not while a menu is open.
+typedef IssueBulkAction =
+    Future<void> Function(
+      BuildContext buttonContext,
+      void Function(bool busy) setBusy,
+    );
+
+/// Shown above an issue list while issues are selected: how many, one
+/// action on all of them, and clearing the selection. An error the action
+/// throws shows as a notice.
+class IssueBulkBar extends StatefulWidget {
+  const IssueBulkBar({
+    super.key,
+    required this.count,
+    required this.actionLabel,
+    required this.onAction,
+    required this.onClear,
+  });
+
+  final int count;
+
+  /// The action button's label, e.g. "Change status".
+  final String actionLabel;
+  final IssueBulkAction onAction;
+  final VoidCallback onClear;
+
+  @override
+  State<IssueBulkBar> createState() => _IssueBulkBarState();
+}
+
+class _IssueBulkBarState extends State<IssueBulkBar> {
+  bool _busy = false;
+  bool _running = false;
+
+  void _setBusy(bool busy) {
+    if (mounted && busy != _busy) setState(() => _busy = busy);
+  }
+
+  Future<void> _run(BuildContext buttonContext) async {
+    if (_running) return;
+    _running = true;
+    try {
+      await widget.onAction(buttonContext, _setBusy);
+    } catch (e) {
+      showAppSnackBar(userMessage(e));
+    } finally {
+      _running = false;
+      _setBusy(false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '${widget.count} selected',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const Spacer(),
+          Builder(
+            builder: (buttonContext) => BulkBarButton(
+              icon: Icons.swap_horiz_rounded,
+              label: widget.actionLabel,
+              busy: _busy,
+              onTap: _busy || widget.count == 0
+                  ? null
+                  : () => _run(buttonContext),
+            ),
+          ),
+          const SizedBox(width: 8),
+          BulkBarButton(
+            icon: Icons.close_rounded,
+            label: 'Clear',
+            onTap: widget.onClear,
+          ),
+        ],
       ),
     );
   }

@@ -239,7 +239,17 @@ class JiraIssuesTab extends StatelessWidget {
         if (selectionActive)
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: _BulkBar(issues: jira.selectedIssues),
+            child: IssueBulkBar(
+              count: jira.selectedIssues.length,
+              actionLabel: 'Change status',
+              onAction: (buttonContext, setBusy) => _changeStatus(
+                jira,
+                jira.selectedIssues,
+                buttonContext,
+                setBusy,
+              ),
+              onClear: jira.clearSelection,
+            ),
           ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -803,102 +813,40 @@ class _StatusPillState extends State<_StatusPill> {
   }
 }
 
-/// Shown above the list while issues are selected: how many, changing their
-/// status together, and clearing the selection.
-class _BulkBar extends StatefulWidget {
-  final List<JiraIssue> issues;
-
-  const _BulkBar({required this.issues});
-
-  @override
-  State<_BulkBar> createState() => _BulkBarState();
-}
-
-class _BulkBarState extends State<_BulkBar> {
-  bool _busy = false;
-
-  Future<void> _changeStatus(BuildContext buttonContext) async {
-    if (_busy) return;
-    final jira = context.read<JiraIssuesController>();
-    final keys = widget.issues.map((i) => i.key).toList();
-    setState(() => _busy = true);
-    try {
-      final moves = await jira.statusMovesFor(keys);
-      if (!mounted || !buttonContext.mounted) return;
-      if (moves.isEmpty) {
-        showAppSnackBar('No status changes are available for these issues.');
-        return;
-      }
-      setState(() => _busy = false);
-      final move = await showJiraStatusMenu(
-        buttonContext,
-        moves,
-        issueCount: keys.length,
-      );
-      if (move == null || !mounted) return;
-      setState(() => _busy = true);
-      final failures = await jira.applyStatusMove(move);
-      showAppSnackBar(bulkMoveSummary(move, keys.length, failures));
-      // Leave the issues that didn't move selected, to retry or handle.
-      jira.clearSelection();
-      for (final key in keys) {
-        if (failures.containsKey(key) || !move.transitions.containsKey(key)) {
-          jira.setSelected(key, true);
-        }
-      }
-    } catch (e) {
-      showAppSnackBar(userMessage(e));
-    } finally {
-      if (mounted) setState(() => _busy = false);
+/// Moves [issues] to a status picked from a menu under the button, then
+/// leaves the ones that didn't move selected, to retry or handle.
+Future<void> _changeStatus(
+  JiraIssuesController jira,
+  List<JiraIssue> issues,
+  BuildContext buttonContext,
+  void Function(bool busy) setBusy,
+) async {
+  final keys = issues.map((i) => i.key).toList();
+  setBusy(true);
+  final moves = await jira.statusMovesFor(keys);
+  setBusy(false);
+  if (!buttonContext.mounted) return;
+  if (moves.isEmpty) {
+    showAppSnackBar('No status changes are available for these issues.');
+    return;
+  }
+  final move = await showJiraStatusMenu(
+    buttonContext,
+    moves,
+    issueCount: keys.length,
+  );
+  if (move == null) return;
+  setBusy(true);
+  final failures = await jira.applyStatusMove(move);
+  showAppSnackBar(bulkMoveSummary(move, keys.length, failures));
+  jira.clearSelection();
+  for (final key in keys) {
+    if (failures.containsKey(key) || !move.transitions.containsKey(key)) {
+      jira.setSelected(key, true);
     }
   }
-
-  @override
-  Widget build(BuildContext context) {
-    final jira = context.read<JiraIssuesController>();
-    final count = widget.issues.length;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Row(
-        children: [
-          Text(
-            '$count selected',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const Spacer(),
-          Builder(
-            builder: (buttonContext) => BulkBarButton(
-              icon: Icons.swap_horiz_rounded,
-              label: 'Change status',
-              busy: _busy,
-              onTap: _busy || count == 0
-                  ? null
-                  : () => _changeStatus(buttonContext),
-            ),
-          ),
-          const SizedBox(width: 8),
-          BulkBarButton(
-            icon: Icons.close_rounded,
-            label: 'Clear',
-            onTap: jira.clearSelection,
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-/// What a status change on [total] selected issues did, e.g. "Moved 3 of 5
-/// issues to Done. AU2-4: Resolution is required. 1 can't move to Done."
 @visibleForTesting
 String bulkMoveSummary(
   JiraStatusMove move,

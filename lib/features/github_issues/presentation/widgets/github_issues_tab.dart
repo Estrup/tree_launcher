@@ -231,7 +231,17 @@ class GithubIssuesTab extends StatelessWidget {
         if (selectionActive)
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: _BulkBar(issues: issues.selectedIssues),
+            child: IssueBulkBar(
+              count: issues.selectedIssues.length,
+              actionLabel: 'Change state',
+              onAction: (buttonContext, setBusy) => _changeState(
+                issues,
+                issues.selectedIssues,
+                buttonContext,
+                setBusy,
+              ),
+              onClear: issues.clearSelection,
+            ),
           ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -903,98 +913,39 @@ class _Assignees extends StatelessWidget {
   }
 }
 
-/// Shown above the list while issues are selected: how many, changing their
-/// state together, and clearing the selection.
-class _BulkBar extends StatefulWidget {
-  final List<GithubIssue> issues;
-
-  const _BulkBar({required this.issues});
-
-  @override
-  State<_BulkBar> createState() => _BulkBarState();
-}
-
-class _BulkBarState extends State<_BulkBar> {
-  bool _busy = false;
-
-  Future<void> _changeState(BuildContext buttonContext) async {
-    if (_busy) return;
-    final controller = context.read<GithubIssuesController>();
-    final issues = widget.issues;
-    final counts = {
+/// Moves [issues] to a state picked from a menu under the button, then
+/// leaves the ones that didn't change selected, to retry or handle.
+Future<void> _changeState(
+  GithubIssuesController controller,
+  List<GithubIssue> issues,
+  BuildContext buttonContext,
+  void Function(bool busy) setBusy,
+) async {
+  final counts = {
+    for (final state in GithubIssueState.values)
+      state: issues.where((i) => i.state != state).length,
+  };
+  final target = await showGithubStateMenu(
+    buttonContext,
+    [
       for (final state in GithubIssueState.values)
-        state: issues.where((i) => i.state != state).length,
-    };
-    final target = await showGithubStateMenu(
-      buttonContext,
-      [
-        for (final state in GithubIssueState.values)
-          if (counts[state]! > 0) state,
-      ],
-      counts: counts,
-      issueCount: issues.length,
-    );
-    if (target == null || !mounted) return;
-    final numbers = [
-      for (final issue in issues)
-        if (issue.state != target) issue.number,
-    ];
-    setState(() => _busy = true);
-    try {
-      final failures = await controller.applyState(numbers, target);
-      showAppSnackBar(
-        bulkStateSummary(target, issues.length, numbers.length, failures),
-      );
-      // Leave the issues that didn't change selected, to retry or handle.
-      controller.clearSelection();
-      for (final number in failures.keys) {
-        controller.setSelected(number, true);
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = context.read<GithubIssuesController>();
-    final count = widget.issues.length;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Row(
-        children: [
-          Text(
-            '$count selected',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const Spacer(),
-          Builder(
-            builder: (buttonContext) => BulkBarButton(
-              icon: Icons.swap_horiz_rounded,
-              label: 'Change state',
-              busy: _busy,
-              onTap: _busy || count == 0
-                  ? null
-                  : () => _changeState(buttonContext),
-            ),
-          ),
-          const SizedBox(width: 8),
-          BulkBarButton(
-            icon: Icons.close_rounded,
-            label: 'Clear',
-            onTap: controller.clearSelection,
-          ),
-        ],
-      ),
-    );
+        if (counts[state]! > 0) state,
+    ],
+    counts: counts,
+    issueCount: issues.length,
+  );
+  if (target == null) return;
+  final numbers = [
+    for (final issue in issues)
+      if (issue.state != target) issue.number,
+  ];
+  setBusy(true);
+  final failures = await controller.applyState(numbers, target);
+  showAppSnackBar(
+    bulkStateSummary(target, issues.length, numbers.length, failures),
+  );
+  controller.clearSelection();
+  for (final number in failures.keys) {
+    controller.setSelected(number, true);
   }
 }
