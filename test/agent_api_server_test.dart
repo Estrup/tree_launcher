@@ -1,53 +1,81 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:tree_launcher/core/database/app_database.dart';
-import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/predefined_issue.dart';
 import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
+import 'package:tree_launcher/features/agents/domain/agent_event.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
+import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
-import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
-import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 
-import 'fake_config_stores.dart';
-
 import 'test_database.dart';
 
-/// A real `config.json`, in a temporary directory, holding [repos] and
-/// [settings].
-Future<ConfigFile> _configFile(
-  List<RepoConfig> repos, {
-  AppSettings? settings,
-}) async {
-  final dir = await Directory.systemTemp.createTemp('agent_api_config');
-  addTearDown(() => dir.delete(recursive: true));
-  final file = ConfigFile(path: p.join(dir.path, 'config.json'));
-  await file.update((config) {
-    config['repos'] = [for (final repo in repos) repo.toJson()];
-    config['settings'] = (settings ?? AppSettings()).toJson();
-  });
-  return file;
+/// The live app's repos, in memory. Loaded at once unless [loaded] is
+/// given, which the repos wait for.
+class _FakeRepos implements RepoCatalog {
+  _FakeRepos(this._repos, {Future<void>? loaded})
+    : whenLoaded = loaded ?? Future.value();
+
+  List<RepoConfig> _repos;
+
+  @override
+  List<RepoConfig> get repos => _repos;
+
+  set repos(List<RepoConfig> repos) => _repos = repos;
+
+  @override
+  final Future<void> whenLoaded;
 }
 
-RepoConfigStore _repoStore(ConfigFile file) =>
-    RepoConfigStore(configFile: file, tokenStore: MemoryGithubTokenStore());
+/// The live app's settings, in memory.
+class _FakeSettings implements AppSettingsSource {
+  _FakeSettings([AppSettings? settings]) : settings = settings ?? AppSettings();
+
+  @override
+  final AppSettings settings;
+}
+
+/// An app without agent runs, for the tests that don't use them.
+class _NoAgents implements AgentRegistry {
+  @override
+  List<AgentRun> get runs => const [];
+
+  @override
+  AgentRun? runById(String id) => null;
+
+  @override
+  List<AgentEvent> eventsFor(String id) => const [];
+
+  @override
+  Future<({AgentRun run, bool created})> register(
+    AgentRegistration registration, {
+    String? id,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<AgentRun> report(String id, AgentReport report) =>
+      throw UnimplementedError();
+}
 
 const _tags = [
   JiraTag(id: 'b', name: 'Blocked', color: 'red'),
@@ -173,6 +201,33 @@ class _FakeWorktreeGit extends GitService {
   }
 }
 
+/// A server on the live app's state in memory: [repos] (or [catalog]),
+/// [settings] and the given fakes, and real stores in [db].
+AgentApiServer _server(
+  AppDatabase db,
+  Directory home, {
+  List<RepoConfig> repos = const [],
+  RepoCatalog? catalog,
+  AppSettings? settings,
+  WorktreeCreator? worktreeCreator,
+  JiraTagEditor? jiraTagEditor,
+  AgentRegistry? agentRegistry,
+  GitService? gitService,
+  ManualPostStore? manualPostStore,
+  JiraApiService? jiraService,
+}) => AgentApiServer(
+  repos: catalog ?? _FakeRepos(repos),
+  settings: _FakeSettings(settings),
+  worktreeCreator: worktreeCreator ?? _FakeWorktreeCreator(),
+  jiraTagEditor: jiraTagEditor ?? _FakeTagEditor(),
+  agentRegistry: agentRegistry ?? _NoAgents(),
+  gitService: gitService ?? GitService(),
+  eventStore: WorktreeEventStore(db),
+  claudeActivity: ClaudeSessionActivity(homeDir: home.path),
+  manualPostStore: manualPostStore ?? ManualPostStore(db),
+  jiraService: jiraService,
+);
+
 void main() {
   late AppDatabase db;
   late Directory tempHome;
@@ -183,17 +238,11 @@ void main() {
     db = testDatabase();
     tempHome = await Directory.systemTemp.createTemp('agent_api_home');
     creator = _FakeWorktreeCreator();
-    final config = await _configFile(
-      const [],
+    server = _server(
+      db,
+      tempHome,
       settings: AppSettings(defaultBranchPrefix: 'feature'),
-    );
-    server = AgentApiServer(
-      repoConfigStore: _repoStore(config),
-      gitService: GitService(),
-      appSettingsStore: AppSettingsStore(configFile: config),
-      eventStore: WorktreeEventStore(db),
-      claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
-      manualPostStore: ManualPostStore(db),
+      worktreeCreator: creator,
     );
     // Port 0 → OS picks a free loopback port.
     await server.start(port: 0);
@@ -312,7 +361,6 @@ void main() {
     });
 
     test('refuses any other Host with 403', () async {
-      server.registerWorktreeCreator(creator);
       // DNS rebinding: the page's own name, resolving to 127.0.0.1.
       expect(
         await send('GET', '/health', host: 'evil.example:${server.port}'),
@@ -344,7 +392,6 @@ void main() {
     });
 
     test('refuses a POST that is not JSON with 415', () async {
-      server.registerWorktreeCreator(creator);
       // What a cross-site form or fetch() can send without a preflight.
       expect(
         await send(
@@ -381,7 +428,6 @@ void main() {
     });
 
     test('accepts JSON with a charset', () async {
-      server.registerWorktreeCreator(creator);
       expect(
         await send(
           'POST',
@@ -404,14 +450,7 @@ void main() {
       'issueKey': 'AU2-1234',
     };
 
-    test('returns 503 before a creator is registered', () async {
-      final (status, body) = await post('/v1/worktrees', validBody());
-      expect(status, 503);
-      expect(body['error'], 'app not ready');
-    });
-
     test('rejects missing required fields with 400', () async {
-      server.registerWorktreeCreator(creator);
       final (status, body) = await post('/v1/worktrees', {'repo': 'demo'});
       expect(status, 400);
       expect(body['error'], contains('missing required field'));
@@ -421,7 +460,6 @@ void main() {
     });
 
     test('rejects an invalid worktree name with 400', () async {
-      server.registerWorktreeCreator(creator);
       final (status, body) = await post('/v1/worktrees', {
         ...validBody(),
         'worktreeName': 'has/slash',
@@ -431,7 +469,6 @@ void main() {
     });
 
     test('rejects an invalid issue key with 400', () async {
-      server.registerWorktreeCreator(creator);
       final (status, body) = await post('/v1/worktrees', {
         ...validBody(),
         'issueKey': 'not-a-key',
@@ -441,7 +478,6 @@ void main() {
     });
 
     test('returns 404 when the repo is unknown', () async {
-      server.registerWorktreeCreator(creator);
       final (status, body) = await post('/v1/worktrees', {
         ...validBody(),
         'repo': 'missing',
@@ -451,7 +487,6 @@ void main() {
     });
 
     test('creates a worktree, applying the branch prefix', () async {
-      server.registerWorktreeCreator(creator);
       final (status, body) = await post('/v1/worktrees', validBody());
       expect(status, 201);
       expect(body['repo'], 'demo');
@@ -470,7 +505,6 @@ void main() {
     });
 
     test('forwards a kickoff prompt and returns its file path', () async {
-      server.registerWorktreeCreator(creator);
       final (status, body) = await post('/v1/worktrees', {
         ...validBody(),
         'kickoffPrompt': '# Plan\n\nStep 1\nStep 2',
@@ -484,7 +518,6 @@ void main() {
     });
 
     test('normalizes worktree name and branch suffix', () async {
-      server.registerWorktreeCreator(creator);
       final (status, body) = await post('/v1/worktrees', {
         'repo': 'demo',
         'baseBranch': 'main',
@@ -500,28 +533,37 @@ void main() {
   group('POST /v1/activity', () {
     late ManualPostStore manualStore;
     late AgentApiServer s;
+    final demo = RepoConfig(
+      name: 'demo',
+      path: '/repos/demo',
+      predefinedIssues: [
+        PredefinedIssue(key: 'AU2-9', description: 'Code review'),
+      ],
+    );
 
     setUp(() async {
       manualStore = ManualPostStore(db);
-      final config = await _configFile([
-        RepoConfig(
-          name: 'demo',
-          path: '/repos/demo',
-          predefinedIssues: [
-            PredefinedIssue(key: 'AU2-9', description: 'Code review'),
-          ],
-        ),
-      ]);
-      s = AgentApiServer(
-        repoConfigStore: _repoStore(config),
-        gitService: GitService(),
-        appSettingsStore: AppSettingsStore(configFile: config),
-        eventStore: WorktreeEventStore(db),
-        claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
-        manualPostStore: manualStore,
-      );
+      s = _server(db, tempHome, repos: [demo], manualPostStore: manualStore);
       await s.start(port: 0);
       addTearDown(() => s.stop());
+    });
+
+    test('waits for the app to load its repos', () async {
+      final loaded = Completer<void>();
+      final catalog = _FakeRepos(const [], loaded: loaded.future);
+      final early = _server(db, tempHome, catalog: catalog);
+      await early.start(port: 0);
+      addTearDown(early.stop);
+
+      final response = post('/v1/activity', {
+        'repo': 'demo',
+        'issueKey': 'AU2-9',
+      }, port: early.port);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      catalog.repos = [demo];
+      loaded.complete();
+
+      expect((await response).$1, 201);
     });
 
     test('rejects missing required fields with 400', () async {
@@ -608,8 +650,10 @@ void main() {
     setUp(() async {
       jira = _FakeJiraService();
       editor = _FakeTagEditor();
-      final config = await _configFile(
-        [
+      jiraServer = _server(
+        db,
+        tempHome,
+        repos: [
           RepoConfig(
             name: 'au2office',
             path: '/repos/au2',
@@ -617,21 +661,7 @@ void main() {
           ),
           RepoConfig(name: 'nojira', path: '/repos/nojira'),
         ],
-        // What the app last saved, read before it registers its editor.
-        settings: AppSettings(
-          jiraTags: _tags,
-          jiraTagsByIssue: const {
-            'AU2-5928': ['b'],
-          },
-        ),
-      );
-      jiraServer = AgentApiServer(
-        repoConfigStore: _repoStore(config),
-        gitService: GitService(),
-        appSettingsStore: AppSettingsStore(configFile: config),
-        eventStore: WorktreeEventStore(db),
-        claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
-        manualPostStore: ManualPostStore(db),
+        jiraTagEditor: editor,
         jiraService: jira,
       );
       await jiraServer.start(port: 0);
@@ -654,8 +684,6 @@ void main() {
 
     group('GET /v1/jira/issues', () {
       test('lists a fixVersion by name with each issue\'s tags', () async {
-        jiraServer.registerJiraTagEditor(editor);
-
         final (status, body) = await getJira(
           '/v1/jira/issues?repo=au2office&fixVersion=AU2OFFICE%202.41.3',
         );
@@ -698,14 +726,6 @@ void main() {
           'project = "AU2" AND status in ("Review", "In Progress", "Open") '
           'AND issuetype not in subTaskIssueTypes() ORDER BY Rank ASC',
         );
-      });
-
-      test('reads tags from the saved settings before the app is up', () async {
-        final (_, body) = await getJira(
-          '/v1/jira/issues?repo=au2office&status=Review',
-        );
-
-        expect((body['issues'] as List).first['tags'], ['Blocked']);
       });
 
       test('rejects a request without fixVersion or status', () async {
@@ -760,14 +780,7 @@ void main() {
     });
 
     group('PUT /v1/jira/issues/<key>/tags', () {
-      test('returns 503 before the app is up', () async {
-        final (status, _) = await putTags('AU2-5905', {'tags': []});
-        expect(status, 503);
-      });
-
       test('replaces the tags by name in the live app', () async {
-        jiraServer.registerJiraTagEditor(editor);
-
         final (status, body) = await putTags('au2-5905', {
           'tags': ['demo', 'BLOCKED', 'Demo'],
         });
@@ -785,8 +798,6 @@ void main() {
       });
 
       test('rejects unknown tags, listing the known ones', () async {
-        jiraServer.registerJiraTagEditor(editor);
-
         final (status, body) = await putTags('AU2-5905', {
           'tags': ['Blocked', 'Urgent'],
         });
@@ -798,8 +809,6 @@ void main() {
       });
 
       test('changes nothing but tags', () async {
-        jiraServer.registerJiraTagEditor(editor);
-
         final (status, body) = await putTags('AU2-5905', {
           'tags': ['Blocked'],
           'status': 'Done',
@@ -811,8 +820,6 @@ void main() {
       });
 
       test('rejects a bad key or body', () async {
-        jiraServer.registerJiraTagEditor(editor);
-
         expect((await putTags('nope', {'tags': []})).$1, 400);
         expect((await putTags('AU2-1', {'tags': 'Blocked'})).$1, 400);
         expect((await putTags('AU2-1', {})).$1, 400);
@@ -825,19 +832,17 @@ void main() {
     late AgentsController agents;
 
     setUp(() async {
-      final config = await _configFile([
-        RepoConfig(name: 'other', path: '/repos/other'),
-        RepoConfig(name: 'au2office', path: '/repos/au2'),
-      ]);
-      agentServer = AgentApiServer(
-        repoConfigStore: _repoStore(config),
-        gitService: _FakeWorktreeGit(),
-        appSettingsStore: AppSettingsStore(configFile: config),
-        eventStore: WorktreeEventStore(db),
-        claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
-        manualPostStore: ManualPostStore(db),
-      );
       agents = AgentsController(store: AgentRunStore(db));
+      agentServer = _server(
+        db,
+        tempHome,
+        repos: [
+          RepoConfig(name: 'other', path: '/repos/other'),
+          RepoConfig(name: 'au2office', path: '/repos/au2'),
+        ],
+        gitService: _FakeWorktreeGit(),
+        agentRegistry: agents,
+      );
       await agentServer.start(port: 0);
     });
 
@@ -862,14 +867,7 @@ void main() {
       'stages': ['spec', 'plan', 'implement'],
     };
 
-    test('answer 503 before the app is up', () async {
-      expect((await getAgents('/v1/agents')).$1, 503);
-      expect((await postAgents('/v1/agents', registration())).$1, 503);
-    });
-
     group('POST /v1/agents', () {
-      setUp(() => agentServer.registerAgentRegistry(agents));
-
       test('registers a run', () async {
         final (status, body) = await postAgents('/v1/agents', registration());
 
@@ -975,7 +973,6 @@ void main() {
       late String id;
 
       setUp(() async {
-        agentServer.registerAgentRegistry(agents);
         id =
             (await postAgents('/v1/agents', registration())).$2['id'] as String;
       });
@@ -1056,7 +1053,6 @@ void main() {
     });
 
     test('GET /v1/agents filters the runs', () async {
-      agentServer.registerAgentRegistry(agents);
       final (_, build) = await postAgents('/v1/agents', registration());
       await postAgents('/v1/agents', {
         'kind': 'verify',

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
@@ -7,6 +9,7 @@ import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
@@ -17,7 +20,8 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/repo_r
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_selection_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/worktree_controller.dart';
 
-class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
+class WorkspaceController extends ChangeNotifier
+    implements WorktreeCreator, RepoCatalog {
   WorkspaceController({
     required GitService gitService,
     required RepoConfigStore repoConfigStore,
@@ -84,7 +88,14 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     preferences.addListener(_relay);
   }
 
+  @override
   List<RepoConfig> get repos => registry.repos;
+
+  final _reposLoaded = Completer<void>();
+
+  @override
+  Future<void> get whenLoaded => _reposLoaded.future;
+
   RepoConfig? get selectedRepo => selection.selectedRepo;
   List<Worktree> get worktrees => worktreesController.worktrees;
   bool get loading => worktreesController.loading;
@@ -105,7 +116,11 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
   void showRepoPage(String key) => selection.showPage(key);
 
   Future<void> loadRepos() async {
-    await registry.loadRepos();
+    try {
+      await registry.loadRepos();
+    } finally {
+      if (!_reposLoaded.isCompleted) _reposLoaded.complete();
+    }
     if (repos.isNotEmpty && selectedRepo == null) {
       final savedPath = await _store.loadLastSelectedRepoPath();
       final target = repos.firstWhere(

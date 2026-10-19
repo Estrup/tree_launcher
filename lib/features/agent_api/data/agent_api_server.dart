@@ -21,12 +21,11 @@ import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_constants.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
-import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
-import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
-import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
@@ -42,18 +41,28 @@ import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 /// plus a handler.
 ///
 /// Requests a web page could send are refused: see [_localClientsOnly].
+///
+/// Repos, settings, worktree creation, tags and agent runs go through the
+/// running app's controllers rather than the saved files, so the API and the
+/// UI always agree.
 class AgentApiServer {
   AgentApiServer({
-    required RepoConfigStore repoConfigStore,
+    required RepoCatalog repos,
+    required AppSettingsSource settings,
+    required WorktreeCreator worktreeCreator,
+    required JiraTagEditor jiraTagEditor,
+    required AgentRegistry agentRegistry,
     required GitService gitService,
-    required AppSettingsStore appSettingsStore,
     required WorktreeEventStore eventStore,
     ClaudeSessionActivity? claudeActivity,
     required ManualPostStore manualPostStore,
     JiraApiService? jiraService,
-  }) : _repoConfigStore = repoConfigStore,
+  }) : _repos = repos,
+       _settings = settings,
+       _worktreeCreator = worktreeCreator,
+       _jiraTagEditor = jiraTagEditor,
+       _agentRegistry = agentRegistry,
        _gitService = gitService,
-       _appSettingsStore = appSettingsStore,
        _jiraService = jiraService ?? JiraApiService(),
        _manualPostStore = manualPostStore,
        _activityService = ActivityService(
@@ -65,43 +74,15 @@ class AgentApiServer {
   /// Default loopback port the agent API listens on.
   static const int defaultPort = 8765;
 
-  final RepoConfigStore _repoConfigStore;
+  final RepoCatalog _repos;
+  final AppSettingsSource _settings;
+  final WorktreeCreator _worktreeCreator;
+  final JiraTagEditor _jiraTagEditor;
+  final AgentRegistry _agentRegistry;
   final GitService _gitService;
-  final AppSettingsStore _appSettingsStore;
   final ManualPostStore _manualPostStore;
   final ActivityService _activityService;
   final JiraApiService _jiraService;
-
-  /// Set by the live app once its controllers exist, so write endpoints route
-  /// through the in-memory → save → notify pipeline. Null until registered
-  /// (the server starts before the provider tree is built).
-  WorktreeCreator? _worktreeCreator;
-
-  /// Registers the live worktree creator. Called from app wiring after the
-  /// `WorkspaceController` is constructed.
-  void registerWorktreeCreator(WorktreeCreator creator) {
-    _worktreeCreator = creator;
-  }
-
-  /// Set by the live app once its settings controller exists, so tag writes
-  /// go through it. Until then tags are read from disk and can't be set.
-  JiraTagEditor? _jiraTagEditor;
-
-  /// Registers the live Jira tag editor. Called from app wiring after the
-  /// `SettingsController` is constructed.
-  void registerJiraTagEditor(JiraTagEditor editor) {
-    _jiraTagEditor = editor;
-  }
-
-  /// Set by the live app once its agents controller exists. Until then the
-  /// agent routes answer 503.
-  AgentRegistry? _agentRegistry;
-
-  /// Registers the live agent runs. Called from app wiring after the
-  /// `AgentsController` is constructed.
-  void registerAgentRegistry(AgentRegistry registry) {
-    _agentRegistry = registry;
-  }
 
   HttpServer? _server;
   bool get isRunning => _server != null;
@@ -206,7 +187,7 @@ class AgentApiServer {
     }
 
     try {
-      final repos = await _repoConfigStore.load();
+      final repos = await _loadedRepos();
       final selected = repoFilter == null
           ? repos
           : repos.where((r) => r.name == repoFilter).toList();
@@ -317,7 +298,7 @@ class AgentApiServer {
     }
 
     try {
-      final repos = await _repoConfigStore.load();
+      final repos = await _loadedRepos();
       final match = repos.where((r) => r.name == repo).toList();
       if (match.isEmpty) {
         return _json({'error': 'repo not found: $repo'}, status: 404);
@@ -368,11 +349,6 @@ class AgentApiServer {
   /// `worktreeName` and `branch` are normalized (lowercased, spaces→dashes) and
   /// validated against the app's naming rules.
   Future<Response> _createWorktree(Request request) async {
-    final creator = _worktreeCreator;
-    if (creator == null) {
-      return _json({'error': 'app not ready'}, status: 503);
-    }
-
     final Map<String, dynamic> body;
     try {
       final raw = await request.readAsString();
@@ -432,13 +408,12 @@ class AgentApiServer {
     }
 
     try {
-      final settings = await _appSettingsStore.load();
       final newBranch = buildBranchName(
         branchSuffix,
-        settings.defaultBranchPrefix,
+        _settings.settings.defaultBranchPrefix,
       );
 
-      final created = await creator.createWorktree(
+      final created = await _worktreeCreator.createWorktree(
         repoName: repo!,
         worktreeName: worktreeName,
         baseBranch: baseBranch!,
@@ -520,7 +495,7 @@ class AgentApiServer {
       final issues = await _jiraService.searchIssues(
         jiraIssuesJql(projectKey, versionId: versionId, statuses: statuses),
       );
-      final tagsFor = await _tagLookup();
+      final tagsFor = _jiraTagEditor.jiraTagsFor;
       return _json({
         'project': projectKey,
         'fixVersion': version,
@@ -554,15 +529,12 @@ class AgentApiServer {
   }
 
   /// `GET /v1/jira/tags` — the user's local tags, in display order.
-  Future<Response> _jiraTags(Request request) async {
-    final tags =
-        _jiraTagEditor?.jiraTags ?? (await _appSettingsStore.load()).jiraTags;
-    return _json({
-      'tags': [
-        for (final tag in tags) {'name': tag.name, 'color': tag.color},
-      ],
-    });
-  }
+  Response _jiraTags(Request request) => _json({
+    'tags': [
+      for (final tag in _jiraTagEditor.jiraTags)
+        {'name': tag.name, 'color': tag.color},
+    ],
+  });
 
   /// `PUT /v1/jira/issues/<key>/tags`
   ///
@@ -572,9 +544,6 @@ class AgentApiServer {
   /// any other field is rejected.
   Future<Response> _setJiraIssueTags(Request request, String key) async {
     final editor = _jiraTagEditor;
-    if (editor == null) {
-      return _json({'error': 'app not ready'}, status: 503);
-    }
     final issueKey = key.trim().toUpperCase();
     final keyError = validateJiraKey(issueKey);
     if (keyError != null) {
@@ -647,7 +616,6 @@ class AgentApiServer {
   /// archived runs are left out unless `archived=true`.
   Future<Response> _listAgents(Request request) async {
     final registry = _agentRegistry;
-    if (registry == null) return _json({'error': 'app not ready'}, status: 503);
     final query = request.url.queryParameters;
 
     final kindParam = query['kind']?.trim();
@@ -685,7 +653,6 @@ class AgentApiServer {
   /// `GET /v1/agents/<id>` — one run with its latest timeline events.
   Response _getAgent(Request request, String id) {
     final registry = _agentRegistry;
-    if (registry == null) return _json({'error': 'app not ready'}, status: 503);
     final run = registry.runById(id);
     if (run == null) {
       return _json({'error': 'agent not found: $id'}, status: 404);
@@ -733,7 +700,6 @@ class AgentApiServer {
   /// issues is updated instead of creating another (200); a new run is 201.
   Future<Response> _registerAgent(Request request) async {
     final registry = _agentRegistry;
-    if (registry == null) return _json({'error': 'app not ready'}, status: 503);
     final parsed = await _readJsonObject(request);
     if (parsed.error != null) return parsed.error!;
     final body = parsed.body!;
@@ -768,7 +734,7 @@ class AgentApiServer {
       }
     }
     if (repo != null) {
-      final repos = await _repoConfigStore.load();
+      final repos = await _loadedRepos();
       if (!repos.any((r) => r.name == repo)) {
         return _json({'error': 'repo not found: $repo'}, status: 404);
       }
@@ -865,7 +831,6 @@ class AgentApiServer {
   /// - `result` — the outcome in a few words.
   Future<Response> _reportAgentStatus(Request request, String id) async {
     final registry = _agentRegistry;
-    if (registry == null) return _json({'error': 'app not ready'}, status: 503);
     if (registry.runById(id) == null) {
       return _json({'error': 'agent not found: $id'}, status: 404);
     }
@@ -1016,7 +981,7 @@ class AgentApiServer {
   /// directory), or null. Asks git for every repo's worktrees at once.
   Future<String?> _repoOfWorktree(String worktreePath) async {
     final target = p.normalize(worktreePath);
-    final repos = await _repoConfigStore.load();
+    final repos = await _loadedRepos();
     final found = await Future.wait([
       for (final repo in repos)
         () async {
@@ -1107,7 +1072,7 @@ class AgentApiServer {
         error: _json({'error': 'give repo or project'}, status: 400),
       );
     }
-    final repos = await _repoConfigStore.load();
+    final repos = await _loadedRepos();
     final repo = repos.where((r) => r.name == repoName).firstOrNull;
     if (repo == null) {
       return (
@@ -1127,13 +1092,10 @@ class AgentApiServer {
     return (key: key, error: null);
   }
 
-  /// Looks up an issue's local tags: live from the app when it has
-  /// registered, otherwise from the saved settings.
-  Future<List<JiraTag> Function(String issueKey)> _tagLookup() async {
-    final editor = _jiraTagEditor;
-    if (editor != null) return editor.jiraTagsFor;
-    final settings = await _appSettingsStore.load();
-    return settings.tagsFor;
+  /// The app's repos, once they have been read at startup.
+  Future<List<RepoConfig>> _loadedRepos() async {
+    await _repos.whenLoaded;
+    return _repos.repos;
   }
 
   static ActivityFilter? _parseFilter(String? value) {

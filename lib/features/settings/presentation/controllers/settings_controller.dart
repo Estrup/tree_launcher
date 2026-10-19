@@ -8,13 +8,16 @@ import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 
-class SettingsController extends ChangeNotifier implements JiraTagEditor {
+class SettingsController extends ChangeNotifier
+    implements JiraTagEditor, AppSettingsSource {
   SettingsController({required AppSettingsStore store}) : _store = store;
 
   final AppSettingsStore _store;
   AppSettings _settings = AppSettings();
 
+  @override
   AppSettings get settings => _settings;
 
   Future<void> loadSettings() async {

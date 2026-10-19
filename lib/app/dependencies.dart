@@ -12,15 +12,20 @@ import 'package:tree_launcher/features/activity/data/activity_legacy_import.dart
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
 import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_legacy_import.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
+import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issue_cache.dart';
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 /// Debug-only agent API port override, supplied via
 /// `--dart-define=AGENT_API_PORT=NNNN`. Lets `flutter run` bind a non-default
@@ -28,6 +33,13 @@ import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 /// with a normally-running one. `0` means "not set" — fall back to the config.
 const int agentApiPortOverride = int.fromEnvironment('AGENT_API_PORT');
 
+/// The app's composition root: builds the stores, the services and the core
+/// controllers once, wires the controllers to each other, and hands them to
+/// both the widget tree (see `TreeLauncherApp`) and the agent API, so the UI
+/// and the API share one live state.
+///
+/// Controllers that only a tab uses (Jira, GitHub) are still made by the
+/// widget tree, so nothing is fetched for a tab that is never opened.
 class AppDependencies {
   AppDependencies({
     AppDatabase? database,
@@ -38,7 +50,6 @@ class AppDependencies {
     WorktreeEventStore? worktreeEventStore,
     ManualPostStore? manualPostStore,
     AgentRunStore? agentRunStore,
-    AgentApiServer? agentApiServer,
   }) : database = database ?? AppDatabase.open(),
        gitService = gitService ?? GitService(),
        configFile = configFile ?? ConfigFile() {
@@ -58,16 +69,36 @@ class AppDependencies {
         );
     this.appSettingsStore =
         appSettingsStore ?? AppSettingsStore(configFile: this.configFile);
-    this.agentApiServer =
-        agentApiServer ??
-        AgentApiServer(
-          repoConfigStore: this.repoConfigStore,
-          gitService: this.gitService,
-          appSettingsStore: this.appSettingsStore,
-          eventStore: this.worktreeEventStore,
-          claudeActivity: claudeActivity,
-          manualPostStore: this.manualPostStore,
-        );
+
+    workspace = WorkspaceController(
+      gitService: this.gitService,
+      repoConfigStore: this.repoConfigStore,
+      eventStore: this.worktreeEventStore,
+    );
+    settings = SettingsController(store: this.appSettingsStore);
+    terminal = TerminalController();
+    agents = AgentsController(store: this.agentRunStore);
+    activity = ActivityController(
+      eventStore: this.worktreeEventStore,
+      claudeActivity: claudeActivity,
+      manualPostStore: this.manualPostStore,
+    );
+    // Re-report the terminal colors after a palette switch.
+    settings.addListener(terminal.syncColors);
+    // Watch the terminal's agent sessions (busy / waiting / exited).
+    agents.attachTerminal(terminal);
+
+    agentApiServer = AgentApiServer(
+      repos: workspace,
+      settings: settings,
+      worktreeCreator: workspace,
+      jiraTagEditor: settings,
+      agentRegistry: agents,
+      gitService: this.gitService,
+      eventStore: this.worktreeEventStore,
+      claudeActivity: claudeActivity,
+      manualPostStore: this.manualPostStore,
+    );
   }
 
   /// The app's SQLite database, shared by the stores and caches below.
@@ -87,6 +118,21 @@ class AppDependencies {
 
   /// Claude transcript activity, indexed in [database].
   late final ClaudeSessionActivity claudeActivity;
+
+  /// Repos, the selected repo and its worktrees.
+  late final WorkspaceController workspace;
+
+  /// App settings, including the local Jira tags.
+  late final SettingsController settings;
+
+  /// The built-in terminal's sessions.
+  late final TerminalController terminal;
+
+  /// Agent runs and their timelines.
+  late final AgentsController agents;
+
+  /// The Activity tab's timeline.
+  late final ActivityController activity;
 
   /// Loopback-only HTTP API that exposes app data to local AI agents.
   late final AgentApiServer agentApiServer;
@@ -116,6 +162,26 @@ class AppDependencies {
     }
   }
 
+  /// Loads the saved state into the controllers. Call after
+  /// [prepareDatabase] and before [startServers].
+  ///
+  /// Settings and agent runs are awaited: the first frame needs the theme,
+  /// and agents may report as soon as the API is up. Repos load in the
+  /// background (that includes listing the selected repo's worktrees); the
+  /// API waits for them itself. Never throws.
+  Future<void> loadState() async {
+    unawaited(
+      workspace.loadRepos().catchError(
+        (Object e) => debugPrint('Loading repos failed: $e'),
+      ),
+    );
+    try {
+      await Future.wait([settings.loadSettings(), agents.load()]);
+    } catch (e) {
+      debugPrint('Loading settings or agent runs failed: $e');
+    }
+  }
+
   /// Starts long-lived background services (currently just the agent API).
   /// Guarded so a failure never blocks app startup.
   Future<void> startServers() async {
@@ -136,5 +202,21 @@ class AppDependencies {
     } catch (e) {
       debugPrint('Jira cache prune failed: $e');
     }
+  }
+
+  /// Stops the agent API and the backup timer, waits for pending agent-run
+  /// writes, disposes the controllers and closes the database. Call once,
+  /// when the app quits.
+  Future<void> dispose() async {
+    _backupTimer?.cancel();
+    await agentApiServer.stop();
+    await agents.flush();
+    settings.removeListener(terminal.syncColors);
+    agents.dispose();
+    terminal.dispose();
+    activity.dispose();
+    workspace.dispose();
+    settings.dispose();
+    await database.close();
   }
 }
