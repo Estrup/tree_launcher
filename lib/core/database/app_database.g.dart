@@ -3882,6 +3882,838 @@ class WorktreeMetaCompanion extends UpdateCompanion<WorktreeMetaRow> {
   }
 }
 
+class $JiraTagsTable extends JiraTags
+    with TableInfo<$JiraTagsTable, JiraTagRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $JiraTagsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<String> color = GeneratedColumn<String>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, color, position];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'jira_tags';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<JiraTagRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  JiraTagRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return JiraTagRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $JiraTagsTable createAlias(String alias) {
+    return $JiraTagsTable(attachedDatabase, alias);
+  }
+}
+
+class JiraTagRow extends DataClass implements Insertable<JiraTagRow> {
+  final String id;
+  final String name;
+  final String color;
+  final int position;
+  const JiraTagRow({
+    required this.id,
+    required this.name,
+    required this.color,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['color'] = Variable<String>(color);
+    map['position'] = Variable<int>(position);
+    return map;
+  }
+
+  JiraTagsCompanion toCompanion(bool nullToAbsent) {
+    return JiraTagsCompanion(
+      id: Value(id),
+      name: Value(name),
+      color: Value(color),
+      position: Value(position),
+    );
+  }
+
+  factory JiraTagRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return JiraTagRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      color: serializer.fromJson<String>(json['color']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'color': serializer.toJson<String>(color),
+      'position': serializer.toJson<int>(position),
+    };
+  }
+
+  JiraTagRow copyWith({
+    String? id,
+    String? name,
+    String? color,
+    int? position,
+  }) => JiraTagRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    color: color ?? this.color,
+    position: position ?? this.position,
+  );
+  JiraTagRow copyWithCompanion(JiraTagsCompanion data) {
+    return JiraTagRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      color: data.color.present ? data.color.value : this.color,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('JiraTagRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('color: $color, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, color, position);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is JiraTagRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.color == this.color &&
+          other.position == this.position);
+}
+
+class JiraTagsCompanion extends UpdateCompanion<JiraTagRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> color;
+  final Value<int> position;
+  final Value<int> rowid;
+  const JiraTagsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.color = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  JiraTagsCompanion.insert({
+    required String id,
+    required String name,
+    required String color,
+    required int position,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       color = Value(color),
+       position = Value(position);
+  static Insertable<JiraTagRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? color,
+    Expression<int>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (color != null) 'color': color,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  JiraTagsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? color,
+    Value<int>? position,
+    Value<int>? rowid,
+  }) {
+    return JiraTagsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      color: color ?? this.color,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<String>(color.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('JiraTagsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('color: $color, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $JiraIssueTagsTable extends JiraIssueTags
+    with TableInfo<$JiraIssueTagsTable, JiraIssueTagRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $JiraIssueTagsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _issueKeyMeta = const VerificationMeta(
+    'issueKey',
+  );
+  @override
+  late final GeneratedColumn<String> issueKey = GeneratedColumn<String>(
+    'issue_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tagIdMeta = const VerificationMeta('tagId');
+  @override
+  late final GeneratedColumn<String> tagId = GeneratedColumn<String>(
+    'tag_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES jira_tags (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [issueKey, tagId, position];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'jira_issue_tags';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<JiraIssueTagRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('issue_key')) {
+      context.handle(
+        _issueKeyMeta,
+        issueKey.isAcceptableOrUnknown(data['issue_key']!, _issueKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_issueKeyMeta);
+    }
+    if (data.containsKey('tag_id')) {
+      context.handle(
+        _tagIdMeta,
+        tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tagIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {issueKey, tagId};
+  @override
+  JiraIssueTagRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return JiraIssueTagRow(
+      issueKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}issue_key'],
+      )!,
+      tagId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $JiraIssueTagsTable createAlias(String alias) {
+    return $JiraIssueTagsTable(attachedDatabase, alias);
+  }
+}
+
+class JiraIssueTagRow extends DataClass implements Insertable<JiraIssueTagRow> {
+  final String issueKey;
+  final String tagId;
+  final int position;
+  const JiraIssueTagRow({
+    required this.issueKey,
+    required this.tagId,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['issue_key'] = Variable<String>(issueKey);
+    map['tag_id'] = Variable<String>(tagId);
+    map['position'] = Variable<int>(position);
+    return map;
+  }
+
+  JiraIssueTagsCompanion toCompanion(bool nullToAbsent) {
+    return JiraIssueTagsCompanion(
+      issueKey: Value(issueKey),
+      tagId: Value(tagId),
+      position: Value(position),
+    );
+  }
+
+  factory JiraIssueTagRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return JiraIssueTagRow(
+      issueKey: serializer.fromJson<String>(json['issueKey']),
+      tagId: serializer.fromJson<String>(json['tagId']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'issueKey': serializer.toJson<String>(issueKey),
+      'tagId': serializer.toJson<String>(tagId),
+      'position': serializer.toJson<int>(position),
+    };
+  }
+
+  JiraIssueTagRow copyWith({String? issueKey, String? tagId, int? position}) =>
+      JiraIssueTagRow(
+        issueKey: issueKey ?? this.issueKey,
+        tagId: tagId ?? this.tagId,
+        position: position ?? this.position,
+      );
+  JiraIssueTagRow copyWithCompanion(JiraIssueTagsCompanion data) {
+    return JiraIssueTagRow(
+      issueKey: data.issueKey.present ? data.issueKey.value : this.issueKey,
+      tagId: data.tagId.present ? data.tagId.value : this.tagId,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('JiraIssueTagRow(')
+          ..write('issueKey: $issueKey, ')
+          ..write('tagId: $tagId, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(issueKey, tagId, position);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is JiraIssueTagRow &&
+          other.issueKey == this.issueKey &&
+          other.tagId == this.tagId &&
+          other.position == this.position);
+}
+
+class JiraIssueTagsCompanion extends UpdateCompanion<JiraIssueTagRow> {
+  final Value<String> issueKey;
+  final Value<String> tagId;
+  final Value<int> position;
+  final Value<int> rowid;
+  const JiraIssueTagsCompanion({
+    this.issueKey = const Value.absent(),
+    this.tagId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  JiraIssueTagsCompanion.insert({
+    required String issueKey,
+    required String tagId,
+    required int position,
+    this.rowid = const Value.absent(),
+  }) : issueKey = Value(issueKey),
+       tagId = Value(tagId),
+       position = Value(position);
+  static Insertable<JiraIssueTagRow> custom({
+    Expression<String>? issueKey,
+    Expression<String>? tagId,
+    Expression<int>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (issueKey != null) 'issue_key': issueKey,
+      if (tagId != null) 'tag_id': tagId,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  JiraIssueTagsCompanion copyWith({
+    Value<String>? issueKey,
+    Value<String>? tagId,
+    Value<int>? position,
+    Value<int>? rowid,
+  }) {
+    return JiraIssueTagsCompanion(
+      issueKey: issueKey ?? this.issueKey,
+      tagId: tagId ?? this.tagId,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (issueKey.present) {
+      map['issue_key'] = Variable<String>(issueKey.value);
+    }
+    if (tagId.present) {
+      map['tag_id'] = Variable<String>(tagId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('JiraIssueTagsCompanion(')
+          ..write('issueKey: $issueKey, ')
+          ..write('tagId: $tagId, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $UiStateTable extends UiState with TableInfo<$UiStateTable, UiStateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UiStateTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _scopeMeta = const VerificationMeta('scope');
+  @override
+  late final GeneratedColumn<String> scope = GeneratedColumn<String>(
+    'scope',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [scope, key, value];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ui_state';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UiStateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('scope')) {
+      context.handle(
+        _scopeMeta,
+        scope.isAcceptableOrUnknown(data['scope']!, _scopeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scopeMeta);
+    }
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {scope, key};
+  @override
+  UiStateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UiStateRow(
+      scope: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scope'],
+      )!,
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+    );
+  }
+
+  @override
+  $UiStateTable createAlias(String alias) {
+    return $UiStateTable(attachedDatabase, alias);
+  }
+}
+
+class UiStateRow extends DataClass implements Insertable<UiStateRow> {
+  final String scope;
+  final String key;
+  final String value;
+  const UiStateRow({
+    required this.scope,
+    required this.key,
+    required this.value,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['scope'] = Variable<String>(scope);
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    return map;
+  }
+
+  UiStateCompanion toCompanion(bool nullToAbsent) {
+    return UiStateCompanion(
+      scope: Value(scope),
+      key: Value(key),
+      value: Value(value),
+    );
+  }
+
+  factory UiStateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UiStateRow(
+      scope: serializer.fromJson<String>(json['scope']),
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'scope': serializer.toJson<String>(scope),
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+    };
+  }
+
+  UiStateRow copyWith({String? scope, String? key, String? value}) =>
+      UiStateRow(
+        scope: scope ?? this.scope,
+        key: key ?? this.key,
+        value: value ?? this.value,
+      );
+  UiStateRow copyWithCompanion(UiStateCompanion data) {
+    return UiStateRow(
+      scope: data.scope.present ? data.scope.value : this.scope,
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UiStateRow(')
+          ..write('scope: $scope, ')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(scope, key, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UiStateRow &&
+          other.scope == this.scope &&
+          other.key == this.key &&
+          other.value == this.value);
+}
+
+class UiStateCompanion extends UpdateCompanion<UiStateRow> {
+  final Value<String> scope;
+  final Value<String> key;
+  final Value<String> value;
+  final Value<int> rowid;
+  const UiStateCompanion({
+    this.scope = const Value.absent(),
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UiStateCompanion.insert({
+    required String scope,
+    required String key,
+    required String value,
+    this.rowid = const Value.absent(),
+  }) : scope = Value(scope),
+       key = Value(key),
+       value = Value(value);
+  static Insertable<UiStateRow> custom({
+    Expression<String>? scope,
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (scope != null) 'scope': scope,
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UiStateCompanion copyWith({
+    Value<String>? scope,
+    Value<String>? key,
+    Value<String>? value,
+    Value<int>? rowid,
+  }) {
+    return UiStateCompanion(
+      scope: scope ?? this.scope,
+      key: key ?? this.key,
+      value: value ?? this.value,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (scope.present) {
+      map['scope'] = Variable<String>(scope.value);
+    }
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UiStateCompanion(')
+          ..write('scope: $scope, ')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3894,6 +4726,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ClaudeTranscriptsTable claudeTranscripts =
       $ClaudeTranscriptsTable(this);
   late final $WorktreeMetaTable worktreeMeta = $WorktreeMetaTable(this);
+  late final $JiraTagsTable jiraTags = $JiraTagsTable(this);
+  late final $JiraIssueTagsTable jiraIssueTags = $JiraIssueTagsTable(this);
+  late final $UiStateTable uiState = $UiStateTable(this);
   late final Index agentEventsRun = Index(
     'agent_events_run',
     'CREATE INDEX agent_events_run ON agent_events (run_id, id)',
@@ -3923,6 +4758,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     issueCache,
     claudeTranscripts,
     worktreeMeta,
+    jiraTags,
+    jiraIssueTags,
+    uiState,
     agentEventsRun,
     worktreeEventsAt,
     claudeTranscriptsDir,
@@ -3943,6 +4781,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('agent_events', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'jira_tags',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('jira_issue_tags', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -6394,6 +7239,732 @@ typedef $$WorktreeMetaTableProcessedTableManager =
       WorktreeMetaRow,
       PrefetchHooks Function()
     >;
+typedef $$JiraTagsTableCreateCompanionBuilder =
+    JiraTagsCompanion Function({
+      required String id,
+      required String name,
+      required String color,
+      required int position,
+      Value<int> rowid,
+    });
+typedef $$JiraTagsTableUpdateCompanionBuilder =
+    JiraTagsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> color,
+      Value<int> position,
+      Value<int> rowid,
+    });
+
+final class $$JiraTagsTableReferences
+    extends BaseReferences<_$AppDatabase, $JiraTagsTable, JiraTagRow> {
+  $$JiraTagsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$JiraIssueTagsTable, List<JiraIssueTagRow>>
+  _jiraIssueTagsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.jiraIssueTags,
+    aliasName: 'jira_tags__id__jira_issue_tags__tag_id',
+  );
+
+  $$JiraIssueTagsTableProcessedTableManager get jiraIssueTagsRefs {
+    final manager = $$JiraIssueTagsTableTableManager(
+      $_db,
+      $_db.jiraIssueTags,
+    ).filter((f) => f.tagId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_jiraIssueTagsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$JiraTagsTableFilterComposer
+    extends Composer<_$AppDatabase, $JiraTagsTable> {
+  $$JiraTagsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> jiraIssueTagsRefs(
+    Expression<bool> Function($$JiraIssueTagsTableFilterComposer f) f,
+  ) {
+    final $$JiraIssueTagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.jiraIssueTags,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$JiraIssueTagsTableFilterComposer(
+            $db: $db,
+            $table: $db.jiraIssueTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$JiraTagsTableOrderingComposer
+    extends Composer<_$AppDatabase, $JiraTagsTable> {
+  $$JiraTagsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$JiraTagsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $JiraTagsTable> {
+  $$JiraTagsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  Expression<T> jiraIssueTagsRefs<T extends Object>(
+    Expression<T> Function($$JiraIssueTagsTableAnnotationComposer a) f,
+  ) {
+    final $$JiraIssueTagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.jiraIssueTags,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$JiraIssueTagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.jiraIssueTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$JiraTagsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $JiraTagsTable,
+          JiraTagRow,
+          $$JiraTagsTableFilterComposer,
+          $$JiraTagsTableOrderingComposer,
+          $$JiraTagsTableAnnotationComposer,
+          $$JiraTagsTableCreateCompanionBuilder,
+          $$JiraTagsTableUpdateCompanionBuilder,
+          (JiraTagRow, $$JiraTagsTableReferences),
+          JiraTagRow,
+          PrefetchHooks Function({bool jiraIssueTagsRefs})
+        > {
+  $$JiraTagsTableTableManager(_$AppDatabase db, $JiraTagsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$JiraTagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$JiraTagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$JiraTagsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> color = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => JiraTagsCompanion(
+                id: id,
+                name: name,
+                color: color,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String color,
+                required int position,
+                Value<int> rowid = const Value.absent(),
+              }) => JiraTagsCompanion.insert(
+                id: id,
+                name: name,
+                color: color,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$JiraTagsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({jiraIssueTagsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (jiraIssueTagsRefs) db.jiraIssueTags,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (jiraIssueTagsRefs)
+                    await $_getPrefetchedData<
+                      JiraTagRow,
+                      $JiraTagsTable,
+                      JiraIssueTagRow
+                    >(
+                      currentTable: table,
+                      referencedTable: $$JiraTagsTableReferences
+                          ._jiraIssueTagsRefsTable(db),
+                      managerFromTypedResult: (p0) => $$JiraTagsTableReferences(
+                        db,
+                        table,
+                        p0,
+                      ).jiraIssueTagsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.tagId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$JiraTagsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $JiraTagsTable,
+      JiraTagRow,
+      $$JiraTagsTableFilterComposer,
+      $$JiraTagsTableOrderingComposer,
+      $$JiraTagsTableAnnotationComposer,
+      $$JiraTagsTableCreateCompanionBuilder,
+      $$JiraTagsTableUpdateCompanionBuilder,
+      (JiraTagRow, $$JiraTagsTableReferences),
+      JiraTagRow,
+      PrefetchHooks Function({bool jiraIssueTagsRefs})
+    >;
+typedef $$JiraIssueTagsTableCreateCompanionBuilder =
+    JiraIssueTagsCompanion Function({
+      required String issueKey,
+      required String tagId,
+      required int position,
+      Value<int> rowid,
+    });
+typedef $$JiraIssueTagsTableUpdateCompanionBuilder =
+    JiraIssueTagsCompanion Function({
+      Value<String> issueKey,
+      Value<String> tagId,
+      Value<int> position,
+      Value<int> rowid,
+    });
+
+final class $$JiraIssueTagsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $JiraIssueTagsTable, JiraIssueTagRow> {
+  $$JiraIssueTagsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $JiraTagsTable _tagIdTable(_$AppDatabase db) =>
+      db.jiraTags.createAlias('jira_issue_tags__tag_id__jira_tags__id');
+
+  $$JiraTagsTableProcessedTableManager get tagId {
+    final $_column = $_itemColumn<String>('tag_id')!;
+
+    final manager = $$JiraTagsTableTableManager(
+      $_db,
+      $_db.jiraTags,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tagIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$JiraIssueTagsTableFilterComposer
+    extends Composer<_$AppDatabase, $JiraIssueTagsTable> {
+  $$JiraIssueTagsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get issueKey => $composableBuilder(
+    column: $table.issueKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$JiraTagsTableFilterComposer get tagId {
+    final $$JiraTagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.jiraTags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$JiraTagsTableFilterComposer(
+            $db: $db,
+            $table: $db.jiraTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$JiraIssueTagsTableOrderingComposer
+    extends Composer<_$AppDatabase, $JiraIssueTagsTable> {
+  $$JiraIssueTagsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get issueKey => $composableBuilder(
+    column: $table.issueKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$JiraTagsTableOrderingComposer get tagId {
+    final $$JiraTagsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.jiraTags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$JiraTagsTableOrderingComposer(
+            $db: $db,
+            $table: $db.jiraTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$JiraIssueTagsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $JiraIssueTagsTable> {
+  $$JiraIssueTagsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get issueKey =>
+      $composableBuilder(column: $table.issueKey, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  $$JiraTagsTableAnnotationComposer get tagId {
+    final $$JiraTagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.jiraTags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$JiraTagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.jiraTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$JiraIssueTagsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $JiraIssueTagsTable,
+          JiraIssueTagRow,
+          $$JiraIssueTagsTableFilterComposer,
+          $$JiraIssueTagsTableOrderingComposer,
+          $$JiraIssueTagsTableAnnotationComposer,
+          $$JiraIssueTagsTableCreateCompanionBuilder,
+          $$JiraIssueTagsTableUpdateCompanionBuilder,
+          (JiraIssueTagRow, $$JiraIssueTagsTableReferences),
+          JiraIssueTagRow,
+          PrefetchHooks Function({bool tagId})
+        > {
+  $$JiraIssueTagsTableTableManager(_$AppDatabase db, $JiraIssueTagsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$JiraIssueTagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$JiraIssueTagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$JiraIssueTagsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> issueKey = const Value.absent(),
+                Value<String> tagId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => JiraIssueTagsCompanion(
+                issueKey: issueKey,
+                tagId: tagId,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String issueKey,
+                required String tagId,
+                required int position,
+                Value<int> rowid = const Value.absent(),
+              }) => JiraIssueTagsCompanion.insert(
+                issueKey: issueKey,
+                tagId: tagId,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$JiraIssueTagsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({tagId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (tagId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.tagId,
+                                referencedTable: $$JiraIssueTagsTableReferences
+                                    ._tagIdTable(db),
+                                referencedColumn: $$JiraIssueTagsTableReferences
+                                    ._tagIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$JiraIssueTagsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $JiraIssueTagsTable,
+      JiraIssueTagRow,
+      $$JiraIssueTagsTableFilterComposer,
+      $$JiraIssueTagsTableOrderingComposer,
+      $$JiraIssueTagsTableAnnotationComposer,
+      $$JiraIssueTagsTableCreateCompanionBuilder,
+      $$JiraIssueTagsTableUpdateCompanionBuilder,
+      (JiraIssueTagRow, $$JiraIssueTagsTableReferences),
+      JiraIssueTagRow,
+      PrefetchHooks Function({bool tagId})
+    >;
+typedef $$UiStateTableCreateCompanionBuilder =
+    UiStateCompanion Function({
+      required String scope,
+      required String key,
+      required String value,
+      Value<int> rowid,
+    });
+typedef $$UiStateTableUpdateCompanionBuilder =
+    UiStateCompanion Function({
+      Value<String> scope,
+      Value<String> key,
+      Value<String> value,
+      Value<int> rowid,
+    });
+
+class $$UiStateTableFilterComposer
+    extends Composer<_$AppDatabase, $UiStateTable> {
+  $$UiStateTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get scope => $composableBuilder(
+    column: $table.scope,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UiStateTableOrderingComposer
+    extends Composer<_$AppDatabase, $UiStateTable> {
+  $$UiStateTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get scope => $composableBuilder(
+    column: $table.scope,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UiStateTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UiStateTable> {
+  $$UiStateTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get scope =>
+      $composableBuilder(column: $table.scope, builder: (column) => column);
+
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $$UiStateTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $UiStateTable,
+          UiStateRow,
+          $$UiStateTableFilterComposer,
+          $$UiStateTableOrderingComposer,
+          $$UiStateTableAnnotationComposer,
+          $$UiStateTableCreateCompanionBuilder,
+          $$UiStateTableUpdateCompanionBuilder,
+          (
+            UiStateRow,
+            BaseReferences<_$AppDatabase, $UiStateTable, UiStateRow>,
+          ),
+          UiStateRow,
+          PrefetchHooks Function()
+        > {
+  $$UiStateTableTableManager(_$AppDatabase db, $UiStateTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UiStateTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UiStateTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UiStateTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> scope = const Value.absent(),
+                Value<String> key = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => UiStateCompanion(
+                scope: scope,
+                key: key,
+                value: value,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String scope,
+                required String key,
+                required String value,
+                Value<int> rowid = const Value.absent(),
+              }) => UiStateCompanion.insert(
+                scope: scope,
+                key: key,
+                value: value,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UiStateTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $UiStateTable,
+      UiStateRow,
+      $$UiStateTableFilterComposer,
+      $$UiStateTableOrderingComposer,
+      $$UiStateTableAnnotationComposer,
+      $$UiStateTableCreateCompanionBuilder,
+      $$UiStateTableUpdateCompanionBuilder,
+      (UiStateRow, BaseReferences<_$AppDatabase, $UiStateTable, UiStateRow>),
+      UiStateRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6414,4 +7985,10 @@ class $AppDatabaseManager {
       $$ClaudeTranscriptsTableTableManager(_db, _db.claudeTranscripts);
   $$WorktreeMetaTableTableManager get worktreeMeta =>
       $$WorktreeMetaTableTableManager(_db, _db.worktreeMeta);
+  $$JiraTagsTableTableManager get jiraTags =>
+      $$JiraTagsTableTableManager(_db, _db.jiraTags);
+  $$JiraIssueTagsTableTableManager get jiraIssueTags =>
+      $$JiraIssueTagsTableTableManager(_db, _db.jiraIssueTags);
+  $$UiStateTableTableManager get uiState =>
+      $$UiStateTableTableManager(_db, _db.uiState);
 }

@@ -15,6 +15,7 @@ import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_metadata.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/worktree_metadata_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/core/database/ui_state_store.dart';
 
 import 'fake_config_stores.dart';
 import 'test_database.dart';
@@ -451,6 +452,7 @@ void main() {
       final repos = RepoConfigStore(
         configFile: file,
         tokenStore: MemoryGithubTokenStore(),
+        uiState: UiStateStore(testDatabase()),
       );
 
       await repos.save([(await repos.load()).single.copyWith(name: 'renamed')]);

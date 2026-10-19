@@ -72,7 +72,9 @@ Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
   PR author, kickoff prompt, hidden/snoozed state and remembered Claude
   session. `WorktreeMetadataController` holds that for all repos in memory;
   rows of worktrees git no longer lists are dropped when the selected repo is
-  refreshed. The stores in `features/*/data/` take the one `AppDatabase` that
+  refreshed. Also the local issue tags (`jira_tags`, `jira_issue_tags`) and
+  remembered choices (`ui_state`: last repo, Claude model/effort/prompt, a
+  repo's last base branch, fixVersion, milestone and agent folder). The stores in `features/*/data/` take the one `AppDatabase` that
   `AppDependencies` owns; tests use `AppDatabase.memory()` via
   `test/test_database.dart`, and widget tests the in-memory stores in
   `test/fake_config_stores.dart` (database futures don't complete under
@@ -85,10 +87,14 @@ Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
   `dart run drift_dev schema generate drift_schemas/ test/generated_migrations/`
   and add the step to `test/database_migration_test.dart`.
 - `backups/`: a daily `VACUUM INTO` copy of the database; the newest 7 are kept.
-- `config.json` holds settings and repo config. Its per-worktree keys from
-  before the database are moved into `worktree_metadata` once at startup
-  (`WorktreeMetadataLegacyImport`: only worktrees that still exist), and
-  `RepoConfigStore` keeps them in the file until that has worked.
+- `config.json` holds configuration only: the preferences and the repos with
+  their commands, prompts, GitHub and Jira settings, so it only changes when
+  configuration does (`ConfigFile` skips writes that change nothing).
+  `AppSettingsStore` and `RepoConfigStore` keep the models whole and decide
+  per field where it is saved. Keys from before the database are moved out
+  once at startup (`WorktreeMetadataLegacyImport`, keeping only worktrees
+  that still exist, and `ConfigStateImport`); until that has worked the
+  stores keep them in the file.
 - The JSON/JSONL files from before the database are merged into it at startup
   (`AppDependencies.prepareDatabase()`) and renamed to `*.migrated`. A file an
   older build writes again later is merged the same way, without duplicates.

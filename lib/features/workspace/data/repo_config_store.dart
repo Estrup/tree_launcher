@@ -1,11 +1,17 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:tree_launcher/core/database/ui_state_store.dart';
 import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/workspace/data/worktree_metadata_legacy_import.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
-/// The `repos` and `lastSelectedRepoPath` sections of `config.json`.
+/// The repos: their configuration in the `repos` section of `config.json`,
+/// and each repo's remembered choices ([rememberedKeys]) and the repo last
+/// selected in the [UiStateStore], so the file only changes when
+/// configuration does. Keys of the file that `ConfigStateImport` hasn't
+/// moved into the database yet stay in it on save, and count where the
+/// database has no value.
 ///
 /// GitHub tokens are not written to the file. They go to the
 /// [GithubTokenStore] (the Keychain) and are filled back in on load; the file
@@ -18,11 +24,24 @@ class RepoConfigStore {
   RepoConfigStore({
     required ConfigFile configFile,
     required GithubTokenStore tokenStore,
+    required UiStateStore uiState,
   }) : _file = configFile,
-       _tokens = tokenStore;
+       _tokens = tokenStore,
+       _uiState = uiState;
 
   final ConfigFile _file;
   final GithubTokenStore _tokens;
+  final UiStateStore _uiState;
+
+  /// Repo keys that are remembered choices, kept in the [UiStateStore].
+  static const rememberedKeys = {
+    'lastBaseBranch',
+    'jiraFixVersionId',
+    'githubMilestoneNumber',
+    'agentWorkingDirectory',
+  };
+
+  static const _lastSelectedKey = 'lastSelectedRepoPath';
 
   /// The token the store holds per repo path, as far as this instance knows
   /// (`''` = none). Lets loads read the store once per repo, and saves touch
@@ -31,10 +50,14 @@ class RepoConfigStore {
 
   Future<List<RepoConfig>> load() async {
     final config = await _file.read();
-    final repos = [
-      for (final json in config['repos'] as List<dynamic>? ?? const [])
-        RepoConfig.fromJson(json as Map<String, dynamic>),
-    ];
+    final repos = <RepoConfig>[];
+    for (final json in config['repos'] as List<dynamic>? ?? const []) {
+      final entry = json as Map<String, dynamic>;
+      final remembered = entry['path'] is String
+          ? await _uiState.read(UiStateStore.repoScope(entry['path'] as String))
+          : const <String, Object?>{};
+      repos.add(RepoConfig.fromJson({...entry, ...remembered}));
+    }
     final moved = <String, String>{};
     for (final (i, repo) in repos.indexed) {
       final github = repo.githubConfig;
@@ -65,14 +88,16 @@ class RepoConfigStore {
     for (final path in removed) {
       await _storeToken(path, '');
     }
-    // Per-worktree metadata from before the database stays in the file
-    // until WorktreeMetadataLegacyImport has moved it.
-    final legacyByPath = {
+    // Keys from before the database stay in the file until they have been
+    // moved (WorktreeMetadataLegacyImport, ConfigStateImport).
+    final pendingByPath = {
       for (final entry in (config['repos'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>())
         entry['path']: {
           for (final MapEntry(:key, :value) in entry.entries)
-            if (legacyWorktreeMetadataKeys.contains(key)) key: value,
+            if (legacyWorktreeMetadataKeys.contains(key) ||
+                rememberedKeys.contains(key))
+              key: value,
         },
     };
     final json = <Map<String, dynamic>>[];
@@ -81,24 +106,23 @@ class RepoConfigStore {
         repo.path,
         repo.githubConfig?.token ?? '',
       );
-      json.add({
-        ..._toJson(repo, keepToken: !stored),
-        ...?legacyByPath[repo.path],
+      final entry = _toJson(repo, keepToken: !stored);
+      await _uiState.write(UiStateStore.repoScope(repo.path), {
+        for (final key in rememberedKeys) key: entry.remove(key),
       });
+      json.add({...entry, ...?pendingByPath[repo.path]});
     }
     config['repos'] = json;
+    await _uiState.keepRepoScopes(kept);
   });
 
   Future<String?> loadLastSelectedRepoPath() async =>
-      (await _file.read())['lastSelectedRepoPath'] as String?;
+      (await _uiState.read(UiStateStore.appScope))[_lastSelectedKey]
+          as String? ??
+      (await _file.read())[_lastSelectedKey] as String?;
 
-  Future<void> saveLastSelectedRepoPath(String? path) => _file.update((config) {
-    if (path == null) {
-      config.remove('lastSelectedRepoPath');
-    } else {
-      config['lastSelectedRepoPath'] = path;
-    }
-  });
+  Future<void> saveLastSelectedRepoPath(String? path) =>
+      _uiState.write(UiStateStore.appScope, {_lastSelectedKey: path});
 
   Future<String> _readToken(String repoPath) async {
     final known = _knownTokens[repoPath];

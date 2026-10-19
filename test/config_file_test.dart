@@ -8,8 +8,11 @@ import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/core/database/ui_state_store.dart';
+import 'package:tree_launcher/features/jira/data/jira_tag_store.dart';
 
 import 'fake_config_stores.dart';
+import 'test_database.dart';
 
 void main() {
   late Directory dir;
@@ -51,11 +54,18 @@ void main() {
   });
 
   test('unawaited saves of different sections keep each other', () async {
+    final db = testDatabase();
+    final uiState = UiStateStore(db);
     final repos = RepoConfigStore(
       configFile: file,
       tokenStore: MemoryGithubTokenStore(),
+      uiState: uiState,
     );
-    final settings = AppSettingsStore(configFile: file);
+    final settings = AppSettingsStore(
+      configFile: file,
+      tagStore: JiraTagStore(db),
+      uiState: uiState,
+    );
 
     // Like WorkspaceController, which doesn't await saving the selection.
     final saves = [

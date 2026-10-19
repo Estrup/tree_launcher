@@ -37,13 +37,16 @@ class ConfigFile {
 
   /// Reads the file, lets [change] edit the decoded object in place, and
   /// writes it back, with no other read or write in between. Returns what
-  /// [change] returns. Nothing is written if [change] throws.
+  /// [change] returns. Nothing is written if [change] throws, or if it left
+  /// an existing file's content as it was.
   Future<T> update<T>(
     FutureOr<T> Function(Map<String, dynamic> config) change,
   ) => _locked(() async {
+    final exists = await File(await path).exists();
     final config = await _read();
+    final before = jsonEncode(config);
     final result = await change(config);
-    await _write(config);
+    if (!exists || jsonEncode(config) != before) await _write(config);
     return result;
   });
 

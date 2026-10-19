@@ -7,8 +7,10 @@ import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/core/database/ui_state_store.dart';
 
 import 'fake_config_stores.dart';
+import 'test_database.dart';
 
 RepoConfig _repo(String name, {String? token}) => RepoConfig(
   name: name,
@@ -23,6 +25,7 @@ void main() {
   late String path;
   late ConfigFile file;
   late MemoryGithubTokenStore tokens;
+  late UiStateStore uiState;
   late RepoConfigStore store;
 
   setUp(() async {
@@ -30,7 +33,12 @@ void main() {
     path = p.join(dir.path, 'config.json');
     file = ConfigFile(path: path);
     tokens = MemoryGithubTokenStore();
-    store = RepoConfigStore(configFile: file, tokenStore: tokens);
+    uiState = UiStateStore(testDatabase());
+    store = RepoConfigStore(
+      configFile: file,
+      tokenStore: tokens,
+      uiState: uiState,
+    );
   });
 
   tearDown(() => dir.delete(recursive: true));
@@ -58,7 +66,11 @@ void main() {
     ]);
     expect(tokens.tokens, {'/repos/app': 'ghp_secret'});
 
-    final fresh = RepoConfigStore(configFile: file, tokenStore: tokens);
+    final fresh = RepoConfigStore(
+      configFile: file,
+      tokenStore: tokens,
+      uiState: uiState,
+    );
     final repos = await fresh.load();
     expect(repos.first.githubConfig!.token, 'ghp_secret');
     expect(repos.first.githubConfig!.isConfigured, isTrue);

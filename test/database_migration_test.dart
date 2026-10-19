@@ -14,7 +14,7 @@ void main() {
 
   setUpAll(() => verifier = SchemaVerifier(GeneratedHelper()));
 
-  for (final (from, to) in [(1, 2)]) {
+  for (final (from, to) in [(1, 2), (2, 3), (1, 3)]) {
     test('migrates from v$from to v$to', () async {
       final schema = await verifier.schemaAt(from);
       final db = AppDatabase(schema.newConnection());
@@ -24,13 +24,13 @@ void main() {
   }
 
   test('a new database matches the latest dump', () async {
-    final schema = await verifier.schemaAt(2);
+    final schema = await verifier.schemaAt(3);
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 2);
+    await verifier.migrateAndValidate(db, 3);
   });
 
-  test('keeps the data of v1 when migrating to v2', () async {
+  test('keeps the data of v1 when migrating to the latest', () async {
     final schema = await verifier.schemaAt(1);
     schema.rawDatabase.execute(
       "INSERT INTO manual_posts (id, at, repo_name, issue_key, description) "
@@ -39,7 +39,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 2);
+    await verifier.migrateAndValidate(db, 3);
 
     final posts = await db.select(db.manualPosts).get();
     expect(posts.single.issueKey, 'AU2-1');

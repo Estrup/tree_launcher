@@ -164,3 +164,44 @@ class WorktreeMeta extends Table {
   @override
   Set<Column> get primaryKey => {path};
 }
+
+/// The user's own tags for issues (Jira keys, and GitHub issues on the
+/// Issues tab), never sent anywhere. [position] is the display order.
+@DataClassName('JiraTagRow')
+class JiraTags extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get color => text()();
+  IntColumn get position => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Which tags each issue has. Deleting a tag removes it from every issue.
+@DataClassName('JiraIssueTagRow')
+class JiraIssueTags extends Table {
+  TextColumn get issueKey => text()();
+  TextColumn get tagId =>
+      text().references(JiraTags, #id, onDelete: KeyAction.cascade)();
+  IntColumn get position => integer()();
+
+  @override
+  Set<Column> get primaryKey => {issueKey, tagId};
+}
+
+/// Small remembered choices (the last repo, the Claude model last picked,
+/// a repo's last base branch, ...), each a JSON value under a [scope]:
+/// `app`, or `repo:<path>` for one repo's.
+@DataClassName('UiStateRow')
+class UiState extends Table {
+  @override
+  String get tableName => 'ui_state';
+
+  TextColumn get scope => text()();
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {scope, key};
+}

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:tree_launcher/app/migrations/config_state_import.dart';
 import 'package:tree_launcher/app/use_cases/agent_api_control.dart';
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
@@ -10,6 +11,7 @@ import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/core/database/database_backup.dart';
 import 'package:tree_launcher/core/database/legacy_importer.dart';
+import 'package:tree_launcher/core/database/ui_state_store.dart';
 import 'package:tree_launcher/core/platform/launcher_service.dart';
 import 'package:tree_launcher/core/storage/app_data_directory.dart';
 import 'package:tree_launcher/core/storage/config_file.dart';
@@ -29,6 +31,7 @@ import 'package:tree_launcher/features/github_prs/data/github_api_service.dart';
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
+import 'package:tree_launcher/features/jira/data/jira_tag_store.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
@@ -69,15 +72,23 @@ class AppDependencies {
     githubPrsService = GithubApiService();
     githubIssuesService = GithubIssuesApiService();
     launcherService = LauncherService();
+    uiStateStore = UiStateStore(this.database);
+    jiraTagStore = JiraTagStore(this.database);
     // Both stores share the one ConfigFile, so their saves are serialised.
     this.repoConfigStore =
         repoConfigStore ??
         RepoConfigStore(
           configFile: this.configFile,
           tokenStore: KeychainGithubTokenStore(),
+          uiState: uiStateStore,
         );
     this.appSettingsStore =
-        appSettingsStore ?? AppSettingsStore(configFile: this.configFile);
+        appSettingsStore ??
+        AppSettingsStore(
+          configFile: this.configFile,
+          tagStore: jiraTagStore,
+          uiState: uiStateStore,
+        );
 
     worktreeMetadataStore = WorktreeMetadataStore(this.database);
     workspace = WorkspaceController(
@@ -155,6 +166,13 @@ class AppDependencies {
   /// Per-worktree metadata (issue, base branch, hidden, snoozed, remembered
   /// Claude session).
   late final WorktreeMetadataStore worktreeMetadataStore;
+
+  /// Remembered choices (last repo, Claude model, a repo's last base
+  /// branch, ...).
+  late final UiStateStore uiStateStore;
+
+  /// The local issue tags.
+  late final JiraTagStore jiraTagStore;
   late final GithubIssueCache githubIssueCache;
 
   /// Claude transcript activity, indexed in [database].
@@ -210,8 +228,8 @@ class AppDependencies {
   Timer? _backupTimer;
 
   /// Merges the files from before the database into it (renaming each to
-  /// `*.migrated`) and moves the per-worktree metadata out of `config.json`,
-  /// then starts the daily backup. Call before the controllers load. Guarded
+  /// `*.migrated`) and moves the per-worktree metadata, local tags and
+  /// remembered choices out of `config.json`, then starts the daily backup. Call before the controllers load. Guarded
   /// so a failure never blocks app startup.
   Future<void> prepareDatabase() async {
     try {
@@ -230,6 +248,11 @@ class AppDependencies {
       await WorktreeMetadataLegacyImport(
         configFile: configFile,
         store: worktreeMetadataStore,
+      ).run();
+      await ConfigStateImport(
+        configFile: configFile,
+        tagStore: jiraTagStore,
+        uiState: uiStateStore,
       ).run();
       _backupTimer ??= DatabaseBackup(
         database,

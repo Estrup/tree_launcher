@@ -25,6 +25,9 @@ part 'app_database.g.dart';
     IssueCache,
     ClaudeTranscripts,
     WorktreeMeta,
+    JiraTags,
+    JiraIssueTags,
+    UiState,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -56,7 +59,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   /// Each version's changes, applied in order to a database from before it.
   /// Dump the schema after adding one (see CLAUDE.md, Storage); the
@@ -69,6 +72,12 @@ class AppDatabase extends _$AppDatabase {
         // Per-worktree metadata, moved out of config.json.
         await m.createTable(worktreeMeta);
         await m.createIndex(worktreeMetadataRepo);
+      }
+      if (from < 3) {
+        // Local tags and remembered choices, moved out of config.json.
+        await m.createTable(jiraTags);
+        await m.createTable(jiraIssueTags);
+        await m.createTable(uiState);
       }
     },
   );
