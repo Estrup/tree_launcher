@@ -78,6 +78,7 @@ class TreeLauncherApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => ActivityController(
             eventStore: dependencies.worktreeEventStore,
+            claudeActivity: dependencies.claudeActivity,
             manualPostStore: dependencies.manualPostStore,
           ),
         ),
@@ -108,7 +109,10 @@ class TreeLauncherApp extends StatelessWidget {
             return controller;
           },
         ),
-        ChangeNotifierProvider(create: (_) => JiraTitlesController()),
+        ChangeNotifierProvider(
+          create: (_) =>
+              JiraTitlesController(cache: dependencies.jiraIssueCache),
+        ),
         ChangeNotifierProxyProvider<WorkspaceController, JiraIssuesController>(
           create: (_) => JiraIssuesController(),
           update: (context, workspace, previous) {

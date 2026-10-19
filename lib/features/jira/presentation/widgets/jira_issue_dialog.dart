@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
@@ -49,7 +51,7 @@ class JiraIssueDialog extends StatefulWidget {
       builder: (_) => JiraIssueDialog(
         issueKey: issueKey,
         service: service ?? JiraApiService(),
-        cache: cache ?? JiraIssueCache(),
+        cache: cache ?? context.read<AppDependencies>().jiraIssueCache,
         onIssueChanged: onIssueChanged,
       ),
     );

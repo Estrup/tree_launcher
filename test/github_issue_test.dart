@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issue_cache.dart';
 import 'package:tree_launcher/features/github_issues/domain/github_issue.dart';
@@ -9,6 +7,8 @@ import 'package:tree_launcher/features/github_issues/presentation/github_issue_a
 import 'package:tree_launcher/features/github_prs/data/github_http.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
+
+import 'test_database.dart';
 
 Map<String, dynamic> _apiIssue({
   int number = 482,
@@ -117,17 +117,9 @@ void main() {
   });
 
   group('GithubIssueCache', () {
-    late Directory tempDir;
     late GithubIssueCache cache;
 
-    setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('github_issue_cache');
-      cache = GithubIssueCache(directoryPath: tempDir.path);
-    });
-
-    tearDown(() async {
-      if (await tempDir.exists()) await tempDir.delete(recursive: true);
-    });
+    setUp(() => cache = GithubIssueCache(testDatabase()));
 
     test('misses, then round-trips the issue and fetchedAt', () async {
       expect(await cache.read('acme/app#482'), isNull);

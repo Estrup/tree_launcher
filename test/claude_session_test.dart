@@ -17,6 +17,7 @@ import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 import 'fake_config_stores.dart';
+import 'test_database.dart';
 
 const _discordArgs = '--channels plugin:discord@claude-plugins-official';
 
@@ -341,7 +342,7 @@ void main() {
       workspace = WorkspaceController(
         gitService: _FakeGitService(),
         repoConfigStore: config,
-        eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+        eventStore: WorktreeEventStore(testDatabase()),
       );
       settings = SettingsController(store: FakeAppSettingsStore());
       terminal = _RecordingTerminal();

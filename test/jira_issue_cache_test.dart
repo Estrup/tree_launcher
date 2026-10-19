@@ -1,20 +1,20 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 
+import 'test_database.dart';
+
 void main() {
-  late Directory tempDir;
+  late AppDatabase db;
   late JiraIssueCache cache;
 
   setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('jira_issue_cache_test');
-    cache = JiraIssueCache(directoryPath: tempDir.path);
+    db = testDatabase();
+    cache = JiraIssueCache(db);
   });
 
   tearDown(() async {
-    if (await tempDir.exists()) await tempDir.delete(recursive: true);
   });
 
   JiraIssue issue(String key) =>

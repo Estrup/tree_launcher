@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
@@ -20,6 +21,7 @@ import 'package:tree_launcher/models/repo_config.dart';
 import 'package:tree_launcher/models/worktree.dart';
 
 import 'fake_config_stores.dart';
+import 'test_database.dart';
 
 class _FakeJiraService extends JiraApiService {
   @override
@@ -125,6 +127,7 @@ Future<_FakeJiraService> _pumpTab(
   final workspace = WorkspaceController(
     gitService: _FakeGitService(),
     repoConfigStore: FakeRepoConfigStore(),
+    eventStore: WorktreeEventStore(testDatabase()),
   );
   settings ??= SettingsController(store: FakeAppSettingsStore());
   final service = _FakeJiraService();

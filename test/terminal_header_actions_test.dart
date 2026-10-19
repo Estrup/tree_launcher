@@ -13,6 +13,7 @@ import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 import 'fake_config_stores.dart';
+import 'test_database.dart';
 
 class _FakeGitService extends GitService {
   @override
@@ -41,7 +42,7 @@ void main() {
     workspace = WorkspaceController(
       gitService: _FakeGitService(),
       repoConfigStore: FakeRepoConfigStore(),
-      eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+      eventStore: WorktreeEventStore(testDatabase()),
     );
     prs = GithubPrsController();
     await workspace.addRepo('/tmp/repo');

@@ -7,7 +7,11 @@ import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
 import 'package:tree_launcher/features/jira/domain/jira_user.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issue_dialog.dart';
 
+import 'test_database.dart';
+
 class _MemoryCache extends JiraIssueCache {
+  _MemoryCache() : super(testDatabase());
+
   final Map<String, CachedJiraIssue> entries = {};
 
   @override

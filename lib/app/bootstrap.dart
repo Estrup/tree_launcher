@@ -7,6 +7,8 @@ Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final dependencies = AppDependencies();
+  // Import the pre-database files before anything reads the stores.
+  await dependencies.prepareDatabase();
   // Start the loopback agent API. startServers() never throws, but guard
   // anyway so nothing here can block runApp.
   try {

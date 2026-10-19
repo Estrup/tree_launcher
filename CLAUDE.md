@@ -52,6 +52,28 @@ flutter analyze            # keep clean before committing
 flutter test               # full suite
 ```
 
+## Storage
+
+Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
+
+- `tree_launcher.db`: SQLite through drift (`lib/core/database/`), in WAL
+  mode on a background isolate, so the live app and a debug instance can share
+  it. It holds agent runs and their events, worktree events, manual activity
+  posts, the Jira/GitHub issue cache and the `claude_transcripts` index, which
+  lets Activity re-read a Claude transcript only after it changes. The stores
+  in `features/*/data/` take the one `AppDatabase` that `AppDependencies` owns;
+  tests use `AppDatabase.memory()` via `test/test_database.dart`.
+- After changing tables in `lib/core/database/tables.dart`, regenerate with
+  `dart run build_runner build` (the `.g.dart` file is committed), bump
+  `schemaVersion`, add a migration and dump the new schema with
+  `dart run drift_dev schema dump lib/core/database/app_database.dart drift_schemas/`.
+- `backups/`: a daily `VACUUM INTO` copy of the database; the newest 7 are kept.
+- `config.json` still holds settings and repo config (moving in later phases,
+  see `docs/structural-review.md`).
+- The JSON/JSONL files from before the database are merged into it at startup
+  (`AppDependencies.prepareDatabase()`) and renamed to `*.migrated`. A file an
+  older build writes again later is merged the same way, without duplicates.
+
 ## Agent API
 
 - Server: `lib/features/agent_api/data/agent_api_server.dart` — loopback-only,
@@ -69,6 +91,6 @@ flutter test               # full suite
   repo tab. Agents register and report through the API (the tree-launcher
   skill's `scripts/agent.py` helper wraps it). Runs started from a tab get
   `TREE_LAUNCHER_AGENT_ID` and `TREE_LAUNCHER_URL` in their environment.
-  Runs are stored in `agent_runs.json` and their timelines in
-  `agent_events.jsonl`, both in the app support directory.
+  Runs are stored in the `agent_runs` table and their timelines in
+  `agent_events` (see Storage).
 - Quick check while running: `curl http://127.0.0.1:8765/health`.

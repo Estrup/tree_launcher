@@ -1,76 +1,64 @@
-import 'dart:convert';
-import 'dart:io';
-
+import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
+import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
 
-/// Append-only log of [WorktreeEvent]s, stored as JSON-lines in the app support
-/// directory (one event per line). Append is O(1) and a torn write only loses
-/// the trailing line rather than corrupting the whole history — which is why we
-/// don't fold this into the single `config.json` blob.
+/// Log of [WorktreeEvent]s in the app database's `worktree_events` table, in
+/// write order. Keyed by path, so the history outlives the worktree.
 class WorktreeEventStore {
-  WorktreeEventStore({
-    String fileName = 'worktree_events.jsonl',
-    String? directoryPath,
-  }) : _fileName = fileName,
-       _directoryPath = directoryPath;
+  WorktreeEventStore(this._db);
 
-  final String _fileName;
-
-  /// Overrides the storage directory (used in tests). When null, the app
-  /// support directory is used.
-  final String? _directoryPath;
-
-  Future<String> get _filePath async {
-    final dir = _directoryPath ?? (await getApplicationSupportDirectory()).path;
-    return p.join(dir, _fileName);
-  }
-
-  Future<File> _file() async {
-    final file = File(await _filePath);
-    await file.parent.create(recursive: true);
-    return file;
-  }
+  final AppDatabase _db;
 
   /// Appends a single event. Never throws — logging must not block the worktree
   /// create/delete it accompanies.
   Future<void> append(WorktreeEvent event) async {
     try {
-      final file = await _file();
-      await file.writeAsString(
-        '${jsonEncode(event.toJson())}\n',
-        mode: FileMode.append,
-        flush: true,
-      );
+      await _db.into(_db.worktreeEvents).insert(worktreeEventRow(event));
     } catch (e) {
       debugPrint('WorktreeEventStore.append failed: $e');
     }
   }
 
-  /// Reads all events in write order. Malformed lines are skipped defensively.
+  /// Reads all events in write order. Never throws.
   Future<List<WorktreeEvent>> loadAll() async {
     try {
-      final file = File(await _filePath);
-      if (!await file.exists()) return [];
-      final lines = await file.readAsLines();
-      final events = <WorktreeEvent>[];
-      for (final line in lines) {
-        final trimmed = line.trim();
-        if (trimmed.isEmpty) continue;
-        try {
-          final json = jsonDecode(trimmed) as Map<String, dynamic>;
-          events.add(WorktreeEvent.fromJson(json));
-        } catch (e) {
-          debugPrint('WorktreeEventStore: skipping malformed line: $e');
-        }
-      }
-      return events;
+      final rows = await (_db.select(
+        _db.worktreeEvents,
+      )..orderBy([(t) => OrderingTerm(expression: t.id)])).get();
+      return [
+        for (final row in rows)
+          WorktreeEvent(
+            timestamp: row.at,
+            type: WorktreeEventType.values.firstWhere(
+              (t) => t.name == row.type,
+              orElse: () => WorktreeEventType.created,
+            ),
+            repoPath: row.repoPath,
+            repoName: row.repoName,
+            worktreePath: row.worktreePath,
+            worktreeName: row.worktreeName,
+            branch: row.branch,
+            jiraIssue: row.jiraIssue,
+          ),
+      ];
     } catch (e) {
       debugPrint('WorktreeEventStore.loadAll failed: $e');
       return [];
     }
   }
 }
+
+/// The `worktree_events` row for [event].
+WorktreeEventsCompanion worktreeEventRow(WorktreeEvent event) =>
+    WorktreeEventsCompanion.insert(
+      at: event.timestamp,
+      type: event.type.name,
+      repoPath: event.repoPath,
+      repoName: event.repoName,
+      worktreePath: event.worktreePath,
+      worktreeName: event.worktreeName,
+      branch: Value(event.branch),
+      jiraIssue: Value(event.jiraIssue),
+    );

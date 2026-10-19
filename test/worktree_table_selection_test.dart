@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
+import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
@@ -15,6 +16,7 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/worksp
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_table.dart';
 
 import 'fake_config_stores.dart';
+import 'test_database.dart';
 
 Worktree _wt(String name, {bool isMain = false}) => Worktree(
   path: '/tmp/repo/$name',
@@ -58,7 +60,7 @@ void main() {
     workspace = WorkspaceController(
       gitService: _FakeGitService(),
       repoConfigStore: FakeRepoConfigStore(),
-      eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+      eventStore: WorktreeEventStore(testDatabase()),
     );
     settings = SettingsController(store: FakeAppSettingsStore());
     prs = GithubPrsController();
@@ -95,7 +97,10 @@ void main() {
           ChangeNotifierProvider<WorkspaceController>.value(value: workspace),
           ChangeNotifierProvider<SettingsController>.value(value: settings),
           ChangeNotifierProvider<GithubPrsController>.value(value: prs),
-          ChangeNotifierProvider(create: (_) => JiraTitlesController()),
+          ChangeNotifierProvider(
+            create: (_) =>
+                JiraTitlesController(cache: JiraIssueCache(testDatabase())),
+          ),
         ],
         child: MaterialApp(
           home: Scaffold(body: WorktreeTable(worktrees: worktrees)),

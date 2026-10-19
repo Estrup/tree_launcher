@@ -1,21 +1,20 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
+import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/models/manual_post.dart';
 
+import 'test_database.dart';
+
 void main() {
-  late Directory tempDir;
+  late AppDatabase db;
   late ManualPostStore store;
 
   setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('manual_post_store_test');
-    store = ManualPostStore(directoryPath: tempDir.path);
+    db = testDatabase();
+    store = ManualPostStore(db);
   });
 
   tearDown(() async {
-    if (await tempDir.exists()) await tempDir.delete(recursive: true);
   });
 
   ManualPost post(String id, {String issue = 'AU2-1', double? hours}) {
@@ -29,7 +28,7 @@ void main() {
     );
   }
 
-  test('loadAll returns empty when no file exists', () async {
+  test('loadAll returns empty when nothing is stored', () async {
     expect(await store.loadAll(), isEmpty);
   });
 
@@ -47,7 +46,7 @@ void main() {
     expect(byId['b']!.hours, isNull);
   });
 
-  test('delete tombstones a post so it no longer loads', () async {
+  test('delete removes a post so it no longer loads', () async {
     await store.add(post('a'));
     await store.add(post('b'));
     await store.delete('a');
@@ -66,14 +65,22 @@ void main() {
     expect(posts.single.hours, 5);
   });
 
-  test('malformed lines are skipped', () async {
+  test('add with an existing id replaces the post in place', () async {
     await store.add(post('a'));
-    final file = File(p.join(tempDir.path, 'manual_posts.jsonl'));
-    await file.writeAsString('not-json\n', mode: FileMode.append);
     await store.add(post('b'));
+    await store.add(post('a', hours: 3));
 
     final posts = await store.loadAll();
-    expect(posts.map((p) => p.id).toList()..sort(), ['a', 'b']);
+    expect(posts.map((p) => p.id), ['a', 'b']);
+    expect(posts.first.hours, 3);
+  });
+
+  test('round-trips the timestamp exactly', () async {
+    final at = DateTime(2026, 6, 9, 10, 11, 12, 13, 14);
+    await store.add(post('a').copyWith(timestamp: at));
+    final loaded = (await store.loadAll()).single.timestamp;
+    expect(loaded, at);
+    expect(loaded.isUtc, isFalse);
   });
 
   test('newId yields distinct ids', () {

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
@@ -11,24 +12,25 @@ import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/models/manual_post.dart';
 
+import 'test_database.dart';
+
 void main() {
-  late Directory tempDir; // event-store storage
+  late AppDatabase db;
   late Directory tempHome; // fake $HOME for Claude transcripts
 
   setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('activity_service_events');
+    db = testDatabase();
     tempHome = await Directory.systemTemp.createTemp('activity_service_home');
   });
 
   tearDown(() async {
-    if (await tempDir.exists()) await tempDir.delete(recursive: true);
     if (await tempHome.exists()) await tempHome.delete(recursive: true);
   });
 
   ActivityService service() => ActivityService(
-    eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+    eventStore: WorktreeEventStore(db),
     claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
-    manualPostStore: ManualPostStore(directoryPath: tempDir.path),
+    manualPostStore: ManualPostStore(db),
   );
 
   Worktree worktree(String path, {String name = 'wt', String branch = 'b'}) =>
@@ -53,7 +55,7 @@ void main() {
   }
 
   test('assembles created/closed events into an entry', () async {
-    final store = WorktreeEventStore(directoryPath: tempDir.path);
+    final store = WorktreeEventStore(db);
     await store.append(
       WorktreeEvent(
         timestamp: DateTime(2026, 6, 3, 9),
@@ -103,7 +105,7 @@ void main() {
 
   test('enriches entries with Claude active days and sorts newest-first',
       () async {
-    final store = WorktreeEventStore(directoryPath: tempDir.path);
+    final store = WorktreeEventStore(db);
     // Older worktree created earlier...
     await store.append(
       WorktreeEvent(
@@ -146,7 +148,7 @@ void main() {
   });
 
   test('merges manual posts into the timeline as manual entries', () async {
-    final manualStore = ManualPostStore(directoryPath: tempDir.path);
+    final manualStore = ManualPostStore(db);
     await manualStore.add(
       ManualPost(
         id: 'm1',
@@ -175,7 +177,7 @@ void main() {
   });
 
   test('sorts manual posts among worktree entries by recency', () async {
-    final store = WorktreeEventStore(directoryPath: tempDir.path);
+    final store = WorktreeEventStore(db);
     await store.append(
       WorktreeEvent(
         timestamp: DateTime(2026, 6, 1, 9),
@@ -186,7 +188,7 @@ void main() {
         worktreeName: 'old',
       ),
     );
-    final manualStore = ManualPostStore(directoryPath: tempDir.path);
+    final manualStore = ManualPostStore(db);
     await manualStore.add(
       ManualPost(
         id: 'm1',

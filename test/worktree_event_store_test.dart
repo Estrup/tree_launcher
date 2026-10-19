@@ -1,21 +1,20 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
+import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
 
+import 'test_database.dart';
+
 void main() {
-  late Directory tempDir;
+  late AppDatabase db;
   late WorktreeEventStore store;
 
   setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('worktree_event_store_test');
-    store = WorktreeEventStore(directoryPath: tempDir.path);
+    db = testDatabase();
+    store = WorktreeEventStore(db);
   });
 
   tearDown(() async {
-    if (await tempDir.exists()) await tempDir.delete(recursive: true);
   });
 
   WorktreeEvent event(
@@ -35,7 +34,7 @@ void main() {
     );
   }
 
-  test('loadAll returns empty when no file exists', () async {
+  test('loadAll returns empty when nothing is stored', () async {
     expect(await store.loadAll(), isEmpty);
   });
 
@@ -52,16 +51,22 @@ void main() {
     expect(events[0].branch, 'feature/x');
   });
 
-  test('malformed lines are skipped', () async {
-    await store.append(event(WorktreeEventType.created));
-    // Corrupt the file with a junk line between valid ones.
-    final file = File(p.join(tempDir.path, 'worktree_events.jsonl'));
-    await file.writeAsString('not-json\n', mode: FileMode.append);
-    await store.append(event(WorktreeEventType.closed));
+  test('keeps optional fields null and the timestamp exact', () async {
+    final at = DateTime.utc(2026, 6, 6, 12, 30, 1, 2, 3);
+    await store.append(
+      WorktreeEvent(
+        timestamp: at,
+        type: WorktreeEventType.closed,
+        repoPath: '/repo',
+        repoName: 'repo',
+        worktreePath: '/repo/wt',
+        worktreeName: 'wt',
+      ),
+    );
 
-    final events = await store.loadAll();
-    expect(events.length, 2);
-    expect(events[0].type, WorktreeEventType.created);
-    expect(events[1].type, WorktreeEventType.closed);
+    final loaded = (await store.loadAll()).single;
+    expect(loaded.timestamp, at);
+    expect(loaded.branch, isNull);
+    expect(loaded.jiraIssue, isNull);
   });
 }

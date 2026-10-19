@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
@@ -9,6 +8,8 @@ import 'package:tree_launcher/features/agents/presentation/controllers/agents_co
 import 'package:tree_launcher/features/terminal/data/claude_desktop_handoff.dart';
 import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
+
+import 'test_database.dart';
 
 /// A session whose shell has a fixed pid, without starting a PTY.
 class _FakeSession extends TerminalSession {
@@ -56,20 +57,16 @@ class _FakeCliRegistry extends ClaudeCliRegistry {
 }
 
 void main() {
-  late Directory dir;
+  late AppDatabase db;
   var now = DateTime(2026, 10, 12, 9);
 
-  setUp(() async {
-    dir = await Directory.systemTemp.createTemp('agents_controller');
+  setUp(() {
+    db = testDatabase();
     now = DateTime(2026, 10, 12, 9);
   });
 
-  tearDown(() async {
-    if (await dir.exists()) await dir.delete(recursive: true);
-  });
-
   AgentsController controller({ClaudeCliRegistry? cli}) => AgentsController(
-    store: AgentRunStore(directoryPath: dir.path),
+    store: AgentRunStore(db),
     cliRegistry: cli,
     clock: () => now,
     pollInterval: const Duration(milliseconds: 10),

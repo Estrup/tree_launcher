@@ -21,7 +21,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
   WorkspaceController({
     required GitService gitService,
     required RepoConfigStore repoConfigStore,
-    WorktreeEventStore? eventStore,
+    required WorktreeEventStore eventStore,
   }) : this._create(
          gitService: gitService,
          repoConfigStore: repoConfigStore,
@@ -31,7 +31,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
   factory WorkspaceController.create({
     required GitService gitService,
     required RepoConfigStore repoConfigStore,
-    WorktreeEventStore? eventStore,
+    required WorktreeEventStore eventStore,
   }) {
     return WorkspaceController._create(
       gitService: gitService,
@@ -43,10 +43,10 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
   WorkspaceController._create({
     required GitService gitService,
     required RepoConfigStore repoConfigStore,
-    WorktreeEventStore? eventStore,
+    required WorktreeEventStore eventStore,
   }) {
     _store = repoConfigStore;
-    _eventStore = eventStore ?? WorktreeEventStore();
+    _eventStore = eventStore;
     _gitService = gitService;
     final registry = RepoRegistryController(
       store: repoConfigStore,

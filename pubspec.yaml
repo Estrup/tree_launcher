@@ -42,6 +42,10 @@ dependencies:
   flutter_svg: ^2.0.10+1
   shelf: ^1.4.2
   shelf_router: ^1.1.4
+  # Exact: drift_dev 2.34.0 (the newest this Flutter SDK's `meta` pin
+  # allows) can only dump schemas against drift 2.34.0.
+  drift: 2.34.0
+  sqlite3: ^3.5.2
 
 dependency_overrides:
   xterm:
@@ -57,6 +61,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  drift_dev: ^2.34.0
+  build_runner: ^2.15.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

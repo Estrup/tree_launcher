@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
@@ -26,6 +27,8 @@ import 'package:tree_launcher/models/repo_config.dart';
 import 'package:tree_launcher/models/worktree.dart';
 
 import 'fake_config_stores.dart';
+
+import 'test_database.dart';
 
 /// A real `config.json`, in a temporary directory, holding [repos] and
 /// [settings].
@@ -171,13 +174,13 @@ class _FakeWorktreeGit extends GitService {
 }
 
 void main() {
-  late Directory tempDir;
+  late AppDatabase db;
   late Directory tempHome;
   late AgentApiServer server;
   late _FakeWorktreeCreator creator;
 
   setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('agent_api_events');
+    db = testDatabase();
     tempHome = await Directory.systemTemp.createTemp('agent_api_home');
     creator = _FakeWorktreeCreator();
     final config = await _configFile(
@@ -188,8 +191,9 @@ void main() {
       repoConfigStore: _repoStore(config),
       gitService: GitService(),
       appSettingsStore: AppSettingsStore(configFile: config),
-      eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+      eventStore: WorktreeEventStore(db),
       claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
+      manualPostStore: ManualPostStore(db),
     );
     // Port 0 → OS picks a free loopback port.
     await server.start(port: 0);
@@ -197,7 +201,6 @@ void main() {
 
   tearDown(() async {
     await server.stop();
-    if (await tempDir.exists()) await tempDir.delete(recursive: true);
     if (await tempHome.exists()) await tempHome.delete(recursive: true);
   });
 
@@ -499,7 +502,7 @@ void main() {
     late AgentApiServer s;
 
     setUp(() async {
-      manualStore = ManualPostStore(directoryPath: tempDir.path);
+      manualStore = ManualPostStore(db);
       final config = await _configFile([
         RepoConfig(
           name: 'demo',
@@ -513,7 +516,7 @@ void main() {
         repoConfigStore: _repoStore(config),
         gitService: GitService(),
         appSettingsStore: AppSettingsStore(configFile: config),
-        eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+        eventStore: WorktreeEventStore(db),
         claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
         manualPostStore: manualStore,
       );
@@ -626,8 +629,9 @@ void main() {
         repoConfigStore: _repoStore(config),
         gitService: GitService(),
         appSettingsStore: AppSettingsStore(configFile: config),
-        eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+        eventStore: WorktreeEventStore(db),
         claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
+        manualPostStore: ManualPostStore(db),
         jiraService: jira,
       );
       await jiraServer.start(port: 0);
@@ -819,10 +823,8 @@ void main() {
   group('Agents', () {
     late AgentApiServer agentServer;
     late AgentsController agents;
-    late Directory agentDir;
 
     setUp(() async {
-      agentDir = await Directory.systemTemp.createTemp('agent_api_agents');
       final config = await _configFile([
         RepoConfig(name: 'other', path: '/repos/other'),
         RepoConfig(name: 'au2office', path: '/repos/au2'),
@@ -831,12 +833,11 @@ void main() {
         repoConfigStore: _repoStore(config),
         gitService: _FakeWorktreeGit(),
         appSettingsStore: AppSettingsStore(configFile: config),
-        eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+        eventStore: WorktreeEventStore(db),
         claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
+        manualPostStore: ManualPostStore(db),
       );
-      agents = AgentsController(
-        store: AgentRunStore(directoryPath: agentDir.path),
-      );
+      agents = AgentsController(store: AgentRunStore(db));
       await agentServer.start(port: 0);
     });
 
@@ -844,7 +845,6 @@ void main() {
       await agentServer.stop();
       await agents.flush();
       agents.dispose();
-      if (await agentDir.exists()) await agentDir.delete(recursive: true);
     });
 
     Future<(int, Map<String, dynamic>)> getAgents(String path) =>

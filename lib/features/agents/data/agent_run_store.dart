@@ -1,51 +1,46 @@
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
+import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/features/agents/domain/agent_event.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 
-/// Persists agent runs in the app support directory: the runs' current state
-/// in `agent_runs.json` (rewritten on each change) and their timelines in the
-/// append-only `agent_events.jsonl`, like the worktree events.
+/// Persists agent runs in the app database: each run's state in `agent_runs`
+/// (its issue keys in `agent_run_issues`) and their timelines in
+/// `agent_events`. Deleting a run deletes its issue keys and events.
 class AgentRunStore {
-  AgentRunStore({
-    String runsFileName = 'agent_runs.json',
-    String eventsFileName = 'agent_events.jsonl',
-    String? directoryPath,
-  }) : _runsFileName = runsFileName,
-       _eventsFileName = eventsFileName,
-       _directoryPath = directoryPath;
+  AgentRunStore(this._db);
 
-  final String _runsFileName;
-  final String _eventsFileName;
+  final AppDatabase _db;
 
-  /// Overrides the storage directory (used in tests). When null, the app
-  /// support directory is used.
-  final String? _directoryPath;
+  /// Each run as this store last loaded or saved it (its JSON), so
+  /// [saveRuns] writes only the runs that changed and deletes only runs it
+  /// knew about (not ones another instance has added since).
+  final Map<String, String> _saved = {};
 
-  Future<String> _path(String fileName) async {
-    final dir = _directoryPath ?? (await getApplicationSupportDirectory()).path;
-    return p.join(dir, fileName);
-  }
-
-  /// Every saved run. Never throws; a missing or unreadable file is empty.
+  /// Every saved run. Never throws; an unreadable row is skipped.
   Future<List<AgentRun>> loadRuns() async {
     try {
-      final file = File(await _path(_runsFileName));
-      if (!await file.exists()) return [];
-      final json = jsonDecode(await file.readAsString());
-      final runs = json is Map<String, dynamic> ? json['runs'] : null;
-      if (runs is! List) return [];
+      final rows = await (_db.select(
+        _db.agentRuns,
+      )..orderBy([(t) => OrderingTerm(expression: t.startedAt)])).get();
+      final issueRows = await (_db.select(
+        _db.agentRunIssues,
+      )..orderBy([(t) => OrderingTerm(expression: t.position)])).get();
+      final issueKeys = <String, List<String>>{};
+      for (final row in issueRows) {
+        issueKeys.putIfAbsent(row.runId, () => []).add(row.issueKey);
+      }
       final result = <AgentRun>[];
-      for (final run in runs.whereType<Map<String, dynamic>>()) {
+      for (final row in rows) {
         try {
-          result.add(AgentRun.fromJson(run));
+          final run = agentRunFromRow(row, issueKeys[row.id] ?? const []);
+          result.add(run);
+          _saved[run.id] = jsonEncode(run.toJson());
         } catch (e) {
-          debugPrint('AgentRunStore: skipping malformed run: $e');
+          debugPrint('AgentRunStore: skipping malformed run ${row.id}: $e');
         }
       }
       return result;
@@ -55,21 +50,36 @@ class AgentRunStore {
     }
   }
 
-  /// Replaces the saved runs. Written to a temporary file first and renamed,
-  /// so a crash mid-write keeps the previous file.
+  /// Makes [runs] the saved runs: writes the ones that changed and deletes
+  /// the ones this store saved before that are no longer in the list.
   Future<void> saveRuns(List<AgentRun> runs) async {
     try {
-      final path = await _path(_runsFileName);
-      final file = File(path);
-      await file.parent.create(recursive: true);
-      final tmp = File('$path.tmp');
-      await tmp.writeAsString(
-        const JsonEncoder.withIndent(
-          '  ',
-        ).convert({'runs': runs.map((r) => r.toJson()).toList()}),
-        flush: true,
-      );
-      await tmp.rename(path);
+      final encoded = {
+        for (final run in runs) run.id: jsonEncode(run.toJson()),
+      };
+      final changed = [
+        for (final run in runs)
+          if (_saved[run.id] != encoded[run.id]) run,
+      ];
+      final removed = [
+        for (final id in _saved.keys)
+          if (!encoded.containsKey(id)) id,
+      ];
+      if (changed.isEmpty && removed.isEmpty) return;
+      await _db.transaction(() async {
+        for (final run in changed) {
+          await writeAgentRun(_db, run);
+        }
+        if (removed.isNotEmpty) {
+          await (_db.delete(
+            _db.agentRuns,
+          )..where((t) => t.id.isIn(removed))).go();
+        }
+      });
+      for (final run in changed) {
+        _saved[run.id] = encoded[run.id]!;
+      }
+      removed.forEach(_saved.remove);
     } catch (e) {
       debugPrint('AgentRunStore.saveRuns failed: $e');
     }
@@ -78,55 +88,142 @@ class AgentRunStore {
   /// Appends one timeline event. Never throws.
   Future<void> appendEvent(AgentEvent event) async {
     try {
-      final file = File(await _path(_eventsFileName));
-      await file.parent.create(recursive: true);
-      await file.writeAsString(
-        '${jsonEncode(event.toJson())}\n',
-        mode: FileMode.append,
-        flush: true,
-      );
+      await _db.into(_db.agentEvents).insert(agentEventRow(event));
     } catch (e) {
       debugPrint('AgentRunStore.appendEvent failed: $e');
     }
   }
 
-  /// Every event in write order. Malformed lines are skipped.
+  /// Every event in write order. Never throws.
   Future<List<AgentEvent>> loadEvents() async {
     try {
-      final file = File(await _path(_eventsFileName));
-      if (!await file.exists()) return [];
-      final events = <AgentEvent>[];
-      for (final line in await file.readAsLines()) {
-        final trimmed = line.trim();
-        if (trimmed.isEmpty) continue;
-        try {
-          events.add(
-            AgentEvent.fromJson(jsonDecode(trimmed) as Map<String, dynamic>),
-          );
-        } catch (e) {
-          debugPrint('AgentRunStore: skipping malformed event: $e');
-        }
-      }
-      return events;
+      final rows = await (_db.select(
+        _db.agentEvents,
+      )..orderBy([(t) => OrderingTerm(expression: t.id)])).get();
+      return [
+        for (final row in rows)
+          AgentEvent(
+            agentId: row.runId,
+            at: row.at,
+            message: row.message,
+            stage: row.stage,
+            level: AgentEventLevel.tryParse(row.level) ?? AgentEventLevel.info,
+          ),
+      ];
     } catch (e) {
       debugPrint('AgentRunStore.loadEvents failed: $e');
       return [];
     }
   }
 
-  /// Rewrites the event log with only [events] (after old runs are pruned).
+  /// Replaces the saved events with [events] (after old runs are pruned).
+  /// Events of runs that aren't saved are left out.
   Future<void> replaceEvents(List<AgentEvent> events) async {
     try {
-      final path = await _path(_eventsFileName);
-      final tmp = File('$path.tmp');
-      await tmp.parent.create(recursive: true);
-      await tmp.writeAsString(
-        events.map((e) => '${jsonEncode(e.toJson())}\n').join(),
-        flush: true,
-      );
-      await tmp.rename(path);
+      await _db.transaction(() async {
+        final runIds = (await _db.select(_db.agentRuns).get())
+            .map((r) => r.id)
+            .toSet();
+        await _db.delete(_db.agentEvents).go();
+        await _db.batch(
+          (batch) => batch.insertAll(_db.agentEvents, [
+            for (final event in events)
+              if (runIds.contains(event.agentId)) agentEventRow(event),
+          ]),
+        );
+      });
     } catch (e) {
       debugPrint('AgentRunStore.replaceEvents failed: $e');
     }
   }
 }
+
+/// The JSON keys of [AgentRun.toJson] that have their own column (or, for
+/// `issueKeys`, their own table); the rest go in `agent_runs.detail`.
+const _agentRunColumnKeys = {
+  'id',
+  'kind',
+  'repo',
+  'title',
+  'state',
+  'worktreePath',
+  'branch',
+  'prNumber',
+  'archived',
+  'startedAt',
+  'updatedAt',
+  'finishedAt',
+  'issueKeys',
+};
+
+/// Inserts or updates [run] and its issue keys. Run inside a transaction.
+/// An upsert, not `INSERT OR REPLACE`, which would delete the run's events.
+Future<void> writeAgentRun(AppDatabase db, AgentRun run) async {
+  final json = run.toJson();
+  await db
+      .into(db.agentRuns)
+      .insertOnConflictUpdate(
+        AgentRunsCompanion.insert(
+          id: run.id,
+          kind: run.kind.name,
+          repo: run.repoName,
+          title: Value(run.title),
+          state: run.state.name,
+          worktreePath: Value(run.worktreePath),
+          branch: Value(run.branch),
+          prNumber: Value(run.prNumber),
+          archived: Value(run.archived),
+          startedAt: run.startedAt,
+          updatedAt: run.updatedAt,
+          finishedAt: Value(run.finishedAt),
+          detail: jsonEncode({
+            for (final entry in json.entries)
+              if (!_agentRunColumnKeys.contains(entry.key))
+                entry.key: entry.value,
+          }),
+        ),
+      );
+  await (db.delete(
+    db.agentRunIssues,
+  )..where((t) => t.runId.equals(run.id))).go();
+  final keys = run.issueKeys.toSet().toList();
+  await db.batch(
+    (batch) => batch.insertAll(db.agentRunIssues, [
+      for (var i = 0; i < keys.length; i++)
+        AgentRunIssuesCompanion.insert(
+          runId: run.id,
+          issueKey: keys[i],
+          position: i,
+        ),
+    ]),
+  );
+}
+
+/// The run stored in [row], with its [issueKeys].
+AgentRun agentRunFromRow(AgentRunRow row, List<String> issueKeys) =>
+    AgentRun.fromJson({
+      ...jsonDecode(row.detail) as Map<String, dynamic>,
+      'id': row.id,
+      'kind': row.kind,
+      'repo': row.repo,
+      'title': row.title,
+      'state': row.state,
+      'worktreePath': row.worktreePath,
+      'branch': row.branch,
+      'prNumber': row.prNumber,
+      'archived': row.archived,
+      'startedAt': row.startedAt.toIso8601String(),
+      'updatedAt': row.updatedAt.toIso8601String(),
+      'finishedAt': row.finishedAt?.toIso8601String(),
+      'issueKeys': issueKeys,
+    });
+
+/// The `agent_events` row for [event].
+AgentEventsCompanion agentEventRow(AgentEvent event) =>
+    AgentEventsCompanion.insert(
+      runId: event.agentId,
+      at: event.at,
+      stage: Value(event.stage),
+      level: event.level.name,
+      message: event.message,
+    );

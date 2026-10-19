@@ -11,9 +11,11 @@ import 'package:tree_launcher/features/jira/domain/jira_pat.dart';
 /// single batched search. Without a Jira token, or when Jira is unreachable,
 /// only cached titles are shown — failures are logged, never surfaced.
 class JiraTitlesController extends ChangeNotifier {
-  JiraTitlesController({JiraApiService? service, JiraIssueCache? cache})
-    : _service = service ?? JiraApiService(),
-      _cache = cache ?? JiraIssueCache();
+  JiraTitlesController({
+    JiraApiService? service,
+    required JiraIssueCache cache,
+  }) : _service = service ?? JiraApiService(),
+       _cache = cache;
 
   final JiraApiService _service;
   final JiraIssueCache _cache;

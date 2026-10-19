@@ -24,6 +24,7 @@ import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
 
 import 'fake_config_stores.dart';
+import 'test_database.dart';
 
 class _FakeGitService extends GitService {
   @override
@@ -37,8 +38,7 @@ class _FakeGitService extends GitService {
 
 /// Knows one title and never asks Jira.
 class _FakeJiraTitles extends JiraTitlesController {
-  _FakeJiraTitles(String cacheDir)
-    : super(cache: JiraIssueCache(directoryPath: cacheDir));
+  _FakeJiraTitles() : super(cache: JiraIssueCache(testDatabase()));
 
   @override
   String? titleFor(String issueKey) =>
@@ -89,7 +89,7 @@ void main() {
     workspace = WorkspaceController(
       gitService: _FakeGitService(),
       repoConfigStore: FakeRepoConfigStore(),
-      eventStore: WorktreeEventStore(directoryPath: tempDir.path),
+      eventStore: WorktreeEventStore(testDatabase()),
     );
     settings = SettingsController(store: FakeAppSettingsStore());
     terminal = _FakeTerminal();
@@ -118,7 +118,7 @@ void main() {
           if (agents != null)
             ChangeNotifierProvider<AgentsController>.value(value: agents),
           ChangeNotifierProvider<JiraTitlesController>(
-            create: (_) => _FakeJiraTitles(tempDir.path),
+            create: (_) => _FakeJiraTitles(),
           ),
         ],
         child: MaterialApp(
@@ -220,7 +220,7 @@ void main() {
     // Made with real async, so its pending writes complete.
     await tester.runAsync(() async {
       agents = AgentsController(
-        store: AgentRunStore(directoryPath: tempDir.path),
+        store: AgentRunStore(testDatabase()),
       );
       final run = await agents.createForLaunch(
         kind: AgentKind.build,

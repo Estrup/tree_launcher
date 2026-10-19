@@ -15,11 +15,11 @@ export 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 
 class ActivityController extends ChangeNotifier {
   ActivityController({
-    WorktreeEventStore? eventStore,
+    required WorktreeEventStore eventStore,
     ClaudeSessionActivity? claudeActivity,
-    ManualPostStore? manualPostStore,
+    required ManualPostStore manualPostStore,
     ActivityService? service,
-  }) : _manualPostStore = manualPostStore ?? ManualPostStore(),
+  }) : _manualPostStore = manualPostStore,
        _service =
            service ??
            ActivityService(

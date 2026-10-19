@@ -13,12 +13,12 @@ import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 /// agent HTTP API without going through a `ChangeNotifier`/Provider.
 class ActivityService {
   ActivityService({
-    WorktreeEventStore? eventStore,
+    required WorktreeEventStore eventStore,
     ClaudeSessionActivity? claudeActivity,
-    ManualPostStore? manualPostStore,
-  }) : _eventStore = eventStore ?? WorktreeEventStore(),
+    required ManualPostStore manualPostStore,
+  }) : _eventStore = eventStore,
        _claudeActivity = claudeActivity ?? ClaudeSessionActivity(),
-       _manualPostStore = manualPostStore ?? ManualPostStore();
+       _manualPostStore = manualPostStore;
 
   final WorktreeEventStore _eventStore;
   final ClaudeSessionActivity _claudeActivity;
@@ -33,9 +33,15 @@ class ActivityService {
   /// [repoNamesByWorktreePath] tags live (event-less) worktrees with the repo
   /// they belong to, so callers can filter results by repo. The UI passes
   /// nothing here, leaving behavior unchanged.
+  ///
+  /// [since] is the start of the date window the caller will filter to, if
+  /// any. Entries are still returned unfiltered, but Claude transcripts last
+  /// modified before it aren't read again (see
+  /// [ClaudeSessionActivity.activeDaysFor]).
   Future<List<ActivityEntry>> loadEntries({
     List<Worktree> currentWorktrees = const [],
     Map<String, String>? repoNamesByWorktreePath,
+    DateTime? since,
   }) async {
     final events = await _eventStore.loadAll();
 
@@ -75,7 +81,10 @@ class ActivityService {
       final createdEvent = created[path];
       final closedEvent = closed[path];
       final live = liveByPath[path];
-      final activeDays = await _claudeActivity.activeDaysFor(path);
+      final activeDays = await _claudeActivity.activeDaysFor(
+        path,
+        since: since,
+      );
 
       // Skip phantom entries with no signal at all.
       if (createdEvent == null &&

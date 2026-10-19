@@ -1,114 +1,86 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
+import 'package:tree_launcher/core/database/app_database.dart';
+import 'package:tree_launcher/core/database/issue_cache_table.dart';
+import 'package:tree_launcher/core/database/legacy_importer.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 
-/// On-disk cache of fetched Jira issues, stored as a single keyed JSON blob in
-/// the app support directory (issue key -> `{issue, fetchedAt}`). The
-/// read-modify-write blob style matches `AppSettingsStore`; the "never throws /
-/// debugPrint" defensiveness matches `ManualPostStore`.
+/// Cache of fetched Jira issues (issue key -> issue and when it was fetched),
+/// in the app database's `issue_cache` table. Never throws: a failure is
+/// logged and reads as a miss.
 class JiraIssueCache {
-  JiraIssueCache({
-    String fileName = 'jira_issue_cache.json',
-    String? directoryPath,
-  }) : _fileName = fileName,
-       _directoryPath = directoryPath;
+  JiraIssueCache(AppDatabase db) : _table = IssueCacheTable(db, source);
 
-  final String _fileName;
+  /// The `issue_cache.source` of Jira issues.
+  static const source = 'jira';
 
-  /// Overrides the storage directory (used in tests). When null, the app
-  /// support directory is used.
-  final String? _directoryPath;
+  final IssueCacheTable _table;
 
-  Future<String> get _filePath async {
-    final dir = _directoryPath ?? (await getApplicationSupportDirectory()).path;
-    return p.join(dir, _fileName);
-  }
-
-  Future<Map<String, dynamic>> _readMap() async {
-    try {
-      final file = File(await _filePath);
-      if (!await file.exists()) return {};
-      final content = await file.readAsString();
-      if (content.trim().isEmpty) return {};
-      return jsonDecode(content) as Map<String, dynamic>;
-    } catch (e) {
-      debugPrint('JiraIssueCache read failed: $e');
-      return {};
-    }
-  }
-
-  Future<void> _writeMap(Map<String, dynamic> map) async {
-    try {
-      final file = File(await _filePath);
-      await file.parent.create(recursive: true);
-      await file.writeAsString(const JsonEncoder.withIndent('  ').convert(map));
-    } catch (e) {
-      debugPrint('JiraIssueCache write failed: $e');
-    }
-  }
+  /// Merges the pre-database `jira_issue_cache.json` into the cache.
+  static LegacyImport legacyImport(AppDatabase db) => IssueCacheLegacyImport(
+    db,
+    fileName: 'jira_issue_cache.json',
+    source: source,
+    parse: JiraIssue.fromJson,
+  );
 
   /// Returns the cached issue for [key], or null on miss/parse error.
   Future<CachedJiraIssue?> read(String key) async {
-    final map = await _readMap();
-    final entry = map[key];
-    if (entry is! Map<String, dynamic>) return null;
-    final issueJson = entry['issue'];
-    if (issueJson is! Map<String, dynamic>) return null;
-    final fetchedAt = DateTime.tryParse(entry['fetchedAt'] as String? ?? '');
-    if (fetchedAt == null) return null;
     try {
+      final row = await _table.read(key);
+      if (row == null) return null;
       return CachedJiraIssue(
-        issue: JiraIssue.fromJson(issueJson),
-        fetchedAt: fetchedAt,
+        issue: JiraIssue.fromJson(
+          jsonDecode(row.payload) as Map<String, dynamic>,
+        ),
+        fetchedAt: row.fetchedAt,
       );
     } catch (e) {
-      debugPrint('JiraIssueCache parse failed for $key: $e');
+      debugPrint('JiraIssueCache read failed for $key: $e');
       return null;
     }
   }
 
   /// Returns every cached issue that parses, keyed by issue key. Never throws.
   Future<Map<String, JiraIssue>> readAll() async {
-    final map = await _readMap();
     final result = <String, JiraIssue>{};
-    for (final entry in map.entries) {
-      final value = entry.value;
-      if (value is! Map<String, dynamic>) continue;
-      final issueJson = value['issue'];
-      if (issueJson is! Map<String, dynamic>) continue;
-      try {
-        result[entry.key] = JiraIssue.fromJson(issueJson);
-      } catch (e) {
-        debugPrint('JiraIssueCache parse failed for ${entry.key}: $e');
+    try {
+      for (final row in await _table.readAll()) {
+        try {
+          result[row.key] = JiraIssue.fromJson(
+            jsonDecode(row.payload) as Map<String, dynamic>,
+          );
+        } catch (e) {
+          debugPrint('JiraIssueCache parse failed for ${row.key}: $e');
+        }
       }
+    } catch (e) {
+      debugPrint('JiraIssueCache readAll failed: $e');
     }
     return result;
   }
 
   /// Stores [issue] under its key, stamped with [fetchedAt] (default now).
   Future<void> write(String key, JiraIssue issue, {DateTime? fetchedAt}) async {
-    final map = await _readMap();
-    map[key] = {
-      'issue': issue.toJson(),
-      'fetchedAt': (fetchedAt ?? DateTime.now()).toIso8601String(),
-    };
-    await _writeMap(map);
+    try {
+      await _table.write(
+        key,
+        jsonEncode(issue.toJson()),
+        fetchedAt ?? DateTime.now(),
+      );
+    } catch (e) {
+      debugPrint('JiraIssueCache write failed: $e');
+    }
   }
 
-  /// Drops every cached key not in [liveKeys]. Writes back only if something
-  /// changed. Never throws.
+  /// Drops every cached key not in [liveKeys]. Never throws.
   Future<void> prune(Set<String> liveKeys) async {
-    final map = await _readMap();
-    final toRemove = map.keys.where((k) => !liveKeys.contains(k)).toList();
-    if (toRemove.isEmpty) return;
-    for (final k in toRemove) {
-      map.remove(k);
+    try {
+      await _table.prune(liveKeys);
+    } catch (e) {
+      debugPrint('JiraIssueCache prune failed: $e');
     }
-    await _writeMap(map);
   }
 }

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/github_issues/domain/github_issue.dart';
 import 'package:tree_launcher/features/github_issues/presentation/controllers/github_issues_controller.dart';
 import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issues_tab.dart';
@@ -13,6 +15,7 @@ import 'package:tree_launcher/models/worktree.dart';
 
 import 'fake_github_issues_service.dart';
 import 'fake_config_stores.dart';
+import 'test_database.dart';
 
 class _FakeGitService extends GitService {
   @override
@@ -45,6 +48,7 @@ Future<_Harness> _pumpTab(
   final workspace = WorkspaceController(
     gitService: _FakeGitService(),
     repoConfigStore: FakeRepoConfigStore(),
+    eventStore: WorktreeEventStore(testDatabase()),
   );
   final settings = SettingsController(store: FakeAppSettingsStore());
   final service = FakeGithubIssuesService();
@@ -61,6 +65,14 @@ Future<_Harness> _pumpTab(
         ChangeNotifierProvider<WorkspaceController>.value(value: workspace),
         ChangeNotifierProvider<SettingsController>.value(value: settings),
         ChangeNotifierProvider<GithubIssuesController>.value(value: controller),
+        // The issue dialog takes its cache from here.
+        Provider<AppDependencies>.value(
+          value: AppDependencies(
+            database: testDatabase(),
+            repoConfigStore: FakeRepoConfigStore(),
+            appSettingsStore: FakeAppSettingsStore(),
+          ),
+        ),
       ],
       child: MaterialApp(
         theme: AppTheme.current,

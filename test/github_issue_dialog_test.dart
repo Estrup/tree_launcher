@@ -7,8 +7,11 @@ import 'package:tree_launcher/features/github_issues/presentation/widgets/github
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 
 import 'fake_github_issues_service.dart';
+import 'test_database.dart';
 
 class _MemoryCache extends GithubIssueCache {
+  _MemoryCache() : super(testDatabase());
+
   final Map<String, CachedGithubIssue> entries = {};
 
   @override

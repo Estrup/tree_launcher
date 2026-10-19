@@ -47,15 +47,15 @@ class AgentApiServer {
     required RepoConfigStore repoConfigStore,
     required GitService gitService,
     required AppSettingsStore appSettingsStore,
-    WorktreeEventStore? eventStore,
+    required WorktreeEventStore eventStore,
     ClaudeSessionActivity? claudeActivity,
-    ManualPostStore? manualPostStore,
+    required ManualPostStore manualPostStore,
     JiraApiService? jiraService,
   }) : _repoConfigStore = repoConfigStore,
        _gitService = gitService,
        _appSettingsStore = appSettingsStore,
        _jiraService = jiraService ?? JiraApiService(),
-       _manualPostStore = manualPostStore ?? ManualPostStore(),
+       _manualPostStore = manualPostStore,
        _activityService = ActivityService(
          eventStore: eventStore,
          claudeActivity: claudeActivity,
@@ -228,9 +228,12 @@ class AgentApiServer {
         }
       }
 
+      // Apply the date-window filter against the current wall clock.
+      final range = filter.range(DateTime.now());
       var entries = await _activityService.loadEntries(
         currentWorktrees: currentWorktrees,
         repoNamesByWorktreePath: repoNamesByPath,
+        since: range?.start,
       );
 
       // Narrow to the requested repo by name (covers event-sourced entries too).
@@ -238,8 +241,6 @@ class AgentApiServer {
         entries = entries.where((e) => e.repoName == repoFilter).toList();
       }
 
-      // Apply the date-window filter against the current wall clock.
-      final range = filter.range(DateTime.now());
       if (range != null) {
         entries = entries.where((e) => e.matchesRange(range)).toList();
       }
