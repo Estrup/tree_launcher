@@ -8,7 +8,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/platform/launcher_service.dart';
 import 'package:tree_launcher/features/agents/domain/agent_event.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
-import 'package:tree_launcher/features/agents/presentation/agent_launcher.dart';
+import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
@@ -350,14 +350,14 @@ class _Actions extends StatelessWidget {
             label: 'Open',
             icon: Icons.terminal_rounded,
             color: AppColors.terminal,
-            onTap: () => AgentLauncher.of(context).focus(run),
+            onTap: () => context.read<AgentLauncher>().focus(run),
           )
         else if (canResume)
           _ActionChip(
             label: run.state.isFinished ? 'Reopen' : 'Resume',
             icon: Icons.play_arrow_rounded,
             color: AppColors.terminal,
-            onTap: () => AgentLauncher.of(context).resume(run),
+            onTap: () => context.read<AgentLauncher>().resume(run),
           ),
         const SizedBox(width: 4),
         _IconAction(
@@ -393,7 +393,7 @@ class _MoreMenu extends StatelessWidget {
       onSelected: (value) async {
         switch (value) {
           case 'stop':
-            await AgentLauncher.of(context).stop(run);
+            await context.read<AgentLauncher>().stop(run);
           case 'archive':
             await agents.setArchived(run.id, true);
           case 'unarchive':

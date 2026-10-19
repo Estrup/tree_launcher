@@ -5,11 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
-import 'package:tree_launcher/features/agents/presentation/agent_launcher.dart';
+import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
-import 'package:tree_launcher/features/terminal/presentation/claude_session_actions.dart';
+import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
@@ -315,7 +315,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
     String worktreePath,
     String pageKey,
   ) async {
-    final launcher = ClaudeSessionLauncher.of(context);
+    final launcher = context.read<ClaudeSessionLauncher>();
     await provider.selectRepo(repo);
     provider.showRepoPage(pageKey);
     await launcher.resume(repoPath: repo.path, worktreePath: worktreePath);
@@ -329,7 +329,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
     RepoConfig repo,
     AgentRun run,
   ) async {
-    final launcher = AgentLauncher.of(context);
+    final launcher = context.read<AgentLauncher>();
     await provider.selectRepo(repo);
     provider.showRepoPage(agentPageKey(run.kind));
     await launcher.resume(run);
@@ -756,7 +756,7 @@ class _RepoTileState extends State<_RepoTile> {
 
   /// Right-click menu of an agent's session.
   Future<void> _showAgentMenu(Offset position, AgentRun run) async {
-    final launcher = AgentLauncher.of(context);
+    final launcher = context.read<AgentLauncher>();
     final agents = context.read<AgentsController>();
     final action = await _showMenuAt(position, [
       _menuItem('show', Icons.open_in_new_rounded, 'Show'),

@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
+import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
+import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/core/database/database_backup.dart';
 import 'package:tree_launcher/core/database/legacy_importer.dart';
@@ -97,6 +100,26 @@ class AppDependencies {
       manualPostStore: this.manualPostStore,
       service: activityService,
     );
+    agentLauncher = AgentLauncher(
+      terminal: terminal,
+      agents: agents,
+      workspace: workspace,
+      settings: settings,
+      claudeActivity: claudeActivity,
+      apiPort: () => agentApiServer.port,
+    );
+    claudeSessions = ClaudeSessionLauncher(
+      terminal: terminal,
+      workspace: workspace,
+      settings: settings,
+      claudeActivity: claudeActivity,
+      agents: agentLauncher,
+    );
+    startClaudeSession = StartClaudeSession(
+      settings: settings,
+      sessions: claudeSessions,
+      agents: agentLauncher,
+    );
     // Re-report the terminal colors after a palette switch.
     settings.addListener(terminal.syncColors);
     // Watch the terminal's agent sessions (busy / waiting / exited).
@@ -163,6 +186,15 @@ class AppDependencies {
 
   /// The Activity tab's timeline.
   late final ActivityController activity;
+
+  /// Starts, resumes and stops agents in the built-in terminal.
+  late final AgentLauncher agentLauncher;
+
+  /// Starts and resumes plain Claude sessions in the built-in terminal.
+  late final ClaudeSessionLauncher claudeSessions;
+
+  /// The Start Claude flow behind the Jira, PR and issue buttons.
+  late final StartClaudeSession startClaudeSession;
 
   /// Loopback-only HTTP API that exposes app data to local AI agents.
   late final AgentApiServer agentApiServer;

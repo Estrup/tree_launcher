@@ -8,7 +8,7 @@ import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
-import 'package:tree_launcher/features/terminal/presentation/claude_session_actions.dart';
+import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
 import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';

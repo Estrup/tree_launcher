@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
-import 'package:provider/provider.dart';
+
+import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
-import 'package:tree_launcher/features/agents/presentation/agent_launcher.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
@@ -23,28 +23,21 @@ String claudeSessionTitle(String worktreePath, {String? issueKey}) {
 }
 
 /// Starts and resumes Claude CLI sessions in the built-in terminal, and keeps
-/// their sidebar shortcuts. Holds the controllers it needs, so it can be
-/// created before a dialog and used after it regardless of what rebuilt.
+/// their sidebar shortcuts. Built once by the composition root and provided
+/// to the widget tree, so a dialog can use it after it closes regardless of
+/// what rebuilt.
 class ClaudeSessionLauncher {
   ClaudeSessionLauncher({
     required TerminalController terminal,
     required WorkspaceController workspace,
     required SettingsController settings,
-    ClaudeSessionActivity? claudeActivity,
+    required ClaudeSessionActivity claudeActivity,
     AgentLauncher? agents,
   }) : _terminal = terminal,
        _workspace = workspace,
        _settings = settings,
-       _claudeActivity = claudeActivity ?? ClaudeSessionActivity(),
+       _claudeActivity = claudeActivity,
        _agents = agents;
-
-  factory ClaudeSessionLauncher.of(BuildContext context) =>
-      ClaudeSessionLauncher(
-        terminal: context.read<TerminalController>(),
-        workspace: context.read<WorkspaceController>(),
-        settings: context.read<SettingsController>(),
-        agents: AgentLauncher.maybeOf(context),
-      );
 
   final TerminalController _terminal;
   final WorkspaceController _workspace;

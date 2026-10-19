@@ -6,11 +6,11 @@ import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
-import 'package:tree_launcher/features/agents/presentation/agent_launcher.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
-import 'package:tree_launcher/features/terminal/presentation/claude_session_actions.dart';
+import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
+import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
@@ -176,10 +176,9 @@ class AddWorktreeDialog extends StatefulWidget {
   }) async {
     final repo = context.read<WorkspaceController>().selectedRepo;
     if (repo == null) return;
-    final launcher = ClaudeSessionLauncher.of(context);
-    final agentLauncher = AgentLauncher.maybeOf(context);
-    final settings = context.read<SettingsController>();
-    if (existingWorktree != null && launcher.focus(existingWorktree.path)) {
+    final sessions = context.read<ClaudeSessionLauncher>();
+    final start = context.read<StartClaudeSession>();
+    if (existingWorktree != null && sessions.focus(existingWorktree.path)) {
       return;
     }
     final result = await show(
@@ -199,39 +198,19 @@ class AddWorktreeDialog extends StatefulWidget {
       contextTitle: contextTitle,
     );
     if (result == null) return;
-    await settings.updateClaudeModelAndEffort(
-      result.claudeModel,
-      result.claudeEffort,
-    );
-    await settings.updateClaudeStartChoices(
-      prompt: result.promptId ?? noClaudePromptId,
-      useExistingWorktree: result.useExistingWorktree,
-    );
-    final agentPrompt = result.savedPrompt;
-    if (agentLauncher != null && agentPrompt?.kind != null) {
-      await agentLauncher.start(
-        repoPath: repo.path,
-        repoName: repo.name,
-        prompt: agentPrompt!,
-        worktreePath: result.worktreePath,
-        resolvedPrompt: result.claudePrompt,
-        branch: result.branch ?? existingWorktree?.branch,
-        issueKey: result.issueKey,
-        title: contextTitle,
-        prNumber: prNumber,
-        model: result.claudeModel,
-        effort: result.claudeEffort,
-      );
-      return;
-    }
-    await launcher.start(
-      repoPath: repo.path,
+    await start(
+      repo: repo,
       worktreePath: result.worktreePath,
+      branch: result.branch ?? existingWorktree?.branch,
       prompt: result.claudePrompt,
+      promptId: result.promptId,
+      savedPrompt: result.savedPrompt,
       model: result.claudeModel,
       effort: result.claudeEffort,
+      useExistingWorktree: result.useExistingWorktree,
       issueKey: result.issueKey,
-      promptId: result.promptId,
+      title: contextTitle,
+      prNumber: prNumber,
     );
   }
 

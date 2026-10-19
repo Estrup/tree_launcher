@@ -30,6 +30,7 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/worksp
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
 
 import 'fake_config_stores.dart';
+import 'launch_use_cases.dart';
 import 'test_database.dart';
 
 const _discordArgs = '--channels plugin:discord@claude-plugins-official';
@@ -158,6 +159,21 @@ class _RecordingTerminal extends TerminalController {
     return null;
   }
 
+  /// Agents (a saved prompt with a kind) start here; recorded the same way.
+  @override
+  TerminalSession? openAgentSession(
+    String title,
+    String workingDirectory,
+    String repoPath,
+    String command, {
+    required String agentId,
+    Map<String, String> environment = const {},
+    bool show = true,
+  }) {
+    launched.add((dir: workingDirectory, repo: repoPath, command: command));
+    return null;
+  }
+
   @override
   bool focusClaudeSession(String workingDirectory) {
     if (!running.contains(workingDirectory)) return false;
@@ -244,6 +260,11 @@ void main() {
           ChangeNotifierProvider<JiraIssuesController>.value(value: jira),
           ChangeNotifierProvider<GithubPrsController>.value(value: prs),
           ChangeNotifierProvider<TerminalController>.value(value: terminal),
+          ...launchUseCaseProviders(
+            terminal: terminal,
+            workspace: workspace,
+            settings: settings,
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.current,
