@@ -12,6 +12,8 @@ class GithubLabel {
       color: (json['color'] as String?) ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() => {'name': name, 'color': color};
 }
 
 class GithubPullRequest {

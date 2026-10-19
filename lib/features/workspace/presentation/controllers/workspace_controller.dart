@@ -252,6 +252,18 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     return updated;
   }
 
+  Future<RepoConfig?> updateGithubMilestone(
+    RepoConfig repo,
+    int? milestoneNumber,
+  ) async {
+    final updated = await preferences.updateGithubMilestone(
+      repo,
+      milestoneNumber,
+    );
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
   Future<List<String>> listBranches() async {
     return worktreesController.listBranches(selectedRepo?.path);
   }
@@ -261,6 +273,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     String? baseBranch,
     String? newBranch,
     String? jiraIssue,
+    int? githubIssue,
     String? prAuthor,
   }) {
     final repo = selectedRepo;
@@ -271,6 +284,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
       baseBranch: baseBranch,
       newBranch: newBranch,
       jiraIssue: jiraIssue,
+      githubIssue: githubIssue,
       prAuthor: prAuthor,
     );
   }
@@ -288,6 +302,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
     String? baseBranch,
     String? newBranch,
     String? jiraIssue,
+    int? githubIssue,
     String? prAuthor,
     String? kickoffPrompt,
   }) async {
@@ -330,6 +345,18 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
         worktreesController.setJiraIssues(withJira?.jiraIssues ?? issues);
       }
       current = withJira ?? current;
+    }
+
+    // Attach the GitHub issue it was made for, if any.
+    if (githubIssue != null) {
+      final issues = Map<String, int>.from(current.githubIssues);
+      issues[worktreePath] = githubIssue;
+      final withIssue = await preferences.updateGithubIssues(current, issues);
+      if (isSelected) {
+        _replaceSelection(current, withIssue);
+        worktreesController.setGithubIssues(withIssue?.githubIssues ?? issues);
+      }
+      current = withIssue ?? current;
     }
 
     // Record the base branch the worktree was created from, if known.
@@ -647,6 +674,15 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
         worktreesController.setJiraIssues(current.jiraIssues);
       }
 
+      if (current.githubIssues.containsKey(worktree.path)) {
+        final issues = Map<String, int>.from(current.githubIssues);
+        issues.remove(worktree.path);
+        final withIssue = await preferences.updateGithubIssues(current, issues);
+        _replaceSelection(current, withIssue);
+        current = withIssue ?? current;
+        worktreesController.setGithubIssues(current.githubIssues);
+      }
+
       if (current.prAuthors.containsKey(worktree.path)) {
         final authors = Map<String, String>.from(current.prAuthors);
         authors.remove(worktree.path);
@@ -701,6 +737,7 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
 
   void _syncWorktreeMetadata(RepoConfig? repo) {
     worktreesController.setJiraIssues(repo?.jiraIssues ?? {});
+    worktreesController.setGithubIssues(repo?.githubIssues ?? {});
     worktreesController.setBaseBranches(repo?.baseBranches ?? {});
     worktreesController.setPrAuthors(repo?.prAuthors ?? {});
     worktreesController.setKickoffPrompts(repo?.kickoffPrompts ?? {});
@@ -732,6 +769,21 @@ class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
       _replaceSelection(current, withJira);
       current = withJira ?? current;
       worktreesController.setJiraIssues(current.jiraIssues);
+    }
+
+    // Prune stale GitHub issue links too.
+    final staleGithubKeys = current.githubIssues.keys
+        .where((path) => !activePaths.contains(path))
+        .toList();
+    if (staleGithubKeys.isNotEmpty) {
+      final issues = Map<String, int>.from(current.githubIssues);
+      for (final key in staleGithubKeys) {
+        issues.remove(key);
+      }
+      final withIssue = await preferences.updateGithubIssues(current, issues);
+      _replaceSelection(current, withIssue);
+      current = withIssue ?? current;
+      worktreesController.setGithubIssues(current.githubIssues);
     }
 
     // Prune stale PR author assignments too.

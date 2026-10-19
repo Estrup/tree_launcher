@@ -360,6 +360,26 @@ void main() {
       );
     });
 
+    test('puts GitHub issue sessions and worktrees under Issues', () {
+      final withIssues = repo.copyWith(
+        githubIssues: const {'/w/gh': 482, '/w/issue': 7},
+        claudeSessionPrompts: {
+          ...repo.claudeSessionPrompts,
+          '/w/gh-prompt': githubIssueContextPromptId,
+        },
+      );
+      final pages = {...all, githubIssuesPageKey};
+      expect(
+        sessionPageKey(withIssues, '/w/gh-prompt', pages),
+        githubIssuesPageKey,
+      );
+      expect(sessionPageKey(withIssues, '/w/gh', pages), githubIssuesPageKey);
+      // A Jira issue goes first.
+      expect(sessionPageKey(withIssues, '/w/issue', pages), jiraPageKey);
+      // Without the Issues page, the worktrees page.
+      expect(sessionPageKey(withIssues, '/w/gh', all), worktreesPageKey);
+    });
+
     test('then by where the worktree came from', () {
       expect(sessionPageKey(repo, '/w/issue', all), jiraPageKey);
       expect(sessionPageKey(repo, '/w/other', all), worktreesPageKey);

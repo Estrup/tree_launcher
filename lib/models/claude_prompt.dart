@@ -1,10 +1,12 @@
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 
 /// Recorded for a Claude session started with the issue-context first
-/// message; [prContextPromptId] and [kickoffPromptId] likewise. A session
-/// started with a saved prompt records the prompt's name instead.
+/// message; [prContextPromptId], [githubIssueContextPromptId] and
+/// [kickoffPromptId] likewise. A session started with a saved prompt records
+/// the prompt's name instead.
 const issueContextPromptId = ':issue-context';
 const prContextPromptId = ':pr-context';
+const githubIssueContextPromptId = ':github-issue-context';
 const kickoffPromptId = ':kickoff';
 
 /// Remembered when a Claude session was last started without a prompt.

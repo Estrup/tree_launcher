@@ -23,6 +23,10 @@ class RepoConfig {
   /// JIRA issue keys per worktree path (worktree path -> issue key).
   final Map<String, String> jiraIssues;
 
+  /// GitHub issue numbers per worktree path (worktree path -> number), for
+  /// worktrees made from the Issues tab.
+  final Map<String, int> githubIssues;
+
   /// Base branch per worktree path, recorded at creation (worktree path -> base branch).
   final Map<String, String> baseBranches;
 
@@ -47,6 +51,10 @@ class RepoConfig {
 
   /// Id of the fixVersion last picked in the Jira tab, so it is remembered.
   final String? jiraFixVersionId;
+
+  /// Number of the milestone last picked in the Issues tab, so it is
+  /// remembered; null for all open issues.
+  final int? githubMilestoneNumber;
 
   /// Reusable issue key + description presets, used as the picker source when
   /// logging a manual activity post.
@@ -84,6 +92,7 @@ class RepoConfig {
     this.lastBaseBranch,
     this.claudePrompts = const [],
     this.jiraIssues = const {},
+    this.githubIssues = const {},
     this.baseBranches = const {},
     this.prAuthors = const {},
     this.kickoffPrompts = const {},
@@ -92,6 +101,7 @@ class RepoConfig {
     this.githubConfig,
     this.jiraProjectKey,
     this.jiraFixVersionId,
+    this.githubMilestoneNumber,
     this.predefinedIssues = const [],
     this.useNestedWorktrees = false,
     this.claudeSessions = const [],
@@ -124,6 +134,11 @@ class RepoConfig {
           (json['jiraIssues'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as String)) ??
           {},
+      githubIssues: {
+        for (final MapEntry(:key, :value)
+            in (json['githubIssues'] as Map<String, dynamic>? ?? {}).entries)
+          if (value is int) key: value,
+      },
       baseBranches:
           (json['baseBranches'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v as String)) ??
@@ -147,6 +162,7 @@ class RepoConfig {
           : null,
       jiraProjectKey: json['jiraProjectKey'] as String?,
       jiraFixVersionId: json['jiraFixVersionId'] as String?,
+      githubMilestoneNumber: json['githubMilestoneNumber'] as int?,
       predefinedIssues:
           (json['predefinedIssues'] as List<dynamic>?)
               ?.map((e) => PredefinedIssue.fromJson(e as Map<String, dynamic>))
@@ -178,6 +194,7 @@ class RepoConfig {
     'lastBaseBranch': lastBaseBranch,
     _claudePromptsKey: claudePrompts.map((p) => p.toJson()).toList(),
     'jiraIssues': jiraIssues,
+    'githubIssues': githubIssues,
     'baseBranches': baseBranches,
     'prAuthors': prAuthors,
     'kickoffPrompts': kickoffPrompts,
@@ -187,6 +204,8 @@ class RepoConfig {
       'githubConfig': githubConfig!.toJson(),
     if (jiraProjectKey != null) 'jiraProjectKey': jiraProjectKey,
     if (jiraFixVersionId != null) 'jiraFixVersionId': jiraFixVersionId,
+    if (githubMilestoneNumber != null)
+      'githubMilestoneNumber': githubMilestoneNumber,
     'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
     'useNestedWorktrees': useNestedWorktrees,
     'claudeSessions': claudeSessions,
@@ -204,6 +223,7 @@ class RepoConfig {
     String? lastBaseBranch,
     List<ClaudePrompt>? claudePrompts,
     Map<String, String>? jiraIssues,
+    Map<String, int>? githubIssues,
     Map<String, String>? baseBranches,
     Map<String, String>? prAuthors,
     Map<String, String>? kickoffPrompts,
@@ -215,6 +235,8 @@ class RepoConfig {
     bool clearJiraProjectKey = false,
     String? jiraFixVersionId,
     bool clearJiraFixVersionId = false,
+    int? githubMilestoneNumber,
+    bool clearGithubMilestoneNumber = false,
     List<PredefinedIssue>? predefinedIssues,
     bool? useNestedWorktrees,
     List<String>? claudeSessions,
@@ -230,6 +252,7 @@ class RepoConfig {
       lastBaseBranch: lastBaseBranch ?? this.lastBaseBranch,
       claudePrompts: claudePrompts ?? this.claudePrompts,
       jiraIssues: jiraIssues ?? this.jiraIssues,
+      githubIssues: githubIssues ?? this.githubIssues,
       baseBranches: baseBranches ?? this.baseBranches,
       prAuthors: prAuthors ?? this.prAuthors,
       kickoffPrompts: kickoffPrompts ?? this.kickoffPrompts,
@@ -244,6 +267,9 @@ class RepoConfig {
       jiraFixVersionId: clearJiraFixVersionId
           ? null
           : (jiraFixVersionId ?? this.jiraFixVersionId),
+      githubMilestoneNumber: clearGithubMilestoneNumber
+          ? null
+          : (githubMilestoneNumber ?? this.githubMilestoneNumber),
       predefinedIssues: predefinedIssues ?? this.predefinedIssues,
       useNestedWorktrees: useNestedWorktrees ?? this.useNestedWorktrees,
       claudeSessions: claudeSessions ?? this.claudeSessions,

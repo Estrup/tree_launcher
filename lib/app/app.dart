@@ -8,6 +8,7 @@ import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
+import 'package:tree_launcher/features/github_issues/presentation/controllers/github_issues_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
@@ -86,6 +87,23 @@ class TreeLauncherApp extends StatelessWidget {
             final controller = previous ?? GithubPrsController();
             controller.onRequestedMeTransition = (pr) =>
                 workspace.clearSnoozeForBranch(pr.headBranch);
+            controller.syncToRepo(workspace.selectedRepo);
+            return controller;
+          },
+        ),
+        ChangeNotifierProxyProvider<
+          WorkspaceController,
+          GithubIssuesController
+        >(
+          create: (_) => GithubIssuesController(),
+          update: (context, workspace, previous) {
+            final controller = previous ?? GithubIssuesController();
+            controller.onMilestoneSelected = (repoPath, number) {
+              final repo = workspace.repos
+                  .where((r) => r.path == repoPath)
+                  .firstOrNull;
+              if (repo != null) workspace.updateGithubMilestone(repo, number);
+            };
             controller.syncToRepo(workspace.selectedRepo);
             return controller;
           },

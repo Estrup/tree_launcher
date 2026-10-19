@@ -2286,6 +2286,7 @@ class _GithubSectionState extends State<_GithubSection> {
             repo: parsed.$2,
             token: token,
             prRefreshIntervalMinutes: interval,
+            issuesEnabled: repo.githubConfig?.issuesEnabled ?? false,
           );
           provider.updateGithubConfig(repo, config);
           return;
@@ -2299,6 +2300,7 @@ class _GithubSectionState extends State<_GithubSection> {
               repo: repoName,
               token: token,
               prRefreshIntervalMinutes: interval,
+              issuesEnabled: repo.githubConfig?.issuesEnabled ?? false,
             );
       provider.updateGithubConfig(repo, config);
     });
@@ -2328,7 +2330,7 @@ class _GithubSectionState extends State<_GithubSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'GitHub Pull Requests',
+            'GitHub',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -2338,7 +2340,7 @@ class _GithubSectionState extends State<_GithubSection> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Configure GitHub connection to view pull requests',
+            'Configure GitHub connection to view pull requests and issues',
             style: TextStyle(
               fontSize: 13,
               color: AppColors.textMuted,
@@ -2438,7 +2440,8 @@ class _GithubSectionState extends State<_GithubSection> {
           const SizedBox(height: 16),
           Text(
             'Create a token at GitHub → Settings → Developer settings → Personal access tokens.\n'
-            'Requires the "repo" scope for private repositories.',
+            'Requires the "repo" scope for private repositories. A fine-grained token '
+            'needs Issues: read and write for the Issues tab.',
             style: TextStyle(
               fontSize: 12,
               color: AppColors.textMuted,
@@ -2489,6 +2492,53 @@ class _GithubSectionState extends State<_GithubSection> {
               color: AppColors.textMuted,
               height: 1.5,
             ),
+          ),
+          const SizedBox(height: 24),
+          _issuesSwitch(),
+        ],
+      ),
+    );
+  }
+
+  /// Turns the repo's Issues tab on or off. Needs a connection first.
+  Widget _issuesSwitch() {
+    final repo = context.watch<RepoProvider>().selectedRepo;
+    final config = repo?.githubConfig;
+    return SizedBox(
+      width: 400,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Show issues tab',
+                  style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Lists the repository\'s GitHub issues in an Issues tab, '
+                  'like the Jira tab. Leave off for repos whose issues live '
+                  'elsewhere.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Switch.adaptive(
+            value: config?.issuesEnabled ?? false,
+            onChanged: repo == null || config == null
+                ? null
+                : (value) => context.read<RepoProvider>().updateGithubConfig(
+                    repo,
+                    config.copyWith(issuesEnabled: value),
+                  ),
           ),
         ],
       ),

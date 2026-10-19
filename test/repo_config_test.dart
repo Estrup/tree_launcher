@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/models/claude_prompt.dart';
 import 'package:tree_launcher/models/repo_config.dart';
 
@@ -176,6 +177,52 @@ void main() {
       );
       expect(cleared.jiraProjectKey, isNull);
       expect(cleared.jiraFixVersionId, isNull);
+    });
+  });
+
+  group('RepoConfig GitHub issues', () {
+    test('round-trip the Issues tab settings and issue links', () {
+      final repo = RepoConfig(
+        name: 'demo',
+        path: '/repos/demo',
+        githubConfig: GithubConfig(
+          owner: 'acme',
+          repo: 'app',
+          token: 't',
+          issuesEnabled: true,
+        ),
+        githubMilestoneNumber: 3,
+        githubIssues: const {'/w/login': 482},
+      );
+      final restored = RepoConfig.fromJson(repo.toJson());
+      expect(restored.githubConfig!.issuesEnabled, isTrue);
+      expect(restored.githubConfig!.showsIssues, isTrue);
+      expect(restored.githubMilestoneNumber, 3);
+      expect(restored.githubIssues, {'/w/login': 482});
+
+      final bare = RepoConfig.fromJson(
+        RepoConfig(
+          name: 'demo',
+          path: '/repos/demo',
+          githubConfig: GithubConfig(owner: 'acme', repo: 'app', token: 't'),
+        ).toJson(),
+      );
+      expect(bare.githubConfig!.showsIssues, isFalse);
+      expect(bare.githubMilestoneNumber, isNull);
+      expect(bare.githubIssues, isEmpty);
+    });
+
+    test('copyWith keeps the milestone unless cleared', () {
+      final repo = RepoConfig(
+        name: 'demo',
+        path: '/repos/demo',
+        githubMilestoneNumber: 3,
+      );
+      expect(repo.copyWith(name: 'x').githubMilestoneNumber, 3);
+      expect(
+        repo.copyWith(clearGithubMilestoneNumber: true).githubMilestoneNumber,
+        isNull,
+      );
     });
   });
 }

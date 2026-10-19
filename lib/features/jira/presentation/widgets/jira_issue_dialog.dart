@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/widgets/issue_list.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/domain/jira_constants.dart';
@@ -331,8 +332,8 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
                 if (issue.updated != null)
                   _fact(
                     Icons.schedule_rounded,
-                    'Updated ${_relative(issue.updated!)}',
-                    tooltip: _absolute(issue.updated!),
+                    'Updated ${formatRelativeTime(issue.updated!)}',
+                    tooltip: formatAbsoluteTime(issue.updated!),
                   ),
               ],
             ),
@@ -359,16 +360,16 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_error != null) ...[
-            _errorBox(_error!),
+            IssueErrorBanner(message: _error!, fontSize: 12),
             if (issue != null) const SizedBox(height: 20),
           ],
           // No cache and the fetch failed: only the error box shows.
           if (issue != null) ...[
-            _sectionLabel('DESCRIPTION'),
+            const IssueSectionLabel('DESCRIPTION'),
             const SizedBox(height: 10),
             _description(issue.description),
             const SizedBox(height: 28),
-            _sectionLabel('COMMENTS', count: issue.comments.length),
+            IssueSectionLabel('COMMENTS', count: issue.comments.length),
             const SizedBox(height: 12),
             _comments(issue.comments),
           ],
@@ -385,9 +386,9 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
         children: [
           if (_fetchedAt != null)
             Tooltip(
-              message: _absolute(_fetchedAt!),
+              message: formatAbsoluteTime(_fetchedAt!),
               child: Text(
-                'Fetched ${_relative(_fetchedAt!)}',
+                'Fetched ${formatRelativeTime(_fetchedAt!)}',
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
             ),
@@ -609,7 +610,7 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _avatar(author),
+          InitialsAvatar(name: author, color: _jiraColor),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -631,9 +632,9 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
                     if (c.created != null) ...[
                       const SizedBox(width: 8),
                       Tooltip(
-                        message: _absolute(c.created!),
+                        message: formatAbsoluteTime(c.created!),
                         child: Text(
-                          _relative(c.created!),
+                          formatRelativeTime(c.created!),
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textMuted,
@@ -669,120 +670,5 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
         ],
       ),
     );
-  }
-
-  /// A circle with the author's initials.
-  Widget _avatar(String name) {
-    final initials = name
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .take(2)
-        .map((part) => part[0].toUpperCase())
-        .join();
-    return Container(
-      width: 30,
-      height: 30,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: _jiraColor.withValues(alpha: 0.15),
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        initials.isEmpty ? '?' : initials,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: _jiraColor,
-        ),
-      ),
-    );
-  }
-
-  Widget _errorBox(String message) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.error_outline, size: 16, color: AppColors.error),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: AppColors.error, fontSize: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionLabel(String text, {int? count}) {
-    final style = TextStyle(
-      fontSize: 10,
-      fontWeight: FontWeight.w600,
-      color: AppColors.textMuted,
-      letterSpacing: 1.2,
-    );
-    if (count == null) return Text(text, style: style);
-    return Row(
-      children: [
-        Text(text, style: style),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-          decoration: BoxDecoration(
-            color: AppColors.surface2,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _relative(DateTime t) {
-    final d = DateTime.now().difference(t);
-    if (d.isNegative) return 'just now';
-    if (d.inSeconds < 60) return 'just now';
-    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
-    if (d.inHours < 24) return '${d.inHours}h ago';
-    if (d.inDays < 30) return '${d.inDays}d ago';
-    if (d.inDays < 365) return '${(d.inDays / 30).floor()}mo ago';
-    return '${(d.inDays / 365).floor()}y ago';
-  }
-
-  /// [t] as local date and time, e.g. `9 Oct 2026, 14:05`.
-  String _absolute(DateTime t) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final local = t.toLocal();
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${local.day} ${months[local.month - 1]} ${local.year}, '
-        '${two(local.hour)}:${two(local.minute)}';
   }
 }

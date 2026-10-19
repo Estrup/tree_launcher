@@ -73,6 +73,9 @@ class AddWorktreeDialog extends StatefulWidget {
   /// PR author recorded on the created worktree.
   final String? prAuthor;
 
+  /// GitHub issue recorded on the created worktree, shown in the header.
+  final int? githubIssue;
+
   /// Number of the PR the dialog was opened from, filled into `{pr}` in saved
   /// prompts. Without it, `{pr}` is the open PR from the worktree's branch.
   final int? prNumber;
@@ -104,6 +107,7 @@ class AddWorktreeDialog extends StatefulWidget {
     this.initialBaseBranch,
     this.initialCreateNewBranch = true,
     this.prAuthor,
+    this.githubIssue,
     this.prNumber,
     this.startClaude = false,
     this.existingWorktree,
@@ -120,6 +124,7 @@ class AddWorktreeDialog extends StatefulWidget {
     String? initialBaseBranch,
     bool initialCreateNewBranch = true,
     String? prAuthor,
+    int? githubIssue,
     int? prNumber,
     bool startClaude = false,
     Worktree? existingWorktree,
@@ -138,6 +143,7 @@ class AddWorktreeDialog extends StatefulWidget {
           initialBaseBranch: initialBaseBranch,
           initialCreateNewBranch: initialCreateNewBranch,
           prAuthor: prAuthor,
+          githubIssue: githubIssue,
           prNumber: prNumber,
           startClaude: startClaude,
           existingWorktree: existingWorktree,
@@ -161,6 +167,7 @@ class AddWorktreeDialog extends StatefulWidget {
     String? initialBaseBranch,
     bool initialCreateNewBranch = true,
     String? prAuthor,
+    int? githubIssue,
     int? prNumber,
     String? contextPrompt,
     String? contextPromptLabel,
@@ -182,6 +189,7 @@ class AddWorktreeDialog extends StatefulWidget {
       initialBaseBranch: initialBaseBranch,
       initialCreateNewBranch: initialCreateNewBranch,
       prAuthor: prAuthor,
+      githubIssue: githubIssue,
       prNumber: prNumber,
       startClaude: true,
       existingWorktree: existingWorktree,
@@ -282,7 +290,11 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     switch (remembered) {
       case noClaudePromptId:
         return _noPromptKey;
-      case null || issueContextPromptId || prContextPromptId || kickoffPromptId:
+      case null ||
+          issueContextPromptId ||
+          prContextPromptId ||
+          githubIssueContextPromptId ||
+          kickoffPromptId:
         return _contextPromptKey;
     }
     final prompts =
@@ -577,6 +589,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         baseBranch: _selectedBranch,
         newBranch: newBranch.isNotEmpty ? newBranch : null,
         jiraIssue: jira.isNotEmpty ? jira : null,
+        githubIssue: widget.githubIssue,
         prAuthor: widget.prAuthor,
       );
 
@@ -680,7 +693,9 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   /// Tinted header: icon badge, title, and what the dialog was opened from.
   Widget _header() {
     final color = widget.startClaude ? AppColors.claude : AppColors.accent;
-    final jiraKey = widget.initialJiraKey;
+    final jiraKey =
+        widget.initialJiraKey ??
+        (widget.githubIssue == null ? null : '#${widget.githubIssue}');
     final contextTitle = widget.contextTitle;
     final repoName = context.read<RepoProvider>().selectedRepo?.name;
 

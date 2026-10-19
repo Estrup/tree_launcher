@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/activity/presentation/widgets/activity_ta
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agents_tab.dart';
+import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issues_tab.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_prs_tab.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/pr_review_toast.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issues_tab.dart';
@@ -255,6 +256,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (kind != null) return AgentsTab(key: ValueKey(kind), kind: kind);
     return switch (page.key) {
       prsPageKey => const GithubPrsTab(),
+      githubIssuesPageKey => const GithubIssuesTab(),
       jiraPageKey => const JiraIssuesTab(),
       activityPageKey => const ActivityTab(),
       _ => const WorktreeList(),

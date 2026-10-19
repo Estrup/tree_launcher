@@ -81,6 +81,16 @@ class RepoPreferencesController extends ChangeNotifier {
     return updated;
   }
 
+  Future<RepoConfig?> updateGithubIssues(
+    RepoConfig repo,
+    Map<String, int> githubIssues,
+  ) async {
+    final updated = repo.copyWith(githubIssues: githubIssues);
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
   Future<RepoConfig?> updateBaseBranches(
     RepoConfig repo,
     Map<String, String> baseBranches,
@@ -190,6 +200,20 @@ class RepoPreferencesController extends ChangeNotifier {
     String versionId,
   ) async {
     final updated = repo.copyWith(jiraFixVersionId: versionId);
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  /// Remembers the Issues tab's milestone pick; null for all open issues.
+  Future<RepoConfig?> updateGithubMilestone(
+    RepoConfig repo,
+    int? milestoneNumber,
+  ) async {
+    final updated = repo.copyWith(
+      githubMilestoneNumber: milestoneNumber,
+      clearGithubMilestoneNumber: milestoneNumber == null,
+    );
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;

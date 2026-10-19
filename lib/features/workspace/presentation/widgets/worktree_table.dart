@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/selection_controls.dart';
+import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issue_badge.dart';
+import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
@@ -354,7 +356,19 @@ class _HeaderRowState extends State<_HeaderRow> {
             const SizedBox(width: _kColumnGap),
             Expanded(flex: _kBranchFlex, child: _label('Branch')),
             const SizedBox(width: _kColumnGap),
-            SizedBox(width: _kJiraWidth, child: _label('Jira')),
+            SizedBox(
+              width: _kJiraWidth,
+              child: _label(
+                context
+                            .watch<RepoProvider>()
+                            .selectedRepo
+                            ?.githubConfig
+                            ?.showsIssues ??
+                        false
+                    ? 'Issue'
+                    : 'Jira',
+              ),
+            ),
             if (showJiraTitle) ...[
               const SizedBox(width: _kColumnGap),
               Expanded(flex: _kJiraTitleFlex, child: _label('Jira title')),
@@ -402,6 +416,35 @@ class _WorktreeRow extends StatefulWidget {
 class _WorktreeRowState extends State<_WorktreeRow> {
   final LauncherService _launcherService = LauncherService();
   bool _hovered = false;
+
+  /// The worktree's Jira and GitHub issue badges, or a dash for none.
+  Widget _issueBadges(Worktree wt, GithubConfig? github) {
+    final jira = wt.jiraIssue;
+    final githubIssue = github != null && github.isConfigured
+        ? wt.githubIssue
+        : null;
+    if (jira == null && githubIssue == null) {
+      return Text(
+        '—',
+        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+      );
+    }
+    if (githubIssue == null) return JiraBadge(issueKey: jira!, compact: true);
+    final badge = GithubIssueBadge(config: github!, number: githubIssue);
+    if (jira == null) return badge;
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          JiraBadge(issueKey: jira, compact: true),
+          const SizedBox(width: 4),
+          badge,
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -557,20 +600,12 @@ class _WorktreeRowState extends State<_WorktreeRow> {
             ),
             const SizedBox(width: _kColumnGap),
 
-            // Jira
+            // Jira and GitHub issue
             SizedBox(
               width: _kJiraWidth,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: wt.jiraIssue != null
-                    ? JiraBadge(issueKey: wt.jiraIssue!, compact: true)
-                    : Text(
-                        '—',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
+                child: _issueBadges(wt, repo?.githubConfig),
               ),
             ),
             if (widget.showJiraTitle) ...[

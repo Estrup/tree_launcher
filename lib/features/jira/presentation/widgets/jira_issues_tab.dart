@@ -1,13 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/selection_controls.dart';
+import 'package:tree_launcher/core/widgets/issue_list.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
@@ -65,7 +63,7 @@ class JiraIssuesTab extends StatelessWidget {
     final worktrees = context.watch<WorkspaceController>().worktrees;
 
     if (jira.projectKey == null) {
-      return _CenteredMessage(
+      return IssueCenteredMessage(
         icon: Icons.confirmation_number_outlined,
         text: 'Set a Jira project key in repo settings',
       );
@@ -101,15 +99,16 @@ class JiraIssuesTab extends StatelessWidget {
               Flexible(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 300),
-                  child: _SearchField(
+                  child: IssueSearchField(
                     query: jira.searchQuery,
                     onSearch: jira.search,
+                    hintText: 'Search key or text',
                   ),
                 ),
               ),
               if (jira.issues.isNotEmpty) ...[
                 const SizedBox(width: 10),
-                _CountBadge(
+                IssueCountBadge(
                   text: [
                     if (jira.statusFilter.isNotEmpty) '${visible.length}',
                     '${jira.issues.length}${jira.searchTruncated ? '+' : ''}',
@@ -125,7 +124,7 @@ class JiraIssuesTab extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: Text(
-                    _formatLastRefreshed(jira.lastRefreshed!),
+                    formatLastRefreshed(jira.lastRefreshed!),
                     style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                   ),
                 ),
@@ -162,7 +161,7 @@ class JiraIssuesTab extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
-                _StatusChip(
+                IssueFilterChip(
                   label: 'All',
                   count: jira.issues.length,
                   color: AppColors.textSecondary,
@@ -170,7 +169,7 @@ class JiraIssuesTab extends StatelessWidget {
                   onTap: jira.clearStatusFilter,
                 ),
                 for (final status in jira.statusCounts)
-                  _StatusChip(
+                  IssueFilterChip(
                     label: status.name,
                     count: status.count,
                     color: jiraStatusColor(status.category),
@@ -185,7 +184,7 @@ class JiraIssuesTab extends StatelessWidget {
         if (jira.error != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: _ErrorBanner(message: jira.error!),
+            child: IssueErrorBanner(message: jira.error!),
           ),
 
         Expanded(
@@ -194,7 +193,7 @@ class JiraIssuesTab extends StatelessWidget {
                     ? const SizedBox.shrink()
                     : jira.error != null
                     ? const SizedBox.shrink()
-                    : _CenteredMessage(
+                    : IssueCenteredMessage(
                         icon: Icons.inbox_outlined,
                         text: jira.isSearching && jira.issues.isEmpty
                             ? 'No issues match "${jira.searchQuery}"'
@@ -298,13 +297,6 @@ class JiraIssuesTab extends StatelessWidget {
       ],
     );
   }
-
-  static String _formatLastRefreshed(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inSeconds < 60) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    return '${diff.inHours}h ago';
-  }
 }
 
 /// The fixVersion picker. Lists the unreleased versions; typing searches
@@ -391,88 +383,6 @@ class _VersionPickerState extends State<_VersionPicker> {
       onSelected: (version) {
         if (version != null) widget.onSelected(version);
       },
-    );
-  }
-}
-
-/// Searches for an issue key or text: as you type (after a pause), or at once
-/// on Enter. Clearing it, or Escape, goes back to the fixVersion's issues.
-class _SearchField extends StatefulWidget {
-  /// The controller's query; the field follows it when it's cleared from
-  /// outside (a fixVersion picked, another repo selected).
-  final String query;
-  final ValueChanged<String> onSearch;
-
-  const _SearchField({required this.query, required this.onSearch});
-
-  @override
-  State<_SearchField> createState() => _SearchFieldState();
-}
-
-class _SearchFieldState extends State<_SearchField> {
-  static const _pause = Duration(milliseconds: 400);
-
-  late final _text = TextEditingController(text: widget.query);
-  Timer? _timer;
-
-  @override
-  void didUpdateWidget(_SearchField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.query != oldWidget.query &&
-        widget.query != _text.text.trim() &&
-        !(_timer?.isActive ?? false)) {
-      _text.text = widget.query;
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _text.dispose();
-    super.dispose();
-  }
-
-  void _changed(String value) {
-    setState(() {}); // Shows or hides the clear button.
-    _timer?.cancel();
-    _timer = Timer(_pause, () => widget.onSearch(value));
-  }
-
-  void _submit(String value) {
-    _timer?.cancel();
-    widget.onSearch(value);
-  }
-
-  void _clear() {
-    _text.clear();
-    _submit('');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CallbackShortcuts(
-      bindings: {const SingleActivator(LogicalKeyboardKey.escape): _clear},
-      child: TextField(
-        controller: _text,
-        onChanged: _changed,
-        onSubmitted: _submit,
-        style: appFormFieldTextStyle(context),
-        decoration: InputDecoration(
-          hintText: 'Search key or text',
-          prefixIcon: Icon(Icons.search, size: 16, color: AppColors.textMuted),
-          suffixIcon: _text.text.isEmpty
-              ? null
-              : IconButton(
-                  tooltip: 'Clear search',
-                  icon: Icon(
-                    Icons.close_rounded,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                  onPressed: _clear,
-                ),
-        ),
-      ),
     );
   }
 }
@@ -1008,163 +918,4 @@ String bulkMoveSummary(
     parts.add("$unavailable can't move to ${move.toStatus}.");
   }
   return parts.join(' ');
-}
-
-class _StatusChip extends StatefulWidget {
-  final String label;
-  final int count;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _StatusChip({
-    required this.label,
-    required this.count,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  State<_StatusChip> createState() => _StatusChipState();
-}
-
-class _StatusChipState extends State<_StatusChip> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = widget.color;
-    final selected = widget.selected;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: selected
-                ? color.withValues(alpha: 0.18)
-                : _hovered
-                ? AppColors.surface2
-                : AppColors.surface1,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected
-                  ? color.withValues(alpha: 0.5)
-                  : AppColors.borderSubtle,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: selected ? color : AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '${widget.count}',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: selected
-                      ? color.withValues(alpha: 0.8)
-                      : AppColors.textMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CountBadge extends StatelessWidget {
-  final String text;
-  final String? tooltip;
-
-  const _CountBadge({required this.text, this.tooltip});
-
-  @override
-  Widget build(BuildContext context) {
-    final badge = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.accentMuted,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: AppColors.accent,
-        ),
-      ),
-    );
-    return tooltip == null ? badge : Tooltip(message: tooltip, child: badge);
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-
-  const _ErrorBanner({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, size: 16, color: AppColors.error),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: AppColors.error, fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CenteredMessage extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _CenteredMessage({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 48, color: AppColors.textMuted),
-          const SizedBox(height: 12),
-          Text(
-            text,
-            style: TextStyle(color: AppColors.textMuted, fontSize: 17),
-          ),
-        ],
-      ),
-    );
-  }
 }

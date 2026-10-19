@@ -10,6 +10,7 @@ import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 const worktreesPageKey = 'worktrees';
 const prsPageKey = 'prs';
+const githubIssuesPageKey = 'issues';
 const jiraPageKey = 'jira';
 const activityPageKey = 'activity';
 
@@ -39,8 +40,8 @@ class RepoPage {
   final int badge;
 }
 
-/// The pages [repo] has: PRs and Jira when configured, an agent page per
-/// kind it has prompts or runs of, and worktrees and activity always.
+/// The pages [repo] has: PRs, Issues and Jira when configured, an agent page
+/// per kind it has prompts or runs of, and worktrees and activity always.
 List<RepoPage> repoPagesFor(RepoConfig? repo, AgentsController? agents) => [
   const RepoPage(
     key: worktreesPageKey,
@@ -52,6 +53,12 @@ List<RepoPage> repoPagesFor(RepoConfig? repo, AgentsController? agents) => [
       key: prsPageKey,
       label: 'PRs',
       icon: Icons.merge_type_rounded,
+    ),
+  if (repo?.githubConfig?.showsIssues ?? false)
+    const RepoPage(
+      key: githubIssuesPageKey,
+      label: 'Issues',
+      icon: Icons.adjust_rounded,
     ),
   if (repo?.jiraProjectKey != null)
     const RepoPage(
@@ -80,10 +87,11 @@ List<RepoPage> repoPagesFor(RepoConfig? repo, AgentsController? agents) => [
 /// the first of these that is in [pageKeys]:
 ///
 /// 1. the prompt it was started with: an agent prompt's kind, PRs for the PR
-///    context, Jira for the issue context or kickoff prompt;
+///    context, Issues for the GitHub issue context, Jira for the issue
+///    context or kickoff prompt;
 /// 2. the newest agent among [runs] in the worktree: its kind;
-/// 3. PRs for a worktree made from a pull request, Jira for one with an
-///    issue;
+/// 3. PRs for a worktree made from a pull request, Jira for one with a Jira
+///    issue, Issues for one with a GitHub issue;
 /// 4. worktrees.
 String sessionPageKey(
   RepoConfig repo,
@@ -109,6 +117,11 @@ String sessionPageKey(
       shown(newestRun == null ? null : agentPageKey(newestRun.kind)) ??
       shown(repo.prAuthors.containsKey(worktreePath) ? prsPageKey : null) ??
       shown(repo.jiraIssues.containsKey(worktreePath) ? jiraPageKey : null) ??
+      shown(
+        repo.githubIssues.containsKey(worktreePath)
+            ? githubIssuesPageKey
+            : null,
+      ) ??
       worktreesPageKey;
 }
 
@@ -120,6 +133,8 @@ String? _promptPageKey(RepoConfig repo, String? promptId) {
       return null;
     case prContextPromptId:
       return prsPageKey;
+    case githubIssueContextPromptId:
+      return githubIssuesPageKey;
     case issueContextPromptId || kickoffPromptId:
       return jiraPageKey;
   }

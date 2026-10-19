@@ -8,6 +8,10 @@ class Worktree {
   /// JIRA issue key attached to this worktree (e.g. AU2-4859), or null.
   final String? jiraIssue;
 
+  /// Number of the GitHub issue attached to this worktree, or null.
+  /// Hydrated from RepoConfig.githubIssues.
+  final int? githubIssue;
+
   /// Base branch this worktree was created from (e.g. develop), or null.
   final String? baseBranch;
 
@@ -36,6 +40,7 @@ class Worktree {
     required this.isMain,
     required this.commitHash,
     this.jiraIssue,
+    this.githubIssue,
     this.baseBranch,
     this.prAuthor,
     this.kickoffPromptPath,
@@ -50,6 +55,7 @@ class Worktree {
     bool? isMain,
     String? commitHash,
     String? jiraIssue,
+    int? githubIssue,
     String? baseBranch,
     String? prAuthor,
     String? kickoffPromptPath,
@@ -63,6 +69,7 @@ class Worktree {
       isMain: isMain ?? this.isMain,
       commitHash: commitHash ?? this.commitHash,
       jiraIssue: jiraIssue ?? this.jiraIssue,
+      githubIssue: githubIssue ?? this.githubIssue,
       baseBranch: baseBranch ?? this.baseBranch,
       prAuthor: prAuthor ?? this.prAuthor,
       kickoffPromptPath: kickoffPromptPath ?? this.kickoffPromptPath,

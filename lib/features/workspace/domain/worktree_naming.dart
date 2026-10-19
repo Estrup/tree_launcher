@@ -68,15 +68,39 @@ String worktreeNameForJiraIssue(
   String summary, {
   int maxLength = 48,
   int maxWords = 5,
+}) => _slugWithSuffix(
+  summary,
+  key.toLowerCase(),
+  maxLength: maxLength,
+  maxWords: maxWords,
+);
+
+/// Builds a worktree name for a GitHub issue the way
+/// [worktreeNameForJiraIssue] does, with the issue [number] last, e.g. #482
+/// "Login redirect loops" -> `login-redirect-loops-482`.
+String worktreeNameForGithubIssue(
+  int number,
+  String title, {
+  int maxLength = 48,
+  int maxWords = 5,
+}) =>
+    _slugWithSuffix(title, '$number', maxLength: maxLength, maxWords: maxWords);
+
+/// A slug of the first words of [text] followed by [suffix], within
+/// [maxLength] and [maxWords].
+String _slugWithSuffix(
+  String text,
+  String suffix, {
+  required int maxLength,
+  required int maxWords,
 }) {
-  var text = summary.toLowerCase();
-  _asciiFolds.forEach((from, to) => text = text.replaceAll(from, to));
-  final words = text
+  var folded = text.toLowerCase();
+  _asciiFolds.forEach((from, to) => folded = folded.replaceAll(from, to));
+  final words = folded
       .split(RegExp(r'[^a-z0-9]+'))
       .where((w) => w.isNotEmpty)
       .take(maxWords);
 
-  final suffix = key.toLowerCase();
   var slug = '';
   for (final word in words) {
     final next = slug.isEmpty ? word : '$slug-$word';

@@ -7,6 +7,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/pr_worktree_actions.dart';
+import 'package:tree_launcher/features/github_prs/presentation/widgets/github_styles.dart';
 import 'package:tree_launcher/features/workspace/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
@@ -427,7 +428,9 @@ class _PullRequestRow extends StatelessWidget {
               child: Wrap(
                 spacing: 4,
                 runSpacing: 4,
-                children: pr.labels.map(_buildLabelChip).toList(),
+                children: [
+                  for (final label in pr.labels) GithubLabelChip(label: label),
+                ],
               ),
             ),
           ],
@@ -436,30 +439,9 @@ class _PullRequestRow extends StatelessWidget {
     );
   }
 
-  Widget _buildLabelChip(GithubLabel label) {
-    final base = _hexToColor(label.color);
-    final foreground = _readableForeground(base);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: base.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: base.withValues(alpha: 0.5)),
-      ),
-      child: Text(
-        label.name,
-        style: TextStyle(
-          fontSize: 12,
-          color: foreground,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
   Widget _buildReviewerChip(String reviewer) {
     final base = _colorForName(reviewer);
-    final foreground = _readableForeground(base);
+    final foreground = readableLabelForeground(base);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
@@ -556,31 +538,9 @@ class _QuickCreateButtonState extends State<_QuickCreateButton> {
   }
 }
 
-/// Parses a GitHub 6-hex label color (e.g. "d73a4a") into a [Color],
-/// falling back to the accent color when missing or malformed.
-Color _hexToColor(String hex) {
-  final cleaned = hex.replaceAll('#', '').trim();
-  if (cleaned.length != 6) return AppColors.accent;
-  final value = int.tryParse(cleaned, radix: 16);
-  if (value == null) return AppColors.accent;
-  return Color(0xFF000000 | value);
-}
-
 /// Derives a stable, legible color from a name by hashing it to a hue.
 /// The same name always yields the same color (avatar-style coloring).
 Color _colorForName(String name) {
   final hue = (name.hashCode % 360).abs().toDouble();
   return HSLColor.fromAHSL(1.0, hue, 0.55, 0.65).toColor();
-}
-
-/// Brightens (dark themes) or darkens (light themes) a label color so its
-/// text stays legible on the surface.
-Color _readableForeground(Color color) {
-  final hsl = HSLColor.fromColor(color);
-  if (AppColors.brightness == Brightness.light) {
-    if (hsl.lightness <= 0.4) return color;
-    return hsl.withLightness(0.35).toColor();
-  }
-  if (hsl.lightness >= 0.65) return color;
-  return hsl.withLightness(0.72).toColor();
 }

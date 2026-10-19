@@ -29,6 +29,16 @@ class WorktreeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// GitHub issue numbers from config, keyed by worktree path.
+  Map<String, int> _githubIssues = {};
+  Map<String, int> get githubIssues => Map.unmodifiable(_githubIssues);
+
+  void setGithubIssues(Map<String, int> issues) {
+    _githubIssues = Map.of(issues);
+    _hydrateMetadata();
+    notifyListeners();
+  }
+
   /// Base branches from config, keyed by worktree path.
   Map<String, String> _baseBranches = {};
   Map<String, String> get baseBranches => Map.unmodifiable(_baseBranches);
@@ -113,6 +123,7 @@ class WorktreeController extends ChangeNotifier {
     _worktrees = _worktrees.map((wt) {
       return wt.copyWith(
         jiraIssue: _jiraIssues[wt.path],
+        githubIssue: _githubIssues[wt.path],
         baseBranch: _baseBranches[wt.path],
         prAuthor: _prAuthors[wt.path],
         kickoffPromptPath: _kickoffPrompts[wt.path],
