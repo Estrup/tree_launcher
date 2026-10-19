@@ -1,12 +1,11 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/presentation/command_style.dart';
-import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/settings_controls.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/repo_settings_section_state.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 class RepoCustomCommandsSection extends StatefulWidget {
   const RepoCustomCommandsSection({super.key});
@@ -15,41 +14,17 @@ class RepoCustomCommandsSection extends StatefulWidget {
   State<RepoCustomCommandsSection> createState() => _CustomCommandsSectionState();
 }
 
-class _CustomCommandsSectionState extends State<RepoCustomCommandsSection> {
+class _CustomCommandsSectionState extends State<RepoCustomCommandsSection>
+    with RepoSettingsSectionState {
   late List<CustomCommand> _commands;
-  String? _lastRepoPath;
-  Timer? _debounce;
 
   @override
-  void initState() {
-    super.initState();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    _lastRepoPath = repo?.path;
+  void loadFrom(RepoConfig? repo) {
     _commands = List.from(repo?.customCommands ?? []);
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    if (repo != null && repo.path != _lastRepoPath) {
-      _lastRepoPath = repo.path;
-      _commands = List.from(repo.customCommands);
-    }
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
-  }
-
   void _save() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<WorkspaceController>();
-      final repo = provider.selectedRepo;
-      if (repo == null) return;
+    saveLater((provider, repo) {
       final cleaned = _commands
           .where((c) => c.name.trim().isNotEmpty || c.command.trim().isNotEmpty)
           .map(

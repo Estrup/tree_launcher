@@ -1,11 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/domain/predefined_issue.dart';
-import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/settings_controls.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/repo_settings_section_state.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 class RepoPredefinedIssuesSection extends StatefulWidget {
   const RepoPredefinedIssuesSection({super.key});
@@ -15,41 +14,17 @@ class RepoPredefinedIssuesSection extends StatefulWidget {
       _PredefinedIssuesSectionState();
 }
 
-class _PredefinedIssuesSectionState extends State<RepoPredefinedIssuesSection> {
+class _PredefinedIssuesSectionState extends State<RepoPredefinedIssuesSection>
+    with RepoSettingsSectionState {
   late List<PredefinedIssue> _issues;
-  String? _lastRepoPath;
-  Timer? _debounce;
 
   @override
-  void initState() {
-    super.initState();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    _lastRepoPath = repo?.path;
+  void loadFrom(RepoConfig? repo) {
     _issues = List.from(repo?.predefinedIssues ?? []);
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    if (repo != null && repo.path != _lastRepoPath) {
-      _lastRepoPath = repo.path;
-      _issues = List.from(repo.predefinedIssues);
-    }
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
-  }
-
   void _save() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<WorkspaceController>();
-      final repo = provider.selectedRepo;
-      if (repo == null) return;
+    saveLater((provider, repo) {
       final cleaned = _issues
           .where(
             (i) => i.key.trim().isNotEmpty || i.description.trim().isNotEmpty,

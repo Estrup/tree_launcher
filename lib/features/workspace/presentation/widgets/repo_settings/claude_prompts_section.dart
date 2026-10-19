@@ -1,13 +1,12 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
-import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/settings_controls.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/repo_settings_section_state.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 class RepoClaudePromptsSection extends StatefulWidget {
   const RepoClaudePromptsSection({super.key});
@@ -16,45 +15,21 @@ class RepoClaudePromptsSection extends StatefulWidget {
   State<RepoClaudePromptsSection> createState() => _ClaudePromptsSectionState();
 }
 
-class _ClaudePromptsSectionState extends State<RepoClaudePromptsSection> {
+class _ClaudePromptsSectionState extends State<RepoClaudePromptsSection>
+    with RepoSettingsSectionState {
   late List<ClaudePrompt> _prompts;
-  String? _lastRepoPath;
-  Timer? _debounce;
 
   /// Index of the prompt open in the editor; null shows the list.
   int? _editingIndex;
 
   @override
-  void initState() {
-    super.initState();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    _lastRepoPath = repo?.path;
+  void loadFrom(RepoConfig? repo) {
     _prompts = List.from(repo?.claudePrompts ?? []);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    if (repo != null && repo.path != _lastRepoPath) {
-      _lastRepoPath = repo.path;
-      _prompts = List.from(repo.claudePrompts);
-      _editingIndex = null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
+    _editingIndex = null;
   }
 
   void _save() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<WorkspaceController>();
-      final repo = provider.selectedRepo;
-      if (repo == null) return;
+    saveLater((provider, repo) {
       final cleaned = _prompts
           .where((p) => p.name.trim().isNotEmpty || p.prompt.trim().isNotEmpty)
           .map(

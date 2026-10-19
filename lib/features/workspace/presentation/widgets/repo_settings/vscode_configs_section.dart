@@ -1,11 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
-import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/settings_controls.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/repo_settings_section_state.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 class RepoVscodeConfigsSection extends StatefulWidget {
   const RepoVscodeConfigsSection({super.key});
@@ -14,41 +13,17 @@ class RepoVscodeConfigsSection extends StatefulWidget {
   State<RepoVscodeConfigsSection> createState() => _VscodeConfigsSectionState();
 }
 
-class _VscodeConfigsSectionState extends State<RepoVscodeConfigsSection> {
+class _VscodeConfigsSectionState extends State<RepoVscodeConfigsSection>
+    with RepoSettingsSectionState {
   late List<VscodeConfig> _configs;
-  String? _lastRepoPath;
-  Timer? _debounce;
 
   @override
-  void initState() {
-    super.initState();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    _lastRepoPath = repo?.path;
+  void loadFrom(RepoConfig? repo) {
     _configs = List.from(repo?.vscodeConfigs ?? []);
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    if (repo != null && repo.path != _lastRepoPath) {
-      _lastRepoPath = repo.path;
-      _configs = List.from(repo.vscodeConfigs);
-    }
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
-  }
-
   void _save() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<WorkspaceController>();
-      final repo = provider.selectedRepo;
-      if (repo == null) return;
+    saveLater((provider, repo) {
       final cleaned = _configs
           .where((c) => c.name.trim().isNotEmpty || c.path.trim().isNotEmpty)
           .map((c) => VscodeConfig(name: c.name.trim(), path: c.path.trim()))

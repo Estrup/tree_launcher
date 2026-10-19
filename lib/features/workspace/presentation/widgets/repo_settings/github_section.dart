@@ -1,10 +1,11 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/repo_settings_section_state.dart';
 
 class RepoGithubSection extends StatefulWidget {
   const RepoGithubSection({super.key});
@@ -13,46 +14,25 @@ class RepoGithubSection extends StatefulWidget {
   State<RepoGithubSection> createState() => _GithubSectionState();
 }
 
-class _GithubSectionState extends State<RepoGithubSection> {
-  late TextEditingController _ownerController;
-  late TextEditingController _repoController;
-  late TextEditingController _tokenController;
-  late TextEditingController _intervalController;
-  String? _lastRepoPath;
-  Timer? _debounce;
+class _GithubSectionState extends State<RepoGithubSection>
+    with RepoSettingsSectionState {
+  final _ownerController = TextEditingController();
+  final _repoController = TextEditingController();
+  final _tokenController = TextEditingController();
+  final _intervalController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    _lastRepoPath = repo?.path;
+  void loadFrom(RepoConfig? repo) {
     final config = repo?.githubConfig;
-    _ownerController = TextEditingController(text: config?.owner ?? '');
-    _repoController = TextEditingController(text: config?.repo ?? '');
-    _tokenController = TextEditingController(text: config?.token ?? '');
-    _intervalController = TextEditingController(
-      text: (config?.prRefreshIntervalMinutes ?? 5).toString(),
-    );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    if (repo != null && repo.path != _lastRepoPath) {
-      _lastRepoPath = repo.path;
-      final config = repo.githubConfig;
-      _ownerController.text = config?.owner ?? '';
-      _repoController.text = config?.repo ?? '';
-      _tokenController.text = config?.token ?? '';
-      _intervalController.text =
-          (config?.prRefreshIntervalMinutes ?? 5).toString();
-    }
+    _ownerController.text = config?.owner ?? '';
+    _repoController.text = config?.repo ?? '';
+    _tokenController.text = config?.token ?? '';
+    _intervalController.text = (config?.prRefreshIntervalMinutes ?? 5)
+        .toString();
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _ownerController.dispose();
     _repoController.dispose();
     _tokenController.dispose();
@@ -61,11 +41,7 @@ class _GithubSectionState extends State<RepoGithubSection> {
   }
 
   void _saveConfig() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<WorkspaceController>();
-      final repo = provider.selectedRepo;
-      if (repo == null) return;
+    saveLater((provider, repo) {
 
       var owner = _ownerController.text.trim();
       final repoName = _repoController.text.trim();

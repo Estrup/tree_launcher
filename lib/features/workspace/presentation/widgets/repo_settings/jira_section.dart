@@ -1,10 +1,9 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/repo_settings_section_state.dart';
 
 class RepoJiraSection extends StatefulWidget {
   const RepoJiraSection({super.key});
@@ -13,34 +12,19 @@ class RepoJiraSection extends StatefulWidget {
   State<RepoJiraSection> createState() => _JiraSectionState();
 }
 
-class _JiraSectionState extends State<RepoJiraSection> {
+class _JiraSectionState extends State<RepoJiraSection>
+    with RepoSettingsSectionState {
   static final _projectKeyPattern = RegExp(r'^[A-Z][A-Z0-9_]+$');
 
-  late TextEditingController _keyController;
-  String? _lastRepoPath;
-  Timer? _debounce;
+  final _keyController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    _lastRepoPath = repo?.path;
-    _keyController = TextEditingController(text: repo?.jiraProjectKey ?? '');
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    if (repo != null && repo.path != _lastRepoPath) {
-      _lastRepoPath = repo.path;
-      _keyController.text = repo.jiraProjectKey ?? '';
-    }
+  void loadFrom(RepoConfig? repo) {
+    _keyController.text = repo?.jiraProjectKey ?? '';
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _keyController.dispose();
     super.dispose();
   }
@@ -53,14 +37,13 @@ class _JiraSectionState extends State<RepoJiraSection> {
 
   void _save() {
     setState(() {});
-    _debounce?.cancel();
+    cancelSave();
     if (_keyError != null) return;
-    _debounce = Timer(const Duration(milliseconds: 400), () {
-      final provider = context.read<WorkspaceController>();
-      final repo = provider.selectedRepo;
-      if (repo == null) return;
-      provider.updateJiraProjectKey(repo, _keyController.text);
-    });
+    saveLater(
+      (provider, repo) =>
+          provider.updateJiraProjectKey(repo, _keyController.text),
+      delay: const Duration(milliseconds: 400),
+    );
   }
 
   @override

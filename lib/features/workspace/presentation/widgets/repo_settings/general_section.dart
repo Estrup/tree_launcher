@@ -1,9 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/repo_settings_section_state.dart';
 
 class RepoGeneralSection extends StatefulWidget {
   const RepoGeneralSection({super.key});
@@ -12,47 +13,28 @@ class RepoGeneralSection extends StatefulWidget {
   State<RepoGeneralSection> createState() => _GeneralSectionState();
 }
 
-class _GeneralSectionState extends State<RepoGeneralSection> {
-  late TextEditingController _nameController;
-  Timer? _debounce;
-  String? _lastRepoPath;
+class _GeneralSectionState extends State<RepoGeneralSection>
+    with RepoSettingsSectionState {
+  final _nameController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    _lastRepoPath = repo?.path;
-    _nameController = TextEditingController(text: repo?.name ?? '');
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final repo = context.read<WorkspaceController>().selectedRepo;
-    if (repo != null && repo.path != _lastRepoPath) {
-      _lastRepoPath = repo.path;
-      _nameController.text = repo.name;
-    }
+  void loadFrom(RepoConfig? repo) {
+    _nameController.text = repo?.name ?? '';
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _nameController.dispose();
     super.dispose();
   }
 
   void _onNameChanged(String value) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
+    saveLater((provider, repo) {
       final name = value.trim();
-      if (name.isEmpty) return;
-      final provider = context.read<WorkspaceController>();
-      final repo = provider.selectedRepo;
-      if (repo != null && name != repo.name) {
+      if (name.isNotEmpty && name != repo.name) {
         provider.renameRepo(repo, name);
       }
-    });
+    }, delay: const Duration(milliseconds: 500));
   }
 
   @override
