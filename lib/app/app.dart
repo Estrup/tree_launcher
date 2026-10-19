@@ -33,6 +33,8 @@ class TreeLauncherApp extends StatelessWidget {
         Provider.value(value: dependencies.agentLauncher),
         Provider.value(value: dependencies.claudeSessions),
         Provider.value(value: dependencies.startClaudeSession),
+        ChangeNotifierProvider.value(value: dependencies.agentApi),
+        Provider.value(value: dependencies.configFile),
         Provider.value(value: dependencies.launcherService),
         Provider.value(value: dependencies.claudeActivity),
         Provider.value(value: dependencies.jiraService),

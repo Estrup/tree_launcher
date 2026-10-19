@@ -32,7 +32,8 @@ flutter run -d macos --dart-define=AGENT_API_PORT=8766
 ```
 
 `AGENT_API_PORT` is read once at startup (`agentApiPortOverride` in
-`lib/app/dependencies.dart`). When set it **wins over the saved config and is
+`lib/app/use_cases/agent_api_control.dart`, which also owns changing the port
+and restarting). When set it **wins over the saved config and is
 never written back** — so debugging on an alternate port leaves
 `config.json` untouched. With no define, the app falls back to the configured
 port exactly as normal. While an override is active, the Settings → Agent API

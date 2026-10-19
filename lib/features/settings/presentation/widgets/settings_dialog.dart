@@ -2,9 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:tree_launcher/app/dependencies.dart';
+import 'package:tree_launcher/app/use_cases/agent_api_control.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/jira_settings_section.dart';
@@ -223,7 +224,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Widget _buildConfigFileLink() {
     return FutureBuilder<String>(
-      future: context.read<AppDependencies>().configFile.path,
+      future: context.read<ConfigFile>().path,
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
         final path = snapshot.data!;
@@ -984,19 +985,14 @@ class _AgentApiSectionState extends State<_AgentApiSection> {
   late final TextEditingController _portController;
   final FocusNode _portFocus = FocusNode();
   String? _error;
-  bool _restarting = false;
 
   @override
   void initState() {
     super.initState();
-    final settings = context.read<SettingsController>().settings;
     // A debug override (--dart-define=AGENT_API_PORT) wins over the saved
     // config and must never be written back, so the field shows it read-only.
     _portController = TextEditingController(
-      text: (agentApiPortOverride != 0
-              ? agentApiPortOverride
-              : settings.agentApiPort)
-          .toString(),
+      text: context.read<AgentApiControl>().configuredPort.toString(),
     );
     // Commit when the field loses focus, mirroring onSubmitted.
     _portFocus.addListener(() {
@@ -1012,40 +1008,26 @@ class _AgentApiSectionState extends State<_AgentApiSection> {
   }
 
   Future<void> _commitPort() async {
+    final api = context.read<AgentApiControl>();
     // Never persist while a debug override is active.
-    if (agentApiPortOverride != 0) return;
-    final settingsProvider = context.read<SettingsController>();
-    final current = settingsProvider.settings.agentApiPort;
-    final text = _portController.text.trim();
-    final port = int.tryParse(text);
+    if (api.portOverride != null) return;
+    final port = int.tryParse(_portController.text.trim());
 
     if (port == null || port < 1024 || port > 65535) {
       setState(() => _error = 'Enter a port between 1024 and 65535');
       return;
     }
     setState(() => _error = null);
-    if (port == current) return;
-
-    await settingsProvider.updateAgentApiPort(port);
-    await _restart(port);
-  }
-
-  Future<void> _restart(int port) async {
-    final deps = context.read<AppDependencies>();
-    setState(() => _restarting = true);
-    await deps.agentApiServer.restart(port: port);
-    if (mounted) setState(() => _restarting = false);
+    await api.changePort(port);
   }
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsController>().settings;
-    final server = context.read<AppDependencies>().agentApiServer;
-    final running = server.isRunning;
-    final activePort = server.port;
-    final overridden = agentApiPortOverride != 0;
-    // Port this process uses: the debug override if set, else the saved config.
-    final effectivePort = overridden ? agentApiPortOverride : settings.agentApiPort;
+    final api = context.watch<AgentApiControl>();
+    final running = api.isRunning;
+    final activePort = api.port;
+    final overridden = api.portOverride != null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
@@ -1116,11 +1098,9 @@ class _AgentApiSectionState extends State<_AgentApiSection> {
           Row(
             children: [
               _SmallButton(
-                label: _restarting ? 'Restarting…' : 'Restart service',
+                label: api.restarting ? 'Restarting…' : 'Restart service',
                 icon: Icons.refresh_rounded,
-                onTap: () {
-                  if (!_restarting) _restart(effectivePort);
-                },
+                onTap: api.restart,
               ),
               const SizedBox(width: 12),
               Icon(

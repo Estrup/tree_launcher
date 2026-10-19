@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'package:tree_launcher/app/use_cases/agent_api_control.dart';
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
@@ -33,13 +34,8 @@ import 'package:tree_launcher/features/settings/presentation/controllers/setting
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
-
-/// Debug-only agent API port override, supplied via
-/// `--dart-define=AGENT_API_PORT=NNNN`. Lets `flutter run` bind a non-default
-/// port without touching the saved config, so a debug instance doesn't collide
-/// with a normally-running one. `0` means "not set" — fall back to the config.
-const int agentApiPortOverride = int.fromEnvironment('AGENT_API_PORT');
 
 /// The app's composition root: builds the stores, the services and the core
 /// controllers once, wires the controllers to each other, and hands them to
@@ -136,6 +132,7 @@ class AppDependencies {
       gitService: this.gitService,
       jiraService: jiraService,
     );
+    agentApi = AgentApiControl(server: agentApiServer, settings: settings);
   }
 
   /// The app's SQLite database, shared by the stores and caches below.
@@ -199,6 +196,10 @@ class AppDependencies {
   /// Loopback-only HTTP API that exposes app data to local AI agents.
   late final AgentApiServer agentApiServer;
 
+  /// Runs [agentApiServer] on the configured port, and changes or restarts
+  /// it from Settings.
+  late final AgentApiControl agentApi;
+
   Timer? _backupTimer;
 
   /// Merges the files from before the database into it (renaming each to
@@ -244,21 +245,19 @@ class AppDependencies {
     }
   }
 
-  /// Starts long-lived background services (currently just the agent API).
-  /// Guarded so a failure never blocks app startup.
+  /// Starts long-lived background services (currently just the agent API),
+  /// on the port from the settings [loadState] loaded. Never throws.
   Future<void> startServers() async {
-    final port = agentApiPortOverride != 0
-        ? agentApiPortOverride
-        : (await appSettingsStore.load()).agentApiPort;
-    await agentApiServer.start(port: port);
-    await _pruneJiraCache();
+    await agentApi.start();
+    unawaited(_pruneJiraCache());
   }
 
   /// Drops cached Jira issues no longer referenced by any worktree, keeping the
-  /// cache bounded to relevant issues. Guarded so a failure never blocks boot.
+  /// cache bounded to relevant issues. Runs in the background once the repos
+  /// have loaded; never throws.
   Future<void> _pruneJiraCache() async {
     try {
-      final repos = await repoConfigStore.load();
+      final repos = await workspace.loadedRepos();
       final liveKeys = repos.expand((r) => r.jiraIssues.values).toSet();
       await jiraIssueCache.prune(liveKeys);
     } catch (e) {
@@ -272,6 +271,7 @@ class AppDependencies {
   Future<void> dispose() async {
     _backupTimer?.cancel();
     await agentApiServer.stop();
+    agentApi.dispose();
     await agents.flush();
     settings.removeListener(terminal.syncColors);
     agents.dispose();
