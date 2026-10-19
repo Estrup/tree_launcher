@@ -11,6 +11,14 @@ import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/claude_button.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/custom_commands_button.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/pr_badge.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/pull_button.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/terminal_button.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/vscode_button.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/worktree_options_button.dart';
 
 /// Shared column layout so the header and every row line up.
 const double _kCheckboxWidth = 24;

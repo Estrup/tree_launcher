@@ -8,7 +8,9 @@ import 'package:tree_launcher/features/github_prs/presentation/controllers/githu
 import 'package:tree_launcher/features/terminal/data/claude_desktop_handoff.dart';
 import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
-import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/pr_badge.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/vscode_button.dart';
 
 /// The session's worktree at a glance, at the right of the terminal header:
 /// its Jira issue and open PR, VS Code, and for a Claude session a button

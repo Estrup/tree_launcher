@@ -15,7 +15,7 @@ import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_context_menu.dart';
-import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
 
 class RepoSidebar extends StatefulWidget {
   final VoidCallback onAddRepo;

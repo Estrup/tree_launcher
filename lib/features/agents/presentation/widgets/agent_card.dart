@@ -11,7 +11,7 @@ import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
-import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
 
 /// One agent run in an agent tab: what it is working on, its stages, its
 /// latest message and links, and actions to open, resume, stop or archive

@@ -19,7 +19,8 @@ import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
-import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/action_buttons.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
 
 /// Shared column widths so the header lines up with every row.
 const double _kTypeWidth = 22;
