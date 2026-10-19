@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
@@ -6,7 +5,6 @@ import 'package:tree_launcher/features/agent_api/data/api_http.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
-import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// `POST /v1/worktrees`: creates a worktree in the running app.
 class WorktreeRoutes {
@@ -20,6 +18,15 @@ class WorktreeRoutes {
   final WorktreeCreator _creator;
 
   void mount(Router router) => router..post('/v1/worktrees', _create);
+
+  static const _fields = {
+    'repo',
+    'baseBranch',
+    'branch',
+    'worktreeName',
+    'issueKey',
+    'kickoffPrompt',
+  };
 
   /// `POST /v1/worktrees`
   ///
@@ -42,6 +49,8 @@ class WorktreeRoutes {
     final parsed = await readJsonObject(request);
     if (parsed.error != null) return parsed.error!;
     final body = parsed.body!;
+    final unknown = body.keys.where((k) => !_fields.contains(k));
+    if (unknown.isNotEmpty) return unsupportedFields(unknown, _fields);
 
     final repo = stringField(body, 'repo');
     final baseBranch = stringField(body, 'baseBranch');
@@ -103,11 +112,10 @@ class WorktreeRoutes {
       }, status: 201);
     } on RepoNotFoundException catch (e) {
       return jsonResponse({'error': e.toString()}, status: 404);
+    } on WorktreeConflictException catch (e) {
+      return jsonResponse({'error': e.message}, status: 409);
     } catch (e) {
-      debugPrint('AgentApiServer: /v1/worktrees failed: $e');
-      final message = userMessage(e);
-      final status = message.contains('already exists') ? 409 : 500;
-      return jsonResponse({'error': message}, status: status);
+      return serverError('create worktree', e);
     }
   }
 }

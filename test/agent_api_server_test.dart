@@ -153,6 +153,9 @@ class _FakeWorktreeCreator implements WorktreeCreator {
   Map<String, dynamic>? lastCall;
   Set<String> knownRepos = {'demo'};
 
+  /// When set, creating fails as git would for an existing branch.
+  String? conflict;
+
   @override
   Future<CreatedWorktree> createWorktree({
     required String repoName,
@@ -173,6 +176,7 @@ class _FakeWorktreeCreator implements WorktreeCreator {
     if (!knownRepos.contains(repoName)) {
       throw RepoNotFoundException(repoName);
     }
+    if (conflict != null) throw WorktreeConflictException(conflict!);
     return CreatedWorktree(
       worktreePath: '/repos/$worktreeName',
       branch: newBranch,
@@ -544,6 +548,25 @@ void main() {
       );
     });
 
+    test('answers 409 when the branch or folder already exists', () async {
+      creator.conflict =
+          "fatal: a branch named 'feature/my-feature' already exists";
+      final (status, body) = await post('/v1/worktrees', validBody());
+      expect(status, 409);
+      expect(body['error'], contains('already exists'));
+    });
+
+    test('rejects fields it does not take', () async {
+      final (status, body) = await post('/v1/worktrees', {
+        ...validBody(),
+        'slot': 2,
+      });
+      expect(status, 400);
+      expect(body['error'], 'unsupported field(s): slot');
+      expect(body['fields'], contains('kickoffPrompt'));
+      expect(creator.lastCall, isNull);
+    });
+
     test('normalizes worktree name and branch suffix', () async {
       final (status, body) = await post('/v1/worktrees', {
         'repo': 'demo',
@@ -685,6 +708,17 @@ void main() {
 
       expect(status, 201);
       expect(activity.entries.single.jiraIssue, 'AU2-9');
+    });
+
+    test('rejects fields it does not take', () async {
+      final (status, body) = await post('/v1/activity', {
+        'repo': 'demo',
+        'issueKey': 'AU2-9',
+        'minutes': 30,
+      }, port: s.port);
+      expect(status, 400);
+      expect(body['error'], 'unsupported field(s): minutes');
+      expect(await manualStore.loadAll(), isEmpty);
     });
 
     test('keeps an explicit description over the predefined one', () async {
@@ -1128,6 +1162,9 @@ void main() {
       expect(await count('?issue=au2-5953'), 1);
       expect(await count('?repo=other'), 0);
       expect((await getAgents('/v1/agents?kind=deploy')).$1, 400);
+      expect((await getAgents('/v1/agents?archived=yes')).$1, 400);
+      expect((await getAgents('/v1/agents?active=1')).$1, 400);
+      expect(await count('?archived=false'), 2);
       expect((await getAgents('/v1/agents/ag_missing')).$1, 404);
     });
   });

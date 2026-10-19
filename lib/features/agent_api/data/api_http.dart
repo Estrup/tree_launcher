@@ -1,6 +1,9 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shelf/shelf.dart';
+
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// Request and response helpers shared by the agent API's routes.
 
@@ -42,6 +45,30 @@ String? stringField(Map<String, dynamic> body, String key) {
   final s = value.toString().trim();
   return s.isEmpty ? null : s;
 }
+
+/// The 500 for an unexpected failure while doing [what] (e.g. "load
+/// activity"), logged with the error.
+Response serverError(String what, Object error) {
+  debugPrint('AgentApiServer: $what failed: $error');
+  return jsonResponse({
+    'error': 'failed to $what: ${userMessage(error)}',
+  }, status: 500);
+}
+
+/// The query parameter [name] as a bool: null when absent, else `true` or
+/// `false`; anything else is the 400 to send.
+({bool? value, Response? error}) boolQuery(
+  Map<String, String> query,
+  String name,
+) => switch (query[name]?.trim()) {
+  null || '' => (value: null, error: null),
+  'true' => (value: true, error: null),
+  'false' => (value: false, error: null),
+  _ => (
+    value: null,
+    error: jsonResponse({'error': '$name must be true or false'}, status: 400),
+  ),
+};
 
 /// The 400 for missing required fields.
 Response missingFields(List<String> fields) => jsonResponse({

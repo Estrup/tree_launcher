@@ -38,6 +38,18 @@ class CreatedWorktree {
   final String? kickoffPromptPath;
 }
 
+/// Thrown when the worktree to create is already there: its folder exists,
+/// or git refuses because the branch or worktree already exists. [message]
+/// says which, in git's words when git said it.
+class WorktreeConflictException implements Exception {
+  const WorktreeConflictException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// Thrown when no repo matches the requested name.
 class RepoNotFoundException implements Exception {
   const RepoNotFoundException(this.repoName);

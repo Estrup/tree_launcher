@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
@@ -47,24 +46,20 @@ class AgentRoutes {
       kind = AgentKind.tryParse(kindParam);
       if (kind == null) return _unknownKind(kindParam);
     }
-    final activeParam = query['active']?.trim();
-    if (activeParam != null &&
-        activeParam != 'true' &&
-        activeParam != 'false') {
-      return jsonResponse({
-        'error': 'active must be true or false',
-      }, status: 400);
-    }
+    final active = boolQuery(query, 'active');
+    if (active.error != null) return active.error!;
+    final archived = boolQuery(query, 'archived');
+    if (archived.error != null) return archived.error!;
     final repo = query['repo']?.trim();
     final issue = query['issue']?.trim().toUpperCase();
-    final includeArchived = query['archived'] == 'true';
+    final includeArchived = archived.value ?? false;
 
     final runs = [
       for (final run in registry.runs)
         if ((repo == null || repo.isEmpty || run.repoName == repo) &&
             (kind == null || run.kind == kind) &&
-            (activeParam == null ||
-                run.state.isFinished == (activeParam == 'false')) &&
+            (active.value == null ||
+                run.state.isFinished != active.value) &&
             (issue == null || issue.isEmpty || run.issueKeys.contains(issue)) &&
             (includeArchived || !run.archived))
           run,
@@ -220,10 +215,7 @@ class AgentRoutes {
     } on ArgumentError catch (e) {
       return jsonResponse({'error': '${e.message}'}, status: 400);
     } catch (e) {
-      debugPrint('AgentApiServer: POST /v1/agents failed: $e');
-      return jsonResponse({
-        'error': 'failed to register agent: $e',
-      }, status: 500);
+      return serverError('register agent', e);
     }
   }
 
@@ -394,10 +386,7 @@ class AgentRoutes {
     } on AgentNotFoundException catch (e) {
       return jsonResponse({'error': e.toString()}, status: 404);
     } catch (e) {
-      debugPrint('AgentApiServer: POST /v1/agents/$id/status failed: $e');
-      return jsonResponse({
-        'error': 'failed to report status: $e',
-      }, status: 500);
+      return serverError('report status', e);
     }
   }
 

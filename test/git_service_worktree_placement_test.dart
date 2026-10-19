@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 
 /// These tests drive real `git` against temporary repos, so they only run when
 /// a git binary is available.
@@ -10,10 +11,7 @@ void main() {
   const git = '/usr/bin/git';
   final hasGit = File(git).existsSync();
 
-  Future<void> run(
-    List<String> args, {
-    required String cwd,
-  }) async {
+  Future<void> run(List<String> args, {required String cwd}) async {
     final result = await Process.run(git, args, workingDirectory: cwd);
     if (result.exitCode != 0) {
       throw Exception('git ${args.join(' ')} failed: ${result.stderr}');
@@ -61,10 +59,7 @@ void main() {
 
     expect(path, p.join(p.dirname(repoPath), 'feat-x'));
     expect(Directory(path).existsSync(), isTrue);
-    expect(
-      Directory(p.join(repoPath, '.worktrees')).existsSync(),
-      isFalse,
-    );
+    expect(Directory(p.join(repoPath, '.worktrees')).existsSync(), isFalse);
   });
 
   test('flag on (non-bare) nests in .worktrees/ and writes exclude', () async {
@@ -96,10 +91,18 @@ void main() {
     }
     final repoPath = await initRepoWithCommit(tempRoot);
 
-    await service.addWorktree(repoPath, 'a',
-        newBranch: 'a', useNestedWorktrees: true);
-    await service.addWorktree(repoPath, 'b',
-        newBranch: 'b', useNestedWorktrees: true);
+    await service.addWorktree(
+      repoPath,
+      'a',
+      newBranch: 'a',
+      useNestedWorktrees: true,
+    );
+    await service.addWorktree(
+      repoPath,
+      'b',
+      newBranch: 'b',
+      useNestedWorktrees: true,
+    );
 
     final exclude = File(p.join(repoPath, '.git', 'info', 'exclude'));
     final count = exclude
@@ -137,11 +140,10 @@ void main() {
 
     // The file must not show up as untracked: `.tree-launcher/` is added to the
     // shared git exclude, so `git status` in the worktree stays clean.
-    final status = await Process.run(
-      git,
-      ['status', '--porcelain'],
-      workingDirectory: worktreePath,
-    );
+    final status = await Process.run(git, [
+      'status',
+      '--porcelain',
+    ], workingDirectory: worktreePath);
     expect(status.stdout.toString(), isNot(contains('.tree-launcher')));
   });
 
@@ -162,10 +164,7 @@ void main() {
     );
 
     expect(path, p.join(p.dirname(barePath), 'feat-x'));
-    expect(
-      Directory(p.join(barePath, '.worktrees')).existsSync(),
-      isFalse,
-    );
+    expect(Directory(p.join(barePath, '.worktrees')).existsSync(), isFalse);
   });
 
   test('nested worktree is still discovered by getWorktrees', () async {
@@ -190,6 +189,38 @@ void main() {
       result.worktrees.any((w) => w.path.endsWith(suffix)),
       isTrue,
       reason: 'expected a worktree under $suffix in ${result.worktrees}',
+    );
+  });
+
+  test('an existing folder or branch is a conflict', () async {
+    if (!hasGit) {
+      markTestSkipped('git not available');
+      return;
+    }
+    final repoPath = await initRepoWithCommit(tempRoot);
+    await service.addWorktree(repoPath, 'feat-x', newBranch: 'feat-x');
+
+    // The folder is there.
+    await expectLater(
+      service.addWorktree(repoPath, 'feat-x', newBranch: 'feat-y'),
+      throwsA(
+        isA<WorktreeConflictException>().having(
+          (e) => e.message,
+          'message',
+          'Folder "feat-x" already exists',
+        ),
+      ),
+    );
+    // The branch is there, in git's words.
+    await expectLater(
+      service.addWorktree(repoPath, 'feat-x2', newBranch: 'feat-x'),
+      throwsA(
+        isA<WorktreeConflictException>().having(
+          (e) => e.message,
+          'message',
+          contains('already exists'),
+        ),
+      ),
     );
   });
 }

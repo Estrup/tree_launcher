@@ -48,10 +48,9 @@ class ActivityService {
     // Group events by worktree path.
     final created = <String, WorktreeEvent>{};
     final closed = <String, WorktreeEvent>{};
-    final order = <String>[];
-    void track(String path) {
-      if (!order.contains(path)) order.add(path);
-    }
+    // Paths in the order first seen (a set keeps insertion order).
+    final order = <String>{};
+    void track(String path) => order.add(path);
 
     for (final e in events) {
       track(e.worktreePath);

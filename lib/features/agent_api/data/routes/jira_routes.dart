@@ -186,10 +186,7 @@ class JiraRoutes {
         'tags': [for (final tag in _tags.jiraTagsFor(issueKey)) tag.name],
       });
     } catch (e) {
-      debugPrint(
-        'AgentApiServer: PUT /v1/jira/issues/$issueKey/tags failed: $e',
-      );
-      return jsonResponse({'error': 'failed to save tags: $e'}, status: 500);
+      return serverError('save tags', e);
     }
   }
 

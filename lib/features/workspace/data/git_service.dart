@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 
 class GitService {
   /// Runs git with config that allows operating on bare-repository worktree
@@ -107,7 +108,7 @@ class GitService {
 
     // Check if folder already exists
     if (await Directory(worktreePath).exists()) {
-      throw Exception('Folder "$name" already exists');
+      throw WorktreeConflictException('Folder "$name" already exists');
     }
 
     // Fetch latest changes from origin for the base branch so the worktree
@@ -144,7 +145,15 @@ class GitService {
     );
 
     if (result.exitCode != 0) {
-      throw Exception(result.stderr.toString().trim());
+      final message = result.stderr.toString().trim();
+      // A branch or path that already exists, or a branch checked out in
+      // another worktree.
+      if (message.contains('already exists') ||
+          message.contains('already checked out') ||
+          message.contains('already used by worktree')) {
+        throw WorktreeConflictException(message);
+      }
+      throw Exception(message);
     }
 
     if (nested) {

@@ -103,12 +103,11 @@ class ActivityRoutes {
         'entries': [for (final ActivityEntry e in entries) e.toJson()],
       });
     } catch (e) {
-      debugPrint('AgentApiServer: /v1/activity failed: $e');
-      return jsonResponse({
-        'error': 'failed to load activity: $e',
-      }, status: 500);
+      return serverError('load activity', e);
     }
   }
+
+  static const _postFields = {'repo', 'issueKey', 'description', 'hours'};
 
   /// `POST /v1/activity`
   ///
@@ -123,6 +122,8 @@ class ActivityRoutes {
     final parsed = await readJsonObject(request);
     if (parsed.error != null) return parsed.error!;
     final body = parsed.body!;
+    final unknown = body.keys.where((k) => !_postFields.contains(k));
+    if (unknown.isNotEmpty) return unsupportedFields(unknown, _postFields);
 
     final repo = stringField(body, 'repo');
     final issueKey = stringField(body, 'issueKey');
@@ -173,8 +174,7 @@ class ActivityRoutes {
       );
       return jsonResponse(post.toJson(), status: 201);
     } catch (e) {
-      debugPrint('AgentApiServer: /v1/activity POST failed: $e');
-      return jsonResponse({'error': 'failed to log post: $e'}, status: 500);
+      return serverError('log post', e);
     }
   }
 
