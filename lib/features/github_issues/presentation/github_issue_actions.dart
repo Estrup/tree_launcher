@@ -1,14 +1,6 @@
-import 'dart:io';
 
 import 'package:tree_launcher/features/github_issues/domain/github_issue.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
-
-/// Opens a URL in the user's browser; the issue tab and dialog take one so
-/// tests can check what would open.
-typedef UrlOpener = void Function(String url);
-
-/// Opens [url] in the default browser.
-void openInBrowser(String url) => Process.run('open', [url]);
 
 /// First message for a Claude session on [issue]: what it is, where to read
 /// it, and how.

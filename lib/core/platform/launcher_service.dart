@@ -1,12 +1,15 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 
+/// Opens worktrees in other apps: a terminal, VS Code, Claude Desktop, or a
+/// custom command. A launch that fails shows a notice saying so.
 class LauncherService {
   Future<void> openTerminal(String directory, AppSettings settings) async {
     switch (settings.terminalApp) {
       case TerminalApp.terminal:
-        await Process.run('open', ['-a', 'Terminal', directory]);
+        await _run('open', ['-a', 'Terminal', directory], what: 'Terminal');
         break;
       case TerminalApp.ghostty:
         await openGhostty(directory);
@@ -23,9 +26,13 @@ class LauncherService {
     // Try `code` CLI first, fall back to `open -a`
     final result = await Process.run('which', ['code']);
     if (result.exitCode == 0) {
-      await Process.run('code', [directory]);
+      await _run('code', [directory], what: 'VS Code');
     } else {
-      await Process.run('open', ['-a', 'Visual Studio Code', directory]);
+      await _run(
+        'open',
+        ['-a', 'Visual Studio Code', directory],
+        what: 'VS Code',
+      );
     }
   }
 
@@ -34,7 +41,7 @@ class LauncherService {
     if (prompt != null && prompt.isNotEmpty) {
       url += '&q=${Uri.encodeComponent(prompt)}';
     }
-    await Process.run('open', [url]);
+    await _run('open', [url], what: 'Claude Desktop');
   }
 
   Future<void> runCustomCommand(
@@ -47,7 +54,7 @@ class LauncherService {
             activate
             do script "cd '${_escapeForAppleScript(directory)}' && ${_escapeForAppleScript(command)}"
           end tell
-        ''');
+        ''', what: 'the command in Terminal');
   }
 
   Future<void> openGhostty(String directory) async {
@@ -88,7 +95,7 @@ class LauncherService {
           key code 36
         end tell
       end tell
-    ''');
+    ''', what: 'Ghostty');
   }
 
   Future<void> _openCustomTerminal(
@@ -108,6 +115,7 @@ class LauncherService {
     try {
       final result = await Process.run('/bin/bash', args);
       if (result.exitCode != 0) {
+        showAppSnackBar("Couldn't open the custom terminal");
         debugPrint('Custom terminal exited with code ${result.exitCode}');
         if ((result.stdout as String).isNotEmpty) {
           debugPrint('stdout: ${result.stdout}');
@@ -117,12 +125,29 @@ class LauncherService {
         }
       }
     } catch (e) {
+      showAppSnackBar("Couldn't open the custom terminal");
       debugPrint('Custom terminal error: $e');
     }
   }
 
-  Future<void> _runAppleScript(String script) async {
-    await Process.run('osascript', ['-e', script]);
+  Future<void> _runAppleScript(String script, {required String what}) =>
+      _run('osascript', ['-e', script], what: what);
+
+  /// Runs [executable], and shows a notice that [what] couldn't be opened
+  /// when it fails.
+  Future<void> _run(
+    String executable,
+    List<String> arguments, {
+    required String what,
+  }) async {
+    try {
+      final result = await Process.run(executable, arguments);
+      if (result.exitCode == 0) return;
+      debugPrint('$executable exited with ${result.exitCode}: ${result.stderr}');
+    } catch (e) {
+      debugPrint('$executable failed: $e');
+    }
+    showAppSnackBar("Couldn't open $what");
   }
 
   String _escapeForAppleScript(String s) => s.replaceAll("'", "'\\''");

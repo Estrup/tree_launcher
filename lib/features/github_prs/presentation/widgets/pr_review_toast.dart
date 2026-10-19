@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
+import 'package:tree_launcher/core/platform/open_external.dart';
 
 /// Floating notification that appears when a newly created pull request
 /// requests the current user as a reviewer. Positioned bottom-center.
@@ -67,7 +67,7 @@ class _PrReviewToastState extends State<PrReviewToast>
   void _onTap() {
     final notification = _current;
     if (notification == null) return;
-    Process.run('open', [notification.pr.htmlUrl]);
+    openExternal(notification.pr.htmlUrl);
     _autoDismissTimer?.cancel();
     _animController.reverse().then((_) {
       if (mounted) {

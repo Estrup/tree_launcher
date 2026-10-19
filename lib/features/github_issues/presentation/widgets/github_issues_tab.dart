@@ -24,6 +24,7 @@ import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/action_buttons.dart';
+import 'package:tree_launcher/core/platform/open_external.dart';
 
 /// Shared column widths so the header lines up with every row.
 const double _kStateIconWidth = 22;
@@ -60,7 +61,7 @@ const double _kFixedListWidth =
 /// assign it to me. Selected issues can have their state changed together,
 /// and issues can get the user's own tags (shared with Jira issues).
 class GithubIssuesTab extends StatelessWidget {
-  const GithubIssuesTab({super.key, this.openUrl = openInBrowser});
+  const GithubIssuesTab({super.key, this.openUrl = openExternal});
 
   /// Opens an issue on github.com.
   final UrlOpener openUrl;

@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
@@ -12,6 +11,7 @@ import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
+import 'package:tree_launcher/core/platform/open_external.dart';
 
 /// One agent run in an agent tab: what it is working on, its stages, its
 /// latest message and links, and actions to open, resume, stop or archive
@@ -292,7 +292,7 @@ class _LinkChip extends StatelessWidget {
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: () => link.isUrl
-              ? Process.run('open', [_target])
+              ? openExternal(_target)
               : context.read<LauncherService>().openVSCode(_target),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

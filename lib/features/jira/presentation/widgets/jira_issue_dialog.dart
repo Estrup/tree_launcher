@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +12,7 @@ import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
 import 'package:tree_launcher/features/jira/domain/jira_user.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_status_menu.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
+import 'package:tree_launcher/core/platform/open_external.dart';
 
 /// Shows Jira issue info (summary, status, type, assignee, priority, last
 /// update, description, comments) for [issueKey], pulled from the REST API and
@@ -203,7 +203,7 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
   }
 
   void _openInBrowser() {
-    Process.run('open', ['$jiraBaseUrl${widget.issueKey}']);
+    openExternal('$jiraBaseUrl${widget.issueKey}');
   }
 
   @override

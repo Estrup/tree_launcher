@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +12,7 @@ import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/action_buttons.dart';
+import 'package:tree_launcher/core/platform/open_external.dart';
 
 class GithubPrsTab extends StatelessWidget {
   const GithubPrsTab({super.key});
@@ -169,8 +169,7 @@ class GithubPrsTab extends StatelessWidget {
                 final pr = prs.pullRequests[index];
                 return _PullRequestRow(
                   pr: pr,
-                  onOpenInBrowser: () =>
-                      Process.run('open', [pr.htmlUrl]),
+                  onOpenInBrowser: () => openExternal(pr.htmlUrl),
                   onCreateWorktree: () =>
                       _showAddWorktreeDialog(context, pr),
                   onQuickCreateWorktree: () => createWorktreeForPr(

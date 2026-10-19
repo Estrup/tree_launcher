@@ -6,10 +6,10 @@ import 'package:tree_launcher/core/widgets/issue_list.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issue_cache.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issues_api_service.dart';
 import 'package:tree_launcher/features/github_issues/domain/github_issue.dart';
-import 'package:tree_launcher/features/github_issues/presentation/github_issue_actions.dart';
 import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issue_styles.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_styles.dart';
+import 'package:tree_launcher/core/platform/open_external.dart';
 
 /// Shows a GitHub issue (title, state, assignees, milestone, labels,
 /// description, comments), pulled from the REST API and cached locally. It is
@@ -43,7 +43,7 @@ class GithubIssueDialog extends StatefulWidget {
     required this.cache,
     this.initialIssue,
     this.onIssueChanged,
-    this.openUrl = openInBrowser,
+    this.openUrl = openExternal,
   });
 
   static Future<void> show(
@@ -54,7 +54,7 @@ class GithubIssueDialog extends StatefulWidget {
     GithubIssuesApiService? service,
     GithubIssueCache? cache,
     VoidCallback? onIssueChanged,
-    UrlOpener openUrl = openInBrowser,
+    UrlOpener openUrl = openExternal,
   }) {
     return showDialog<void>(
       context: context,

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
@@ -11,6 +10,7 @@ import 'package:tree_launcher/features/settings/presentation/widgets/jira_settin
 import 'package:tree_launcher/features/settings/presentation/widgets/repositories_settings_section.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/terminal_settings_section.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/theme_settings_section.dart';
+import 'package:tree_launcher/core/platform/open_external.dart';
 
 enum _SettingsSection {
   theme,
@@ -231,7 +231,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         if (!snapshot.hasData) return const SizedBox.shrink();
         final path = snapshot.data!;
         return GestureDetector(
-          onTap: () => Process.run('open', [path]),
+          onTap: () => openExternal(path),
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: Text(

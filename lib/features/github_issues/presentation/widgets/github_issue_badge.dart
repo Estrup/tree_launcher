@@ -3,10 +3,10 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/features/github_issues/presentation/controllers/github_issues_controller.dart';
-import 'package:tree_launcher/features/github_issues/presentation/github_issue_actions.dart';
 import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issue_dialog.dart';
 import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issue_styles.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
+import 'package:tree_launcher/core/platform/open_external.dart';
 
 /// `#123` for the GitHub issue a worktree was made for. Opens the issue
 /// dialog, or github.com while ⌘ is held.
@@ -26,7 +26,7 @@ class GithubIssueBadge extends StatelessWidget {
       number: number,
       onTap: () {
         if (HardwareKeyboard.instance.isMetaPressed) {
-          openInBrowser(
+          openExternal(
             'https://github.com/${config.owner}/${config.repo}/issues/$number',
           );
           return;

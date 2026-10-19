@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
+import 'package:tree_launcher/core/platform/open_external.dart';
 
 /// Clickable pill linking to a GitHub pull request. Mirrors [JiraBadge]'s
 /// styling and launch mechanism, showing `#<number>` and opening [htmlUrl].
@@ -33,7 +33,7 @@ class _PrBadgeState extends State<PrBadge> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        onTap: () => Process.run('open', [widget.htmlUrl]),
+        onTap: () => openExternal(widget.htmlUrl),
         child: Tooltip(
           message: 'Open PR #${widget.number}',
           child: Container(
