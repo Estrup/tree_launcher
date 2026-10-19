@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/activity/presentation/controllers/activit
 import 'package:tree_launcher/features/activity/presentation/widgets/add_manual_post_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
+import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 
 /// Timeline of worktree activity: when each worktree (issue) was created and
 /// closed, plus which days Claude Code was active in it.
@@ -51,9 +52,7 @@ class _ActivityTabState extends State<ActivityTab> {
     final workspace = context.read<WorkspaceController>();
     final repo = workspace.selectedRepo;
     if (repo == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a repository first.')),
-      );
+      showAppSnackBar('Select a repository first.');
       return;
     }
     final result = await AddManualPostDialog.show(context, repo: repo);

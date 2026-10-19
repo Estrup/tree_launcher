@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/core/design_system/app_snackbar.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 class AddRepoDialog extends StatelessWidget {
   const AddRepoDialog({super.key});
@@ -11,27 +13,21 @@ class AddRepoDialog extends StatelessWidget {
 
   static Future<void> show(BuildContext context) async {
     final repoProvider = context.read<WorkspaceController>();
-    final messenger = ScaffoldMessenger.of(context);
-
     final String? result = await _channel.invokeMethod<String>('pickDirectory');
 
     if (result == null) return;
 
     final dir = Directory(result);
     if (!await dir.exists()) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Selected path is not a valid directory')),
-      );
+      showAppSnackBar('Selected path is not a valid directory');
       return;
     }
 
     try {
       await repoProvider.addRepo(result);
-      messenger.showSnackBar(
-        SnackBar(content: Text('Added repository: ${result.split('/').last}')),
-      );
+      showAppSnackBar('Added repository: ${result.split('/').last}');
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+      showAppSnackBar(userMessage(e));
     }
   }
 

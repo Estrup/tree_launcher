@@ -13,8 +13,13 @@ const appSnackBarActionDuration = Duration(seconds: 15);
 /// Shows a SnackBar from anywhere via [appMessengerKey], with an optional
 /// [action] button. One with an action gets a close button and still goes
 /// away by itself after [appSnackBarActionDuration] (Flutter would otherwise
-/// keep it up until dismissed). No-op if the messenger isn't mounted yet.
-void showAppSnackBar(String message, {SnackBarAction? action}) {
+/// keep it up until dismissed); one without goes after [duration] (4 seconds
+/// by default). No-op if the messenger isn't mounted yet.
+void showAppSnackBar(
+  String message, {
+  SnackBarAction? action,
+  Duration? duration,
+}) {
   final messenger = appMessengerKey.currentState;
   if (messenger == null) return;
   messenger
@@ -27,7 +32,7 @@ void showAppSnackBar(String message, {SnackBarAction? action}) {
         showCloseIcon: action != null,
         duration: action != null
             ? appSnackBarActionDuration
-            : const Duration(milliseconds: 4000),
+            : duration ?? const Duration(milliseconds: 4000),
       ),
     );
 }

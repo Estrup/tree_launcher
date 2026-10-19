@@ -7,6 +7,8 @@ import 'package:tree_launcher/features/terminal/presentation/controllers/termina
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/core/design_system/app_snackbar.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// Number of the selected repo's open pull request from [branch], or null
 /// when there is none (or the PR list isn't available).
@@ -22,13 +24,9 @@ int? openPrNumberForBranch(BuildContext context, String? branch) {
 /// Copies [value] to the clipboard and shows a brief confirmation snackbar.
 void copyToClipboard(BuildContext context, String value, String label) {
   Clipboard.setData(ClipboardData(text: value));
-  ScaffoldMessenger.of(context).clearSnackBars();
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('$label copied to clipboard'),
-      duration: const Duration(milliseconds: 1500),
-      behavior: SnackBarBehavior.floating,
-    ),
+  showAppSnackBar(
+    '$label copied to clipboard',
+    duration: const Duration(milliseconds: 1500),
   );
 }
 
@@ -63,11 +61,7 @@ Future<void> confirmDeleteWorktree(BuildContext context, Worktree wt) async {
       terminalProvider.closeSessionsForPath(wt.path);
       await repoProvider.deleteWorktree(wt);
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
-      }
+      showAppSnackBar('Failed to delete: ${userMessage(e)}');
     }
   }
 }
@@ -185,20 +179,14 @@ Future<void> confirmBulkDeleteWorktrees(
 
   if (!context.mounted) return;
   final deleted = worktrees.length - failures.length;
-  ScaffoldMessenger.of(context).clearSnackBars();
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        failures.isEmpty
-            ? 'Deleted $deleted worktrees'
-            : 'Deleted $deleted of ${worktrees.length} — '
-                  'failed: ${failures.join(', ')}',
-      ),
-      duration: failures.isEmpty
-          ? const Duration(seconds: 3)
-          : const Duration(seconds: 6),
-      behavior: SnackBarBehavior.floating,
-    ),
+  showAppSnackBar(
+    failures.isEmpty
+        ? 'Deleted $deleted worktrees'
+        : 'Deleted $deleted of ${worktrees.length} — '
+              'failed: ${failures.join(', ')}',
+    duration: failures.isEmpty
+        ? const Duration(seconds: 3)
+        : const Duration(seconds: 6),
   );
 }
 
@@ -267,11 +255,7 @@ Future<void> editJiraIssueDialog(BuildContext context, Worktree wt) async {
     try {
       await repoProvider.updateJiraIssue(wt.path, value.isEmpty ? null : value);
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to update JIRA: $e')));
-      }
+      showAppSnackBar('Failed to update JIRA: ${userMessage(e)}');
     }
   }
   controller.dispose();

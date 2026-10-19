@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/core/design_system/app_snackbar.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// Fetches and fast-forwards a worktree's current branch to its upstream.
 /// Shows a spinner while running and reports the outcome (or why the pull
@@ -26,34 +28,19 @@ class _PullButtonState extends State<PullButton> {
   Future<void> _pull() async {
     if (_busy || _detached) return;
     final repoProvider = context.read<WorkspaceController>();
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {
       final result = await repoProvider.pullWorktree(widget.worktree);
-      if (!mounted) return;
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            result.updated
-                ? 'Pulled ${result.commits} '
-                      '${result.commits == 1 ? 'commit' : 'commits'} into '
-                      '${result.branch}'
-                : '${result.branch} is already up to date',
-          ),
-          duration: const Duration(milliseconds: 1800),
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppSnackBar(
+        result.updated
+            ? 'Pulled ${result.commits} '
+                  '${result.commits == 1 ? 'commit' : 'commits'} into '
+                  '${result.branch}'
+            : '${result.branch} is already up to date',
+        duration: const Duration(milliseconds: 1800),
       );
     } catch (e) {
-      if (!mounted) return;
-      messenger.clearSnackBars();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      showAppSnackBar(userMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
