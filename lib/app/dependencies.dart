@@ -19,8 +19,8 @@ import 'package:tree_launcher/features/github_issues/data/github_issue_cache.dar
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
-import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
+import 'package:tree_launcher/services/git_service.dart';
 
 /// Debug-only agent API port override, supplied via
 /// `--dart-define=AGENT_API_PORT=NNNN`. Lets `flutter run` bind a non-default

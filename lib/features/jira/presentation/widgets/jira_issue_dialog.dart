@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/app/dependencies.dart';
-import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
@@ -14,6 +13,7 @@ import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
 import 'package:tree_launcher/features/jira/domain/jira_user.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_status_menu.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
+import 'package:tree_launcher/theme/app_theme.dart';
 
 /// Shows Jira issue info (summary, status, type, assignee, priority, last
 /// update, description, comments) for [issueKey], pulled from the REST API and

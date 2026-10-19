@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/app/dependencies.dart';
-import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issue_cache.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issues_api_service.dart';
@@ -11,6 +10,7 @@ import 'package:tree_launcher/features/github_issues/presentation/github_issue_a
 import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issue_styles.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_styles.dart';
+import 'package:tree_launcher/theme/app_theme.dart';
 
 /// Shows a GitHub issue (title, state, assignees, milestone, labels,
 /// description, comments), pulled from the REST API and cached locally. It is

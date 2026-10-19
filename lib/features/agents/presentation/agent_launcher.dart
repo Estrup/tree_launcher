@@ -13,8 +13,8 @@ import 'package:tree_launcher/features/agents/presentation/controllers/agents_co
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
-import 'package:tree_launcher/features/workspace/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/models/claude_prompt.dart';
 
 /// Environment variable holding the agent run's id, for the agent to report
 /// under (see the tree-launcher skill's `agent.py`).

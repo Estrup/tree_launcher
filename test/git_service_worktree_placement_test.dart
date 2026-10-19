@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:tree_launcher/features/workspace/data/git_service.dart';
+import 'package:tree_launcher/services/git_service.dart';
 
 /// These tests drive real `git` against temporary repos, so they only run when
 /// a git binary is available.

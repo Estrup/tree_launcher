@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
-import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
-import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/models/repo_config.dart';
+import 'package:tree_launcher/services/git_service.dart';
 
 class RepoRegistryController extends ChangeNotifier {
   RepoRegistryController({

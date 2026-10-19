@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
-import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/jira_settings_section.dart';
+import 'package:tree_launcher/models/app_settings.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
+import 'package:tree_launcher/theme/app_theme.dart';
 
 enum _SettingsSection {
   theme,

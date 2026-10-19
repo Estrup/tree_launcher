@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
+import 'package:tree_launcher/theme/app_theme.dart';
 
 extension AgentKindStyle on AgentKind {
   IconData get icon => switch (this) {

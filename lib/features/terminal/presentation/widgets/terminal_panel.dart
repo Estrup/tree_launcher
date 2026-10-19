@@ -2,11 +2,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
-import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/core/design_system/terminal_theme.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart'
     hide TerminalController;
+import 'package:tree_launcher/theme/app_theme.dart';
+import 'package:tree_launcher/theme/terminal_theme.dart';
 import 'terminal_context_menu.dart';
 import 'terminal_header_actions.dart';
 import 'terminal_key_handler.dart';

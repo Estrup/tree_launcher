@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/models/repo_config.dart';
 
 class RepoSelectionController extends ChangeNotifier {
   RepoConfig? _selectedRepo;

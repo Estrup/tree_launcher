@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
+import 'package:tree_launcher/theme/app_theme.dart';
 import 'worktree_table.dart';
 
 /// The Worktrees tab: loading/error/empty states around [WorktreeTable].

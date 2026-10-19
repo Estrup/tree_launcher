@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/selection_controls.dart';
 import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issue_badge.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
-import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
-import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
+import 'package:tree_launcher/models/worktree.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
+import 'package:tree_launcher/services/launcher_service.dart';
+import 'package:tree_launcher/theme/app_theme.dart';
 
 /// Shared column layout so the header and every row line up.
 const double _kCheckboxWidth = 24;

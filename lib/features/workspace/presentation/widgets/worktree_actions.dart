@@ -5,21 +5,21 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
-import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issue_dialog.dart';
-import 'package:tree_launcher/features/workspace/data/launcher_service.dart';
-import 'package:tree_launcher/features/workspace/domain/command_style.dart';
-import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
-import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
-import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/models/claude_prompt.dart';
+import 'package:tree_launcher/models/command_style.dart';
+import 'package:tree_launcher/models/custom_command.dart';
+import 'package:tree_launcher/models/vscode_config.dart';
+import 'package:tree_launcher/models/worktree.dart';
 import 'package:tree_launcher/providers/repo_provider.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
 import 'package:tree_launcher/providers/terminal_provider.dart';
+import 'package:tree_launcher/services/launcher_service.dart';
+import 'package:tree_launcher/theme/app_theme.dart';
 
 /// Builds the standard Claude launch context prompt from a worktree's recorded
 /// JIRA issue and base branch. Returns null when neither is known.

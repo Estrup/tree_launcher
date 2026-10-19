@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
 import 'package:tree_launcher/models/jira_tag.dart';
+import 'package:tree_launcher/theme/app_theme.dart';
 
 /// An issue's tags as chips, the first [maxShown] and then "+N", that open a
 /// menu of every tag to tick on and off; it stays open for several. Without

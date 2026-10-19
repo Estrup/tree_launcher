@@ -3,9 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/app/coordinators/workspace_flow_coordinator.dart';
 import 'package:tree_launcher/app/dependencies.dart';
-import 'package:tree_launcher/app/shell/workspace_shell.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
-import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/github_issues/presentation/controllers/github_issues_controller.dart';
@@ -15,6 +13,8 @@ import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/screens/home_screen.dart';
+import 'package:tree_launcher/theme/app_theme.dart';
 
 class TreeLauncherApp extends StatelessWidget {
   const TreeLauncherApp({super.key, this.dependencies});
@@ -138,7 +138,7 @@ class TreeLauncherApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             scaffoldMessengerKey: appMessengerKey,
             theme: AppTheme.current,
-            home: const WorkspaceFlowCoordinator(child: WorkspaceShell()),
+            home: const WorkspaceFlowCoordinator(child: HomeScreen()),
           );
         },
       ),

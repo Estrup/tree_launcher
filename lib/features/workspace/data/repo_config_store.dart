@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
-import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/models/repo_config.dart';
 
 /// The `repos` and `lastSelectedRepoPath` sections of `config.json`.
 ///

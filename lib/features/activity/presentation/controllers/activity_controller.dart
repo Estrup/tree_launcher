@@ -6,8 +6,8 @@ import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 import 'package:tree_launcher/features/activity/domain/activity_filter.dart';
 import 'package:tree_launcher/features/activity/domain/activity_service.dart';
-import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/models/manual_post.dart';
+import 'package:tree_launcher/models/worktree.dart';
 
 // Re-exported so existing imports of `ActivityEntry` via this controller keep
 // working now that the model lives in the domain layer.

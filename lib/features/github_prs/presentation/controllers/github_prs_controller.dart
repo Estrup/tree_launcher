@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:tree_launcher/features/github_prs/data/github_api_service.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
-import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/models/repo_config.dart';
 
 /// A pending notification that the current user has been asked to review a PR.
 class PrReviewNotification {

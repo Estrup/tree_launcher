@@ -17,14 +17,14 @@ import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
-import 'package:tree_launcher/features/settings/domain/app_settings.dart';
-import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
+import 'package:tree_launcher/models/app_settings.dart';
 import 'package:tree_launcher/models/jira_tag.dart';
 import 'package:tree_launcher/models/predefined_issue.dart';
 import 'package:tree_launcher/models/repo_config.dart';
 import 'package:tree_launcher/models/worktree.dart';
+import 'package:tree_launcher/services/git_service.dart';
 
 import 'fake_config_stores.dart';
 
