@@ -1,6 +1,9 @@
 class GithubConfig {
   final String owner;
   final String repo;
+
+  /// Saved in the Keychain, not in `config.json` (see `RepoConfigStore`), so
+  /// it is usually empty in the saved JSON.
   final String token;
 
   /// How often the PR list auto-refreshes, in minutes.
@@ -22,7 +25,7 @@ class GithubConfig {
     return GithubConfig(
       owner: json['owner'] as String,
       repo: json['repo'] as String,
-      token: json['token'] as String,
+      token: json['token'] as String? ?? '',
       prRefreshIntervalMinutes: json['prRefreshIntervalMinutes'] as int? ?? 5,
       issuesEnabled: json['issuesEnabled'] as bool? ?? false,
     );

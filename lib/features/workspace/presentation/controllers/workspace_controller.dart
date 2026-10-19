@@ -16,18 +16,15 @@ import 'package:tree_launcher/models/predefined_issue.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_registry_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_selection_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/worktree_controller.dart';
-import 'package:tree_launcher/services/config_service.dart';
 
 class WorkspaceController extends ChangeNotifier implements WorktreeCreator {
   WorkspaceController({
     required GitService gitService,
-    RepoConfigStore? repoConfigStore,
-    ConfigService? configService,
+    required RepoConfigStore repoConfigStore,
     WorktreeEventStore? eventStore,
   }) : this._create(
          gitService: gitService,
-         repoConfigStore:
-             repoConfigStore ?? RepoConfigStore(configService: configService),
+         repoConfigStore: repoConfigStore,
          eventStore: eventStore,
        );
 

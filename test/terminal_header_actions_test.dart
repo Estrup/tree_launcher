@@ -6,32 +6,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
-import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
 import 'package:tree_launcher/features/terminal/presentation/widgets/terminal_header_actions.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
-import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
-import 'package:tree_launcher/services/config_service.dart';
 
-class _FakeConfigService extends ConfigService {
-  List<RepoConfig> savedRepos = const [];
-
-  @override
-  Future<List<RepoConfig>> loadRepos() async => savedRepos;
-
-  @override
-  Future<void> saveRepos(List<RepoConfig> repos) async {
-    savedRepos = List<RepoConfig>.from(repos);
-  }
-
-  @override
-  Future<AppSettings> loadSettings() async => AppSettings();
-
-  @override
-  Future<void> saveSettings(AppSettings settings) async {}
-}
+import 'fake_config_stores.dart';
 
 class _FakeGitService extends GitService {
   @override
@@ -59,7 +40,7 @@ void main() {
   setUp(() async {
     workspace = WorkspaceController(
       gitService: _FakeGitService(),
-      configService: _FakeConfigService(),
+      repoConfigStore: FakeRepoConfigStore(),
       eventStore: WorktreeEventStore(directoryPath: tempDir.path),
     );
     prs = GithubPrsController();

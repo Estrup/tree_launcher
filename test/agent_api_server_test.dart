@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
@@ -22,23 +24,27 @@ import 'package:tree_launcher/models/jira_tag.dart';
 import 'package:tree_launcher/models/predefined_issue.dart';
 import 'package:tree_launcher/models/repo_config.dart';
 import 'package:tree_launcher/models/worktree.dart';
-import 'package:tree_launcher/services/config_service.dart';
 
-/// A ConfigService that returns a fixed repo list and settings, so the stores
-/// need no path_provider plugin in tests.
-class _FakeConfigService extends ConfigService {
-  _FakeConfigService(this.repos, {this.settings});
-  final List<RepoConfig> repos;
-  AppSettings? settings;
-  @override
-  Future<List<RepoConfig>> loadRepos() async => repos;
-  @override
-  Future<AppSettings> loadSettings() async => settings ?? AppSettings();
-  @override
-  Future<void> saveSettings(AppSettings settings) async {
-    this.settings = settings;
-  }
+import 'fake_config_stores.dart';
+
+/// A real `config.json`, in a temporary directory, holding [repos] and
+/// [settings].
+Future<ConfigFile> _configFile(
+  List<RepoConfig> repos, {
+  AppSettings? settings,
+}) async {
+  final dir = await Directory.systemTemp.createTemp('agent_api_config');
+  addTearDown(() => dir.delete(recursive: true));
+  final file = ConfigFile(path: p.join(dir.path, 'config.json'));
+  await file.update((config) {
+    config['repos'] = [for (final repo in repos) repo.toJson()];
+    config['settings'] = (settings ?? AppSettings()).toJson();
+  });
+  return file;
 }
+
+RepoConfigStore _repoStore(ConfigFile file) =>
+    RepoConfigStore(configFile: file, tokenStore: MemoryGithubTokenStore());
 
 const _tags = [
   JiraTag(id: 'b', name: 'Blocked', color: 'red'),
@@ -174,17 +180,14 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('agent_api_events');
     tempHome = await Directory.systemTemp.createTemp('agent_api_home');
     creator = _FakeWorktreeCreator();
+    final config = await _configFile(
+      const [],
+      settings: AppSettings(defaultBranchPrefix: 'feature'),
+    );
     server = AgentApiServer(
-      repoConfigStore: RepoConfigStore(
-        configService: _FakeConfigService(const []),
-      ),
+      repoConfigStore: _repoStore(config),
       gitService: GitService(),
-      appSettingsStore: AppSettingsStore(
-        configService: _FakeConfigService(
-          const [],
-          settings: AppSettings(defaultBranchPrefix: 'feature'),
-        ),
-      ),
+      appSettingsStore: AppSettingsStore(configFile: config),
       eventStore: WorktreeEventStore(directoryPath: tempDir.path),
       claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
     );
@@ -259,6 +262,134 @@ void main() {
     final (status, body) = await get('/v1/activity?filter=lastDecade');
     expect(status, 400);
     expect(body['error'], contains('unknown filter'));
+  });
+
+  group('requests a web page could send', () {
+    const worktree = {
+      'repo': 'demo',
+      'baseBranch': 'main',
+      'branch': 'my-feature',
+      'worktreeName': 'my-feature',
+    };
+
+    /// Sends [method] [path] with [host] and [contentType] in place of what
+    /// HttpClient would send (no Content-Type when null), and returns the
+    /// status.
+    Future<int> send(
+      String method,
+      String path, {
+      String? host,
+      String? contentType,
+      Object? body,
+    }) async {
+      final client = HttpClient();
+      try {
+        final req = await client.openUrl(
+          method,
+          Uri.parse('http://127.0.0.1:${server.port}$path'),
+        );
+        if (host != null) req.headers.set(HttpHeaders.hostHeader, host);
+        if (contentType != null) {
+          req.headers.set(HttpHeaders.contentTypeHeader, contentType);
+        }
+        if (body != null) req.add(utf8.encode(jsonEncode(body)));
+        final res = await req.close();
+        await res.drain<void>();
+        return res.statusCode;
+      } finally {
+        client.close(force: true);
+      }
+    }
+
+    test('accepts localhost as the Host', () async {
+      expect(
+        await send('GET', '/health', host: 'localhost:${server.port}'),
+        200,
+      );
+    });
+
+    test('refuses any other Host with 403', () async {
+      server.registerWorktreeCreator(creator);
+      // DNS rebinding: the page's own name, resolving to 127.0.0.1.
+      expect(
+        await send('GET', '/health', host: 'evil.example:${server.port}'),
+        403,
+      );
+      expect(await send('GET', '/v1/activity', host: '127.0.0.1:1'), 403);
+      expect(
+        await send(
+          'POST',
+          '/v1/worktrees',
+          host: 'evil.example:${server.port}',
+          contentType: 'application/json',
+          body: worktree,
+        ),
+        403,
+      );
+      expect(creator.lastCall, isNull);
+    });
+
+    test('refuses a request without a Host with 403', () async {
+      final socket = await Socket.connect(
+        InternetAddress.loopbackIPv4,
+        server.port!,
+      );
+      socket.write('GET /health HTTP/1.0\r\n\r\n');
+      final response = await utf8.decoder.bind(socket).join();
+      socket.destroy();
+      expect(response.split('\r\n').first, contains(' 403 '));
+    });
+
+    test('refuses a POST that is not JSON with 415', () async {
+      server.registerWorktreeCreator(creator);
+      // What a cross-site form or fetch() can send without a preflight.
+      expect(
+        await send(
+          'POST',
+          '/v1/worktrees',
+          contentType: 'text/plain',
+          body: worktree,
+        ),
+        415,
+      );
+      expect(await send('POST', '/v1/worktrees', body: worktree), 415);
+      expect(
+        await send(
+          'POST',
+          '/v1/worktrees',
+          contentType: 'application/x-www-form-urlencoded',
+          body: worktree,
+        ),
+        415,
+      );
+      expect(creator.lastCall, isNull);
+    });
+
+    test('refuses a PUT that is not JSON with 415', () async {
+      expect(
+        await send(
+          'PUT',
+          '/v1/jira/issues/AU2-1/tags',
+          contentType: 'text/plain',
+          body: {'tags': <String>[]},
+        ),
+        415,
+      );
+    });
+
+    test('accepts JSON with a charset', () async {
+      server.registerWorktreeCreator(creator);
+      expect(
+        await send(
+          'POST',
+          '/v1/worktrees',
+          contentType: 'Application/JSON; charset=utf-8',
+          body: worktree,
+        ),
+        201,
+      );
+      expect(creator.lastCall, isNotNull);
+    });
   });
 
   group('POST /v1/worktrees', () {
@@ -369,22 +500,19 @@ void main() {
 
     setUp(() async {
       manualStore = ManualPostStore(directoryPath: tempDir.path);
+      final config = await _configFile([
+        RepoConfig(
+          name: 'demo',
+          path: '/repos/demo',
+          predefinedIssues: [
+            PredefinedIssue(key: 'AU2-9', description: 'Code review'),
+          ],
+        ),
+      ]);
       s = AgentApiServer(
-        repoConfigStore: RepoConfigStore(
-          configService: _FakeConfigService([
-            RepoConfig(
-              name: 'demo',
-              path: '/repos/demo',
-              predefinedIssues: [
-                PredefinedIssue(key: 'AU2-9', description: 'Code review'),
-              ],
-            ),
-          ]),
-        ),
+        repoConfigStore: _repoStore(config),
         gitService: GitService(),
-        appSettingsStore: AppSettingsStore(
-          configService: _FakeConfigService(const []),
-        ),
+        appSettingsStore: AppSettingsStore(configFile: config),
         eventStore: WorktreeEventStore(directoryPath: tempDir.path),
         claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
         manualPostStore: manualStore,
@@ -477,7 +605,7 @@ void main() {
     setUp(() async {
       jira = _FakeJiraService();
       editor = _FakeTagEditor();
-      final config = _FakeConfigService(
+      final config = await _configFile(
         [
           RepoConfig(
             name: 'au2office',
@@ -495,9 +623,9 @@ void main() {
         ),
       );
       jiraServer = AgentApiServer(
-        repoConfigStore: RepoConfigStore(configService: config),
+        repoConfigStore: _repoStore(config),
         gitService: GitService(),
-        appSettingsStore: AppSettingsStore(configService: config),
+        appSettingsStore: AppSettingsStore(configFile: config),
         eventStore: WorktreeEventStore(directoryPath: tempDir.path),
         claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
         jiraService: jira,
@@ -695,14 +823,14 @@ void main() {
 
     setUp(() async {
       agentDir = await Directory.systemTemp.createTemp('agent_api_agents');
-      final config = _FakeConfigService([
+      final config = await _configFile([
         RepoConfig(name: 'other', path: '/repos/other'),
         RepoConfig(name: 'au2office', path: '/repos/au2'),
       ]);
       agentServer = AgentApiServer(
-        repoConfigStore: RepoConfigStore(configService: config),
+        repoConfigStore: _repoStore(config),
         gitService: _FakeWorktreeGit(),
-        appSettingsStore: AppSettingsStore(configService: config),
+        appSettingsStore: AppSettingsStore(configFile: config),
         eventStore: WorktreeEventStore(directoryPath: tempDir.path),
         claudeActivity: ClaudeSessionActivity(homeDir: tempHome.path),
       );

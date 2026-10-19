@@ -11,6 +11,8 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/worksp
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/models/worktree.dart';
 
+import 'fake_config_stores.dart';
+
 void main() {
 
   testWidgets(
@@ -100,8 +102,11 @@ void main() {
 }
 
 Widget _buildHarness({required Widget child}) {
-  final workspace = WorkspaceController(gitService: _FakeGitService());
-  final settings = SettingsController();
+  final workspace = WorkspaceController(
+    gitService: _FakeGitService(),
+    repoConfigStore: FakeRepoConfigStore(),
+  );
+  final settings = SettingsController(store: FakeAppSettingsStore());
 
   return MultiProvider(
     providers: [

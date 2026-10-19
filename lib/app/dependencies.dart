@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
+import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
@@ -18,6 +20,7 @@ const int agentApiPortOverride = int.fromEnvironment('AGENT_API_PORT');
 class AppDependencies {
   AppDependencies({
     GitService? gitService,
+    ConfigFile? configFile,
     RepoConfigStore? repoConfigStore,
     AppSettingsStore? appSettingsStore,
     WorktreeEventStore? worktreeEventStore,
@@ -25,11 +28,19 @@ class AppDependencies {
     AgentRunStore? agentRunStore,
     AgentApiServer? agentApiServer,
   }) : gitService = gitService ?? GitService(),
-       repoConfigStore = repoConfigStore ?? RepoConfigStore(),
-       appSettingsStore = appSettingsStore ?? AppSettingsStore(),
+       configFile = configFile ?? ConfigFile(),
        worktreeEventStore = worktreeEventStore ?? WorktreeEventStore(),
        manualPostStore = manualPostStore ?? ManualPostStore(),
        agentRunStore = agentRunStore ?? AgentRunStore() {
+    // Both stores share the one ConfigFile, so their saves are serialised.
+    this.repoConfigStore =
+        repoConfigStore ??
+        RepoConfigStore(
+          configFile: this.configFile,
+          tokenStore: KeychainGithubTokenStore(),
+        );
+    this.appSettingsStore =
+        appSettingsStore ?? AppSettingsStore(configFile: this.configFile);
     this.agentApiServer =
         agentApiServer ??
         AgentApiServer(
@@ -42,8 +53,12 @@ class AppDependencies {
   }
 
   final GitService gitService;
-  final RepoConfigStore repoConfigStore;
-  final AppSettingsStore appSettingsStore;
+
+  /// The one `config.json` that [repoConfigStore] and [appSettingsStore]
+  /// both write.
+  final ConfigFile configFile;
+  late final RepoConfigStore repoConfigStore;
+  late final AppSettingsStore appSettingsStore;
   final WorktreeEventStore worktreeEventStore;
   final ManualPostStore manualPostStore;
   final AgentRunStore agentRunStore;

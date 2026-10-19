@@ -32,14 +32,16 @@ import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/models/jira_tag.dart';
 import 'package:tree_launcher/models/manual_post.dart';
 
-/// A small read-only HTTP server, bound to loopback only, that exposes app data
-/// to local AI agents (for use in Claude Code skills).
+/// A small HTTP server, bound to loopback only, that exposes app data to local
+/// AI agents (for use in Claude Code skills).
 ///
 /// v1 surfaces the Activity timeline, worktree creation, Jira issues with the
 /// user's local tags (which it can set, but never anything in Jira), and agent
 /// runs, which agents register and report their progress to. The router is
 /// the extension point — adding a capability is a new `_router` line
 /// plus a handler.
+///
+/// Requests a web page could send are refused: see [_localClientsOnly].
 class AgentApiServer {
   AgentApiServer({
     required RepoConfigStore repoConfigStore,
@@ -112,6 +114,7 @@ class AgentApiServer {
     if (_server != null) return;
     final handler = const Pipeline()
         .addMiddleware(logRequests())
+        .addMiddleware(_localClientsOnly(port))
         .addHandler(_router.call);
     try {
       _server = await shelf_io.serve(
@@ -137,6 +140,39 @@ class AgentApiServer {
   Future<void> restart({int port = defaultPort}) async {
     await stop();
     await start(port: port);
+  }
+
+  /// Refuses what a web page open in a browser could send here:
+  /// - a `Host` other than `127.0.0.1:<port>` or `localhost:<port>` (403),
+  ///   which blocks DNS rebinding;
+  /// - a POST or PUT that isn't `application/json` (415). Browsers send a
+  ///   "simple" cross-site `text/plain` POST without asking, but must ask
+  ///   first (a CORS preflight, which this server never answers) for JSON.
+  Middleware _localClientsOnly(int requestedPort) =>
+      (inner) => (request) {
+        // The bound port: [requestedPort] is 0 when the OS picks one.
+        final port = _server?.port ?? requestedPort;
+        final host = request.headers['host']?.toLowerCase();
+        if (host != '127.0.0.1:$port' && host != 'localhost:$port') {
+          return _json({
+            'error': 'Host must be 127.0.0.1:$port or localhost:$port',
+          }, status: 403);
+        }
+        if ((request.method == 'POST' || request.method == 'PUT') &&
+            _mimeType(request) != 'application/json') {
+          return _json({
+            'error': 'Content-Type must be application/json',
+          }, status: 415);
+        }
+        return inner(request);
+      };
+
+  static String? _mimeType(Request request) {
+    try {
+      return request.mimeType;
+    } on FormatException {
+      return null;
+    }
   }
 
   Router get _router => Router()

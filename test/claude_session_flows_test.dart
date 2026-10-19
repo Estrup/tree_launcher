@@ -18,7 +18,6 @@ import 'package:tree_launcher/features/jira/domain/jira_user.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issues_tab.dart';
-import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
@@ -29,7 +28,8 @@ import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
-import 'package:tree_launcher/services/config_service.dart';
+
+import 'fake_config_stores.dart';
 
 const _discordArgs = '--channels plugin:discord@claude-plugins-official';
 
@@ -66,32 +66,6 @@ class _FakeJiraService extends JiraApiService {
       issueType: 'Bug',
     ),
   ];
-}
-
-class _FakeConfigService extends ConfigService {
-  _FakeConfigService(this.savedRepos);
-
-  List<RepoConfig> savedRepos;
-
-  @override
-  Future<List<RepoConfig>> loadRepos() async => savedRepos;
-
-  @override
-  Future<void> saveRepos(List<RepoConfig> repos) async {
-    savedRepos = List<RepoConfig>.from(repos);
-  }
-
-  @override
-  Future<AppSettings> loadSettings() async => AppSettings();
-
-  @override
-  Future<void> saveSettings(AppSettings settings) async {}
-
-  @override
-  Future<String?> loadLastSelectedRepoPath() async => null;
-
-  @override
-  Future<void> saveLastSelectedRepoPath(String? path) async {}
 }
 
 class _FakeGitService extends GitService {
@@ -200,7 +174,7 @@ void main() {
         (call) async => tempDir.path,
       );
 
-  late _FakeConfigService config;
+  late FakeRepoConfigStore config;
   late WorkspaceController workspace;
   late SettingsController settings;
   late JiraIssuesController jira;
@@ -209,7 +183,7 @@ void main() {
   late _FakeGitService git;
 
   setUp(() async {
-    config = _FakeConfigService([
+    config = FakeRepoConfigStore([
       RepoConfig(
         name: 'au2office',
         path: _repoPath,
@@ -237,10 +211,10 @@ void main() {
     git = _FakeGitService();
     workspace = WorkspaceController(
       gitService: git,
-      configService: config,
+      repoConfigStore: config,
       eventStore: WorktreeEventStore(directoryPath: tempDir.path),
     );
-    settings = SettingsController(configService: config);
+    settings = SettingsController(store: FakeAppSettingsStore());
     terminal = _RecordingTerminal();
     jira = JiraIssuesController(service: _FakeJiraService());
     prs = _FakePrs();

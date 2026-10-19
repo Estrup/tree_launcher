@@ -15,33 +15,10 @@ import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
-import 'package:tree_launcher/services/config_service.dart';
+
+import 'fake_config_stores.dart';
 
 const _discordArgs = '--channels plugin:discord@claude-plugins-official';
-
-class _FakeConfigService extends ConfigService {
-  List<RepoConfig> savedRepos = const [];
-
-  @override
-  Future<List<RepoConfig>> loadRepos() async => savedRepos;
-
-  @override
-  Future<void> saveRepos(List<RepoConfig> repos) async {
-    savedRepos = List<RepoConfig>.from(repos);
-  }
-
-  @override
-  Future<AppSettings> loadSettings() async => AppSettings();
-
-  @override
-  Future<void> saveSettings(AppSettings settings) async {}
-
-  @override
-  Future<String?> loadLastSelectedRepoPath() async => null;
-
-  @override
-  Future<void> saveLastSelectedRepoPath(String? path) async {}
-}
 
 class _FakeGitService extends GitService {
   @override
@@ -334,7 +311,7 @@ void main() {
 
   group('ClaudeSessionLauncher', () {
     late Directory tempDir;
-    late _FakeConfigService config;
+    late FakeRepoConfigStore config;
     late WorkspaceController workspace;
     late SettingsController settings;
     late _RecordingTerminal terminal;
@@ -360,13 +337,13 @@ void main() {
       worktree = p.join(tempDir.path, 'repo-a');
       Directory(worktree).createSync();
       projectsDir = p.join(tempDir.path, 'projects');
-      config = _FakeConfigService();
+      config = FakeRepoConfigStore();
       workspace = WorkspaceController(
         gitService: _FakeGitService(),
-        configService: config,
+        repoConfigStore: config,
         eventStore: WorktreeEventStore(directoryPath: tempDir.path),
       );
-      settings = SettingsController(configService: config);
+      settings = SettingsController(store: FakeAppSettingsStore());
       terminal = _RecordingTerminal();
       await workspace.addRepo('/repos/demo');
     });

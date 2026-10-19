@@ -31,9 +31,10 @@ class GithubPrsController extends ChangeNotifier {
   Timer? _pollTimer;
   GithubConfig? _activeConfig;
 
-  /// Path of the repo whose config we last synced to, so app-level repo
-  /// switches don't trigger redundant reloads.
+  /// The repo and GitHub config we last synced to, so app-level rebuilds
+  /// that change neither don't trigger redundant reloads.
   String? _lastSyncedRepoPath;
+  GithubConfig? _lastSyncedConfig;
 
   /// Login of the user the active token authenticates as. Fetched once per
   /// active config; used to detect PRs that request the current user.
@@ -76,12 +77,17 @@ class GithubPrsController extends ChangeNotifier {
   }
 
   /// Drives loading off the app-level selected repo so polling and toast
-  /// detection run regardless of which tab is active.
+  /// detection run regardless of which tab is active. Reloads when the repo
+  /// or its GitHub config (token, owner, repo, refresh interval) changes.
   void syncToRepo(RepoConfig? repo) {
-    if (repo?.path == _lastSyncedRepoPath) return;
-    _lastSyncedRepoPath = repo?.path;
-
     final config = repo?.githubConfig;
+    if (repo?.path == _lastSyncedRepoPath &&
+        _sameSource(config, _lastSyncedConfig)) {
+      return;
+    }
+    _lastSyncedRepoPath = repo?.path;
+    _lastSyncedConfig = config;
+
     // Deferred so we never notifyListeners() synchronously during the
     // provider's build (syncToRepo is called from ProxyProvider.update).
     Future.microtask(() {
@@ -92,6 +98,12 @@ class GithubPrsController extends ChangeNotifier {
       }
     });
   }
+
+  static bool _sameSource(GithubConfig? a, GithubConfig? b) =>
+      a?.owner == b?.owner &&
+      a?.repo == b?.repo &&
+      a?.token == b?.token &&
+      a?.prRefreshIntervalMinutes == b?.prRefreshIntervalMinutes;
 
   Future<void> loadPrs(GithubConfig config) async {
     if (!config.isConfigured) return;

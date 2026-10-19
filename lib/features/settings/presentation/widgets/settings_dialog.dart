@@ -8,7 +8,6 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/jira_settings_section.dart';
 import 'package:tree_launcher/providers/settings_provider.dart';
-import 'package:tree_launcher/services/config_service.dart';
 
 enum _SettingsSection {
   theme,
@@ -224,7 +223,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Widget _buildConfigFileLink() {
     return FutureBuilder<String>(
-      future: ConfigService().getConfigPath(),
+      future: context.read<AppDependencies>().configFile.path,
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
         final path = snapshot.data!;

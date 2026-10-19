@@ -12,6 +12,7 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/worksp
 import 'package:tree_launcher/models/worktree.dart';
 
 import 'fake_github_issues_service.dart';
+import 'fake_config_stores.dart';
 
 class _FakeGitService extends GitService {
   @override
@@ -41,8 +42,11 @@ Future<_Harness> _pumpTab(
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
-  final workspace = WorkspaceController(gitService: _FakeGitService());
-  final settings = SettingsController();
+  final workspace = WorkspaceController(
+    gitService: _FakeGitService(),
+    repoConfigStore: FakeRepoConfigStore(),
+  );
+  final settings = SettingsController(store: FakeAppSettingsStore());
   final service = FakeGithubIssuesService();
   final controller = GithubIssuesController(service: service)
     ..syncToRepo(issuesRepo(milestone: milestone));

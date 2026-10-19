@@ -6,30 +6,17 @@ import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/jira_settings_section.dart';
 import 'package:tree_launcher/models/jira_tag.dart';
-import 'package:tree_launcher/services/config_service.dart';
 
-class _FakeConfigService extends ConfigService {
-  _FakeConfigService(this.savedSettings);
-
-  AppSettings savedSettings;
-
-  @override
-  Future<AppSettings> loadSettings() async => savedSettings;
-
-  @override
-  Future<void> saveSettings(AppSettings settings) async {
-    savedSettings = settings;
-  }
-}
+import 'fake_config_stores.dart';
 
 const _blocked = JiraTag(id: 'b', name: 'Blocked', color: 'red');
 const _demo = JiraTag(id: 'd', name: 'Demo', color: 'blue');
 
-Future<(SettingsController, _FakeConfigService)> _settings(
+Future<(SettingsController, FakeAppSettingsStore)> _settings(
   AppSettings initial,
 ) async {
-  final config = _FakeConfigService(initial);
-  final controller = SettingsController(configService: config);
+  final config = FakeAppSettingsStore(initial);
+  final controller = SettingsController(store: config);
   await controller.loadSettings();
   return (controller, config);
 }
@@ -144,7 +131,7 @@ void main() {
   });
 
   group('JiraSettingsSection', () {
-    Future<_FakeConfigService> pump(
+    Future<FakeAppSettingsStore> pump(
       WidgetTester tester,
       AppSettings initial,
     ) async {

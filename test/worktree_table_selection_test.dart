@@ -8,14 +8,13 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
-import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
-import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_table.dart';
-import 'package:tree_launcher/services/config_service.dart';
+
+import 'fake_config_stores.dart';
 
 Worktree _wt(String name, {bool isMain = false}) => Worktree(
   path: '/tmp/repo/$name',
@@ -28,27 +27,6 @@ Worktree _wt(String name, {bool isMain = false}) => Worktree(
 Finder _checkboxes() => find.byWidgetPredicate(
   (w) => w.runtimeType.toString() == 'SelectCheckbox',
 );
-
-class _FakeConfigService extends ConfigService {
-  List<RepoConfig> savedRepos = const [];
-  AppSettings savedSettings = AppSettings();
-
-  @override
-  Future<List<RepoConfig>> loadRepos() async => savedRepos;
-
-  @override
-  Future<void> saveRepos(List<RepoConfig> repos) async {
-    savedRepos = List<RepoConfig>.from(repos);
-  }
-
-  @override
-  Future<AppSettings> loadSettings() async => savedSettings;
-
-  @override
-  Future<void> saveSettings(AppSettings settings) async {
-    savedSettings = settings;
-  }
-}
 
 class _FakeGitService extends GitService {
   @override
@@ -77,13 +55,12 @@ void main() {
       );
 
   setUp(() async {
-    final configService = _FakeConfigService();
     workspace = WorkspaceController(
       gitService: _FakeGitService(),
-      configService: configService,
+      repoConfigStore: FakeRepoConfigStore(),
       eventStore: WorktreeEventStore(directoryPath: tempDir.path),
     );
-    settings = SettingsController(configService: configService);
+    settings = SettingsController(store: FakeAppSettingsStore());
     prs = GithubPrsController();
     await workspace.addRepo('/tmp/repo');
   });

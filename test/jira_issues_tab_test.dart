@@ -17,8 +17,9 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/worksp
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/models/jira_tag.dart';
 import 'package:tree_launcher/models/repo_config.dart';
-import 'package:tree_launcher/services/config_service.dart';
 import 'package:tree_launcher/models/worktree.dart';
+
+import 'fake_config_stores.dart';
 
 class _FakeJiraService extends JiraApiService {
   @override
@@ -112,20 +113,6 @@ class _FakeGitService extends GitService {
   Future<List<String>> listBranches(String repoPath) async => const ['develop'];
 }
 
-class _FakeConfigService extends ConfigService {
-  _FakeConfigService(this.savedSettings);
-
-  AppSettings savedSettings;
-
-  @override
-  Future<AppSettings> loadSettings() async => savedSettings;
-
-  @override
-  Future<void> saveSettings(AppSettings settings) async {
-    savedSettings = settings;
-  }
-}
-
 Future<_FakeJiraService> _pumpTab(
   WidgetTester tester, {
   required double width,
@@ -135,8 +122,11 @@ Future<_FakeJiraService> _pumpTab(
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
-  final workspace = WorkspaceController(gitService: _FakeGitService());
-  settings ??= SettingsController();
+  final workspace = WorkspaceController(
+    gitService: _FakeGitService(),
+    repoConfigStore: FakeRepoConfigStore(),
+  );
+  settings ??= SettingsController(store: FakeAppSettingsStore());
   final service = _FakeJiraService();
   final jira = JiraIssuesController(service: service)
     ..syncToRepo(
@@ -165,12 +155,12 @@ Future<_FakeJiraService> _pumpTab(
 
 /// Pumps the tab with the tags Blocked, Demo, Next up and Extra (ids b, d,
 /// n, x) and [tagsByIssue], and returns the config they are saved to.
-Future<_FakeConfigService> _pumpWithTags(
+Future<FakeAppSettingsStore> _pumpWithTags(
   WidgetTester tester,
   Map<String, List<String>> tagsByIssue, {
   double width = 1400,
 }) async {
-  final config = _FakeConfigService(
+  final config = FakeAppSettingsStore(
     AppSettings(
       jiraTags: const [
         JiraTag(id: 'b', name: 'Blocked', color: 'red'),
@@ -181,7 +171,7 @@ Future<_FakeConfigService> _pumpWithTags(
       jiraTagsByIssue: tagsByIssue,
     ),
   );
-  final settings = SettingsController(configService: config);
+  final settings = SettingsController(store: config);
   await settings.loadSettings();
   await _pumpTab(tester, width: width, settings: settings);
   return config;

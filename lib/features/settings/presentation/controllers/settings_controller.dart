@@ -8,11 +8,9 @@ import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/models/jira_tag.dart';
-import 'package:tree_launcher/services/config_service.dart';
 
 class SettingsController extends ChangeNotifier implements JiraTagEditor {
-  SettingsController({AppSettingsStore? store, ConfigService? configService})
-    : _store = store ?? AppSettingsStore(configService: configService);
+  SettingsController({required AppSettingsStore store}) : _store = store;
 
   final AppSettingsStore _store;
   AppSettings _settings = AppSettings();

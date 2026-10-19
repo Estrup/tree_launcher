@@ -10,33 +10,14 @@ import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agents_tab.dart';
-import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/claude_prompt.dart';
-import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
-import 'package:tree_launcher/services/config_service.dart';
 
-class _FakeConfigService extends ConfigService {
-  List<RepoConfig> savedRepos = const [];
-
-  @override
-  Future<List<RepoConfig>> loadRepos() async => savedRepos;
-
-  @override
-  Future<void> saveRepos(List<RepoConfig> repos) async {
-    savedRepos = List<RepoConfig>.from(repos);
-  }
-
-  @override
-  Future<AppSettings> loadSettings() async => AppSettings();
-
-  @override
-  Future<void> saveSettings(AppSettings settings) async {}
-}
+import 'fake_config_stores.dart';
 
 class _FakeGitService extends GitService {
   @override
@@ -64,13 +45,12 @@ void main() {
           pathProviderChannel,
           (call) async => tempDir.path,
         );
-    final configService = _FakeConfigService();
     workspace = WorkspaceController(
       gitService: _FakeGitService(),
-      configService: configService,
+      repoConfigStore: FakeRepoConfigStore(),
       eventStore: WorktreeEventStore(directoryPath: tempDir.path),
     );
-    settings = SettingsController(configService: configService);
+    settings = SettingsController(store: FakeAppSettingsStore());
     terminal = TerminalController();
     agents = AgentsController(
       store: AgentRunStore(directoryPath: tempDir.path),
