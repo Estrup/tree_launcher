@@ -1,7 +1,10 @@
+import 'branch_search_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
+import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
@@ -9,14 +12,13 @@ import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
-import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
-import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
-import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
-import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
-import 'branch_search_dropdown.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_prompts.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree/add_worktree_controls.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree/claude_launch_panel.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
 
 class AddWorktreeResult {
   final String worktreePath;
@@ -395,7 +397,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   /// Picks [option] in the prompt panel. Unless the user chose new / existing
   /// themselves, an agent other than build runs in an existing worktree
   /// (it only reads the code); anything else goes back to the default.
-  void _pickPrompt(_PromptOption option, String? active) {
+  void _pickPrompt(PromptOption option, String? active) {
     _promptKey = option.key == active ? _noPromptKey : option.key;
     if (_targetChosen) return;
     final kind = _selectedSavedPrompt?.kind;
@@ -404,7 +406,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   }
 
   /// The Claude prompt toggles. None selected means no first message.
-  List<_PromptOption> _promptOptions() {
+  List<PromptOption> _promptOptions() {
     final prompts =
         context.read<WorkspaceController>().selectedRepo?.claudePrompts ??
         const [];
@@ -416,21 +418,21 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           base: existing != null ? existing.baseBranch : _selectedBranch,
         );
     return [
-      _PromptOption(
+      PromptOption(
         key: _contextPromptKey,
         label: widget.contextPromptLabel ?? 'Issue context',
         icon: Icons.description_outlined,
         preview: _firstLine(contextPrompt),
       ),
       if (existing?.kickoffPromptPath != null)
-        const _PromptOption(
+        const PromptOption(
           key: _kickoffPromptKey,
           label: 'Kickoff prompt',
           icon: Icons.rocket_launch_outlined,
           preview: 'Staged when the worktree was created',
         ),
       for (var i = 0; i < prompts.length; i++)
-        _PromptOption(
+        PromptOption(
           key: '$_savedPromptPrefix$i',
           label: prompts[i].name,
           icon: prompts[i].kind?.icon ?? Icons.bookmark_border_rounded,
@@ -829,7 +831,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           enabled: !_creating,
           style: appFormFieldTextStyle(context, monospace: true),
           inputFormatters: [
-            _SpaceToDashFormatter(),
+            SpaceToDashFormatter(),
             FilteringTextInputFormatter.deny(
               RegExp(r'[A-Z]'),
               replacementString: '',
@@ -1015,7 +1017,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     return Row(
       children: [
         Expanded(
-          child: _TargetOption(
+          child: WorktreeTargetOption(
             label: 'New worktree',
             icon: Icons.add_rounded,
             selected: !_useExisting,
@@ -1025,7 +1027,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _TargetOption(
+          child: WorktreeTargetOption(
             label: 'Existing worktree',
             icon: Icons.account_tree_rounded,
             selected: _useExisting,
@@ -1156,91 +1158,19 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   /// Right-hand panel of prompt toggles (at most one active) plus a note on
   /// the command that will run.
   Widget _promptPanel() {
-    final args = context.watch<SettingsController>().settings.claudeCliArgs;
     final options = _promptOptions();
     final active = options.any((o) => o.key == _promptKey) ? _promptKey : null;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface0,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionLabel('CLAUDE PROMPT'),
-          const SizedBox(height: 10),
-          for (final option in options) ...[
-            _PromptToggle(
-              option: option,
-              selected: option.key == active,
-              enabled: !_creating,
-              onTap: () => setState(() => _pickPrompt(option, active)),
-            ),
-            const SizedBox(height: 6),
-          ],
-          if (active == null)
-            Padding(
-              padding: const EdgeInsets.only(top: 2, bottom: 4),
-              child: Text(
-                'No prompt — Claude starts without a first message.',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-              ),
-            ),
-          const SizedBox(height: 14),
-          _sectionLabel('MODEL'),
-          const SizedBox(height: 8),
-          _choiceChips(
-            values: claudeModelAliases,
-            selected: _model,
-            onSelected: (v) => setState(() => _model = v),
-          ),
-          const SizedBox(height: 14),
-          _sectionLabel('EFFORT'),
-          const SizedBox(height: 8),
-          _choiceChips(
-            values: claudeEffortLevels,
-            selected: _effort,
-            onSelected: (v) => setState(() => _effort = v),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Runs ${buildClaudeCliCommand(extraArgs: args, model: _model, effort: _effort)} '
-            'in the built-in terminal'
-            '${_selectedSavedPrompt?.kind == null ? '' : ' as a ${_selectedSavedPrompt!.kind!.label.toLowerCase()} agent'}.',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// A row of single-select chips for [values].
-  Widget _choiceChips({
-    required List<String> values,
-    required String selected,
-    required ValueChanged<String> onSelected,
-  }) {
-    String label(String v) =>
-        v == 'xhigh' ? 'XHigh' : '${v[0].toUpperCase()}${v.substring(1)}';
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        for (final value in values)
-          _ChoiceChip(
-            label: label(value),
-            selected: value == selected,
-            enabled: !_creating,
-            onTap: () => onSelected(value),
-          ),
-      ],
+    return ClaudeLaunchPanel(
+      options: options,
+      activeKey: active,
+      model: _model,
+      effort: _effort,
+      enabled: !_creating,
+      cliArgs: context.watch<SettingsController>().settings.claudeCliArgs,
+      agentKind: _selectedSavedPrompt?.kind,
+      onPickPrompt: (option) => setState(() => _pickPrompt(option, active)),
+      onModel: (model) => setState(() => _model = model),
+      onEffort: (effort) => setState(() => _effort = effort),
     );
   }
 
@@ -1280,279 +1210,6 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       errorBorder: withErrorBorder(theme.errorBorder ?? theme.border),
       focusedErrorBorder: withErrorBorder(
         theme.focusedErrorBorder ?? theme.focusedBorder ?? theme.border,
-      ),
-    );
-  }
-}
-
-class _SpaceToDashFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final newText = newValue.text.replaceAll(' ', '-');
-    if (newText == newValue.text) return newValue;
-    return newValue.copyWith(text: newText, selection: newValue.selection);
-  }
-}
-
-/// One half of the new / existing worktree switch in start-Claude mode.
-class _TargetOption extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  const _TargetOption({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = AppColors.claude;
-    return MouseRegion(
-      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
-      child: GestureDetector(
-        onTap: enabled ? onTap : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: selected
-                ? color.withValues(alpha: 0.12)
-                : AppColors.surface0,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: selected
-                  ? color.withValues(alpha: 0.55)
-                  : AppColors.borderSubtle,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: selected ? color : AppColors.textMuted,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    color: selected ? color : AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// One entry of the Claude prompt toggles.
-class _PromptOption {
-  final String key;
-  final String label;
-  final IconData icon;
-
-  /// First line of the prompt text, shown under the label.
-  final String? preview;
-
-  const _PromptOption({
-    required this.key,
-    required this.label,
-    required this.icon,
-    this.preview,
-  });
-}
-
-/// A toggle button for one Claude prompt. Selected tiles are tinted in the
-/// Claude color with a check mark.
-class _PromptToggle extends StatefulWidget {
-  final _PromptOption option;
-  final bool selected;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  const _PromptToggle({
-    required this.option,
-    required this.selected,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  @override
-  State<_PromptToggle> createState() => _PromptToggleState();
-}
-
-class _PromptToggleState extends State<_PromptToggle> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = widget.selected;
-    final color = AppColors.claude;
-    final preview = widget.option.preview;
-
-    return MouseRegion(
-      cursor: widget.enabled ? SystemMouseCursors.click : MouseCursor.defer,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.enabled ? widget.onTap : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: selected
-                ? color.withValues(alpha: 0.12)
-                : _hovered
-                ? AppColors.surface2
-                : AppColors.surface1,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: selected
-                  ? color.withValues(alpha: 0.55)
-                  : AppColors.borderSubtle,
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.15),
-                      blurRadius: 10,
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                widget.option.icon,
-                size: 16,
-                color: selected ? color : AppColors.textMuted,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.option.label,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: selected
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                    if (preview != null && preview.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        preview,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 140),
-                child: Icon(
-                  selected
-                      ? Icons.check_circle_rounded
-                      : Icons.radio_button_unchecked_rounded,
-                  key: ValueKey(selected),
-                  size: 16,
-                  color: selected
-                      ? color
-                      : AppColors.textMuted.withValues(alpha: 0.5),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A small single-select chip in the Claude panel's model / effort rows.
-class _ChoiceChip extends StatefulWidget {
-  final String label;
-  final bool selected;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  const _ChoiceChip({
-    required this.label,
-    required this.selected,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  @override
-  State<_ChoiceChip> createState() => _ChoiceChipState();
-}
-
-class _ChoiceChipState extends State<_ChoiceChip> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = widget.selected;
-    final color = AppColors.claude;
-    return MouseRegion(
-      cursor: widget.enabled ? SystemMouseCursors.click : MouseCursor.defer,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.enabled ? widget.onTap : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: selected
-                ? color.withValues(alpha: 0.14)
-                : _hovered
-                ? AppColors.surface2
-                : AppColors.surface1,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: selected
-                  ? color.withValues(alpha: 0.55)
-                  : AppColors.borderSubtle,
-            ),
-          ),
-          child: Text(
-            widget.label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              color: selected ? color : AppColors.textSecondary,
-            ),
-          ),
-        ),
       ),
     );
   }
