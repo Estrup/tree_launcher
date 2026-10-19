@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:tree_launcher/providers/repo_provider.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 class AddRepoDialog extends StatelessWidget {
   const AddRepoDialog({super.key});
@@ -10,7 +10,7 @@ class AddRepoDialog extends StatelessWidget {
   static const _channel = MethodChannel('tree_launcher/directory_picker');
 
   static Future<void> show(BuildContext context) async {
-    final repoProvider = context.read<RepoProvider>();
+    final repoProvider = context.read<WorkspaceController>();
     final messenger = ScaffoldMessenger.of(context);
 
     final String? result = await _channel.invokeMethod<String>('pickDirectory');

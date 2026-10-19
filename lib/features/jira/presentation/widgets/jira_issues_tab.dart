@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/selection_controls.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
+import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
@@ -13,13 +15,11 @@ import 'package:tree_launcher/features/jira/presentation/widgets/jira_status_men
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_tags.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
-import 'package:tree_launcher/models/jira_tag.dart';
-import 'package:tree_launcher/models/worktree.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 /// Shared column widths so the header lines up with every row.
 const double _kTypeWidth = 22;

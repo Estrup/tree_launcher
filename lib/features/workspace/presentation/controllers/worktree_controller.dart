@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:tree_launcher/models/worktree.dart';
-import 'package:tree_launcher/services/git_service.dart';
+import 'package:tree_launcher/features/workspace/data/git_service.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 
 class WorktreeController extends ChangeNotifier {
   WorktreeController({required GitService gitService})

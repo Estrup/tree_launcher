@@ -5,9 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
-import 'package:tree_launcher/models/app_settings.dart';
-import 'package:tree_launcher/models/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 import 'fake_config_stores.dart';
 

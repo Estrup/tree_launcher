@@ -13,6 +13,7 @@ import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 import 'package:tree_launcher/features/activity/domain/activity_filter.dart';
 import 'package:tree_launcher/features/activity/domain/activity_service.dart';
+import 'package:tree_launcher/features/activity/domain/manual_post.dart';
 import 'package:tree_launcher/features/agents/domain/agent_event.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
@@ -20,17 +21,16 @@ import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_constants.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
+import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
+import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
-import 'package:tree_launcher/models/jira_tag.dart';
-import 'package:tree_launcher/models/manual_post.dart';
-import 'package:tree_launcher/models/repo_config.dart';
-import 'package:tree_launcher/models/worktree.dart';
-import 'package:tree_launcher/services/git_service.dart';
 
 /// A small HTTP server, bound to loopback only, that exposes app data to local
 /// AI agents (for use in Claude Code skills).

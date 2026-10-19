@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/selection_controls.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
+import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/github_issues/domain/github_issue.dart';
 import 'package:tree_launcher/features/github_issues/domain/github_milestone.dart';
 import 'package:tree_launcher/features/github_issues/presentation/controllers/github_issues_controller.dart';
@@ -14,16 +16,14 @@ import 'package:tree_launcher/features/github_issues/presentation/widgets/github
 import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issue_styles.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_styles.dart';
+import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_tags.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
-import 'package:tree_launcher/models/claude_prompt.dart';
-import 'package:tree_launcher/models/jira_tag.dart';
-import 'package:tree_launcher/models/worktree.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 /// Shared column widths so the header lines up with every row.
 const double _kStateIconWidth = 22;

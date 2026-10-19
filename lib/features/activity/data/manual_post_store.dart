@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/core/database/app_database.dart';
-import 'package:tree_launcher/models/manual_post.dart';
+import 'package:tree_launcher/features/activity/domain/manual_post.dart';
 
 /// Manually logged activity posts, in the app database's `manual_posts`
 /// table. Deleting a post deletes its row.

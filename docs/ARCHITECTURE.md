@@ -4,11 +4,9 @@ TreeLauncher is a Flutter desktop app organized around a feature-first structure
 
 ## Layout
 
-- `lib/app/`: bootstrap, dependency wiring, app shell, and cross-feature coordinators
-- `lib/core/`: shared design-system exports and small cross-cutting utilities
+- `lib/app/`: bootstrap, dependency wiring, and the app shell (`shell/workspace_shell.dart`, `WorkspaceShell`)
+- `lib/core/`: the design system (`design_system/`), database, storage, platform launchers (`platform/`), and small cross-cutting utilities
 - `lib/features/`: feature-owned domain, data, controllers, and widgets
-- `lib/screens/`: top-level screens; currently includes `HomeScreen`
-- `lib/providers/`: compatibility aliases that point at the newer feature controllers
 
 ## Main Features
 

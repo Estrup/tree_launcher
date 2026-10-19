@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import '../models/app_settings.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 
 class LauncherService {
   Future<void> openTerminal(String directory, AppSettings settings) async {

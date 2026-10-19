@@ -6,8 +6,8 @@ import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/terminal/data/claude_desktop_handoff.dart';
+import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
-import 'package:tree_launcher/models/terminal_session.dart';
 
 import 'test_database.dart';
 

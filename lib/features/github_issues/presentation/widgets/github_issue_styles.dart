@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_issues/domain/github_issue.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 /// GitHub's purple for closed (completed) issues; mid-tone, so it reads on
 /// light and dark palettes.

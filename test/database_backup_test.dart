@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 import 'package:tree_launcher/core/database/database_backup.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
-import 'package:tree_launcher/models/manual_post.dart';
+import 'package:tree_launcher/features/activity/domain/manual_post.dart';
 
 import 'test_database.dart';
 

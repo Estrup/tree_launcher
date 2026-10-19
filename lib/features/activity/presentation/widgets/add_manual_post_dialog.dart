@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/activity/domain/predefined_issue.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
-import 'package:tree_launcher/models/predefined_issue.dart';
-import 'package:tree_launcher/models/repo_config.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 /// The fields captured when logging a manual activity post. The date is implied
 /// (always "now"); the description comes from the picked predefined issue, or

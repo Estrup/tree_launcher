@@ -1,5 +1,5 @@
 import 'package:tree_launcher/core/storage/config_file.dart';
-import 'package:tree_launcher/models/app_settings.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 
 /// The `settings` section of `config.json`.
 class AppSettingsStore {

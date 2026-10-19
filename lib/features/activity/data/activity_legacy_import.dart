@@ -4,8 +4,8 @@ import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/core/database/legacy_importer.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/activity/domain/manual_post.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
-import 'package:tree_launcher/models/manual_post.dart';
 
 /// Merges the pre-database `worktree_events.jsonl` into `worktree_events`,
 /// skipping events already there (same time, type and worktree).

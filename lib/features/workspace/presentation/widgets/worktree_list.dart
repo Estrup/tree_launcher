@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tree_launcher/providers/repo_provider.dart';
-import 'package:tree_launcher/providers/settings_provider.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'worktree_table.dart';
 
 /// The Worktrees tab: loading/error/empty states around [WorktreeTable].
@@ -11,7 +11,7 @@ class WorktreeList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repoProvider = context.watch<RepoProvider>();
+    final repoProvider = context.watch<WorkspaceController>();
 
     if (repoProvider.selectedRepo == null) {
       return _EmptyState(
@@ -90,7 +90,7 @@ class WorktreeList extends StatelessWidget {
       );
     }
 
-    final settings = context.watch<SettingsProvider>().settings;
+    final settings = context.watch<SettingsController>().settings;
     final visible = settings.showHiddenWorktrees
         ? repoProvider.worktrees
         : repoProvider.worktrees
@@ -115,7 +115,7 @@ class _WorktreeListOptionsButtonState extends State<WorktreeListOptionsButton> {
   bool _hovered = false;
 
   void _showMenu(BuildContext context) {
-    final settingsProvider = context.read<SettingsProvider>();
+    final settingsProvider = context.read<SettingsController>();
     final showHidden = settingsProvider.settings.showHiddenWorktrees;
     final RenderBox button = context.findRenderObject() as RenderBox;
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;

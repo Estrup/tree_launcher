@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
-import 'package:tree_launcher/models/manual_post.dart';
+import 'package:tree_launcher/features/activity/domain/manual_post.dart';
 
 import 'test_database.dart';
 

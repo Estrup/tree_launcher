@@ -1,4 +1,4 @@
-import 'package:tree_launcher/models/jira_tag.dart';
+import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 
 /// The user's local Jira tags in the running app, for the agent HTTP API.
 ///

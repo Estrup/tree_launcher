@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/widgets/activity_tab.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
@@ -19,17 +19,18 @@ import 'package:tree_launcher/features/workspace/presentation/widgets/repo_setti
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
 import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_list.dart';
-import 'package:tree_launcher/providers/repo_provider.dart';
-import 'package:tree_launcher/providers/terminal_provider.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class WorkspaceShell extends StatefulWidget {
+  const WorkspaceShell({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<WorkspaceShell> createState() => _WorkspaceShellState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _WorkspaceShellState extends State<WorkspaceShell>
+    with TickerProviderStateMixin {
   static const double _collapseBreakpoint = 800;
   bool _sidebarOpen = false;
   TabController? _tabController;
@@ -43,8 +44,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final repoProvider = context.watch<RepoProvider>();
-    final terminalProvider = context.watch<TerminalProvider>();
+    final repoProvider = context.watch<WorkspaceController>();
+    final terminalProvider = context.watch<TerminalController>();
     final isTerminalActive =
         terminalProvider.isVisible && terminalProvider.sessions.isNotEmpty;
 
@@ -59,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.backquote, meta: true): () {
-          final tp = context.read<TerminalProvider>();
+          final tp = context.read<TerminalController>();
           if (tp.sessions.isNotEmpty) {
             tp.toggleVisibility();
           }
@@ -357,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildHeader(
     BuildContext context,
-    RepoProvider repoProvider, {
+    WorkspaceController repoProvider, {
     bool showMenuButton = false,
   }) {
     final selectedRepo = repoProvider.selectedRepo;

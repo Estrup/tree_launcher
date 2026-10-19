@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
-import 'package:tree_launcher/models/claude_prompt.dart';
 
 void main() {
   final prompt = ClaudePrompt(

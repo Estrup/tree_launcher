@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/platform/launcher_service.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/terminal/data/claude_desktop_handoff.dart';
+import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
-import 'package:tree_launcher/models/terminal_session.dart';
-import 'package:tree_launcher/providers/repo_provider.dart';
-import 'package:tree_launcher/services/launcher_service.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 /// The session's worktree at a glance, at the right of the terminal header:
 /// its Jira issue and open PR, VS Code, and for a Claude session a button
@@ -27,7 +27,7 @@ class TerminalHeaderActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final workspace = context.watch<RepoProvider>();
+    final workspace = context.watch<WorkspaceController>();
     final path = session.workingDirectory;
     final repo = workspace.repos
         .where((r) => r.path == session.repoPath)

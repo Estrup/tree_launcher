@@ -5,21 +5,21 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/platform/launcher_service.dart';
+import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issue_dialog.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
-import 'package:tree_launcher/models/claude_prompt.dart';
-import 'package:tree_launcher/models/command_style.dart';
-import 'package:tree_launcher/models/custom_command.dart';
-import 'package:tree_launcher/models/vscode_config.dart';
-import 'package:tree_launcher/models/worktree.dart';
-import 'package:tree_launcher/providers/repo_provider.dart';
-import 'package:tree_launcher/providers/settings_provider.dart';
-import 'package:tree_launcher/providers/terminal_provider.dart';
-import 'package:tree_launcher/services/launcher_service.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
+import 'package:tree_launcher/features/workspace/presentation/command_style.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 /// Builds the standard Claude launch context prompt from a worktree's recorded
 /// JIRA issue and base branch. Returns null when neither is known.
@@ -129,8 +129,8 @@ void copyToClipboard(BuildContext context, String value, String label) {
 /// Shows the standard delete-worktree confirmation dialog and, when confirmed,
 /// closes any open terminal sessions for the path and deletes the worktree.
 Future<void> confirmDeleteWorktree(BuildContext context, Worktree wt) async {
-  final repoProvider = context.read<RepoProvider>();
-  final terminalProvider = context.read<TerminalProvider>();
+  final repoProvider = context.read<WorkspaceController>();
+  final terminalProvider = context.read<TerminalController>();
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -174,8 +174,8 @@ Future<void> confirmBulkDeleteWorktrees(
   List<Worktree> worktrees,
 ) async {
   if (worktrees.isEmpty) return;
-  final repoProvider = context.read<RepoProvider>();
-  final terminalProvider = context.read<TerminalProvider>();
+  final repoProvider = context.read<WorkspaceController>();
+  final terminalProvider = context.read<TerminalController>();
 
   // Cap the listed names so a huge selection doesn't overflow the dialog.
   const maxListed = 8;
@@ -297,9 +297,9 @@ Future<void> confirmBulkDeleteWorktrees(
 }
 
 /// Shows a dialog to add, edit, or clear the JIRA ticket key attached to [wt].
-/// Persists via [RepoProvider.updateJiraIssue]; an empty value clears the key.
+/// Persists via [WorkspaceController.updateJiraIssue]; an empty value clears the key.
 Future<void> editJiraIssueDialog(BuildContext context, Worktree wt) async {
-  final repoProvider = context.read<RepoProvider>();
+  final repoProvider = context.read<WorkspaceController>();
   final controller = TextEditingController(text: wt.jiraIssue ?? '');
   final focusNode = FocusNode();
 
@@ -433,8 +433,8 @@ class _TerminalButtonState extends State<TerminalButton> {
   bool _dropHovered = false;
 
   void _openEmbedded(BuildContext context) {
-    final repo = context.read<RepoProvider>().selectedRepo;
-    final tp = context.read<TerminalProvider>();
+    final repo = context.read<WorkspaceController>().selectedRepo;
+    final tp = context.read<TerminalController>();
     tp.openTerminal(
       widget.worktreeName,
       widget.worktreePath,
@@ -443,9 +443,9 @@ class _TerminalButtonState extends State<TerminalButton> {
   }
 
   void _showDropdown(BuildContext context) {
-    final settings = context.read<SettingsProvider>().settings;
-    final repo = context.read<RepoProvider>().selectedRepo;
-    final tp = context.read<TerminalProvider>();
+    final settings = context.read<SettingsController>().settings;
+    final repo = context.read<WorkspaceController>().selectedRepo;
+    final tp = context.read<TerminalController>();
     _showMenuBelow<String>(
       context,
       items: [
@@ -706,7 +706,7 @@ class _VscodeButtonState extends State<VscodeButton> {
   Widget build(BuildContext context) {
     final configs =
         widget.configs ??
-        context.watch<RepoProvider>().selectedRepo?.vscodeConfigs ??
+        context.watch<WorkspaceController>().selectedRepo?.vscodeConfigs ??
         [];
     final hasConfigs = configs.isNotEmpty;
 
@@ -854,7 +854,7 @@ class _ClaudeButtonState extends State<ClaudeButton> {
   }
 
   void _showDropdown(BuildContext context, List<ClaudePrompt> prompts) {
-    final repoName = context.read<RepoProvider>().selectedRepo?.name;
+    final repoName = context.read<WorkspaceController>().selectedRepo?.name;
     final prNumber = openPrNumberForBranch(context, widget.wt.branch);
     final claudeIcon = SvgPicture.asset(
       'assets/icons/claude.svg',
@@ -951,7 +951,7 @@ class _ClaudeButtonState extends State<ClaudeButton> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = context.watch<RepoProvider>().selectedRepo;
+    final repo = context.watch<WorkspaceController>().selectedRepo;
     final prompts = repo?.claudePrompts ?? const <ClaudePrompt>[];
     final hasKickoff = widget.wt.kickoffPromptPath != null;
     // The dropdown is worth showing when there are configured prompts or this
@@ -1189,8 +1189,8 @@ class _CustomCommandsButtonState extends State<CustomCommandsButton> {
   }
 
   void _showDropdown(BuildContext context) {
-    final repo = context.read<RepoProvider>().selectedRepo;
-    final tp = context.read<TerminalProvider>();
+    final repo = context.read<WorkspaceController>().selectedRepo;
+    final tp = context.read<TerminalController>();
     final RenderBox button = context.findRenderObject() as RenderBox;
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromRect(
@@ -1433,7 +1433,7 @@ class _WorktreeOptionsButtonState extends State<WorktreeOptionsButton> {
   bool _hovered = false;
 
   void _showMenu(BuildContext context) {
-    final repoProvider = context.read<RepoProvider>();
+    final repoProvider = context.read<WorkspaceController>();
     final wt = widget.worktree;
 
     PopupMenuItem<String> item(
@@ -1579,7 +1579,7 @@ class _PullButtonState extends State<PullButton> {
 
   Future<void> _pull() async {
     if (_busy || _detached) return;
-    final repoProvider = context.read<RepoProvider>();
+    final repoProvider = context.read<WorkspaceController>();
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {

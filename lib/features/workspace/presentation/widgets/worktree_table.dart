@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/selection_controls.dart';
+import 'package:tree_launcher/core/platform/launcher_service.dart';
 import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issue_badge.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
-import 'package:tree_launcher/models/worktree.dart';
-import 'package:tree_launcher/providers/repo_provider.dart';
-import 'package:tree_launcher/services/launcher_service.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 /// Shared column layout so the header and every row line up.
 const double _kCheckboxWidth = 24;
@@ -97,7 +97,7 @@ class _WorktreeTableState extends State<WorktreeTable> {
     // Clear eagerly: with "Show hidden worktrees" on, the rows stay visible
     // and didUpdateWidget would never prune them.
     setState(_selected.clear);
-    await context.read<RepoProvider>().setWorktreesHidden(paths, true);
+    await context.read<WorkspaceController>().setWorktreesHidden(paths, true);
   }
 
   Future<void> _deleteSelected() async {
@@ -360,7 +360,7 @@ class _HeaderRowState extends State<_HeaderRow> {
               width: _kJiraWidth,
               child: _label(
                 context
-                            .watch<RepoProvider>()
+                            .watch<WorkspaceController>()
                             .selectedRepo
                             ?.githubConfig
                             ?.showsIssues ??
@@ -448,7 +448,7 @@ class _WorktreeRowState extends State<_WorktreeRow> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = context.watch<RepoProvider>().selectedRepo;
+    final repo = context.watch<WorkspaceController>().selectedRepo;
     final customCommands = repo?.customCommands ?? [];
     final wt = widget.worktree;
 

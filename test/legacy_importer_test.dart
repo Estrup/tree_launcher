@@ -8,6 +8,7 @@ import 'package:tree_launcher/core/database/legacy_importer.dart';
 import 'package:tree_launcher/features/activity/data/activity_legacy_import.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/activity/domain/manual_post.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_legacy_import.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
@@ -18,7 +19,6 @@ import 'package:tree_launcher/features/github_issues/data/github_issue_cache.dar
 import 'package:tree_launcher/features/github_issues/domain/github_issue.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
-import 'package:tree_launcher/models/manual_post.dart';
 
 import 'test_database.dart';
 

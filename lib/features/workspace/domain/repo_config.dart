@@ -1,9 +1,8 @@
+import 'package:tree_launcher/features/activity/domain/predefined_issue.dart';
+import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
-
-import 'claude_prompt.dart';
-import 'custom_command.dart';
-import 'predefined_issue.dart';
-import 'vscode_config.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 
 /// Config key for [RepoConfig.claudePrompts]. Kept as the legacy
 /// `copilotPrompts` name so prompts saved before the rename still load, and so

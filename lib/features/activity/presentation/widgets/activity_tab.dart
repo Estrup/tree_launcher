@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/domain/activity_filter.dart';
 import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
 import 'package:tree_launcher/features/activity/presentation/widgets/add_manual_post_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart'
     show JiraBadge;
-import 'package:tree_launcher/theme/app_theme.dart';
 
 /// Timeline of worktree activity: when each worktree (issue) was created and
 /// closed, plus which days Claude Code was active in it.

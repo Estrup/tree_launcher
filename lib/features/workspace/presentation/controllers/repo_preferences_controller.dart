@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
-import 'package:tree_launcher/models/claude_prompt.dart';
-import 'package:tree_launcher/models/custom_command.dart';
-import 'package:tree_launcher/models/repo_config.dart';
-import 'package:tree_launcher/models/vscode_config.dart';
-import 'package:tree_launcher/models/predefined_issue.dart';
+import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
+import 'package:tree_launcher/features/activity/domain/predefined_issue.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_registry_controller.dart';
 
 class RepoPreferencesController extends ChangeNotifier {

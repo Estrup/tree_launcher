@@ -3,7 +3,7 @@ import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
-import 'package:tree_launcher/models/worktree.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 
 /// Pure (Flutter-state-free) assembly of the Activity timeline. Merges the
 /// durable [WorktreeEvent] log with Claude Code's session history and any live

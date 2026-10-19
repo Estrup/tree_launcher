@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
-import 'package:tree_launcher/models/terminal_session.dart';
-import 'package:tree_launcher/theme/terminal_theme.dart';
+import 'package:tree_launcher/core/design_system/terminal_theme.dart';
+import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
 
 class TerminalController extends ChangeNotifier {
   static const int maxSessions = 8;

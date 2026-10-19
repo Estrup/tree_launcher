@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/window_chrome.dart';
+import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
-import 'package:tree_launcher/models/app_settings.dart';
-import 'package:tree_launcher/models/jira_tag.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 
 class SettingsController extends ChangeNotifier implements JiraTagEditor {
   SettingsController({required AppSettingsStore store}) : _store = store;

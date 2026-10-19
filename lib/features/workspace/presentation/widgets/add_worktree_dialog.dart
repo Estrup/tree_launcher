@@ -3,18 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/agents/presentation/agent_launcher.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
 import 'package:tree_launcher/features/terminal/presentation/claude_session_actions.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
-import 'package:tree_launcher/models/claude_prompt.dart';
-import 'package:tree_launcher/models/worktree.dart';
-import 'package:tree_launcher/providers/repo_provider.dart';
-import 'package:tree_launcher/providers/settings_provider.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 import 'branch_search_dropdown.dart';
 
 class AddWorktreeResult {
@@ -136,7 +136,7 @@ class AddWorktreeDialog extends StatefulWidget {
     return showDialog<AddWorktreeResult>(
       context: context,
       builder: (_) => ChangeNotifierProvider.value(
-        value: context.read<RepoProvider>(),
+        value: context.read<WorkspaceController>(),
         child: AddWorktreeDialog(
           initialName: initialName,
           initialJiraKey: initialJiraKey,
@@ -174,11 +174,11 @@ class AddWorktreeDialog extends StatefulWidget {
     String contextPromptId = issueContextPromptId,
     String? contextTitle,
   }) async {
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     if (repo == null) return;
     final launcher = ClaudeSessionLauncher.of(context);
     final agentLauncher = AgentLauncher.maybeOf(context);
-    final settings = context.read<SettingsProvider>();
+    final settings = context.read<SettingsController>();
     if (existingWorktree != null && launcher.focus(existingWorktree.path)) {
       return;
     }
@@ -258,7 +258,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
   late final bool _defaultUseExisting =
       widget.existingWorktree != null ||
-      context.read<SettingsProvider>().settings.claudeUseExistingWorktree;
+      context.read<SettingsController>().settings.claudeUseExistingWorktree;
 
   /// Whether the user picked new / existing themselves, so picking an agent
   /// prompt doesn't switch it.
@@ -286,7 +286,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     if (widget.existingWorktree?.kickoffPromptPath != null) {
       return _kickoffPromptKey;
     }
-    final remembered = context.read<SettingsProvider>().settings.claudePrompt;
+    final remembered = context.read<SettingsController>().settings.claudePrompt;
     switch (remembered) {
       case noClaudePromptId:
         return _noPromptKey;
@@ -298,7 +298,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         return _contextPromptKey;
     }
     final prompts =
-        context.read<RepoProvider>().selectedRepo?.claudePrompts ?? const [];
+        context.read<WorkspaceController>().selectedRepo?.claudePrompts ??
+        const [];
     final index = prompts.indexWhere((p) => p.name == remembered);
     return index == -1 ? _contextPromptKey : '$_savedPromptPrefix$index';
   }
@@ -309,7 +310,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     final picked = widget.existingWorktree;
     if (picked != null && picked.path == _existingPath) return picked;
     return context
-        .read<RepoProvider>()
+        .read<WorkspaceController>()
         .worktrees
         .where((w) => w.path == _existingPath)
         .firstOrNull;
@@ -318,7 +319,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   @override
   void initState() {
     super.initState();
-    final settings = context.read<SettingsProvider>().settings;
+    final settings = context.read<SettingsController>().settings;
     final model = settings.claudeModel;
     if (model != null && claudeModelAliases.contains(model)) _model = model;
     final effort = settings.claudeEffort;
@@ -329,7 +330,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       _jiraController.text = widget.initialJiraKey!;
     }
     if (widget.startClaude) {
-      final repoProvider = context.read<RepoProvider>();
+      final repoProvider = context.read<WorkspaceController>();
       _existingPath =
           widget.existingWorktree?.path ??
           defaultSharedWorktree(
@@ -356,7 +357,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
 
   Future<void> _loadBranches() async {
     try {
-      final repoProvider = context.read<RepoProvider>();
+      final repoProvider = context.read<WorkspaceController>();
       final branches = await repoProvider.listBranches();
       if (mounted) {
         final lastBaseBranch = repoProvider.selectedRepo?.lastBaseBranch;
@@ -389,7 +390,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   void _updateAutoFillBranch() {
     if (_branchManuallyEdited || !_createNewBranch) return;
     final prefix = context
-        .read<SettingsProvider>()
+        .read<SettingsController>()
         .settings
         .defaultBranchPrefix;
     final name = _effectiveWorktreeName;
@@ -425,7 +426,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   /// The Claude prompt toggles. None selected means no first message.
   List<_PromptOption> _promptOptions() {
     final prompts =
-        context.read<RepoProvider>().selectedRepo?.claudePrompts ?? const [];
+        context.read<WorkspaceController>().selectedRepo?.claudePrompts ??
+        const [];
     final existing = _existing;
     final contextPrompt =
         widget.contextPrompt ??
@@ -473,7 +475,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     if (!_promptKey.startsWith(_savedPromptPrefix)) return null;
     final index = int.tryParse(_promptKey.substring(_savedPromptPrefix.length));
     final prompts =
-        context.read<RepoProvider>().selectedRepo?.claudePrompts ?? const [];
+        context.read<WorkspaceController>().selectedRepo?.claudePrompts ??
+        const [];
     return index == null || index >= prompts.length ? null : prompts[index];
   }
 
@@ -488,7 +491,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     String? issue,
     String? baseBranch,
   }) {
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     switch (_promptKey) {
       case _contextPromptKey:
         return widget.contextPrompt ??
@@ -527,7 +530,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       if (validateJiraKey(_jiraController.text.trim()) != null) return;
       // A shared checkout (not the issue's own) is remembered for next time.
       if (existing.path != widget.existingWorktree?.path) {
-        final repoProvider = context.read<RepoProvider>();
+        final repoProvider = context.read<WorkspaceController>();
         final repo = repoProvider.selectedRepo;
         if (repo != null) {
           await repoProvider.updateAgentWorkingDirectory(repo, existing.path);
@@ -580,7 +583,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     });
 
     try {
-      final repoProvider = context.read<RepoProvider>();
+      final repoProvider = context.read<WorkspaceController>();
       final worktreeName = _effectiveWorktreeName;
       final newBranch = _newBranchController.text.trim();
 
@@ -697,7 +700,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         widget.initialJiraKey ??
         (widget.githubIssue == null ? null : '#${widget.githubIssue}');
     final contextTitle = widget.contextTitle;
-    final repoName = context.read<RepoProvider>().selectedRepo?.name;
+    final repoName = context.read<WorkspaceController>().selectedRepo?.name;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 18),
@@ -793,7 +796,8 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   /// Footer: where the worktree goes, plus Cancel and the primary action.
   Widget _footer() {
     final nested =
-        context.watch<RepoProvider>().selectedRepo?.useNestedWorktrees == true;
+        context.watch<WorkspaceController>().selectedRepo?.useNestedWorktrees ==
+        true;
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 20, 12),
       decoration: BoxDecoration(
@@ -1056,7 +1060,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   /// Start-Claude mode in an existing worktree: pick it, plus the issue the
   /// session is about.
   Widget _existingWorktreeFields(BuildContext context) {
-    final worktrees = context.watch<RepoProvider>().worktrees;
+    final worktrees = context.watch<WorkspaceController>().worktrees;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1172,7 +1176,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   /// Right-hand panel of prompt toggles (at most one active) plus a note on
   /// the command that will run.
   Widget _promptPanel() {
-    final args = context.watch<SettingsProvider>().settings.claudeCliArgs;
+    final args = context.watch<SettingsController>().settings.claudeCliArgs;
     final options = _promptOptions();
     final active = options.any((o) => o.key == _promptKey) ? _promptKey : null;
 

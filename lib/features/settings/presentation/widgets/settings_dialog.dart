@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/jira_settings_section.dart';
-import 'package:tree_launcher/models/app_settings.dart';
-import 'package:tree_launcher/providers/settings_provider.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 enum _SettingsSection {
   theme,
@@ -25,7 +25,7 @@ class SettingsDialog extends StatefulWidget {
     return showDialog(
       context: context,
       builder: (_) => ChangeNotifierProvider.value(
-        value: context.read<SettingsProvider>(),
+        value: context.read<SettingsController>(),
         child: const SettingsDialog(),
       ),
     );
@@ -324,7 +324,7 @@ class _ThemeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settingsProvider = context.watch<SettingsProvider>();
+    final settingsProvider = context.watch<SettingsController>();
     final settings = settingsProvider.settings;
 
     return SingleChildScrollView(
@@ -395,7 +395,7 @@ class _TerminalsSectionState extends State<_TerminalsSection> {
   @override
   void initState() {
     super.initState();
-    final settings = context.read<SettingsProvider>().settings;
+    final settings = context.read<SettingsController>().settings;
     _customTerminalController = TextEditingController(
       text: settings.customTerminalCommand ?? '',
     );
@@ -413,7 +413,7 @@ class _TerminalsSectionState extends State<_TerminalsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final settingsProvider = context.watch<SettingsProvider>();
+    final settingsProvider = context.watch<SettingsController>();
     final settings = settingsProvider.settings;
 
     const fonts = [
@@ -825,7 +825,7 @@ class _RepositoriesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settingsProvider = context.watch<SettingsProvider>();
+    final settingsProvider = context.watch<SettingsController>();
     final hiddenRepos = settingsProvider.settings.hiddenRepos;
 
     return SingleChildScrollView(
@@ -989,7 +989,7 @@ class _AgentApiSectionState extends State<_AgentApiSection> {
   @override
   void initState() {
     super.initState();
-    final settings = context.read<SettingsProvider>().settings;
+    final settings = context.read<SettingsController>().settings;
     // A debug override (--dart-define=AGENT_API_PORT) wins over the saved
     // config and must never be written back, so the field shows it read-only.
     _portController = TextEditingController(
@@ -1014,7 +1014,7 @@ class _AgentApiSectionState extends State<_AgentApiSection> {
   Future<void> _commitPort() async {
     // Never persist while a debug override is active.
     if (agentApiPortOverride != 0) return;
-    final settingsProvider = context.read<SettingsProvider>();
+    final settingsProvider = context.read<SettingsController>();
     final current = settingsProvider.settings.agentApiPort;
     final text = _portController.text.trim();
     final port = int.tryParse(text);
@@ -1039,7 +1039,7 @@ class _AgentApiSectionState extends State<_AgentApiSection> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>().settings;
+    final settings = context.watch<SettingsController>().settings;
     final server = context.read<AppDependencies>().agentApiServer;
     final running = server.isRunning;
     final activePort = server.port;

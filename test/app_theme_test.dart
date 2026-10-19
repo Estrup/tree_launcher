@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 
 void main() {
   tearDown(() => AppColors.setTheme('minimal'));

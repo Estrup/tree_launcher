@@ -3,7 +3,7 @@ import 'package:tree_launcher/features/github_issues/domain/github_issue.dart';
 import 'package:tree_launcher/features/github_issues/domain/github_milestone.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
-import 'package:tree_launcher/models/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 /// A repo with the Issues tab on for acme/app.
 RepoConfig issuesRepo({int? milestone}) => RepoConfig(

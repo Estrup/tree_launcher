@@ -5,7 +5,7 @@ import 'package:tree_launcher/features/github_issues/data/github_issues_api_serv
 import 'package:tree_launcher/features/github_issues/domain/github_issue.dart';
 import 'package:tree_launcher/features/github_issues/presentation/controllers/github_issues_controller.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
-import 'package:tree_launcher/models/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 import 'fake_github_issues_service.dart';
 

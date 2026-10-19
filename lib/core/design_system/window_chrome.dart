@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 
-import 'package:tree_launcher/theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 
 /// Keeps the native macOS title bar in step with the active palette: the
 /// strip above the Flutter view takes the header color (`surface0`) and the

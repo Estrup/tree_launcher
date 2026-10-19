@@ -8,9 +8,9 @@ import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 import 'package:tree_launcher/features/activity/domain/activity_service.dart';
+import 'package:tree_launcher/features/activity/domain/manual_post.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
-import 'package:tree_launcher/models/manual_post.dart';
-import 'package:tree_launcher/models/worktree.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 
 import 'test_database.dart';
 

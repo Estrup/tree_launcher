@@ -2,11 +2,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
-import 'package:tree_launcher/providers/settings_provider.dart';
-import 'package:tree_launcher/providers/terminal_provider.dart'
-    hide TerminalController;
-import 'package:tree_launcher/theme/app_theme.dart';
-import 'package:tree_launcher/theme/terminal_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/core/design_system/terminal_theme.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart'
+    as terminal;
 import 'terminal_context_menu.dart';
 import 'terminal_header_actions.dart';
 import 'terminal_key_handler.dart';
@@ -18,7 +18,7 @@ class TerminalFullView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tp = context.watch<TerminalProvider>();
+    final tp = context.watch<terminal.TerminalController>();
     if (!tp.isVisible || tp.sessions.isEmpty) return const SizedBox.shrink();
     final active = tp.activeSession;
 
@@ -227,7 +227,7 @@ class _TerminalBodyState extends State<_TerminalBody> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>().settings;
+    final settings = context.watch<SettingsController>().settings;
     final fontFamily = settings.terminalFontFamily ?? 'SF Mono';
     final fontSize = settings.terminalFontSize ?? 13.0;
 

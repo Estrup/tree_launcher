@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
-import 'package:tree_launcher/models/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 import 'fake_config_stores.dart';
 

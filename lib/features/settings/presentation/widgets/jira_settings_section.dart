@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
-import 'package:tree_launcher/models/jira_tag.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 /// Settings → Jira: the tags issues can get in the Jira tab. They are added,
 /// renamed, recolored, reordered and deleted here.

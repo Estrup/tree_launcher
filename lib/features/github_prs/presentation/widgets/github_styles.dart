@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 /// Parses a GitHub 6-hex label color (e.g. "d73a4a") into a [Color],
 /// falling back to the accent color when missing or malformed.

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/jira_settings_section.dart';
-import 'package:tree_launcher/models/app_settings.dart';
-import 'package:tree_launcher/models/jira_tag.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 import 'fake_config_stores.dart';
 

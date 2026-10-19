@@ -1,4 +1,4 @@
-import 'package:tree_launcher/models/jira_tag.dart';
+import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 
 enum TerminalApp { terminal, ghostty, custom }
 

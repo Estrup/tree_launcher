@@ -6,7 +6,7 @@ import 'package:tree_launcher/features/github_issues/domain/github_issue_search.
 import 'package:tree_launcher/features/github_issues/domain/github_milestone.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
-import 'package:tree_launcher/models/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 /// One label in the Issues tab's filter, with how many loaded issues have it.
 class GithubLabelCount {

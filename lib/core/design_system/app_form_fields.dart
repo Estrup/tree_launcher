@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:tree_launcher/theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 
 TextStyle appFormFieldTextStyle(
   BuildContext context, {

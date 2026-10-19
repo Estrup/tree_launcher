@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import '../features/workspace/domain/worktree_naming.dart';
-import '../models/worktree.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 
 class GitService {
   /// Runs git with config that allows operating on bare-repository worktree

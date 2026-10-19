@@ -1,8 +1,8 @@
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
-import 'package:tree_launcher/models/app_settings.dart';
-import 'package:tree_launcher/models/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 /// The repos section of `config.json`, in memory. Widget tests use it
 /// because real file I/O doesn't complete under their fake async.

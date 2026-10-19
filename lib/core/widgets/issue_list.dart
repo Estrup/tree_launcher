@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 
 /// Pieces shared by the issue tabs (Jira, GitHub) and their issue dialogs.
 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tree_launcher/models/app_settings.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 
 void main() {
   group('AppSettings', () {

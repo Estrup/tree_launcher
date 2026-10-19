@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/presentation/agent_launcher.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/claude_session_actions.dart';
+import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_context_menu.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
-import 'package:tree_launcher/models/repo_config.dart';
-import 'package:tree_launcher/providers/repo_provider.dart';
-import 'package:tree_launcher/providers/settings_provider.dart';
-import 'package:tree_launcher/providers/terminal_provider.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
 
 class RepoSidebar extends StatefulWidget {
   final VoidCallback onAddRepo;
@@ -40,7 +40,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
 
   @override
   Widget build(BuildContext context) {
-    final repoProvider = context.watch<RepoProvider>();
+    final repoProvider = context.watch<WorkspaceController>();
     final collapsed = widget.allowCollapse && _collapsed;
 
     return AnimatedContainer(
@@ -59,8 +59,8 @@ class _RepoSidebarState extends State<RepoSidebar> {
     );
   }
 
-  Widget _buildExpanded(BuildContext context, RepoProvider repoProvider) {
-    final hidden = context.watch<SettingsProvider>().settings.hiddenRepos.toSet();
+  Widget _buildExpanded(BuildContext context, WorkspaceController repoProvider) {
+    final hidden = context.watch<SettingsController>().settings.hiddenRepos.toSet();
     final repos = repoProvider.repos
         .where((r) => !hidden.contains(r.path))
         .toList();
@@ -162,11 +162,11 @@ class _RepoSidebarState extends State<RepoSidebar> {
                         isSelected: isSelected,
                         pageKey: repoProvider.repoPageKey,
                         onTap: () {
-                          context.read<TerminalProvider>().hide();
+                          context.read<TerminalController>().hide();
                           repoProvider.selectRepo(repo);
                         },
                         onOpenPage: (key) {
-                          context.read<TerminalProvider>().hide();
+                          context.read<TerminalController>().hide();
                           repoProvider.selectRepo(repo);
                           repoProvider.showRepoPage(key);
                         },
@@ -219,8 +219,8 @@ class _RepoSidebarState extends State<RepoSidebar> {
 
   // --- Collapsed navigation rail ---
 
-  Widget _buildRail(BuildContext context, RepoProvider repoProvider) {
-    final hidden = context.watch<SettingsProvider>().settings.hiddenRepos.toSet();
+  Widget _buildRail(BuildContext context, WorkspaceController repoProvider) {
+    final hidden = context.watch<SettingsController>().settings.hiddenRepos.toSet();
     final repos = repoProvider.repos
         .where((r) => !hidden.contains(r.path))
         .toList();
@@ -266,7 +266,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
                       repo: repo,
                       isSelected: isSelected,
                       onTap: () {
-                        context.read<TerminalProvider>().hide();
+                        context.read<TerminalController>().hide();
                         repoProvider.selectRepo(repo);
                       },
                       onContextMenu: (pos) =>
@@ -310,7 +310,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
   /// resumes) its Claude session in [worktreePath].
   Future<void> _openClaudeSession(
     BuildContext context,
-    RepoProvider provider,
+    WorkspaceController provider,
     RepoConfig repo,
     String worktreePath,
     String pageKey,
@@ -325,7 +325,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
   /// Claude session.
   Future<void> _openAgent(
     BuildContext context,
-    RepoProvider provider,
+    WorkspaceController provider,
     RepoConfig repo,
     AgentRun run,
   ) async {
@@ -337,7 +337,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
 
   Future<void> _showRepoMenu(
     BuildContext context,
-    RepoProvider provider,
+    WorkspaceController provider,
     RepoConfig repo,
     Offset position,
   ) async {
@@ -353,7 +353,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
         }
       case RepoContextMenuAction.hide:
         if (context.mounted) {
-          context.read<SettingsProvider>().hideRepo(repo.path);
+          context.read<SettingsController>().hideRepo(repo.path);
         }
       case RepoContextMenuAction.remove:
         if (context.mounted) {
@@ -366,7 +366,7 @@ class _RepoSidebarState extends State<RepoSidebar> {
 
   void _confirmRemove(
     BuildContext context,
-    RepoProvider provider,
+    WorkspaceController provider,
     RepoConfig repo,
   ) {
     showDialog(
@@ -623,7 +623,7 @@ class _RepoTileState extends State<_RepoTile> {
   Widget build(BuildContext context) {
     final repo = widget.repo;
     final agents = Provider.of<AgentsController?>(context);
-    final tp = context.watch<TerminalProvider>();
+    final tp = context.watch<TerminalController>();
     final active = tp.isVisible ? tp.activeSession : null;
     final pages = repoPagesFor(repo, agents);
     final pageKeys = {for (final page in pages) page.key};
@@ -737,7 +737,7 @@ class _RepoTileState extends State<_RepoTile> {
     String path,
     String pageKey,
   ) async {
-    final terminal = context.read<TerminalProvider>();
+    final terminal = context.read<TerminalController>();
     final running = terminal.claudeSessionFor(path) != null;
     final action = await _showMenuAt(position, [
       _menuItem('show', Icons.open_in_new_rounded, 'Show'),
@@ -1042,7 +1042,7 @@ class _TerminalToggleButtonState extends State<_TerminalToggleButton> {
 
   @override
   Widget build(BuildContext context) {
-    final tp = context.watch<TerminalProvider>();
+    final tp = context.watch<TerminalController>();
     final count = tp.sessions.length;
     final hasSessions = count > 0;
     final isActive = tp.isVisible && hasSessions;

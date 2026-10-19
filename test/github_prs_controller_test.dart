@@ -3,7 +3,7 @@ import 'package:tree_launcher/features/github_prs/data/github_api_service.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
-import 'package:tree_launcher/models/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 /// Records which config each PR fetch used; no PRs.
 class _FakePrService extends GithubApiService {

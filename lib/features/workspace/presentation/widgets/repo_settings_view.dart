@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
-import 'package:tree_launcher/theme/app_theme.dart';
+import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
-import 'package:tree_launcher/models/command_style.dart';
-import 'package:tree_launcher/models/claude_prompt.dart';
-import 'package:tree_launcher/models/custom_command.dart';
-import 'package:tree_launcher/models/vscode_config.dart';
-import 'package:tree_launcher/models/predefined_issue.dart';
-import 'package:tree_launcher/providers/repo_provider.dart';
+import 'package:tree_launcher/features/workspace/presentation/command_style.dart';
+import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
+import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
+import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
+import 'package:tree_launcher/features/activity/domain/predefined_issue.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 enum _SettingsSection {
   general,
@@ -36,7 +36,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
 
   @override
   Widget build(BuildContext context) {
-    final repoProvider = context.watch<RepoProvider>();
+    final repoProvider = context.watch<WorkspaceController>();
     final repo = repoProvider.selectedRepo;
 
     return Column(
@@ -296,7 +296,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
   @override
   void initState() {
     super.initState();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     _lastRepoPath = repo?.path;
     _nameController = TextEditingController(text: repo?.name ?? '');
   }
@@ -304,7 +304,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     if (repo != null && repo.path != _lastRepoPath) {
       _lastRepoPath = repo.path;
       _nameController.text = repo.name;
@@ -323,7 +323,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
     _debounce = Timer(const Duration(milliseconds: 500), () {
       final name = value.trim();
       if (name.isEmpty) return;
-      final provider = context.read<RepoProvider>();
+      final provider = context.read<WorkspaceController>();
       final repo = provider.selectedRepo;
       if (repo != null && name != repo.name) {
         provider.renameRepo(repo, name);
@@ -333,7 +333,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = context.watch<RepoProvider>().selectedRepo;
+    final repo = context.watch<WorkspaceController>().selectedRepo;
     if (repo == null) return const SizedBox.shrink();
 
     return SingleChildScrollView(
@@ -450,7 +450,7 @@ class _GeneralSectionState extends State<_GeneralSection> {
                 Switch.adaptive(
                   value: repo.useNestedWorktrees,
                   onChanged: (value) {
-                    context.read<RepoProvider>().updateUseNestedWorktrees(
+                    context.read<WorkspaceController>().updateUseNestedWorktrees(
                       repo,
                       value,
                     );
@@ -482,7 +482,7 @@ class _VscodeConfigsSectionState extends State<_VscodeConfigsSection> {
   @override
   void initState() {
     super.initState();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     _lastRepoPath = repo?.path;
     _configs = List.from(repo?.vscodeConfigs ?? []);
   }
@@ -490,7 +490,7 @@ class _VscodeConfigsSectionState extends State<_VscodeConfigsSection> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     if (repo != null && repo.path != _lastRepoPath) {
       _lastRepoPath = repo.path;
       _configs = List.from(repo.vscodeConfigs);
@@ -506,7 +506,7 @@ class _VscodeConfigsSectionState extends State<_VscodeConfigsSection> {
   void _save() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<RepoProvider>();
+      final provider = context.read<WorkspaceController>();
       final repo = provider.selectedRepo;
       if (repo == null) return;
       final cleaned = _configs
@@ -769,7 +769,7 @@ class _CustomCommandsSectionState extends State<_CustomCommandsSection> {
   @override
   void initState() {
     super.initState();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     _lastRepoPath = repo?.path;
     _commands = List.from(repo?.customCommands ?? []);
   }
@@ -777,7 +777,7 @@ class _CustomCommandsSectionState extends State<_CustomCommandsSection> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     if (repo != null && repo.path != _lastRepoPath) {
       _lastRepoPath = repo.path;
       _commands = List.from(repo.customCommands);
@@ -793,7 +793,7 @@ class _CustomCommandsSectionState extends State<_CustomCommandsSection> {
   void _save() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<RepoProvider>();
+      final provider = context.read<WorkspaceController>();
       final repo = provider.selectedRepo;
       if (repo == null) return;
       final cleaned = _commands
@@ -1083,7 +1083,7 @@ class _ClaudePromptsSectionState extends State<_ClaudePromptsSection> {
   @override
   void initState() {
     super.initState();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     _lastRepoPath = repo?.path;
     _prompts = List.from(repo?.claudePrompts ?? []);
   }
@@ -1091,7 +1091,7 @@ class _ClaudePromptsSectionState extends State<_ClaudePromptsSection> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     if (repo != null && repo.path != _lastRepoPath) {
       _lastRepoPath = repo.path;
       _prompts = List.from(repo.claudePrompts);
@@ -1108,7 +1108,7 @@ class _ClaudePromptsSectionState extends State<_ClaudePromptsSection> {
   void _save() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<RepoProvider>();
+      final provider = context.read<WorkspaceController>();
       final repo = provider.selectedRepo;
       if (repo == null) return;
       final cleaned = _prompts
@@ -1572,7 +1572,7 @@ class _PredefinedIssuesSectionState extends State<_PredefinedIssuesSection> {
   @override
   void initState() {
     super.initState();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     _lastRepoPath = repo?.path;
     _issues = List.from(repo?.predefinedIssues ?? []);
   }
@@ -1580,7 +1580,7 @@ class _PredefinedIssuesSectionState extends State<_PredefinedIssuesSection> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     if (repo != null && repo.path != _lastRepoPath) {
       _lastRepoPath = repo.path;
       _issues = List.from(repo.predefinedIssues);
@@ -1596,7 +1596,7 @@ class _PredefinedIssuesSectionState extends State<_PredefinedIssuesSection> {
   void _save() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<RepoProvider>();
+      final provider = context.read<WorkspaceController>();
       final repo = provider.selectedRepo;
       if (repo == null) return;
       final cleaned = _issues
@@ -2225,7 +2225,7 @@ class _GithubSectionState extends State<_GithubSection> {
   @override
   void initState() {
     super.initState();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     _lastRepoPath = repo?.path;
     final config = repo?.githubConfig;
     _ownerController = TextEditingController(text: config?.owner ?? '');
@@ -2239,7 +2239,7 @@ class _GithubSectionState extends State<_GithubSection> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     if (repo != null && repo.path != _lastRepoPath) {
       _lastRepoPath = repo.path;
       final config = repo.githubConfig;
@@ -2264,7 +2264,7 @@ class _GithubSectionState extends State<_GithubSection> {
   void _saveConfig() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<RepoProvider>();
+      final provider = context.read<WorkspaceController>();
       final repo = provider.selectedRepo;
       if (repo == null) return;
 
@@ -2502,7 +2502,7 @@ class _GithubSectionState extends State<_GithubSection> {
 
   /// Turns the repo's Issues tab on or off. Needs a connection first.
   Widget _issuesSwitch() {
-    final repo = context.watch<RepoProvider>().selectedRepo;
+    final repo = context.watch<WorkspaceController>().selectedRepo;
     final config = repo?.githubConfig;
     return SizedBox(
       width: 400,
@@ -2535,7 +2535,7 @@ class _GithubSectionState extends State<_GithubSection> {
             value: config?.issuesEnabled ?? false,
             onChanged: repo == null || config == null
                 ? null
-                : (value) => context.read<RepoProvider>().updateGithubConfig(
+                : (value) => context.read<WorkspaceController>().updateGithubConfig(
                     repo,
                     config.copyWith(issuesEnabled: value),
                   ),
@@ -2565,7 +2565,7 @@ class _JiraSectionState extends State<_JiraSection> {
   @override
   void initState() {
     super.initState();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     _lastRepoPath = repo?.path;
     _keyController = TextEditingController(text: repo?.jiraProjectKey ?? '');
   }
@@ -2573,7 +2573,7 @@ class _JiraSectionState extends State<_JiraSection> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final repo = context.read<RepoProvider>().selectedRepo;
+    final repo = context.read<WorkspaceController>().selectedRepo;
     if (repo != null && repo.path != _lastRepoPath) {
       _lastRepoPath = repo.path;
       _keyController.text = repo.jiraProjectKey ?? '';
@@ -2598,7 +2598,7 @@ class _JiraSectionState extends State<_JiraSection> {
     _debounce?.cancel();
     if (_keyError != null) return;
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      final provider = context.read<RepoProvider>();
+      final provider = context.read<WorkspaceController>();
       final repo = provider.selectedRepo;
       if (repo == null) return;
       provider.updateJiraProjectKey(repo, _keyController.text);
