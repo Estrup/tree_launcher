@@ -97,7 +97,11 @@ class TreeLauncherApp extends StatelessWidget {
       ],
       child: Builder(
         builder: (context) {
-          context.watch<SettingsController>();
+          // Only a theme change rebuilds the app; AppTheme.current reads the
+          // palette SettingsController applied.
+          context.select<SettingsController, String>(
+            (settings) => settings.settings.themeName,
+          );
           return MaterialApp(
             title: 'TreeLauncher',
             debugShowCheckedModeBanner: false,
