@@ -414,7 +414,6 @@ class _WorktreeRow extends StatefulWidget {
 }
 
 class _WorktreeRowState extends State<_WorktreeRow> {
-  final LauncherService _launcherService = LauncherService();
   bool _hovered = false;
 
   /// The worktree's Jira and GitHub issue badges, or a dash for none.
@@ -451,6 +450,7 @@ class _WorktreeRowState extends State<_WorktreeRow> {
     final repo = context.watch<WorkspaceController>().selectedRepo;
     final customCommands = repo?.customCommands ?? [];
     final wt = widget.worktree;
+    final launcherService = context.read<LauncherService>();
 
     // Match this worktree to an open PR by branch. Both own worktrees and
     // review worktrees check out the PR's head branch, so this finds either.
@@ -672,19 +672,19 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                   TerminalButton(
                     worktreePath: wt.path,
                     worktreeName: wt.name,
-                    launcherService: _launcherService,
+                    launcherService: launcherService,
                     compact: true,
                   ),
                   const SizedBox(width: 6),
                   VscodeButton(
                     worktreePath: wt.path,
-                    launcherService: _launcherService,
+                    launcherService: launcherService,
                     compact: true,
                   ),
                   const SizedBox(width: 6),
                   ClaudeButton(
                     wt: wt,
-                    launcherService: _launcherService,
+                    launcherService: launcherService,
                     compact: true,
                   ),
                   if (customCommands.isNotEmpty) ...[

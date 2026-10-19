@@ -30,10 +30,17 @@ class TreeLauncherApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: dependencies.terminal),
         ChangeNotifierProvider.value(value: dependencies.agents),
         ChangeNotifierProvider.value(value: dependencies.activity),
+        Provider.value(value: dependencies.launcherService),
+        Provider.value(value: dependencies.claudeActivity),
+        Provider.value(value: dependencies.jiraService),
+        Provider.value(value: dependencies.jiraIssueCache),
+        Provider.value(value: dependencies.githubIssuesService),
+        Provider.value(value: dependencies.githubIssueCache),
         ChangeNotifierProxyProvider<WorkspaceController, GithubPrsController>(
-          create: (_) => GithubPrsController(),
+          create: (_) =>
+              GithubPrsController(service: dependencies.githubPrsService),
           update: (context, workspace, previous) {
-            final controller = previous ?? GithubPrsController();
+            final controller = previous!;
             controller.onRequestedMeTransition = (pr) =>
                 workspace.clearSnoozeForBranch(pr.headBranch);
             controller.syncToRepo(workspace.selectedRepo);
@@ -44,9 +51,11 @@ class TreeLauncherApp extends StatelessWidget {
           WorkspaceController,
           GithubIssuesController
         >(
-          create: (_) => GithubIssuesController(),
+          create: (_) => GithubIssuesController(
+            service: dependencies.githubIssuesService,
+          ),
           update: (context, workspace, previous) {
-            final controller = previous ?? GithubIssuesController();
+            final controller = previous!;
             controller.onMilestoneSelected = (repoPath, number) {
               final repo = workspace.repos
                   .where((r) => r.path == repoPath)
@@ -58,13 +67,16 @@ class TreeLauncherApp extends StatelessWidget {
           },
         ),
         ChangeNotifierProvider(
-          create: (_) =>
-              JiraTitlesController(cache: dependencies.jiraIssueCache),
+          create: (_) => JiraTitlesController(
+            service: dependencies.jiraService,
+            cache: dependencies.jiraIssueCache,
+          ),
         ),
         ChangeNotifierProxyProvider<WorkspaceController, JiraIssuesController>(
-          create: (_) => JiraIssuesController(),
+          create: (_) =>
+              JiraIssuesController(service: dependencies.jiraService),
           update: (context, workspace, previous) {
-            final controller = previous ?? JiraIssuesController();
+            final controller = previous!;
             controller.onVersionSelected = (repoPath, version) {
               final repo = workspace.repos
                   .where((r) => r.path == repoPath)

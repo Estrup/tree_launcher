@@ -23,11 +23,10 @@ class TerminalHeaderActions extends StatelessWidget {
     this.desktopHandoff,
   });
 
-  static final _launcherService = LauncherService();
-
   @override
   Widget build(BuildContext context) {
     final workspace = context.watch<WorkspaceController>();
+    final launcherService = context.read<LauncherService>();
     final path = session.workingDirectory;
     final repo = workspace.repos
         .where((r) => r.path == session.repoPath)
@@ -59,7 +58,7 @@ class TerminalHeaderActions extends StatelessWidget {
         ],
         VscodeButton(
           worktreePath: path,
-          launcherService: _launcherService,
+          launcherService: launcherService,
           compact: true,
           configs: repo?.vscodeConfigs ?? const [],
         ),

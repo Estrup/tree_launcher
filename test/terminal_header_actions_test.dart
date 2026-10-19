@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/platform/launcher_service.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
@@ -60,6 +61,7 @@ void main() {
         providers: [
           ChangeNotifierProvider<WorkspaceController>.value(value: workspace),
           ChangeNotifierProvider<GithubPrsController>.value(value: prs),
+          Provider.value(value: LauncherService()),
         ],
         child: MaterialApp(
           home: Scaffold(body: TerminalHeaderActions(session: session)),

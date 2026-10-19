@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/core/database/database_backup.dart';
 import 'package:tree_launcher/core/database/legacy_importer.dart';
+import 'package:tree_launcher/core/platform/launcher_service.dart';
 import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/activity/data/activity_legacy_import.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
@@ -18,7 +19,10 @@ import 'package:tree_launcher/features/agents/data/agent_run_legacy_import.dart'
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issue_cache.dart';
+import 'package:tree_launcher/features/github_issues/data/github_issues_api_service.dart';
+import 'package:tree_launcher/features/github_prs/data/github_api_service.dart';
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
+import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
@@ -60,6 +64,10 @@ class AppDependencies {
     jiraIssueCache = JiraIssueCache(this.database);
     githubIssueCache = GithubIssueCache(this.database);
     claudeActivity = ClaudeSessionActivity(database: this.database);
+    jiraService = JiraApiService();
+    githubPrsService = GithubApiService();
+    githubIssuesService = GithubIssuesApiService();
+    launcherService = LauncherService();
     // Both stores share the one ConfigFile, so their saves are serialised.
     this.repoConfigStore =
         repoConfigStore ??
@@ -98,6 +106,7 @@ class AppDependencies {
       eventStore: this.worktreeEventStore,
       claudeActivity: claudeActivity,
       manualPostStore: this.manualPostStore,
+      jiraService: jiraService,
     );
   }
 
@@ -118,6 +127,19 @@ class AppDependencies {
 
   /// Claude transcript activity, indexed in [database].
   late final ClaudeSessionActivity claudeActivity;
+
+  /// The Jira REST client, shared by the Jira tab, the issue dialog, issue
+  /// titles and the agent API.
+  late final JiraApiService jiraService;
+
+  /// GitHub's pull requests, for the PRs tab.
+  late final GithubApiService githubPrsService;
+
+  /// GitHub's issues and milestones, for the Issues tab and its dialog.
+  late final GithubIssuesApiService githubIssuesService;
+
+  /// Opens terminals, VS Code and custom commands.
+  late final LauncherService launcherService;
 
   /// Repos, the selected repo and its worktrees.
   late final WorkspaceController workspace;

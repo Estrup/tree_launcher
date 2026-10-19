@@ -293,7 +293,7 @@ class _LinkChip extends StatelessWidget {
         child: GestureDetector(
           onTap: () => link.isUrl
               ? Process.run('open', [_target])
-              : LauncherService().openVSCode(_target),
+              : context.read<LauncherService>().openVSCode(_target),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/core/platform/launcher_service.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
@@ -101,6 +102,7 @@ void main() {
             create: (_) =>
                 JiraTitlesController(cache: JiraIssueCache(testDatabase())),
           ),
+          Provider.value(value: LauncherService()),
         ],
         child: MaterialApp(
           home: Scaffold(body: WorktreeTable(worktrees: worktrees)),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issue_cache.dart';
@@ -63,8 +62,8 @@ class GithubIssueDialog extends StatefulWidget {
         config: config,
         number: number,
         initialIssue: initialIssue,
-        service: service ?? GithubIssuesApiService(),
-        cache: cache ?? context.read<AppDependencies>().githubIssueCache,
+        service: service ?? context.read<GithubIssuesApiService>(),
+        cache: cache ?? context.read<GithubIssueCache>(),
         onIssueChanged: onIssueChanged,
         openUrl: openUrl,
       ),
