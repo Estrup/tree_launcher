@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+
+import 'package:tree_launcher/core/storage/app_data_directory.dart';
 
 /// The app's `config.json`: one JSON object whose top-level keys are owned by
 /// different stores (`repos` and `lastSelectedRepoPath` by `RepoConfigStore`,
@@ -18,7 +19,7 @@ import 'package:path_provider/path_provider.dart';
 /// The app creates one instance, in `AppDependencies`, and hands it to every
 /// store that owns a section.
 class ConfigFile {
-  /// [path] defaults to `config.json` in the app support directory.
+  /// [path] defaults to `config.json` in the app's data directory.
   ConfigFile({String? path}) : _path = path;
 
   static const fileName = 'config.json';
@@ -29,7 +30,7 @@ class ConfigFile {
   Future<void> _tail = Future.value();
 
   Future<String> get path async =>
-      _path ?? p.join((await getApplicationSupportDirectory()).path, fileName);
+      _path ?? p.join(await appDataDirectory(), fileName);
 
   /// The whole file, decoded. A missing file reads as empty.
   Future<Map<String, dynamic>> read() => _locked(_read);

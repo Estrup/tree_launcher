@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart' show Database;
 
 import 'package:tree_launcher/core/database/tables.dart';
+import 'package:tree_launcher/core/storage/app_data_directory.dart';
 
 export 'package:tree_launcher/core/database/tables.dart';
 
@@ -29,11 +29,11 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
-  /// Opens [fileName] in [directory] (default: the app support directory).
+  /// Opens [fileName] in [directory] (default: the app's data directory).
   /// The file is opened on the first query, so this returns at once.
   factory AppDatabase.open({String? directory}) => AppDatabase(
     LazyDatabase(() async {
-      final dir = directory ?? (await getApplicationSupportDirectory()).path;
+      final dir = directory ?? await appDataDirectory();
       final file = File(p.join(dir, fileName));
       await file.parent.create(recursive: true);
       return NativeDatabase.createInBackground(file, setup: _configure);

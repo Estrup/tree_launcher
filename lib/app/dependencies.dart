@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import 'package:tree_launcher/app/use_cases/agent_api_control.dart';
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
@@ -12,6 +11,7 @@ import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/core/database/database_backup.dart';
 import 'package:tree_launcher/core/database/legacy_importer.dart';
 import 'package:tree_launcher/core/platform/launcher_service.dart';
+import 'package:tree_launcher/core/storage/app_data_directory.dart';
 import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/activity/data/activity_legacy_import.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
@@ -207,7 +207,10 @@ class AppDependencies {
   /// load. Guarded so a failure never blocks app startup.
   Future<void> prepareDatabase() async {
     try {
-      final dir = (await getApplicationSupportDirectory()).path;
+      final dir = await appDataDirectory();
+      if (dataDirectoryOverride.isNotEmpty) {
+        debugPrint('Using the data in $dir (DATA_DIR)');
+      }
       await LegacyImporter(database, dir, [
         AgentRunsLegacyImport(database),
         AgentEventsLegacyImport(database),

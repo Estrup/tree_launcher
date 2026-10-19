@@ -40,6 +40,12 @@ port exactly as normal. While an override is active, the Settings → Agent API
 tab shows the port read-only with a note, and Restart keeps it on the override
 port.
 
+To try something on a copy of your data (e.g. a migration) instead of the
+real data, also pass `--dart-define=DATA_DIR=/path/to/copy`: the database,
+`config.json` and the backups then live there (`appDataDirectory()` in
+`lib/core/storage/app_data_directory.dart`). GitHub tokens stay in the
+Keychain, shared with the real app.
+
 IDE equivalents are already wired up:
 - **VS Code**: pick `tree_launcher (macOS, debug, alt agent-API port 8766)` in
   the Run panel (`.vscode/launch.json`).
