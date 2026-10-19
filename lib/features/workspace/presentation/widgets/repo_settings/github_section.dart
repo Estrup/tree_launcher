@@ -320,5 +320,3 @@ class _GithubSectionState extends State<RepoGithubSection>
     );
   }
 }
-
-// --- Jira Section ---

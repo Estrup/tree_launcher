@@ -10,6 +10,7 @@ import 'package:tree_launcher/features/workspace/presentation/widgets/repo_setti
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/predefined_issues_section.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/settings_controls.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/vscode_configs_section.dart';
+import 'package:tree_launcher/core/widgets/settings_nav_item.dart';
 
 enum _SettingsSection {
   general,
@@ -108,7 +109,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                         ),
                       ),
                     ),
-                    _NavItem(
+                    SettingsNavItem(
                       icon: Icons.info_outline_rounded,
                       label: 'General',
                       isSelected: _selectedSection == _SettingsSection.general,
@@ -116,7 +117,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                         () => _selectedSection = _SettingsSection.general,
                       ),
                     ),
-                    _NavItem(
+                    SettingsNavItem(
                       icon: Icons.code_rounded,
                       label: 'VS Code Configs',
                       isSelected:
@@ -125,7 +126,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                         () => _selectedSection = _SettingsSection.vscodeConfigs,
                       ),
                     ),
-                    _NavItem(
+                    SettingsNavItem(
                       icon: Icons.terminal_rounded,
                       label: 'Custom Commands',
                       isSelected:
@@ -135,7 +136,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                             _selectedSection = _SettingsSection.customCommands,
                       ),
                     ),
-                    _NavItem(
+                    SettingsNavItem(
                       icon: Icons.auto_awesome_rounded,
                       label: 'Claude Prompts',
                       isSelected:
@@ -145,7 +146,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                             _selectedSection = _SettingsSection.claudePrompts,
                       ),
                     ),
-                    _NavItem(
+                    SettingsNavItem(
                       icon: Icons.confirmation_number_outlined,
                       label: 'Issue Keys',
                       isSelected:
@@ -155,7 +156,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                             _SettingsSection.predefinedIssues,
                       ),
                     ),
-                    _NavItem(
+                    SettingsNavItem(
                       icon: Icons.merge_type_rounded,
                       label: 'GitHub',
                       isSelected:
@@ -165,7 +166,7 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                             _selectedSection = _SettingsSection.github,
                       ),
                     ),
-                    _NavItem(
+                    SettingsNavItem(
                       icon: Icons.confirmation_number_rounded,
                       label: 'Jira',
                       isSelected: _selectedSection == _SettingsSection.jira,
@@ -204,76 +205,3 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
     }
   }
 }
-
-// --- Nav Item ---
-
-class _NavItem extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  State<_NavItem> createState() => _NavItemState();
-}
-
-class _NavItemState extends State<_NavItem> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: widget.isSelected
-                ? AppColors.surface2
-                : _hovered
-                ? AppColors.surface1
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                widget.icon,
-                size: 16,
-                color: widget.isSelected
-                    ? AppColors.accent
-                    : AppColors.textMuted,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: widget.isSelected
-                      ? FontWeight.w600
-                      : FontWeight.w500,
-                  color: widget.isSelected
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// --- General Section ---

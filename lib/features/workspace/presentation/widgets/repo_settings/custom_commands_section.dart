@@ -291,5 +291,3 @@ class _CustomCommandCardState extends State<_CustomCommandCard> {
     );
   }
 }
-
-// --- Claude Prompts Section ---

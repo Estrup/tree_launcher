@@ -266,5 +266,3 @@ class _VscodeConfigCardState extends State<_VscodeConfigCard> {
     );
   }
 }
-
-// --- Custom Commands Section ---

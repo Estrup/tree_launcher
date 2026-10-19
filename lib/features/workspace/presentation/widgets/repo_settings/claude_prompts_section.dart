@@ -472,5 +472,3 @@ class _KindOption extends StatelessWidget {
     );
   }
 }
-
-// --- Predefined Issues Section ---

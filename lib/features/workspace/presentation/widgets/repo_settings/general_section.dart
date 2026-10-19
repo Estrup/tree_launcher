@@ -170,5 +170,3 @@ class _GeneralSectionState extends State<RepoGeneralSection>
     );
   }
 }
-
-// --- VS Code Configs Section ---
