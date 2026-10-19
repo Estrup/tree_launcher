@@ -630,7 +630,8 @@ class _RepoTileState extends State<_RepoTile> {
 
     // Each page's sessions: agent runs and remembered shortcuts.
     final sessions = <String, List<_PageSession>>{};
-    // A build agent's worktree is also a shortcut; the agent stands for it.
+    // A build agent's worktree is also a shortcut; while the agent is listed
+    // (unfinished, or finished with its terminal still open) it stands for it.
     final buildAgentPaths = <String>{};
     for (final run in agents?.runs ?? const <AgentRun>[]) {
       if (run.repoName != repo.name) continue;
@@ -640,9 +641,7 @@ class _RepoTileState extends State<_RepoTile> {
           .putIfAbsent(agentPageKey(run.kind), () => [])
           .add((startedAt: run.startedAt, order: 0, path: null, run: run));
       final path = run.worktreePath;
-      if (run.kind == AgentKind.build && !run.state.isFinished && path != null) {
-        buildAgentPaths.add(path);
-      }
+      if (run.kind == AgentKind.build && path != null) buildAgentPaths.add(path);
     }
     for (final (index, path) in repo.claudeSessions.indexed) {
       if (buildAgentPaths.contains(path)) continue;

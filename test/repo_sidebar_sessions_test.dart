@@ -6,10 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
+import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/terminal/domain/terminal_session.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
@@ -63,11 +66,30 @@ class _FakeJiraTitles extends JiraTitlesController {
   Future<void> ensureTitles(Iterable<String> issueKeys) async {}
 }
 
+/// A terminal whose sessions are set by the test, without starting PTYs.
+class _FakeTerminal extends TerminalController {
+  final fakeSessions = <TerminalSession>[];
+
+  @override
+  List<TerminalSession> get sessions => fakeSessions;
+
+  @override
+  TerminalSession? claudeSessionFor(String workingDirectory) => fakeSessions
+      .where((s) => s.isClaude && s.workingDirectory == workingDirectory)
+      .firstOrNull;
+
+  @override
+  TerminalSession? claudeSessionForAgent(String agentId) =>
+      fakeSessions.where((s) => s.agentId == agentId).firstOrNull;
+
+  void changed() => notifyListeners();
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late WorkspaceController workspace;
   late SettingsController settings;
-  late TerminalController terminal;
+  late _FakeTerminal terminal;
 
   final tempDir = Directory.systemTemp.createTempSync('repo_sidebar_test');
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
@@ -89,7 +111,7 @@ void main() {
       eventStore: WorktreeEventStore(directoryPath: tempDir.path),
     );
     settings = SettingsController(configService: configService);
-    terminal = TerminalController();
+    terminal = _FakeTerminal();
     await workspace.addRepo(repoPath);
     await workspace.rememberClaudeSession(repoPath, withIssue);
     await workspace.rememberClaudeSession(repoPath, withoutIssue);
@@ -102,13 +124,18 @@ void main() {
     workspace.dispose();
   });
 
-  Future<void> pumpSidebar(WidgetTester tester) async {
+  Future<void> pumpSidebar(
+    WidgetTester tester, {
+    AgentsController? agents,
+  }) async {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider<WorkspaceController>.value(value: workspace),
           ChangeNotifierProvider<SettingsController>.value(value: settings),
           ChangeNotifierProvider<TerminalController>.value(value: terminal),
+          if (agents != null)
+            ChangeNotifierProvider<AgentsController>.value(value: agents),
           ChangeNotifierProvider<JiraTitlesController>(
             create: (_) => _FakeJiraTitles(tempDir.path),
           ),
@@ -203,6 +230,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(workspace.selectedRepo!.claudeSessions, [withIssue]);
+  });
+
+  testWidgets("a build agent stands for its worktree's shortcut while listed", (
+    tester,
+  ) async {
+    late AgentsController agents;
+    // Made with real async, so its pending writes complete.
+    await tester.runAsync(() async {
+      agents = AgentsController(
+        store: AgentRunStore(directoryPath: tempDir.path),
+      );
+      final run = await agents.createForLaunch(
+        kind: AgentKind.build,
+        repoName: workspace.selectedRepo!.name,
+        title: 'Factory: udlån',
+        worktreePath: withIssue,
+      );
+      await agents.report(run.id, const AgentReport(state: AgentState.done));
+      await agents.flush();
+      terminal.fakeSessions.add(
+        TerminalSession(
+          title: 'Claude',
+          workingDirectory: withIssue,
+          repoPath: repoPath,
+          isClaude: true,
+          agentId: run.id,
+        ),
+      );
+    });
+    addTearDown(agents.dispose);
+    await pumpSidebar(tester, agents: agents);
+
+    // Done, but its terminal is still open: listed once, as the agent.
+    expect(find.text('Factory: udlån'), findsOneWidget);
+    expect(find.text('udlaan-sker-til-en-kontakt-au2-5788'), findsNothing);
+
+    // Once its terminal is closed, the shortcut takes its place.
+    terminal.fakeSessions.clear();
+    terminal.changed();
+    await tester.pump();
+    expect(find.text('Factory: udlån'), findsNothing);
+    expect(find.text('udlaan-sker-til-en-kontakt-au2-5788'), findsOneWidget);
   });
 
   testWidgets('tapping a page shows it', (tester) async {
