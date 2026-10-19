@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
+import 'package:tree_launcher/features/workspace/data/worktree_metadata_legacy_import.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 
 /// The `repos` and `lastSelectedRepoPath` sections of `config.json`.
@@ -64,13 +65,26 @@ class RepoConfigStore {
     for (final path in removed) {
       await _storeToken(path, '');
     }
+    // Per-worktree metadata from before the database stays in the file
+    // until WorktreeMetadataLegacyImport has moved it.
+    final legacyByPath = {
+      for (final entry in (config['repos'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>())
+        entry['path']: {
+          for (final MapEntry(:key, :value) in entry.entries)
+            if (legacyWorktreeMetadataKeys.contains(key)) key: value,
+        },
+    };
     final json = <Map<String, dynamic>>[];
     for (final repo in repos) {
       final stored = await _storeToken(
         repo.path,
         repo.githubConfig?.token ?? '',
       );
-      json.add(_toJson(repo, keepToken: !stored));
+      json.add({
+        ..._toJson(repo, keepToken: !stored),
+        ...?legacyByPath[repo.path],
+      });
     }
     config['repos'] = json;
   });

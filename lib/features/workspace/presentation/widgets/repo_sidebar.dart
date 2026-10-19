@@ -643,15 +643,17 @@ class _RepoTileState extends State<_RepoTile> {
       final path = run.worktreePath;
       if (run.kind == AgentKind.build && path != null) buildAgentPaths.add(path);
     }
-    for (final (index, path) in repo.claudeSessions.indexed) {
+    final metadata = context.read<WorkspaceController>().metadata;
+    for (final (index, worktree) in metadata.sessionsFor(repo.path).indexed) {
+      final path = worktree.path;
       if (buildAgentPaths.contains(path)) continue;
       final pageKey = sessionPageKey(
         repo,
-        path,
+        worktree,
         pageKeys,
         runs: agents?.runs ?? const [],
       );
-      final started = DateTime.tryParse(repo.claudeSessionStarts[path] ?? '');
+      final started = worktree.session?.startedAt;
       sessions.putIfAbsent(pageKey, () => []).add((
         // Shortcuts from before start times were kept count as oldest, in
         // the order they were remembered.
@@ -712,7 +714,7 @@ class _RepoTileState extends State<_RepoTile> {
                 padding: const EdgeInsets.only(left: 24),
                 child: _ClaudeSessionTile(
                   worktreePath: path,
-                  jiraIssue: repo.jiraIssues[path],
+                  jiraIssue: metadata[path]?.jiraIssue,
                   isRunning: tp.claudeSessionFor(path) != null,
                   onContextMenu: (position) =>
                       _showSessionMenu(position, path, page.key),

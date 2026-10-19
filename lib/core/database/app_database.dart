@@ -24,6 +24,7 @@ part 'app_database.g.dart';
     ManualPosts,
     IssueCache,
     ClaudeTranscripts,
+    WorktreeMeta,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -55,5 +56,20 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  /// Each version's changes, applied in order to a database from before it.
+  /// Dump the schema after adding one (see CLAUDE.md, Storage); the
+  /// migration test checks every step against the dumps.
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // Per-worktree metadata, moved out of config.json.
+        await m.createTable(worktreeMeta);
+        await m.createIndex(worktreeMetadataRepo);
+      }
+    },
+  );
 }

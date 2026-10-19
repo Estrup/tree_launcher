@@ -12,7 +12,6 @@ import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
 import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
-import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
@@ -170,47 +169,6 @@ void main() {
     });
   });
 
-  group('RepoConfig.claudeSessions', () {
-    test('round-trips and defaults to empty', () {
-      final repo = RepoConfig(
-        name: 'demo',
-        path: '/repos/demo',
-        claudeSessions: const ['/repos/demo-a'],
-      );
-      expect(RepoConfig.fromJson(repo.toJson()).claudeSessions, [
-        '/repos/demo-a',
-      ]);
-      expect(
-        RepoConfig.fromJson({
-          'name': 'demo',
-          'path': '/repos/demo',
-        }).claudeSessions,
-        isEmpty,
-      );
-    });
-
-    test('round-trips the prompts sessions were started with', () {
-      final repo = RepoConfig(
-        name: 'demo',
-        path: '/repos/demo',
-        claudeSessions: const ['/repos/demo-a'],
-        claudeSessionPrompts: const {'/repos/demo-a': 'Verify'},
-      );
-      expect(RepoConfig.fromJson(repo.toJson()).claudeSessionPrompts, {
-        '/repos/demo-a': 'Verify',
-      });
-    });
-
-    test('ignores malformed entries', () {
-      final restored = RepoConfig.fromJson({
-        'name': 'demo',
-        'path': '/repos/demo',
-        'claudeSessions': ['/repos/demo-a', 42, null],
-      });
-      expect(restored.claudeSessions, ['/repos/demo-a']);
-    });
-  });
-
   group('TerminalController Claude sessions', () {
     late TerminalController terminal;
 
@@ -313,11 +271,24 @@ void main() {
   group('ClaudeSessionLauncher', () {
     late Directory tempDir;
     late FakeRepoConfigStore config;
+    late MemoryWorktreeMetadataStore metadataStore;
     late WorkspaceController workspace;
     late SettingsController settings;
     late _RecordingTerminal terminal;
     late String worktree;
     late String projectsDir;
+
+    /// The worktrees with a saved Claude session shortcut.
+    List<String> savedSessions() => [
+      for (final m in metadataStore.saved.values)
+        if (m.session != null) m.path,
+    ];
+
+    /// The prompt each saved session was started with.
+    Map<String, String?> savedPrompts() => {
+      for (final m in metadataStore.saved.values)
+        if (m.session != null) m.path: m.session!.promptId,
+    };
 
     ClaudeSessionLauncher launcher() => ClaudeSessionLauncher(
       terminal: terminal,
@@ -339,10 +310,12 @@ void main() {
       Directory(worktree).createSync();
       projectsDir = p.join(tempDir.path, 'projects');
       config = FakeRepoConfigStore();
+      metadataStore = MemoryWorktreeMetadataStore();
       workspace = WorkspaceController(
         gitService: _FakeGitService(),
         repoConfigStore: config,
         eventStore: WorktreeEventStore(testDatabase()),
+        metadataStore: metadataStore,
       );
       settings = SettingsController(store: FakeAppSettingsStore());
       terminal = _RecordingTerminal();
@@ -371,8 +344,14 @@ void main() {
           terminal.launched.single.command,
           "claude $_discordArgs -- 'Fix AU2-1'",
         );
-        expect(config.savedRepos.single.claudeSessions, [worktree]);
-        expect(workspace.selectedRepo!.claudeSessions, [worktree]);
+        expect(savedSessions(), [worktree]);
+        expect(
+          [
+            for (final m in workspace.metadata.sessionsFor('/repos/demo'))
+              m.path,
+          ],
+          [worktree],
+        );
 
         // Starting again doesn't duplicate the shortcut, and records the
         // latest prompt.
@@ -381,14 +360,12 @@ void main() {
           worktree,
           promptId: 'Verify',
         );
-        expect(config.savedRepos.single.claudeSessions, [worktree]);
-        expect(config.savedRepos.single.claudeSessionPrompts, {
-          worktree: 'Verify',
-        });
+        expect(savedSessions(), [worktree]);
+        expect(savedPrompts(), {worktree: 'Verify'});
 
         await workspace.forgetClaudeSession('/repos/demo', worktree);
-        expect(config.savedRepos.single.claudeSessions, isEmpty);
-        expect(config.savedRepos.single.claudeSessionPrompts, isEmpty);
+        expect(savedSessions(), isEmpty);
+        expect(savedPrompts(), isEmpty);
       },
     );
 
@@ -448,7 +425,7 @@ void main() {
       await launcher().resume(repoPath: '/repos/demo', worktreePath: gone);
 
       expect(terminal.launched, isEmpty);
-      expect(config.savedRepos.single.claudeSessions, isEmpty);
+      expect(savedSessions(), isEmpty);
     });
   });
 }

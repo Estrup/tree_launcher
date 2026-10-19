@@ -44,6 +44,7 @@ void main() {
       gitService: _FakeGitService(),
       repoConfigStore: FakeRepoConfigStore(),
       eventStore: WorktreeEventStore(testDatabase()),
+      metadataStore: MemoryWorktreeMetadataStore(),
     );
     prs = GithubPrsController();
     await workspace.addRepo('/tmp/repo');

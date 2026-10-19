@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/agents/presentation/controllers/agents_co
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agents_tab.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_metadata.dart';
 
 const worktreesPageKey = 'worktrees';
 const prsPageKey = 'prs';
@@ -83,8 +84,8 @@ List<RepoPage> repoPagesFor(RepoConfig? repo, AgentsController? agents) => [
   ),
 ];
 
-/// The page a remembered Claude session in [worktreePath] belongs under,
-/// the first of these that is in [pageKeys]:
+/// The page the Claude session remembered in [worktree] belongs under, the
+/// first of these that is in [pageKeys]:
 ///
 /// 1. the prompt it was started with: an agent prompt's kind, PRs for the PR
 ///    context, Issues for the GitHub issue context, Jira for the issue
@@ -95,10 +96,11 @@ List<RepoPage> repoPagesFor(RepoConfig? repo, AgentsController? agents) => [
 /// 4. worktrees.
 String sessionPageKey(
   RepoConfig repo,
-  String worktreePath,
+  WorktreeMetadata worktree,
   Set<String> pageKeys, {
   Iterable<AgentRun> runs = const [],
 }) {
+  final worktreePath = worktree.path;
   String? shown(String? key) => pageKeys.contains(key) ? key : null;
   final newestRun = runs
       .where(
@@ -113,20 +115,15 @@ String sessionPageKey(
             ? r
             : newest,
       );
-  return shown(_promptPageKey(repo, repo.claudeSessionPrompts[worktreePath])) ??
+  return shown(_promptPageKey(repo, worktree.session?.promptId)) ??
       shown(newestRun == null ? null : agentPageKey(newestRun.kind)) ??
-      shown(repo.prAuthors.containsKey(worktreePath) ? prsPageKey : null) ??
-      shown(repo.jiraIssues.containsKey(worktreePath) ? jiraPageKey : null) ??
-      shown(
-        repo.githubIssues.containsKey(worktreePath)
-            ? githubIssuesPageKey
-            : null,
-      ) ??
+      shown(worktree.prAuthor != null ? prsPageKey : null) ??
+      shown(worktree.jiraIssue != null ? jiraPageKey : null) ??
+      shown(worktree.githubIssue != null ? githubIssuesPageKey : null) ??
       worktreesPageKey;
 }
 
-/// The page [promptId] (see [RepoConfig.claudeSessionPrompts]) points to,
-/// if any.
+/// The page [promptId] (see [RememberedSession.promptId]) points to, if any.
 String? _promptPageKey(RepoConfig repo, String? promptId) {
   switch (promptId) {
     case null:

@@ -2,7 +2,9 @@ import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
+import 'package:tree_launcher/features/workspace/data/worktree_metadata_store.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_metadata.dart';
 
 /// The repos section of `config.json`, in memory. Widget tests use it
 /// because real file I/O doesn't complete under their fake async.
@@ -81,5 +83,39 @@ class FakeAppSettingsStore implements AppSettingsStore {
   @override
   Future<void> save(AppSettings settings) async {
     savedSettings = settings;
+  }
+}
+
+/// Per-worktree metadata in memory, keyed by path. Widget tests use it
+/// because database futures don't complete under their fake async.
+class MemoryWorktreeMetadataStore implements WorktreeMetadataStore {
+  MemoryWorktreeMetadataStore([Iterable<WorktreeMetadata> entries = const []])
+    : saved = {for (final entry in entries) entry.path: entry};
+
+  final Map<String, WorktreeMetadata> saved;
+
+  @override
+  Future<List<WorktreeMetadata>> loadAll() async => saved.values.toList();
+
+  @override
+  Future<void> saveAll(Iterable<WorktreeMetadata> entries) async {
+    for (final entry in entries) {
+      if (entry.isEmpty) {
+        saved.remove(entry.path);
+      } else {
+        saved[entry.path] = entry;
+      }
+    }
+  }
+
+  @override
+  Future<void> delete(Iterable<String> paths) async =>
+      paths.forEach(saved.remove);
+
+  @override
+  Future<void> importLegacy(Iterable<WorktreeMetadata> entries) async {
+    for (final entry in entries) {
+      if (!entry.isEmpty) saved.putIfAbsent(entry.path, () => entry);
+    }
   }
 }

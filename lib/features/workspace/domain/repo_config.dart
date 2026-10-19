@@ -19,29 +19,6 @@ class RepoConfig {
   /// Saved prompt templates offered when launching Claude in a worktree.
   final List<ClaudePrompt> claudePrompts;
 
-  /// JIRA issue keys per worktree path (worktree path -> issue key).
-  final Map<String, String> jiraIssues;
-
-  /// GitHub issue numbers per worktree path (worktree path -> number), for
-  /// worktrees made from the Issues tab.
-  final Map<String, int> githubIssues;
-
-  /// Base branch per worktree path, recorded at creation (worktree path -> base branch).
-  final Map<String, String> baseBranches;
-
-  /// PR author login per worktree path, recorded at creation (worktree path -> author login).
-  final Map<String, String> prAuthors;
-
-  /// Absolute path to the API-supplied kickoff-prompt file per worktree path
-  /// (worktree path -> file path). The prompt text itself lives in the file
-  /// (potentially large), so only the reference is persisted here.
-  final Map<String, String> kickoffPrompts;
-
-  /// Worktree paths the user has hidden from the list.
-  final List<String> hiddenWorktrees;
-
-  /// Worktree paths the user has snoozed.
-  final List<String> snoozedWorktrees;
   final GithubConfig? githubConfig;
 
   /// Jira project key (e.g. `AU2`) whose issues the Jira tab lists. The tab is
@@ -64,20 +41,6 @@ class RepoConfig {
   /// instead of as siblings of the repo directory. Ignored for bare repos.
   final bool useNestedWorktrees;
 
-  /// Worktree paths with a remembered Claude CLI session, shown as shortcuts
-  /// under the repo in the sidebar. Kept across restarts so a session can be
-  /// resumed (`claude --continue`) after its terminal is gone.
-  final List<String> claudeSessions;
-
-  /// The prompt each remembered session was started with, by worktree path:
-  /// a saved prompt's name, or one of the built-in prompt ids (see
-  /// [issueContextPromptId]). Decides where the sidebar groups the session.
-  final Map<String, String> claudeSessionPrompts;
-
-  /// When each remembered session was first started, by worktree path (ISO
-  /// 8601). Orders the sidebar's sessions, newest first.
-  final Map<String, String> claudeSessionStarts;
-
   /// Working directory last used for an agent that runs outside an issue's
   /// worktree (any kind but build), offered first next time. The repo path
   /// itself can't serve when the repo is bare.
@@ -90,22 +53,12 @@ class RepoConfig {
     this.customCommands = const [],
     this.lastBaseBranch,
     this.claudePrompts = const [],
-    this.jiraIssues = const {},
-    this.githubIssues = const {},
-    this.baseBranches = const {},
-    this.prAuthors = const {},
-    this.kickoffPrompts = const {},
-    this.hiddenWorktrees = const [],
-    this.snoozedWorktrees = const [],
     this.githubConfig,
     this.jiraProjectKey,
     this.jiraFixVersionId,
     this.githubMilestoneNumber,
     this.predefinedIssues = const [],
     this.useNestedWorktrees = false,
-    this.claudeSessions = const [],
-    this.claudeSessionPrompts = const {},
-    this.claudeSessionStarts = const {},
     this.agentWorkingDirectory,
   });
 
@@ -129,32 +82,6 @@ class RepoConfig {
               ?.map((e) => ClaudePrompt.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      jiraIssues:
-          (json['jiraIssues'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as String)) ??
-          {},
-      githubIssues: {
-        for (final MapEntry(:key, :value)
-            in (json['githubIssues'] as Map<String, dynamic>? ?? {}).entries)
-          if (value is int) key: value,
-      },
-      baseBranches:
-          (json['baseBranches'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as String)) ??
-          {},
-      prAuthors:
-          (json['prAuthors'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as String)) ??
-          {},
-      kickoffPrompts:
-          (json['kickoffPrompts'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as String)) ??
-          {},
-      hiddenWorktrees:
-          (json['hiddenWorktrees'] as List<dynamic>?)?.cast<String>() ?? const [],
-      snoozedWorktrees:
-          (json['snoozedWorktrees'] as List<dynamic>?)?.cast<String>() ??
-          const [],
       githubConfig: json['githubConfig'] != null
           ? GithubConfig.fromJson(
               json['githubConfig'] as Map<String, dynamic>)
@@ -168,19 +95,6 @@ class RepoConfig {
               .toList() ??
           [],
       useNestedWorktrees: json['useNestedWorktrees'] as bool? ?? false,
-      claudeSessions:
-          (json['claudeSessions'] as List<dynamic>?)
-              ?.whereType<String>()
-              .toList() ??
-          const [],
-      claudeSessionPrompts:
-          (json['claudeSessionPrompts'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as String)) ??
-          {},
-      claudeSessionStarts:
-          (json['claudeSessionStarts'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as String)) ??
-          {},
       agentWorkingDirectory: json['agentWorkingDirectory'] as String?,
     );
   }
@@ -192,13 +106,6 @@ class RepoConfig {
     'customCommands': customCommands.map((c) => c.toJson()).toList(),
     'lastBaseBranch': lastBaseBranch,
     _claudePromptsKey: claudePrompts.map((p) => p.toJson()).toList(),
-    'jiraIssues': jiraIssues,
-    'githubIssues': githubIssues,
-    'baseBranches': baseBranches,
-    'prAuthors': prAuthors,
-    'kickoffPrompts': kickoffPrompts,
-    'hiddenWorktrees': hiddenWorktrees,
-    'snoozedWorktrees': snoozedWorktrees,
     if (githubConfig != null)
       'githubConfig': githubConfig!.toJson(),
     if (jiraProjectKey != null) 'jiraProjectKey': jiraProjectKey,
@@ -207,9 +114,6 @@ class RepoConfig {
       'githubMilestoneNumber': githubMilestoneNumber,
     'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
     'useNestedWorktrees': useNestedWorktrees,
-    'claudeSessions': claudeSessions,
-    'claudeSessionPrompts': claudeSessionPrompts,
-    'claudeSessionStarts': claudeSessionStarts,
     if (agentWorkingDirectory != null)
       'agentWorkingDirectory': agentWorkingDirectory,
   };
@@ -221,13 +125,6 @@ class RepoConfig {
     List<CustomCommand>? customCommands,
     String? lastBaseBranch,
     List<ClaudePrompt>? claudePrompts,
-    Map<String, String>? jiraIssues,
-    Map<String, int>? githubIssues,
-    Map<String, String>? baseBranches,
-    Map<String, String>? prAuthors,
-    Map<String, String>? kickoffPrompts,
-    List<String>? hiddenWorktrees,
-    List<String>? snoozedWorktrees,
     GithubConfig? githubConfig,
     bool clearGithubConfig = false,
     String? jiraProjectKey,
@@ -238,9 +135,6 @@ class RepoConfig {
     bool clearGithubMilestoneNumber = false,
     List<PredefinedIssue>? predefinedIssues,
     bool? useNestedWorktrees,
-    List<String>? claudeSessions,
-    Map<String, String>? claudeSessionPrompts,
-    Map<String, String>? claudeSessionStarts,
     String? agentWorkingDirectory,
   }) {
     return RepoConfig(
@@ -250,13 +144,6 @@ class RepoConfig {
       customCommands: customCommands ?? this.customCommands,
       lastBaseBranch: lastBaseBranch ?? this.lastBaseBranch,
       claudePrompts: claudePrompts ?? this.claudePrompts,
-      jiraIssues: jiraIssues ?? this.jiraIssues,
-      githubIssues: githubIssues ?? this.githubIssues,
-      baseBranches: baseBranches ?? this.baseBranches,
-      prAuthors: prAuthors ?? this.prAuthors,
-      kickoffPrompts: kickoffPrompts ?? this.kickoffPrompts,
-      hiddenWorktrees: hiddenWorktrees ?? this.hiddenWorktrees,
-      snoozedWorktrees: snoozedWorktrees ?? this.snoozedWorktrees,
       githubConfig: clearGithubConfig
           ? null
           : (githubConfig ?? this.githubConfig),
@@ -271,9 +158,6 @@ class RepoConfig {
           : (githubMilestoneNumber ?? this.githubMilestoneNumber),
       predefinedIssues: predefinedIssues ?? this.predefinedIssues,
       useNestedWorktrees: useNestedWorktrees ?? this.useNestedWorktrees,
-      claudeSessions: claudeSessions ?? this.claudeSessions,
-      claudeSessionPrompts: claudeSessionPrompts ?? this.claudeSessionPrompts,
-      claudeSessionStarts: claudeSessionStarts ?? this.claudeSessionStarts,
       agentWorkingDirectory:
           agentWorkingDirectory ?? this.agentWorkingDirectory,
     );

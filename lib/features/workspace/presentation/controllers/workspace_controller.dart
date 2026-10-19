@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
+import 'package:tree_launcher/features/workspace/data/worktree_metadata_store.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
@@ -14,11 +15,13 @@ import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_metadata.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_preferences_controller.dart';
 import 'package:tree_launcher/features/activity/domain/predefined_issue.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_registry_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/repo_selection_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/worktree_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/worktree_metadata_controller.dart';
 
 class WorkspaceController extends ChangeNotifier
     implements WorktreeCreator, RepoCatalog {
@@ -26,67 +29,39 @@ class WorkspaceController extends ChangeNotifier
     required GitService gitService,
     required RepoConfigStore repoConfigStore,
     required WorktreeEventStore eventStore,
-  }) : this._create(
-         gitService: gitService,
-         repoConfigStore: repoConfigStore,
-         eventStore: eventStore,
-       );
-
-  factory WorkspaceController.create({
-    required GitService gitService,
-    required RepoConfigStore repoConfigStore,
-    required WorktreeEventStore eventStore,
-  }) {
-    return WorkspaceController._create(
-      gitService: gitService,
-      repoConfigStore: repoConfigStore,
-      eventStore: eventStore,
-    );
-  }
-
-  WorkspaceController._create({
-    required GitService gitService,
-    required RepoConfigStore repoConfigStore,
-    required WorktreeEventStore eventStore,
-  }) {
-    _store = repoConfigStore;
-    _eventStore = eventStore;
-    _gitService = gitService;
-    final registry = RepoRegistryController(
+    required WorktreeMetadataStore metadataStore,
+  }) : _store = repoConfigStore,
+       _eventStore = eventStore,
+       _gitService = gitService {
+    registry = RepoRegistryController(
       store: repoConfigStore,
       gitService: gitService,
     );
-    _initialize(
-      registry: registry,
-      selection: RepoSelectionController(),
-      worktreesController: WorktreeController(gitService: gitService),
-      preferences: RepoPreferencesController(registry: registry),
+    selection = RepoSelectionController();
+    metadata = WorktreeMetadataController(store: metadataStore);
+    worktreesController = WorktreeController(
+      gitService: gitService,
+      metadata: metadata,
     );
-  }
-
-  late final RepoConfigStore _store;
-  late final WorktreeEventStore _eventStore;
-  late final GitService _gitService;
-  late final RepoRegistryController registry;
-  late final RepoSelectionController selection;
-  late final WorktreeController worktreesController;
-  late final RepoPreferencesController preferences;
-
-  void _initialize({
-    required RepoRegistryController registry,
-    required RepoSelectionController selection,
-    required WorktreeController worktreesController,
-    required RepoPreferencesController preferences,
-  }) {
-    this.registry = registry;
-    this.selection = selection;
-    this.worktreesController = worktreesController;
-    this.preferences = preferences;
+    preferences = RepoPreferencesController(registry: registry);
     registry.addListener(_relay);
     selection.addListener(_relay);
+    metadata.addListener(_relay);
     worktreesController.addListener(_relay);
     preferences.addListener(_relay);
   }
+
+  final RepoConfigStore _store;
+  final WorktreeEventStore _eventStore;
+  final GitService _gitService;
+  late final RepoRegistryController registry;
+  late final RepoSelectionController selection;
+
+  /// Every worktree's metadata (issue, base branch, hidden, snoozed,
+  /// remembered Claude session), for all repos.
+  late final WorktreeMetadataController metadata;
+  late final WorktreeController worktreesController;
+  late final RepoPreferencesController preferences;
 
   @override
   List<RepoConfig> get repos => registry.repos;
@@ -117,7 +92,7 @@ class WorkspaceController extends ChangeNotifier
 
   Future<void> loadRepos() async {
     try {
-      await registry.loadRepos();
+      await Future.wait([registry.loadRepos(), metadata.load()]);
     } finally {
       if (!_reposLoaded.isCompleted) _reposLoaded.complete();
     }
@@ -128,7 +103,6 @@ class WorkspaceController extends ChangeNotifier
         orElse: () => repos.first,
       );
       selection.selectRepo(target);
-      _syncWorktreeMetadata(target);
       await worktreesController.refreshForRepo(target.path);
     }
     notifyListeners();
@@ -159,7 +133,6 @@ class WorkspaceController extends ChangeNotifier
     if (selectedRepo == repo) return;
     selection.selectRepo(repo);
     await _persistSelection(repo);
-    _syncWorktreeMetadata(repo);
     await worktreesController.refreshForRepo(repo.path);
   }
 
@@ -343,106 +316,47 @@ class WorkspaceController extends ChangeNotifier
 
     if (worktreePath == null) return null;
 
-    // Persistence matches the in-memory RepoConfig by identity, so resolve the
-    // live registry instance and thread it through each update.
-    var current = _registryRepoFor(repo);
-
-    // Attach JIRA issue to the new worktree, if provided.
-    if (jiraIssue != null && jiraIssue.isNotEmpty) {
-      final issues = Map<String, String>.from(current.jiraIssues);
-      issues[worktreePath] = jiraIssue;
-      final withJira = await preferences.updateJiraIssues(current, issues);
-      if (isSelected) {
-        _replaceSelection(current, withJira);
-        worktreesController.setJiraIssues(withJira?.jiraIssues ?? issues);
-      }
-      current = withJira ?? current;
-    }
-
-    // Attach the GitHub issue it was made for, if any.
-    if (githubIssue != null) {
-      final issues = Map<String, int>.from(current.githubIssues);
-      issues[worktreePath] = githubIssue;
-      final withIssue = await preferences.updateGithubIssues(current, issues);
-      if (isSelected) {
-        _replaceSelection(current, withIssue);
-        worktreesController.setGithubIssues(withIssue?.githubIssues ?? issues);
-      }
-      current = withIssue ?? current;
-    }
-
-    // Record the base branch the worktree was created from, if known.
-    if (baseBranch != null && baseBranch.isNotEmpty) {
-      final branches = Map<String, String>.from(current.baseBranches);
-      branches[worktreePath] = baseBranch;
-      final withBase = await preferences.updateBaseBranches(current, branches);
-      if (isSelected) {
-        _replaceSelection(current, withBase);
-        worktreesController.setBaseBranches(withBase?.baseBranches ?? branches);
-      }
-      current = withBase ?? current;
-    }
-
-    // Attach the PR author to the new worktree, if provided, so worktrees can
-    // later be grouped by PR creator.
-    if (prAuthor != null && prAuthor.isNotEmpty) {
-      final authors = Map<String, String>.from(current.prAuthors);
-      authors[worktreePath] = prAuthor;
-      final withAuthor = await preferences.updatePrAuthors(current, authors);
-      if (isSelected) {
-        _replaceSelection(current, withAuthor);
-        worktreesController.setPrAuthors(withAuthor?.prAuthors ?? authors);
-      }
-      current = withAuthor ?? current;
-    }
-
-    // Write the API-supplied kickoff prompt into the worktree and record the
-    // file reference (the text is too large for config.json). Best-effort: a
-    // write failure must never block worktree creation.
+    // Write the API-supplied kickoff prompt into the worktree; only its path
+    // is kept. Best-effort: a write failure must never block worktree
+    // creation.
+    String? kickoffPath;
     if (kickoffPrompt != null && kickoffPrompt.isNotEmpty) {
       try {
-        final kickoffPath = await _gitService.writeKickoffPrompt(
+        kickoffPath = await _gitService.writeKickoffPrompt(
           repoPath: repo.path,
           worktreePath: worktreePath,
           content: kickoffPrompt,
         );
-        final prompts = Map<String, String>.from(current.kickoffPrompts);
-        prompts[worktreePath] = kickoffPath;
-        final withKickoff = await preferences.updateKickoffPrompts(
-          current,
-          prompts,
-        );
-        if (isSelected) {
-          _replaceSelection(current, withKickoff);
-          worktreesController.setKickoffPrompts(
-            withKickoff?.kickoffPrompts ?? prompts,
-          );
-        }
-        current = withKickoff ?? current;
       } catch (e) {
         debugPrint('WorkspaceController: writeKickoffPrompt failed: $e');
       }
     }
 
+    // Record what the worktree was made for and from.
+    await metadata.update(
+      repo.path,
+      worktreePath,
+      (m) => m.copyWith(
+        jiraIssue: jiraIssue != null && jiraIssue.isNotEmpty ? jiraIssue : null,
+        githubIssue: githubIssue,
+        baseBranch: baseBranch != null && baseBranch.isNotEmpty
+            ? baseBranch
+            : null,
+        prAuthor: prAuthor != null && prAuthor.isNotEmpty ? prAuthor : null,
+        kickoffPromptPath: kickoffPath,
+      ),
+    );
+
     // Record the creation in the activity log.
     _logWorktreeEvent(
       type: WorktreeEventType.created,
-      repo: current,
+      repo: repo,
       worktreePath: worktreePath,
       branch: newBranch ?? baseBranch,
       jiraIssue: jiraIssue,
     );
 
     return worktreePath;
-  }
-
-  /// Returns the live registry instance matching [repo] by path (so updates
-  /// match by identity), falling back to [repo] if it isn't registered.
-  RepoConfig _registryRepoFor(RepoConfig repo) {
-    for (final r in registry.repos) {
-      if (r.path == repo.path) return r;
-    }
-    return repo;
   }
 
   /// [WorktreeCreator] entry point for the agent HTTP API. Resolves the repo by
@@ -477,11 +391,10 @@ class WorkspaceController extends ChangeNotifier
       throw Exception('Failed to create worktree "$worktreeName"');
     }
 
-    final updated = _registryRepoFor(repo);
     return CreatedWorktree(
       worktreePath: worktreePath,
       branch: newBranch,
-      kickoffPromptPath: updated.kickoffPrompts[worktreePath],
+      kickoffPromptPath: metadata[worktreePath]?.kickoffPromptPath,
     );
   }
 
@@ -517,41 +430,35 @@ class WorkspaceController extends ChangeNotifier
 
   /// Remembers a Claude CLI session for [worktreePath] in the repo at
   /// [repoPath], so the sidebar shows a shortcut to it, along with the
-  /// [promptId] it was started with (see [RepoConfig.claudeSessionPrompts])
-  /// and, the first time, when. No-op when the repo isn't registered.
+  /// [promptId] it was started with (see [RememberedSession.promptId]) and,
+  /// the first time, when. No-op when the repo isn't registered.
   Future<void> rememberClaudeSession(
     String repoPath,
     String worktreePath, {
     String? promptId,
   }) async {
-    final repo = _registryRepoForPath(repoPath);
-    if (repo == null) return;
-    final known = repo.claudeSessions.contains(worktreePath);
-    if (known && repo.claudeSessionPrompts[worktreePath] == promptId) return;
-    final prompts = {...repo.claudeSessionPrompts}..remove(worktreePath);
-    if (promptId != null) prompts[worktreePath] = promptId;
-    final updated = await preferences.updateClaudeSessions(
-      repo,
-      [...repo.claudeSessions, if (!known) worktreePath],
-      prompts: prompts,
-      starts: {
-        ...repo.claudeSessionStarts,
-        if (!known) worktreePath: DateTime.now().toIso8601String(),
-      },
-    );
-    _replaceSelection(repo, updated);
+    if (_registryRepoForPath(repoPath) == null) return;
+    await metadata.update(repoPath, worktreePath, (m) {
+      final session = m.session;
+      if (session != null && session.promptId == promptId) return m;
+      return m.copyWith(
+        session: RememberedSession(
+          promptId: promptId,
+          startedAt: session == null ? DateTime.now() : session.startedAt,
+        ),
+      );
+    });
   }
 
   /// Drops the Claude session shortcut for [worktreePath] in the repo at
   /// [repoPath]. Any running terminal is left alone.
   Future<void> forgetClaudeSession(String repoPath, String worktreePath) async {
-    final repo = _registryRepoForPath(repoPath);
-    if (repo == null || !repo.claudeSessions.contains(worktreePath)) return;
-    final updated = await preferences.updateClaudeSessions(
-      repo,
-      repo.claudeSessions.where((path) => path != worktreePath).toList(),
+    if (_registryRepoForPath(repoPath) == null) return;
+    await metadata.update(
+      repoPath,
+      worktreePath,
+      (m) => m.copyWith(clearSession: true),
     );
-    _replaceSelection(repo, updated);
   }
 
   RepoConfig? _registryRepoForPath(String repoPath) {
@@ -561,72 +468,50 @@ class WorkspaceController extends ChangeNotifier
     return null;
   }
 
+  /// [worktreePath]'s metadata (it may be another repo's worktree), or null.
+  WorktreeMetadata? metadataFor(String worktreePath) => metadata[worktreePath];
+
   Future<void> updateJiraIssue(String worktreePath, String? jiraIssue) async {
-    if (selectedRepo == null) return;
-    final repo = selectedRepo!;
-    final updated = Map<String, String>.from(repo.jiraIssues);
-    if (jiraIssue == null || jiraIssue.isEmpty) {
-      updated.remove(worktreePath);
-    } else {
-      updated[worktreePath] = jiraIssue;
-    }
-    final newRepo = await preferences.updateJiraIssues(repo, updated);
-    _replaceSelection(repo, newRepo);
-    worktreesController.setJiraIssues(newRepo?.jiraIssues ?? updated);
+    final repo = selectedRepo;
+    if (repo == null) return;
+    await metadata.update(
+      repo.path,
+      worktreePath,
+      (m) => jiraIssue == null || jiraIssue.isEmpty
+          ? m.copyWith(clearJiraIssue: true)
+          : m.copyWith(jiraIssue: jiraIssue),
+    );
   }
 
   /// Hides or unhides a worktree. Hidden worktrees are filtered from the list
   /// unless "Show hidden worktrees" is enabled.
-  Future<void> setWorktreeHidden(String worktreePath, bool hidden) async {
-    if (selectedRepo == null) return;
-    final repo = selectedRepo!;
-    final updated = List<String>.from(repo.hiddenWorktrees);
-    if (hidden) {
-      if (!updated.contains(worktreePath)) updated.add(worktreePath);
-    } else {
-      updated.remove(worktreePath);
-    }
-    final newRepo = await preferences.updateHiddenWorktrees(repo, updated);
-    _replaceSelection(repo, newRepo);
-    worktreesController.setHiddenWorktrees(newRepo?.hiddenWorktrees ?? updated);
-  }
+  Future<void> setWorktreeHidden(String worktreePath, bool hidden) =>
+      setWorktreesHidden([worktreePath], hidden);
 
-  /// Hides or unhides several worktrees in a single config write.
+  /// Hides or unhides several worktrees in a single write.
   Future<void> setWorktreesHidden(
     List<String> worktreePaths,
     bool hidden,
   ) async {
-    if (selectedRepo == null || worktreePaths.isEmpty) return;
-    final repo = selectedRepo!;
-    final updated = List<String>.from(repo.hiddenWorktrees);
-    if (hidden) {
-      for (final path in worktreePaths) {
-        if (!updated.contains(path)) updated.add(path);
-      }
-    } else {
-      updated.removeWhere(worktreePaths.contains);
-    }
-    final newRepo = await preferences.updateHiddenWorktrees(repo, updated);
-    _replaceSelection(repo, newRepo);
-    worktreesController.setHiddenWorktrees(newRepo?.hiddenWorktrees ?? updated);
+    final repo = selectedRepo;
+    if (repo == null || worktreePaths.isEmpty) return;
+    await metadata.updateAll(
+      repo.path,
+      worktreePaths,
+      (m) => m.copyWith(hidden: hidden),
+    );
   }
 
   /// Snoozes or unsnoozes a worktree. PR worktrees auto-unsnooze when the PR is
   /// again assigned to me (see [clearSnoozeForBranch]); others stay snoozed
   /// until cleared manually.
   Future<void> setWorktreeSnoozed(String worktreePath, bool snoozed) async {
-    if (selectedRepo == null) return;
-    final repo = selectedRepo!;
-    final updated = List<String>.from(repo.snoozedWorktrees);
-    if (snoozed) {
-      if (!updated.contains(worktreePath)) updated.add(worktreePath);
-    } else {
-      updated.remove(worktreePath);
-    }
-    final newRepo = await preferences.updateSnoozedWorktrees(repo, updated);
-    _replaceSelection(repo, newRepo);
-    worktreesController.setSnoozedWorktrees(
-      newRepo?.snoozedWorktrees ?? updated,
+    final repo = selectedRepo;
+    if (repo == null) return;
+    await metadata.update(
+      repo.path,
+      worktreePath,
+      (m) => m.copyWith(snoozed: snoozed),
     );
   }
 
@@ -634,21 +519,17 @@ class WorkspaceController extends ChangeNotifier
   /// matches [headBranch]. Called when a PR transitions to requesting my review
   /// again, implementing "hide until the PR is again assigned to me".
   Future<void> clearSnoozeForBranch(String headBranch) async {
-    if (selectedRepo == null) return;
-    final repo = selectedRepo!;
-    if (repo.snoozedWorktrees.isEmpty) return;
-    final matching = worktreesController.worktrees
-        .where((w) => w.branch == headBranch)
-        .map((w) => w.path)
-        .where(repo.snoozedWorktrees.contains)
-        .toList();
+    final repo = selectedRepo;
+    if (repo == null) return;
+    final matching = [
+      for (final w in worktreesController.worktrees)
+        if (w.branch == headBranch && w.isSnoozed) w.path,
+    ];
     if (matching.isEmpty) return;
-    final updated = List<String>.from(repo.snoozedWorktrees)
-      ..removeWhere(matching.contains);
-    final newRepo = await preferences.updateSnoozedWorktrees(repo, updated);
-    _replaceSelection(repo, newRepo);
-    worktreesController.setSnoozedWorktrees(
-      newRepo?.snoozedWorktrees ?? updated,
+    await metadata.updateAll(
+      repo.path,
+      matching,
+      (m) => m.copyWith(snoozed: false),
     );
   }
 
@@ -673,177 +554,20 @@ class WorkspaceController extends ChangeNotifier
     }
 
     await worktreesController.deleteWorktree(selectedRepo?.path, worktree);
-
-    // Remove the deleted worktree's per-worktree metadata from config.
-    if (selectedRepo != null) {
-      var current = selectedRepo!;
-      if (current.jiraIssues.containsKey(worktree.path)) {
-        final issues = Map<String, String>.from(current.jiraIssues);
-        issues.remove(worktree.path);
-        final withJira = await preferences.updateJiraIssues(current, issues);
-        _replaceSelection(current, withJira);
-        current = withJira ?? current;
-        worktreesController.setJiraIssues(current.jiraIssues);
-      }
-
-      if (current.githubIssues.containsKey(worktree.path)) {
-        final issues = Map<String, int>.from(current.githubIssues);
-        issues.remove(worktree.path);
-        final withIssue = await preferences.updateGithubIssues(current, issues);
-        _replaceSelection(current, withIssue);
-        current = withIssue ?? current;
-        worktreesController.setGithubIssues(current.githubIssues);
-      }
-
-      if (current.prAuthors.containsKey(worktree.path)) {
-        final authors = Map<String, String>.from(current.prAuthors);
-        authors.remove(worktree.path);
-        final withAuthor = await preferences.updatePrAuthors(current, authors);
-        _replaceSelection(current, withAuthor);
-        current = withAuthor ?? current;
-        worktreesController.setPrAuthors(current.prAuthors);
-      }
-
-      if (current.hiddenWorktrees.contains(worktree.path)) {
-        final hidden = List<String>.from(current.hiddenWorktrees)
-          ..remove(worktree.path);
-        final withHidden = await preferences.updateHiddenWorktrees(
-          current,
-          hidden,
-        );
-        _replaceSelection(current, withHidden);
-        current = withHidden ?? current;
-        worktreesController.setHiddenWorktrees(current.hiddenWorktrees);
-      }
-
-      if (current.snoozedWorktrees.contains(worktree.path)) {
-        final snoozed = List<String>.from(current.snoozedWorktrees)
-          ..remove(worktree.path);
-        final withSnoozed = await preferences.updateSnoozedWorktrees(
-          current,
-          snoozed,
-        );
-        _replaceSelection(current, withSnoozed);
-        current = withSnoozed ?? current;
-        worktreesController.setSnoozedWorktrees(current.snoozedWorktrees);
-      }
-
-      if (current.claudeSessions.contains(worktree.path)) {
-        final sessions = List<String>.from(current.claudeSessions)
-          ..remove(worktree.path);
-        final withSessions = await preferences.updateClaudeSessions(
-          current,
-          sessions,
-        );
-        _replaceSelection(current, withSessions);
-        current = withSessions ?? current;
-      }
-    }
+    await metadata.forget([worktree.path]);
   }
 
+  /// Lists the selected repo's worktrees again, and forgets the metadata of
+  /// its worktrees that are gone.
   Future<void> refreshWorktrees() async {
-    _syncWorktreeMetadata(selectedRepo);
-    await worktreesController.refreshForRepo(selectedRepo?.path);
-    _pruneStaleWorktreeMetadata();
-  }
-
-  void _syncWorktreeMetadata(RepoConfig? repo) {
-    worktreesController.setJiraIssues(repo?.jiraIssues ?? {});
-    worktreesController.setGithubIssues(repo?.githubIssues ?? {});
-    worktreesController.setBaseBranches(repo?.baseBranches ?? {});
-    worktreesController.setPrAuthors(repo?.prAuthors ?? {});
-    worktreesController.setKickoffPrompts(repo?.kickoffPrompts ?? {});
-    worktreesController.setHiddenWorktrees(repo?.hiddenWorktrees ?? const []);
-    worktreesController.setSnoozedWorktrees(repo?.snoozedWorktrees ?? const []);
-  }
-
-  /// Removes per-worktree metadata for worktree paths that no longer exist.
-  Future<void> _pruneStaleWorktreeMetadata() async {
-    if (selectedRepo == null) return;
+    final repo = selectedRepo;
+    await worktreesController.refreshForRepo(repo?.path);
     // A failed refresh leaves the list empty; don't mistake that for every
     // worktree having been removed.
-    if (worktreesController.error != null) return;
-    final activePaths = worktreesController.worktrees
-        .map((w) => w.path)
-        .toSet();
-
-    // Prune stale JIRA issue assignments.
-    var current = selectedRepo!;
-    final staleJiraKeys = current.jiraIssues.keys
-        .where((path) => !activePaths.contains(path))
-        .toList();
-    if (staleJiraKeys.isNotEmpty) {
-      final issues = Map<String, String>.from(current.jiraIssues);
-      for (final key in staleJiraKeys) {
-        issues.remove(key);
-      }
-      final withJira = await preferences.updateJiraIssues(current, issues);
-      _replaceSelection(current, withJira);
-      current = withJira ?? current;
-      worktreesController.setJiraIssues(current.jiraIssues);
-    }
-
-    // Prune stale GitHub issue links too.
-    final staleGithubKeys = current.githubIssues.keys
-        .where((path) => !activePaths.contains(path))
-        .toList();
-    if (staleGithubKeys.isNotEmpty) {
-      final issues = Map<String, int>.from(current.githubIssues);
-      for (final key in staleGithubKeys) {
-        issues.remove(key);
-      }
-      final withIssue = await preferences.updateGithubIssues(current, issues);
-      _replaceSelection(current, withIssue);
-      current = withIssue ?? current;
-      worktreesController.setGithubIssues(current.githubIssues);
-    }
-
-    // Prune stale PR author assignments too.
-    final stalePrAuthorKeys = current.prAuthors.keys
-        .where((path) => !activePaths.contains(path))
-        .toList();
-    if (stalePrAuthorKeys.isNotEmpty) {
-      final authors = Map<String, String>.from(current.prAuthors);
-      for (final key in stalePrAuthorKeys) {
-        authors.remove(key);
-      }
-      final withAuthor = await preferences.updatePrAuthors(current, authors);
-      _replaceSelection(current, withAuthor);
-      current = withAuthor ?? current;
-      worktreesController.setPrAuthors(current.prAuthors);
-    }
-
-    // Prune stale kickoff-prompt references too. The files live inside the
-    // worktree dirs, so they're gone with the worktree; just drop the refs.
-    final staleKickoffKeys = current.kickoffPrompts.keys
-        .where((path) => !activePaths.contains(path))
-        .toList();
-    if (staleKickoffKeys.isNotEmpty) {
-      final prompts = Map<String, String>.from(current.kickoffPrompts);
-      for (final key in staleKickoffKeys) {
-        prompts.remove(key);
-      }
-      final withKickoff = await preferences.updateKickoffPrompts(
-        current,
-        prompts,
-      );
-      _replaceSelection(current, withKickoff);
-      current = withKickoff ?? current;
-      worktreesController.setKickoffPrompts(current.kickoffPrompts);
-    }
-
-    // Drop Claude session shortcuts whose worktree is gone.
-    final staleSessions = current.claudeSessions
-        .where((path) => !activePaths.contains(path))
-        .toList();
-    if (staleSessions.isNotEmpty) {
-      final withSessions = await preferences.updateClaudeSessions(
-        current,
-        current.claudeSessions.where(activePaths.contains).toList(),
-      );
-      _replaceSelection(current, withSessions);
-      current = withSessions ?? current;
-    }
+    if (repo == null || worktreesController.error != null) return;
+    await metadata.reconcile(repo.path, {
+      for (final w in worktreesController.worktrees) w.path,
+    });
   }
 
   void _replaceSelection(RepoConfig previous, RepoConfig? updated) {
@@ -856,11 +580,13 @@ class WorkspaceController extends ChangeNotifier
   void dispose() {
     registry.removeListener(_relay);
     selection.removeListener(_relay);
+    metadata.removeListener(_relay);
     worktreesController.removeListener(_relay);
     preferences.removeListener(_relay);
     registry.dispose();
     selection.dispose();
     worktreesController.dispose();
+    metadata.dispose();
     preferences.dispose();
     super.dispose();
   }

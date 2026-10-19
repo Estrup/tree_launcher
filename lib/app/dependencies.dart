@@ -34,7 +34,8 @@ import 'package:tree_launcher/features/settings/presentation/controllers/setting
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
-import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
+import 'package:tree_launcher/features/workspace/data/worktree_metadata_legacy_import.dart';
+import 'package:tree_launcher/features/workspace/data/worktree_metadata_store.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 /// The app's composition root: builds the stores, the services and the core
@@ -78,10 +79,12 @@ class AppDependencies {
     this.appSettingsStore =
         appSettingsStore ?? AppSettingsStore(configFile: this.configFile);
 
+    worktreeMetadataStore = WorktreeMetadataStore(this.database);
     workspace = WorkspaceController(
       gitService: this.gitService,
       repoConfigStore: this.repoConfigStore,
       eventStore: this.worktreeEventStore,
+      metadataStore: worktreeMetadataStore,
     );
     settings = SettingsController(store: this.appSettingsStore);
     terminal = TerminalController();
@@ -148,6 +151,10 @@ class AppDependencies {
   late final ManualPostStore manualPostStore;
   late final AgentRunStore agentRunStore;
   late final JiraIssueCache jiraIssueCache;
+
+  /// Per-worktree metadata (issue, base branch, hidden, snoozed, remembered
+  /// Claude session).
+  late final WorktreeMetadataStore worktreeMetadataStore;
   late final GithubIssueCache githubIssueCache;
 
   /// Claude transcript activity, indexed in [database].
@@ -203,8 +210,9 @@ class AppDependencies {
   Timer? _backupTimer;
 
   /// Merges the files from before the database into it (renaming each to
-  /// `*.migrated`), then starts the daily backup. Call before the controllers
-  /// load. Guarded so a failure never blocks app startup.
+  /// `*.migrated`) and moves the per-worktree metadata out of `config.json`,
+  /// then starts the daily backup. Call before the controllers load. Guarded
+  /// so a failure never blocks app startup.
   Future<void> prepareDatabase() async {
     try {
       final dir = await appDataDirectory();
@@ -219,6 +227,10 @@ class AppDependencies {
         JiraIssueCache.legacyImport(database),
         GithubIssueCache.legacyImport(database),
       ]).run();
+      await WorktreeMetadataLegacyImport(
+        configFile: configFile,
+        store: worktreeMetadataStore,
+      ).run();
       _backupTimer ??= DatabaseBackup(
         database,
         p.join(dir, 'backups'),
@@ -260,9 +272,8 @@ class AppDependencies {
   /// have loaded; never throws.
   Future<void> _pruneJiraCache() async {
     try {
-      final repos = await workspace.loadedRepos();
-      final liveKeys = repos.expand((r) => r.jiraIssues.values).toSet();
-      await jiraIssueCache.prune(liveKeys);
+      await workspace.whenLoaded;
+      await jiraIssueCache.prune(workspace.metadata.jiraIssueKeys);
     } catch (e) {
       debugPrint('Jira cache prune failed: $e');
     }

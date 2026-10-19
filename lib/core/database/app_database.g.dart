@@ -3122,6 +3122,766 @@ class ClaudeTranscriptsCompanion extends UpdateCompanion<ClaudeTranscriptRow> {
   }
 }
 
+class $WorktreeMetaTable extends WorktreeMeta
+    with TableInfo<$WorktreeMetaTable, WorktreeMetaRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WorktreeMetaTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _repoPathMeta = const VerificationMeta(
+    'repoPath',
+  );
+  @override
+  late final GeneratedColumn<String> repoPath = GeneratedColumn<String>(
+    'repo_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _baseBranchMeta = const VerificationMeta(
+    'baseBranch',
+  );
+  @override
+  late final GeneratedColumn<String> baseBranch = GeneratedColumn<String>(
+    'base_branch',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _jiraIssueMeta = const VerificationMeta(
+    'jiraIssue',
+  );
+  @override
+  late final GeneratedColumn<String> jiraIssue = GeneratedColumn<String>(
+    'jira_issue',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _githubIssueMeta = const VerificationMeta(
+    'githubIssue',
+  );
+  @override
+  late final GeneratedColumn<int> githubIssue = GeneratedColumn<int>(
+    'github_issue',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _prAuthorMeta = const VerificationMeta(
+    'prAuthor',
+  );
+  @override
+  late final GeneratedColumn<String> prAuthor = GeneratedColumn<String>(
+    'pr_author',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _kickoffPromptPathMeta = const VerificationMeta(
+    'kickoffPromptPath',
+  );
+  @override
+  late final GeneratedColumn<String> kickoffPromptPath =
+      GeneratedColumn<String>(
+        'kickoff_prompt_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _hiddenMeta = const VerificationMeta('hidden');
+  @override
+  late final GeneratedColumn<bool> hidden = GeneratedColumn<bool>(
+    'hidden',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("hidden" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _snoozedMeta = const VerificationMeta(
+    'snoozed',
+  );
+  @override
+  late final GeneratedColumn<bool> snoozed = GeneratedColumn<bool>(
+    'snoozed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("snoozed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _hasSessionMeta = const VerificationMeta(
+    'hasSession',
+  );
+  @override
+  late final GeneratedColumn<bool> hasSession = GeneratedColumn<bool>(
+    'has_session',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("has_session" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _sessionPromptMeta = const VerificationMeta(
+    'sessionPrompt',
+  );
+  @override
+  late final GeneratedColumn<String> sessionPrompt = GeneratedColumn<String>(
+    'session_prompt',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, String>
+  sessionStartedAt = GeneratedColumn<String>(
+    'session_started_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  ).withConverter<DateTime?>($WorktreeMetaTable.$convertersessionStartedAtn);
+  @override
+  List<GeneratedColumn> get $columns => [
+    path,
+    repoPath,
+    baseBranch,
+    jiraIssue,
+    githubIssue,
+    prAuthor,
+    kickoffPromptPath,
+    hidden,
+    snoozed,
+    hasSession,
+    sessionPrompt,
+    sessionStartedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'worktree_metadata';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WorktreeMetaRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pathMeta);
+    }
+    if (data.containsKey('repo_path')) {
+      context.handle(
+        _repoPathMeta,
+        repoPath.isAcceptableOrUnknown(data['repo_path']!, _repoPathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_repoPathMeta);
+    }
+    if (data.containsKey('base_branch')) {
+      context.handle(
+        _baseBranchMeta,
+        baseBranch.isAcceptableOrUnknown(data['base_branch']!, _baseBranchMeta),
+      );
+    }
+    if (data.containsKey('jira_issue')) {
+      context.handle(
+        _jiraIssueMeta,
+        jiraIssue.isAcceptableOrUnknown(data['jira_issue']!, _jiraIssueMeta),
+      );
+    }
+    if (data.containsKey('github_issue')) {
+      context.handle(
+        _githubIssueMeta,
+        githubIssue.isAcceptableOrUnknown(
+          data['github_issue']!,
+          _githubIssueMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pr_author')) {
+      context.handle(
+        _prAuthorMeta,
+        prAuthor.isAcceptableOrUnknown(data['pr_author']!, _prAuthorMeta),
+      );
+    }
+    if (data.containsKey('kickoff_prompt_path')) {
+      context.handle(
+        _kickoffPromptPathMeta,
+        kickoffPromptPath.isAcceptableOrUnknown(
+          data['kickoff_prompt_path']!,
+          _kickoffPromptPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hidden')) {
+      context.handle(
+        _hiddenMeta,
+        hidden.isAcceptableOrUnknown(data['hidden']!, _hiddenMeta),
+      );
+    }
+    if (data.containsKey('snoozed')) {
+      context.handle(
+        _snoozedMeta,
+        snoozed.isAcceptableOrUnknown(data['snoozed']!, _snoozedMeta),
+      );
+    }
+    if (data.containsKey('has_session')) {
+      context.handle(
+        _hasSessionMeta,
+        hasSession.isAcceptableOrUnknown(data['has_session']!, _hasSessionMeta),
+      );
+    }
+    if (data.containsKey('session_prompt')) {
+      context.handle(
+        _sessionPromptMeta,
+        sessionPrompt.isAcceptableOrUnknown(
+          data['session_prompt']!,
+          _sessionPromptMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {path};
+  @override
+  WorktreeMetaRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WorktreeMetaRow(
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      )!,
+      repoPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repo_path'],
+      )!,
+      baseBranch: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}base_branch'],
+      ),
+      jiraIssue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}jira_issue'],
+      ),
+      githubIssue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}github_issue'],
+      ),
+      prAuthor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pr_author'],
+      ),
+      kickoffPromptPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kickoff_prompt_path'],
+      ),
+      hidden: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}hidden'],
+      )!,
+      snoozed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}snoozed'],
+      )!,
+      hasSession: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}has_session'],
+      )!,
+      sessionPrompt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_prompt'],
+      ),
+      sessionStartedAt: $WorktreeMetaTable.$convertersessionStartedAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}session_started_at'],
+        ),
+      ),
+    );
+  }
+
+  @override
+  $WorktreeMetaTable createAlias(String alias) {
+    return $WorktreeMetaTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, String> $convertersessionStartedAt =
+      const IsoDateTime();
+  static TypeConverter<DateTime?, String?> $convertersessionStartedAtn =
+      NullAwareTypeConverter.wrap($convertersessionStartedAt);
+}
+
+class WorktreeMetaRow extends DataClass implements Insertable<WorktreeMetaRow> {
+  final String path;
+  final String repoPath;
+  final String? baseBranch;
+  final String? jiraIssue;
+  final int? githubIssue;
+  final String? prAuthor;
+  final String? kickoffPromptPath;
+  final bool hidden;
+  final bool snoozed;
+
+  /// Whether a Claude session is remembered here.
+  final bool hasSession;
+
+  /// The prompt the session was started with: a saved prompt's name or a
+  /// built-in prompt id.
+  final String? sessionPrompt;
+
+  /// When the session was first started; null for ones remembered before
+  /// start times were kept.
+  final DateTime? sessionStartedAt;
+  const WorktreeMetaRow({
+    required this.path,
+    required this.repoPath,
+    this.baseBranch,
+    this.jiraIssue,
+    this.githubIssue,
+    this.prAuthor,
+    this.kickoffPromptPath,
+    required this.hidden,
+    required this.snoozed,
+    required this.hasSession,
+    this.sessionPrompt,
+    this.sessionStartedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['path'] = Variable<String>(path);
+    map['repo_path'] = Variable<String>(repoPath);
+    if (!nullToAbsent || baseBranch != null) {
+      map['base_branch'] = Variable<String>(baseBranch);
+    }
+    if (!nullToAbsent || jiraIssue != null) {
+      map['jira_issue'] = Variable<String>(jiraIssue);
+    }
+    if (!nullToAbsent || githubIssue != null) {
+      map['github_issue'] = Variable<int>(githubIssue);
+    }
+    if (!nullToAbsent || prAuthor != null) {
+      map['pr_author'] = Variable<String>(prAuthor);
+    }
+    if (!nullToAbsent || kickoffPromptPath != null) {
+      map['kickoff_prompt_path'] = Variable<String>(kickoffPromptPath);
+    }
+    map['hidden'] = Variable<bool>(hidden);
+    map['snoozed'] = Variable<bool>(snoozed);
+    map['has_session'] = Variable<bool>(hasSession);
+    if (!nullToAbsent || sessionPrompt != null) {
+      map['session_prompt'] = Variable<String>(sessionPrompt);
+    }
+    if (!nullToAbsent || sessionStartedAt != null) {
+      map['session_started_at'] = Variable<String>(
+        $WorktreeMetaTable.$convertersessionStartedAtn.toSql(sessionStartedAt),
+      );
+    }
+    return map;
+  }
+
+  WorktreeMetaCompanion toCompanion(bool nullToAbsent) {
+    return WorktreeMetaCompanion(
+      path: Value(path),
+      repoPath: Value(repoPath),
+      baseBranch: baseBranch == null && nullToAbsent
+          ? const Value.absent()
+          : Value(baseBranch),
+      jiraIssue: jiraIssue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(jiraIssue),
+      githubIssue: githubIssue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(githubIssue),
+      prAuthor: prAuthor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prAuthor),
+      kickoffPromptPath: kickoffPromptPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(kickoffPromptPath),
+      hidden: Value(hidden),
+      snoozed: Value(snoozed),
+      hasSession: Value(hasSession),
+      sessionPrompt: sessionPrompt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sessionPrompt),
+      sessionStartedAt: sessionStartedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sessionStartedAt),
+    );
+  }
+
+  factory WorktreeMetaRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WorktreeMetaRow(
+      path: serializer.fromJson<String>(json['path']),
+      repoPath: serializer.fromJson<String>(json['repoPath']),
+      baseBranch: serializer.fromJson<String?>(json['baseBranch']),
+      jiraIssue: serializer.fromJson<String?>(json['jiraIssue']),
+      githubIssue: serializer.fromJson<int?>(json['githubIssue']),
+      prAuthor: serializer.fromJson<String?>(json['prAuthor']),
+      kickoffPromptPath: serializer.fromJson<String?>(
+        json['kickoffPromptPath'],
+      ),
+      hidden: serializer.fromJson<bool>(json['hidden']),
+      snoozed: serializer.fromJson<bool>(json['snoozed']),
+      hasSession: serializer.fromJson<bool>(json['hasSession']),
+      sessionPrompt: serializer.fromJson<String?>(json['sessionPrompt']),
+      sessionStartedAt: serializer.fromJson<DateTime?>(
+        json['sessionStartedAt'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'path': serializer.toJson<String>(path),
+      'repoPath': serializer.toJson<String>(repoPath),
+      'baseBranch': serializer.toJson<String?>(baseBranch),
+      'jiraIssue': serializer.toJson<String?>(jiraIssue),
+      'githubIssue': serializer.toJson<int?>(githubIssue),
+      'prAuthor': serializer.toJson<String?>(prAuthor),
+      'kickoffPromptPath': serializer.toJson<String?>(kickoffPromptPath),
+      'hidden': serializer.toJson<bool>(hidden),
+      'snoozed': serializer.toJson<bool>(snoozed),
+      'hasSession': serializer.toJson<bool>(hasSession),
+      'sessionPrompt': serializer.toJson<String?>(sessionPrompt),
+      'sessionStartedAt': serializer.toJson<DateTime?>(sessionStartedAt),
+    };
+  }
+
+  WorktreeMetaRow copyWith({
+    String? path,
+    String? repoPath,
+    Value<String?> baseBranch = const Value.absent(),
+    Value<String?> jiraIssue = const Value.absent(),
+    Value<int?> githubIssue = const Value.absent(),
+    Value<String?> prAuthor = const Value.absent(),
+    Value<String?> kickoffPromptPath = const Value.absent(),
+    bool? hidden,
+    bool? snoozed,
+    bool? hasSession,
+    Value<String?> sessionPrompt = const Value.absent(),
+    Value<DateTime?> sessionStartedAt = const Value.absent(),
+  }) => WorktreeMetaRow(
+    path: path ?? this.path,
+    repoPath: repoPath ?? this.repoPath,
+    baseBranch: baseBranch.present ? baseBranch.value : this.baseBranch,
+    jiraIssue: jiraIssue.present ? jiraIssue.value : this.jiraIssue,
+    githubIssue: githubIssue.present ? githubIssue.value : this.githubIssue,
+    prAuthor: prAuthor.present ? prAuthor.value : this.prAuthor,
+    kickoffPromptPath: kickoffPromptPath.present
+        ? kickoffPromptPath.value
+        : this.kickoffPromptPath,
+    hidden: hidden ?? this.hidden,
+    snoozed: snoozed ?? this.snoozed,
+    hasSession: hasSession ?? this.hasSession,
+    sessionPrompt: sessionPrompt.present
+        ? sessionPrompt.value
+        : this.sessionPrompt,
+    sessionStartedAt: sessionStartedAt.present
+        ? sessionStartedAt.value
+        : this.sessionStartedAt,
+  );
+  WorktreeMetaRow copyWithCompanion(WorktreeMetaCompanion data) {
+    return WorktreeMetaRow(
+      path: data.path.present ? data.path.value : this.path,
+      repoPath: data.repoPath.present ? data.repoPath.value : this.repoPath,
+      baseBranch: data.baseBranch.present
+          ? data.baseBranch.value
+          : this.baseBranch,
+      jiraIssue: data.jiraIssue.present ? data.jiraIssue.value : this.jiraIssue,
+      githubIssue: data.githubIssue.present
+          ? data.githubIssue.value
+          : this.githubIssue,
+      prAuthor: data.prAuthor.present ? data.prAuthor.value : this.prAuthor,
+      kickoffPromptPath: data.kickoffPromptPath.present
+          ? data.kickoffPromptPath.value
+          : this.kickoffPromptPath,
+      hidden: data.hidden.present ? data.hidden.value : this.hidden,
+      snoozed: data.snoozed.present ? data.snoozed.value : this.snoozed,
+      hasSession: data.hasSession.present
+          ? data.hasSession.value
+          : this.hasSession,
+      sessionPrompt: data.sessionPrompt.present
+          ? data.sessionPrompt.value
+          : this.sessionPrompt,
+      sessionStartedAt: data.sessionStartedAt.present
+          ? data.sessionStartedAt.value
+          : this.sessionStartedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WorktreeMetaRow(')
+          ..write('path: $path, ')
+          ..write('repoPath: $repoPath, ')
+          ..write('baseBranch: $baseBranch, ')
+          ..write('jiraIssue: $jiraIssue, ')
+          ..write('githubIssue: $githubIssue, ')
+          ..write('prAuthor: $prAuthor, ')
+          ..write('kickoffPromptPath: $kickoffPromptPath, ')
+          ..write('hidden: $hidden, ')
+          ..write('snoozed: $snoozed, ')
+          ..write('hasSession: $hasSession, ')
+          ..write('sessionPrompt: $sessionPrompt, ')
+          ..write('sessionStartedAt: $sessionStartedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    path,
+    repoPath,
+    baseBranch,
+    jiraIssue,
+    githubIssue,
+    prAuthor,
+    kickoffPromptPath,
+    hidden,
+    snoozed,
+    hasSession,
+    sessionPrompt,
+    sessionStartedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WorktreeMetaRow &&
+          other.path == this.path &&
+          other.repoPath == this.repoPath &&
+          other.baseBranch == this.baseBranch &&
+          other.jiraIssue == this.jiraIssue &&
+          other.githubIssue == this.githubIssue &&
+          other.prAuthor == this.prAuthor &&
+          other.kickoffPromptPath == this.kickoffPromptPath &&
+          other.hidden == this.hidden &&
+          other.snoozed == this.snoozed &&
+          other.hasSession == this.hasSession &&
+          other.sessionPrompt == this.sessionPrompt &&
+          other.sessionStartedAt == this.sessionStartedAt);
+}
+
+class WorktreeMetaCompanion extends UpdateCompanion<WorktreeMetaRow> {
+  final Value<String> path;
+  final Value<String> repoPath;
+  final Value<String?> baseBranch;
+  final Value<String?> jiraIssue;
+  final Value<int?> githubIssue;
+  final Value<String?> prAuthor;
+  final Value<String?> kickoffPromptPath;
+  final Value<bool> hidden;
+  final Value<bool> snoozed;
+  final Value<bool> hasSession;
+  final Value<String?> sessionPrompt;
+  final Value<DateTime?> sessionStartedAt;
+  final Value<int> rowid;
+  const WorktreeMetaCompanion({
+    this.path = const Value.absent(),
+    this.repoPath = const Value.absent(),
+    this.baseBranch = const Value.absent(),
+    this.jiraIssue = const Value.absent(),
+    this.githubIssue = const Value.absent(),
+    this.prAuthor = const Value.absent(),
+    this.kickoffPromptPath = const Value.absent(),
+    this.hidden = const Value.absent(),
+    this.snoozed = const Value.absent(),
+    this.hasSession = const Value.absent(),
+    this.sessionPrompt = const Value.absent(),
+    this.sessionStartedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WorktreeMetaCompanion.insert({
+    required String path,
+    required String repoPath,
+    this.baseBranch = const Value.absent(),
+    this.jiraIssue = const Value.absent(),
+    this.githubIssue = const Value.absent(),
+    this.prAuthor = const Value.absent(),
+    this.kickoffPromptPath = const Value.absent(),
+    this.hidden = const Value.absent(),
+    this.snoozed = const Value.absent(),
+    this.hasSession = const Value.absent(),
+    this.sessionPrompt = const Value.absent(),
+    this.sessionStartedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : path = Value(path),
+       repoPath = Value(repoPath);
+  static Insertable<WorktreeMetaRow> custom({
+    Expression<String>? path,
+    Expression<String>? repoPath,
+    Expression<String>? baseBranch,
+    Expression<String>? jiraIssue,
+    Expression<int>? githubIssue,
+    Expression<String>? prAuthor,
+    Expression<String>? kickoffPromptPath,
+    Expression<bool>? hidden,
+    Expression<bool>? snoozed,
+    Expression<bool>? hasSession,
+    Expression<String>? sessionPrompt,
+    Expression<String>? sessionStartedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (path != null) 'path': path,
+      if (repoPath != null) 'repo_path': repoPath,
+      if (baseBranch != null) 'base_branch': baseBranch,
+      if (jiraIssue != null) 'jira_issue': jiraIssue,
+      if (githubIssue != null) 'github_issue': githubIssue,
+      if (prAuthor != null) 'pr_author': prAuthor,
+      if (kickoffPromptPath != null) 'kickoff_prompt_path': kickoffPromptPath,
+      if (hidden != null) 'hidden': hidden,
+      if (snoozed != null) 'snoozed': snoozed,
+      if (hasSession != null) 'has_session': hasSession,
+      if (sessionPrompt != null) 'session_prompt': sessionPrompt,
+      if (sessionStartedAt != null) 'session_started_at': sessionStartedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WorktreeMetaCompanion copyWith({
+    Value<String>? path,
+    Value<String>? repoPath,
+    Value<String?>? baseBranch,
+    Value<String?>? jiraIssue,
+    Value<int?>? githubIssue,
+    Value<String?>? prAuthor,
+    Value<String?>? kickoffPromptPath,
+    Value<bool>? hidden,
+    Value<bool>? snoozed,
+    Value<bool>? hasSession,
+    Value<String?>? sessionPrompt,
+    Value<DateTime?>? sessionStartedAt,
+    Value<int>? rowid,
+  }) {
+    return WorktreeMetaCompanion(
+      path: path ?? this.path,
+      repoPath: repoPath ?? this.repoPath,
+      baseBranch: baseBranch ?? this.baseBranch,
+      jiraIssue: jiraIssue ?? this.jiraIssue,
+      githubIssue: githubIssue ?? this.githubIssue,
+      prAuthor: prAuthor ?? this.prAuthor,
+      kickoffPromptPath: kickoffPromptPath ?? this.kickoffPromptPath,
+      hidden: hidden ?? this.hidden,
+      snoozed: snoozed ?? this.snoozed,
+      hasSession: hasSession ?? this.hasSession,
+      sessionPrompt: sessionPrompt ?? this.sessionPrompt,
+      sessionStartedAt: sessionStartedAt ?? this.sessionStartedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
+    }
+    if (repoPath.present) {
+      map['repo_path'] = Variable<String>(repoPath.value);
+    }
+    if (baseBranch.present) {
+      map['base_branch'] = Variable<String>(baseBranch.value);
+    }
+    if (jiraIssue.present) {
+      map['jira_issue'] = Variable<String>(jiraIssue.value);
+    }
+    if (githubIssue.present) {
+      map['github_issue'] = Variable<int>(githubIssue.value);
+    }
+    if (prAuthor.present) {
+      map['pr_author'] = Variable<String>(prAuthor.value);
+    }
+    if (kickoffPromptPath.present) {
+      map['kickoff_prompt_path'] = Variable<String>(kickoffPromptPath.value);
+    }
+    if (hidden.present) {
+      map['hidden'] = Variable<bool>(hidden.value);
+    }
+    if (snoozed.present) {
+      map['snoozed'] = Variable<bool>(snoozed.value);
+    }
+    if (hasSession.present) {
+      map['has_session'] = Variable<bool>(hasSession.value);
+    }
+    if (sessionPrompt.present) {
+      map['session_prompt'] = Variable<String>(sessionPrompt.value);
+    }
+    if (sessionStartedAt.present) {
+      map['session_started_at'] = Variable<String>(
+        $WorktreeMetaTable.$convertersessionStartedAtn.toSql(
+          sessionStartedAt.value,
+        ),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WorktreeMetaCompanion(')
+          ..write('path: $path, ')
+          ..write('repoPath: $repoPath, ')
+          ..write('baseBranch: $baseBranch, ')
+          ..write('jiraIssue: $jiraIssue, ')
+          ..write('githubIssue: $githubIssue, ')
+          ..write('prAuthor: $prAuthor, ')
+          ..write('kickoffPromptPath: $kickoffPromptPath, ')
+          ..write('hidden: $hidden, ')
+          ..write('snoozed: $snoozed, ')
+          ..write('hasSession: $hasSession, ')
+          ..write('sessionPrompt: $sessionPrompt, ')
+          ..write('sessionStartedAt: $sessionStartedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3133,6 +3893,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $IssueCacheTable issueCache = $IssueCacheTable(this);
   late final $ClaudeTranscriptsTable claudeTranscripts =
       $ClaudeTranscriptsTable(this);
+  late final $WorktreeMetaTable worktreeMeta = $WorktreeMetaTable(this);
   late final Index agentEventsRun = Index(
     'agent_events_run',
     'CREATE INDEX agent_events_run ON agent_events (run_id, id)',
@@ -3144,6 +3905,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final Index claudeTranscriptsDir = Index(
     'claude_transcripts_dir',
     'CREATE INDEX claude_transcripts_dir ON claude_transcripts (project_dir)',
+  );
+  late final Index worktreeMetadataRepo = Index(
+    'worktree_metadata_repo',
+    'CREATE INDEX worktree_metadata_repo ON worktree_metadata (repo_path)',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -3157,9 +3922,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     manualPosts,
     issueCache,
     claudeTranscripts,
+    worktreeMeta,
     agentEventsRun,
     worktreeEventsAt,
     claudeTranscriptsDir,
+    worktreeMetadataRepo,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -5280,6 +6047,353 @@ typedef $$ClaudeTranscriptsTableProcessedTableManager =
       ClaudeTranscriptRow,
       PrefetchHooks Function()
     >;
+typedef $$WorktreeMetaTableCreateCompanionBuilder =
+    WorktreeMetaCompanion Function({
+      required String path,
+      required String repoPath,
+      Value<String?> baseBranch,
+      Value<String?> jiraIssue,
+      Value<int?> githubIssue,
+      Value<String?> prAuthor,
+      Value<String?> kickoffPromptPath,
+      Value<bool> hidden,
+      Value<bool> snoozed,
+      Value<bool> hasSession,
+      Value<String?> sessionPrompt,
+      Value<DateTime?> sessionStartedAt,
+      Value<int> rowid,
+    });
+typedef $$WorktreeMetaTableUpdateCompanionBuilder =
+    WorktreeMetaCompanion Function({
+      Value<String> path,
+      Value<String> repoPath,
+      Value<String?> baseBranch,
+      Value<String?> jiraIssue,
+      Value<int?> githubIssue,
+      Value<String?> prAuthor,
+      Value<String?> kickoffPromptPath,
+      Value<bool> hidden,
+      Value<bool> snoozed,
+      Value<bool> hasSession,
+      Value<String?> sessionPrompt,
+      Value<DateTime?> sessionStartedAt,
+      Value<int> rowid,
+    });
+
+class $$WorktreeMetaTableFilterComposer
+    extends Composer<_$AppDatabase, $WorktreeMetaTable> {
+  $$WorktreeMetaTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repoPath => $composableBuilder(
+    column: $table.repoPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get baseBranch => $composableBuilder(
+    column: $table.baseBranch,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get jiraIssue => $composableBuilder(
+    column: $table.jiraIssue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get githubIssue => $composableBuilder(
+    column: $table.githubIssue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prAuthor => $composableBuilder(
+    column: $table.prAuthor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kickoffPromptPath => $composableBuilder(
+    column: $table.kickoffPromptPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hidden => $composableBuilder(
+    column: $table.hidden,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get snoozed => $composableBuilder(
+    column: $table.snoozed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hasSession => $composableBuilder(
+    column: $table.hasSession,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sessionPrompt => $composableBuilder(
+    column: $table.sessionPrompt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, String>
+  get sessionStartedAt => $composableBuilder(
+    column: $table.sessionStartedAt,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+}
+
+class $$WorktreeMetaTableOrderingComposer
+    extends Composer<_$AppDatabase, $WorktreeMetaTable> {
+  $$WorktreeMetaTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repoPath => $composableBuilder(
+    column: $table.repoPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get baseBranch => $composableBuilder(
+    column: $table.baseBranch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get jiraIssue => $composableBuilder(
+    column: $table.jiraIssue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get githubIssue => $composableBuilder(
+    column: $table.githubIssue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get prAuthor => $composableBuilder(
+    column: $table.prAuthor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kickoffPromptPath => $composableBuilder(
+    column: $table.kickoffPromptPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get hidden => $composableBuilder(
+    column: $table.hidden,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get snoozed => $composableBuilder(
+    column: $table.snoozed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get hasSession => $composableBuilder(
+    column: $table.hasSession,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sessionPrompt => $composableBuilder(
+    column: $table.sessionPrompt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sessionStartedAt => $composableBuilder(
+    column: $table.sessionStartedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WorktreeMetaTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WorktreeMetaTable> {
+  $$WorktreeMetaTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
+  GeneratedColumn<String> get repoPath =>
+      $composableBuilder(column: $table.repoPath, builder: (column) => column);
+
+  GeneratedColumn<String> get baseBranch => $composableBuilder(
+    column: $table.baseBranch,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get jiraIssue =>
+      $composableBuilder(column: $table.jiraIssue, builder: (column) => column);
+
+  GeneratedColumn<int> get githubIssue => $composableBuilder(
+    column: $table.githubIssue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get prAuthor =>
+      $composableBuilder(column: $table.prAuthor, builder: (column) => column);
+
+  GeneratedColumn<String> get kickoffPromptPath => $composableBuilder(
+    column: $table.kickoffPromptPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get hidden =>
+      $composableBuilder(column: $table.hidden, builder: (column) => column);
+
+  GeneratedColumn<bool> get snoozed =>
+      $composableBuilder(column: $table.snoozed, builder: (column) => column);
+
+  GeneratedColumn<bool> get hasSession => $composableBuilder(
+    column: $table.hasSession,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sessionPrompt => $composableBuilder(
+    column: $table.sessionPrompt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<DateTime?, String> get sessionStartedAt =>
+      $composableBuilder(
+        column: $table.sessionStartedAt,
+        builder: (column) => column,
+      );
+}
+
+class $$WorktreeMetaTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WorktreeMetaTable,
+          WorktreeMetaRow,
+          $$WorktreeMetaTableFilterComposer,
+          $$WorktreeMetaTableOrderingComposer,
+          $$WorktreeMetaTableAnnotationComposer,
+          $$WorktreeMetaTableCreateCompanionBuilder,
+          $$WorktreeMetaTableUpdateCompanionBuilder,
+          (
+            WorktreeMetaRow,
+            BaseReferences<_$AppDatabase, $WorktreeMetaTable, WorktreeMetaRow>,
+          ),
+          WorktreeMetaRow,
+          PrefetchHooks Function()
+        > {
+  $$WorktreeMetaTableTableManager(_$AppDatabase db, $WorktreeMetaTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WorktreeMetaTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WorktreeMetaTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WorktreeMetaTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> path = const Value.absent(),
+                Value<String> repoPath = const Value.absent(),
+                Value<String?> baseBranch = const Value.absent(),
+                Value<String?> jiraIssue = const Value.absent(),
+                Value<int?> githubIssue = const Value.absent(),
+                Value<String?> prAuthor = const Value.absent(),
+                Value<String?> kickoffPromptPath = const Value.absent(),
+                Value<bool> hidden = const Value.absent(),
+                Value<bool> snoozed = const Value.absent(),
+                Value<bool> hasSession = const Value.absent(),
+                Value<String?> sessionPrompt = const Value.absent(),
+                Value<DateTime?> sessionStartedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WorktreeMetaCompanion(
+                path: path,
+                repoPath: repoPath,
+                baseBranch: baseBranch,
+                jiraIssue: jiraIssue,
+                githubIssue: githubIssue,
+                prAuthor: prAuthor,
+                kickoffPromptPath: kickoffPromptPath,
+                hidden: hidden,
+                snoozed: snoozed,
+                hasSession: hasSession,
+                sessionPrompt: sessionPrompt,
+                sessionStartedAt: sessionStartedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String path,
+                required String repoPath,
+                Value<String?> baseBranch = const Value.absent(),
+                Value<String?> jiraIssue = const Value.absent(),
+                Value<int?> githubIssue = const Value.absent(),
+                Value<String?> prAuthor = const Value.absent(),
+                Value<String?> kickoffPromptPath = const Value.absent(),
+                Value<bool> hidden = const Value.absent(),
+                Value<bool> snoozed = const Value.absent(),
+                Value<bool> hasSession = const Value.absent(),
+                Value<String?> sessionPrompt = const Value.absent(),
+                Value<DateTime?> sessionStartedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WorktreeMetaCompanion.insert(
+                path: path,
+                repoPath: repoPath,
+                baseBranch: baseBranch,
+                jiraIssue: jiraIssue,
+                githubIssue: githubIssue,
+                prAuthor: prAuthor,
+                kickoffPromptPath: kickoffPromptPath,
+                hidden: hidden,
+                snoozed: snoozed,
+                hasSession: hasSession,
+                sessionPrompt: sessionPrompt,
+                sessionStartedAt: sessionStartedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WorktreeMetaTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WorktreeMetaTable,
+      WorktreeMetaRow,
+      $$WorktreeMetaTableFilterComposer,
+      $$WorktreeMetaTableOrderingComposer,
+      $$WorktreeMetaTableAnnotationComposer,
+      $$WorktreeMetaTableCreateCompanionBuilder,
+      $$WorktreeMetaTableUpdateCompanionBuilder,
+      (
+        WorktreeMetaRow,
+        BaseReferences<_$AppDatabase, $WorktreeMetaTable, WorktreeMetaRow>,
+      ),
+      WorktreeMetaRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5298,4 +6412,6 @@ class $AppDatabaseManager {
       $$IssueCacheTableTableManager(_db, _db.issueCache);
   $$ClaudeTranscriptsTableTableManager get claudeTranscripts =>
       $$ClaudeTranscriptsTableTableManager(_db, _db.claudeTranscripts);
+  $$WorktreeMetaTableTableManager get worktreeMeta =>
+      $$WorktreeMetaTableTableManager(_db, _db.worktreeMeta);
 }

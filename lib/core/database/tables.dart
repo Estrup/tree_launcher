@@ -125,3 +125,42 @@ class ClaudeTranscripts extends Table {
   @override
   Set<Column> get primaryKey => {path};
 }
+
+/// What the app knows about a worktree beyond what git says, one row per
+/// worktree path: the issue and PR it was made for, the branch it was made
+/// from, the kickoff prompt an agent left in it, whether it is hidden or
+/// snoozed, and the Claude session remembered there (a sidebar shortcut).
+///
+/// Which worktrees exist is git's to say; a row whose worktree is gone is
+/// removed when its repo's worktrees are listed again.
+@DataClassName('WorktreeMetaRow')
+@TableIndex(name: 'worktree_metadata_repo', columns: {#repoPath})
+class WorktreeMeta extends Table {
+  @override
+  String get tableName => 'worktree_metadata';
+
+  TextColumn get path => text()();
+  TextColumn get repoPath => text()();
+  TextColumn get baseBranch => text().nullable()();
+  TextColumn get jiraIssue => text().nullable()();
+  IntColumn get githubIssue => integer().nullable()();
+  TextColumn get prAuthor => text().nullable()();
+  TextColumn get kickoffPromptPath => text().nullable()();
+  BoolColumn get hidden => boolean().withDefault(const Constant(false))();
+  BoolColumn get snoozed => boolean().withDefault(const Constant(false))();
+
+  /// Whether a Claude session is remembered here.
+  BoolColumn get hasSession => boolean().withDefault(const Constant(false))();
+
+  /// The prompt the session was started with: a saved prompt's name or a
+  /// built-in prompt id.
+  TextColumn get sessionPrompt => text().nullable()();
+
+  /// When the session was first started; null for ones remembered before
+  /// start times were kept.
+  TextColumn get sessionStartedAt =>
+      text().nullable().map(const IsoDateTime())();
+
+  @override
+  Set<Column> get primaryKey => {path};
+}

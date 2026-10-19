@@ -18,6 +18,7 @@ import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_metadata.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
@@ -90,6 +91,7 @@ void main() {
       gitService: _FakeGitService(),
       repoConfigStore: FakeRepoConfigStore(),
       eventStore: WorktreeEventStore(testDatabase()),
+      metadataStore: MemoryWorktreeMetadataStore(),
     );
     settings = SettingsController(store: FakeAppSettingsStore());
     terminal = _FakeTerminal();
@@ -184,10 +186,9 @@ void main() {
     await pumpSidebar(tester);
 
     // Both are under Worktrees (no Jira page); spike was started last.
-    expect(
-      workspace.selectedRepo!.claudeSessionStarts.keys,
-      containsAll([withIssue, withoutIssue]),
-    );
+    for (final path in [withIssue, withoutIssue]) {
+      expect(workspace.metadataFor(path)?.session?.startedAt, isNotNull);
+    }
     expect(
       tester.getTopLeft(find.text('spike')).dy,
       lessThan(
@@ -210,7 +211,9 @@ void main() {
     await tester.tap(find.text('Remove shortcut'));
     await tester.pumpAndSettle();
 
-    expect(workspace.selectedRepo!.claudeSessions, [withIssue]);
+    expect([
+      for (final m in workspace.metadata.sessionsFor(repoPath)) m.path,
+    ], [withIssue]);
   });
 
   testWidgets("a build agent stands for its worktree's shortcut while listed", (
@@ -278,15 +281,36 @@ void main() {
           kind: AgentKind.verify,
         ),
       ],
-      prAuthors: const {'/w/pr': 'kim'},
-      jiraIssues: const {'/w/pr': 'AU2-1', '/w/issue': 'AU2-2'},
-      claudeSessionPrompts: const {
-        '/w/verified': 'Verify',
-        '/w/from-pr-tab': prContextPromptId,
-        '/w/issue': 'Implement',
-        '/w/pr': issueContextPromptId,
-      },
     );
+    const byPath = {
+      '/w/pr': WorktreeMetadata(
+        path: '/w/pr',
+        repoPath: '/r',
+        prAuthor: 'kim',
+        jiraIssue: 'AU2-1',
+        session: RememberedSession(promptId: issueContextPromptId),
+      ),
+      '/w/issue': WorktreeMetadata(
+        path: '/w/issue',
+        repoPath: '/r',
+        jiraIssue: 'AU2-2',
+        session: RememberedSession(promptId: 'Implement'),
+      ),
+      '/w/verified': WorktreeMetadata(
+        path: '/w/verified',
+        repoPath: '/r',
+        session: RememberedSession(promptId: 'Verify'),
+      ),
+      '/w/from-pr-tab': WorktreeMetadata(
+        path: '/w/from-pr-tab',
+        repoPath: '/r',
+        session: RememberedSession(promptId: prContextPromptId),
+      ),
+    };
+
+    /// The worktree at [path]: one of [byPath], or one with nothing known.
+    WorktreeMetadata at(String path) =>
+        byPath[path] ?? WorktreeMetadata(path: path, repoPath: '/r');
     final all = {
       worktreesPageKey,
       prsPageKey,
@@ -307,12 +331,12 @@ void main() {
 
     test('goes by the prompt it was started with first', () {
       expect(
-        sessionPageKey(repo, '/w/verified', all),
+        sessionPageKey(repo, at('/w/verified'), all),
         agentPageKey(AgentKind.verify),
       );
-      expect(sessionPageKey(repo, '/w/from-pr-tab', all), prsPageKey);
+      expect(sessionPageKey(repo, at('/w/from-pr-tab'), all), prsPageKey);
       // The issue context wins over the worktree being a PR's.
-      expect(sessionPageKey(repo, '/w/pr', all), jiraPageKey);
+      expect(sessionPageKey(repo, at('/w/pr'), all), jiraPageKey);
     });
 
     test('then by the newest agent in the worktree', () {
@@ -326,14 +350,12 @@ void main() {
         ),
       ];
       expect(
-        sessionPageKey(repo, '/w/other', all, runs: runs),
+        sessionPageKey(repo, at('/w/other'), all, runs: runs),
         agentPageKey(AgentKind.review),
       );
       // A prompt without a kind says nothing; the agent decides.
       expect(
-        sessionPageKey(
-          repo,
-          '/w/issue',
+        sessionPageKey(repo, at('/w/issue'),
           all,
           runs: [run('c', AgentKind.verify, '/w/issue', t0)],
         ),
@@ -342,35 +364,32 @@ void main() {
     });
 
     test('puts GitHub issue sessions and worktrees under Issues', () {
-      final withIssues = repo.copyWith(
-        githubIssues: const {'/w/gh': 482, '/w/issue': 7},
-        claudeSessionPrompts: {
-          ...repo.claudeSessionPrompts,
-          '/w/gh-prompt': githubIssueContextPromptId,
-        },
+      const gh = WorktreeMetadata(path: '/w/gh', repoPath: '/r', githubIssue: 482);
+      const ghPrompt = WorktreeMetadata(
+        path: '/w/gh-prompt',
+        repoPath: '/r',
+        session: RememberedSession(promptId: githubIssueContextPromptId),
       );
+      final issue = at('/w/issue').copyWith(githubIssue: 7);
       final pages = {...all, githubIssuesPageKey};
-      expect(
-        sessionPageKey(withIssues, '/w/gh-prompt', pages),
-        githubIssuesPageKey,
-      );
-      expect(sessionPageKey(withIssues, '/w/gh', pages), githubIssuesPageKey);
+      expect(sessionPageKey(repo, ghPrompt, pages), githubIssuesPageKey);
+      expect(sessionPageKey(repo, gh, pages), githubIssuesPageKey);
       // A Jira issue goes first.
-      expect(sessionPageKey(withIssues, '/w/issue', pages), jiraPageKey);
+      expect(sessionPageKey(repo, issue, pages), jiraPageKey);
       // Without the Issues page, the worktrees page.
-      expect(sessionPageKey(withIssues, '/w/gh', all), worktreesPageKey);
+      expect(sessionPageKey(repo, gh, all), worktreesPageKey);
     });
 
     test('then by where the worktree came from', () {
-      expect(sessionPageKey(repo, '/w/issue', all), jiraPageKey);
-      expect(sessionPageKey(repo, '/w/other', all), worktreesPageKey);
+      expect(sessionPageKey(repo, at('/w/issue'), all), jiraPageKey);
+      expect(sessionPageKey(repo, at('/w/other'), all), worktreesPageKey);
       // Without a page for it, the next rule decides.
       expect(
-        sessionPageKey(repo, '/w/verified', {worktreesPageKey}),
+        sessionPageKey(repo, at('/w/verified'), {worktreesPageKey}),
         worktreesPageKey,
       );
       expect(
-        sessionPageKey(repo, '/w/pr', {worktreesPageKey, prsPageKey}),
+        sessionPageKey(repo, at('/w/pr'), {worktreesPageKey, prsPageKey}),
         prsPageKey,
       );
     });

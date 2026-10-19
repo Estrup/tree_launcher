@@ -1,3 +1,5 @@
+import 'package:tree_launcher/features/workspace/domain/worktree_metadata.dart';
+
 class Worktree {
   final String path;
   final String branch;
@@ -9,7 +11,6 @@ class Worktree {
   final String? jiraIssue;
 
   /// Number of the GitHub issue attached to this worktree, or null.
-  /// Hydrated from RepoConfig.githubIssues.
   final int? githubIssue;
 
   /// Base branch this worktree was created from (e.g. develop), or null.
@@ -20,17 +21,15 @@ class Worktree {
   final String? prAuthor;
 
   /// Absolute path to the API-supplied kickoff-prompt file inside this worktree
-  /// (see [kickoffPromptRelativePath]), or null. Hydrated from
-  /// RepoConfig.kickoffPrompts.
+  /// (see [kickoffPromptRelativePath]), or null.
   final String? kickoffPromptPath;
 
   /// Whether this worktree is hidden from the list (unless "Show hidden
-  /// worktrees" is enabled). Hydrated from RepoConfig.hiddenWorktrees.
+  /// worktrees" is enabled).
   final bool isHidden;
 
   /// Whether this worktree is snoozed. PR worktrees auto-unsnooze when the PR
   /// is again assigned to me; others stay snoozed until cleared manually.
-  /// Hydrated from RepoConfig.snoozedWorktrees.
   final bool isSnoozed;
 
   Worktree({
@@ -77,6 +76,25 @@ class Worktree {
       isSnoozed: isSnoozed ?? this.isSnoozed,
     );
   }
+}
+
+extension WorktreeWithMetadata on Worktree {
+  /// This worktree as git lists it, with [metadata]'s fields (or none, when
+  /// null) in place of any it had.
+  Worktree withMetadata(WorktreeMetadata? metadata) => Worktree(
+    path: path,
+    branch: branch,
+    name: name,
+    isMain: isMain,
+    commitHash: commitHash,
+    jiraIssue: metadata?.jiraIssue,
+    githubIssue: metadata?.githubIssue,
+    baseBranch: metadata?.baseBranch,
+    prAuthor: metadata?.prAuthor,
+    kickoffPromptPath: metadata?.kickoffPromptPath,
+    isHidden: metadata?.hidden ?? false,
+    isSnoozed: metadata?.snoozed ?? false,
+  );
 }
 
 class WorktreeListResult {

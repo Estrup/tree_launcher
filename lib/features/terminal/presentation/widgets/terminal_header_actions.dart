@@ -36,7 +36,8 @@ class TerminalHeaderActions extends StatelessWidget {
     final worktree = workspace.selectedRepo?.path == session.repoPath
         ? workspace.worktrees.where((w) => w.path == path).firstOrNull
         : null;
-    final jiraKey = worktree?.jiraIssue ?? repo?.jiraIssues[path];
+    final jiraKey =
+        worktree?.jiraIssue ?? workspace.metadataFor(path)?.jiraIssue;
     final pr = worktree == null
         ? null
         : context

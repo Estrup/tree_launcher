@@ -62,6 +62,7 @@ void main() {
       gitService: _FakeGitService(),
       repoConfigStore: FakeRepoConfigStore(),
       eventStore: WorktreeEventStore(testDatabase()),
+      metadataStore: MemoryWorktreeMetadataStore(),
     );
     settings = SettingsController(store: FakeAppSettingsStore());
     prs = GithubPrsController();
@@ -181,10 +182,9 @@ void main() {
     await tester.tap(find.text('Hide'));
     await tester.pumpAndSettle();
 
-    expect(
-      workspace.selectedRepo!.hiddenWorktrees,
-      containsAll(['/tmp/repo/one', '/tmp/repo/two', '/tmp/repo/three']),
-    );
+    for (final name in ['one', 'two', 'three']) {
+      expect(workspace.metadataFor('/tmp/repo/$name')?.hidden, isTrue);
+    }
     // Selection cleared even though the rows were not rebuilt away.
     expect(find.text('Hide'), findsNothing);
   });

@@ -25,6 +25,7 @@ import 'package:tree_launcher/features/terminal/presentation/controllers/termina
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_metadata.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
@@ -192,6 +193,7 @@ void main() {
       );
 
   late FakeRepoConfigStore config;
+  late MemoryWorktreeMetadataStore metadataStore;
   late WorkspaceController workspace;
   late SettingsController settings;
   late JiraIssuesController jira;
@@ -206,8 +208,6 @@ void main() {
         path: _repoPath,
         jiraProjectKey: 'AU2',
         githubConfig: GithubConfig(owner: 'o', repo: 'r', token: 't'),
-        jiraIssues: const {_existingPath: 'AU2-5928'},
-        baseBranches: const {_existingPath: 'develop'},
         claudePrompts: [
           ClaudePrompt(
             name: 'Implement',
@@ -225,11 +225,20 @@ void main() {
         ],
       ),
     ]);
+    metadataStore = MemoryWorktreeMetadataStore([
+      const WorktreeMetadata(
+        path: _existingPath,
+        repoPath: _repoPath,
+        jiraIssue: 'AU2-5928',
+        baseBranch: 'develop',
+      ),
+    ]);
     git = _FakeGitService();
     workspace = WorkspaceController(
       gitService: git,
       repoConfigStore: config,
       eventStore: WorktreeEventStore(testDatabase()),
+      metadataStore: metadataStore,
     );
     settings = SettingsController(store: FakeAppSettingsStore());
     terminal = _RecordingTerminal();
@@ -245,6 +254,17 @@ void main() {
     settings.dispose();
     workspace.dispose();
   });
+
+  /// The worktrees with a remembered Claude session, in the order remembered.
+  List<String> sessionPaths() => [
+    for (final m in workspace.metadata.sessionsFor(_repoPath)) m.path,
+  ];
+
+  /// The prompt each remembered session was started with.
+  Map<String, String?> sessionPrompts() => {
+    for (final m in workspace.metadata.sessionsFor(_repoPath))
+      m.path: m.session!.promptId,
+  };
 
   Future<void> pump(WidgetTester tester, Widget child) async {
     tester.view.physicalSize = const Size(1400, 900);
@@ -304,10 +324,8 @@ void main() {
       terminal.launched.single.command,
       "claude $_discordArgs $_launchFlags -- 'Implement AU2-5928 in au2-wt'",
     );
-    expect(workspace.selectedRepo!.claudeSessions, [_existingPath]);
-    expect(workspace.selectedRepo!.claudeSessionPrompts, {
-      _existingPath: 'Implement',
-    });
+    expect(sessionPaths(), [_existingPath]);
+    expect(sessionPrompts(), {_existingPath: 'Implement'});
   });
 
   testWidgets("fills {pr} from the open PR on the issue worktree's branch", (
@@ -348,8 +366,8 @@ void main() {
       "claude $_discordArgs $_launchFlags -- 'Context: Working on issue AU2-5905 where the "
       "base branch is develop.'",
     );
-    expect(workspace.selectedRepo!.jiraIssues[created], 'AU2-5905');
-    expect(workspace.selectedRepo!.claudeSessions, [created]);
+    expect(workspace.metadataFor(created)?.jiraIssue, 'AU2-5905');
+    expect(sessionPaths(), [created]);
   });
 
   testWidgets('starts in an existing worktree without creating one', (
@@ -549,7 +567,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('au2-wt'), findsNothing);
-    expect(config.savedRepos.single.claudeSessions, isEmpty);
+    expect(sessionPaths(), isEmpty);
+    expect([
+      for (final m in metadataStore.saved.values)
+        if (m.session != null) m.path,
+    ], isEmpty);
   });
 
   testWidgets('starts Claude on a PR branch with the PR context', (
@@ -581,9 +603,10 @@ void main() {
       "AU2-6001.'",
     );
     final repo = workspace.selectedRepo!;
-    expect(repo.prAuthors[created], 'jane');
-    expect(repo.jiraIssues[created], 'AU2-6001');
-    expect(repo.claudeSessions, [created]);
+    final metadata = workspace.metadataFor(created)!;
+    expect(metadata.prAuthor, 'jane');
+    expect(metadata.jiraIssue, 'AU2-6001');
+    expect(sessionPaths(), [created]);
     // A PR branch doesn't become the default base for new worktrees.
     expect(repo.lastBaseBranch, isNull);
   });
@@ -608,9 +631,7 @@ void main() {
       terminal.launched.single.command,
       contains('pull request #7 "Værksted kontakt (AU2-5928)"'),
     );
-    expect(workspace.selectedRepo!.claudeSessionPrompts, {
-      _existingPath: prContextPromptId,
-    });
+    expect(sessionPrompts(), {_existingPath: prContextPromptId});
   });
 
   testWidgets('fills {pr} with the number of the PR started from', (

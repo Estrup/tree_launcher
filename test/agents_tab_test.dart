@@ -50,6 +50,7 @@ void main() {
       gitService: _FakeGitService(),
       repoConfigStore: FakeRepoConfigStore(),
       eventStore: WorktreeEventStore(testDatabase()),
+      metadataStore: MemoryWorktreeMetadataStore(),
     );
     settings = SettingsController(store: FakeAppSettingsStore());
     terminal = TerminalController();

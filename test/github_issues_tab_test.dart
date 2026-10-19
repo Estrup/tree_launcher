@@ -49,6 +49,7 @@ Future<_Harness> _pumpTab(
     gitService: _FakeGitService(),
     repoConfigStore: FakeRepoConfigStore(),
     eventStore: WorktreeEventStore(testDatabase()),
+    metadataStore: MemoryWorktreeMetadataStore(),
   );
   final settings = SettingsController(store: FakeAppSettingsStore());
   final service = FakeGithubIssuesService();

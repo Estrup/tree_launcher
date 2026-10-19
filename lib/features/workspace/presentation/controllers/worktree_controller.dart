@@ -2,12 +2,22 @@ import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/worktree_metadata_controller.dart';
 
 class WorktreeController extends ChangeNotifier {
-  WorktreeController({required GitService gitService})
-    : _gitService = gitService;
+  WorktreeController({
+    required GitService gitService,
+    required WorktreeMetadataController metadata,
+  }) : _gitService = gitService,
+       _metadata = metadata {
+    metadata.addListener(_onMetadataChanged);
+  }
 
   final GitService _gitService;
+
+  /// The worktrees' issue, base branch, hidden/snoozed state and so on,
+  /// applied to the listed worktrees.
+  final WorktreeMetadataController _metadata;
 
   List<Worktree> _worktrees = [];
   bool _loading = false;
@@ -19,72 +29,8 @@ class WorktreeController extends ChangeNotifier {
   String? get error => _error;
   bool get isBareLayout => _isBareLayout;
 
-  /// JIRA issue keys from config, keyed by worktree path.
-  Map<String, String> _jiraIssues = {};
-  Map<String, String> get jiraIssues => Map.unmodifiable(_jiraIssues);
-
-  void setJiraIssues(Map<String, String> issues) {
-    _jiraIssues = Map.of(issues);
-    _hydrateMetadata();
-    notifyListeners();
-  }
-
-  /// GitHub issue numbers from config, keyed by worktree path.
-  Map<String, int> _githubIssues = {};
-  Map<String, int> get githubIssues => Map.unmodifiable(_githubIssues);
-
-  void setGithubIssues(Map<String, int> issues) {
-    _githubIssues = Map.of(issues);
-    _hydrateMetadata();
-    notifyListeners();
-  }
-
-  /// Base branches from config, keyed by worktree path.
-  Map<String, String> _baseBranches = {};
-  Map<String, String> get baseBranches => Map.unmodifiable(_baseBranches);
-
-  void setBaseBranches(Map<String, String> branches) {
-    _baseBranches = Map.of(branches);
-    _hydrateMetadata();
-    notifyListeners();
-  }
-
-  /// PR author logins from config, keyed by worktree path.
-  Map<String, String> _prAuthors = {};
-  Map<String, String> get prAuthors => Map.unmodifiable(_prAuthors);
-
-  void setPrAuthors(Map<String, String> authors) {
-    _prAuthors = Map.of(authors);
-    _hydrateMetadata();
-    notifyListeners();
-  }
-
-  /// Kickoff-prompt file paths from config, keyed by worktree path.
-  Map<String, String> _kickoffPrompts = {};
-  Map<String, String> get kickoffPrompts => Map.unmodifiable(_kickoffPrompts);
-
-  void setKickoffPrompts(Map<String, String> prompts) {
-    _kickoffPrompts = Map.of(prompts);
-    _hydrateMetadata();
-    notifyListeners();
-  }
-
-  /// Hidden worktree paths from config.
-  Set<String> _hiddenWorktrees = {};
-  Set<String> get hiddenWorktrees => Set.unmodifiable(_hiddenWorktrees);
-
-  void setHiddenWorktrees(Iterable<String> paths) {
-    _hiddenWorktrees = paths.toSet();
-    _hydrateMetadata();
-    notifyListeners();
-  }
-
-  /// Snoozed worktree paths from config.
-  Set<String> _snoozedWorktrees = {};
-  Set<String> get snoozedWorktrees => Set.unmodifiable(_snoozedWorktrees);
-
-  void setSnoozedWorktrees(Iterable<String> paths) {
-    _snoozedWorktrees = paths.toSet();
+  void _onMetadataChanged() {
+    if (_worktrees.isEmpty) return;
     _hydrateMetadata();
     notifyListeners();
   }
@@ -118,19 +64,9 @@ class WorktreeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Applies per-worktree metadata from config (JIRA issue, base branch, ...).
+  /// Applies each worktree's metadata (Jira issue, base branch, ...).
   void _hydrateMetadata() {
-    _worktrees = _worktrees.map((wt) {
-      return wt.copyWith(
-        jiraIssue: _jiraIssues[wt.path],
-        githubIssue: _githubIssues[wt.path],
-        baseBranch: _baseBranches[wt.path],
-        prAuthor: _prAuthors[wt.path],
-        kickoffPromptPath: _kickoffPrompts[wt.path],
-        isHidden: _hiddenWorktrees.contains(wt.path),
-        isSnoozed: _snoozedWorktrees.contains(wt.path),
-      );
-    }).toList();
+    _worktrees = [for (final wt in _worktrees) wt.withMetadata(_metadata[wt.path])];
   }
 
   Future<List<String>> listBranches(String? repoPath) async {
@@ -174,5 +110,11 @@ class WorktreeController extends ChangeNotifier {
         .toList();
     notifyListeners();
     await refreshForRepo(repoPath);
+  }
+
+  @override
+  void dispose() {
+    _metadata.removeListener(_onMetadataChanged);
+    super.dispose();
   }
 }
