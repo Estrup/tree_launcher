@@ -142,6 +142,61 @@ String? _promptPageKey(RepoConfig repo, String? promptId) {
   return kind == null ? null : agentPageKey(kind);
 }
 
+/// A session under a page in the sidebar: an agent [run], or a remembered
+/// shortcut to the session in [path]. [order] breaks ties in [startedAt].
+typedef PageSession = ({
+  DateTime startedAt,
+  int order,
+  String? path,
+  AgentRun? run,
+});
+
+/// The sessions the sidebar lists under each of [repo]'s pages (by page key,
+/// among [pageKeys]), newest first in a fixed order that status updates
+/// don't move: [repo]'s agent [runs] that show (see [showsAgentSession];
+/// [isOpen] says whether a run's terminal is open), and the [remembered]
+/// session shortcuts, in the order remembered. A build agent's worktree is
+/// also a shortcut; while that agent is listed it stands for it.
+Map<String, List<PageSession>> sessionsByPage(
+  RepoConfig repo, {
+  required Set<String> pageKeys,
+  required Iterable<AgentRun> runs,
+  required bool Function(AgentRun run) isOpen,
+  required Iterable<WorktreeMetadata> remembered,
+}) {
+  final sessions = <String, List<PageSession>>{};
+  final buildAgentPaths = <String>{};
+  for (final run in runs) {
+    if (run.repoName != repo.name) continue;
+    if (!showsAgentSession(run, isOpen: isOpen(run))) continue;
+    sessions
+        .putIfAbsent(agentPageKey(run.kind), () => [])
+        .add((startedAt: run.startedAt, order: 0, path: null, run: run));
+    final path = run.worktreePath;
+    if (run.kind == AgentKind.build && path != null) buildAgentPaths.add(path);
+  }
+  for (final (index, worktree) in remembered.indexed) {
+    if (buildAgentPaths.contains(worktree.path)) continue;
+    final pageKey = sessionPageKey(repo, worktree, pageKeys, runs: runs);
+    sessions.putIfAbsent(pageKey, () => []).add((
+      // Shortcuts from before start times were kept count as oldest, in the
+      // order they were remembered.
+      startedAt:
+          worktree.session?.startedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+      order: index,
+      path: worktree.path,
+      run: null,
+    ));
+  }
+  for (final list in sessions.values) {
+    list.sort((a, b) {
+      final byStart = b.startedAt.compareTo(a.startedAt);
+      return byStart != 0 ? byStart : b.order.compareTo(a.order);
+    });
+  }
+  return sessions;
+}
+
 /// Whether [run] shows as a session under its agent page in the sidebar:
 /// unarchived, and unfinished or with its terminal still open.
 bool showsAgentSession(AgentRun run, {required bool isOpen}) =>

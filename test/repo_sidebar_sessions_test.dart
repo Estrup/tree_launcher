@@ -211,9 +211,10 @@ void main() {
     await tester.tap(find.text('Remove shortcut'));
     await tester.pumpAndSettle();
 
-    expect([
-      for (final m in workspace.metadata.sessionsFor(repoPath)) m.path,
-    ], [withIssue]);
+    expect(
+      [for (final m in workspace.metadata.sessionsFor(repoPath)) m.path],
+      [withIssue],
+    );
   });
 
   testWidgets("a build agent stands for its worktree's shortcut while listed", (
@@ -222,9 +223,7 @@ void main() {
     late AgentsController agents;
     // Made with real async, so its pending writes complete.
     await tester.runAsync(() async {
-      agents = AgentsController(
-        store: AgentRunStore(testDatabase()),
-      );
+      agents = AgentsController(store: AgentRunStore(testDatabase()));
       final run = await agents.createForLaunch(
         kind: AgentKind.build,
         repoName: workspace.selectedRepo!.name,
@@ -355,7 +354,9 @@ void main() {
       );
       // A prompt without a kind says nothing; the agent decides.
       expect(
-        sessionPageKey(repo, at('/w/issue'),
+        sessionPageKey(
+          repo,
+          at('/w/issue'),
           all,
           runs: [run('c', AgentKind.verify, '/w/issue', t0)],
         ),
@@ -364,7 +365,11 @@ void main() {
     });
 
     test('puts GitHub issue sessions and worktrees under Issues', () {
-      const gh = WorktreeMetadata(path: '/w/gh', repoPath: '/r', githubIssue: 482);
+      const gh = WorktreeMetadata(
+        path: '/w/gh',
+        repoPath: '/r',
+        githubIssue: 482,
+      );
       const ghPrompt = WorktreeMetadata(
         path: '/w/gh-prompt',
         repoPath: '/r',
@@ -393,5 +398,68 @@ void main() {
         prsPageKey,
       );
     });
+  });
+
+  group('sessionsByPage', () {
+    final repo = RepoConfig(name: 'r', path: '/r');
+    final pages = {worktreesPageKey, agentPageKey(AgentKind.build)};
+    WorktreeMetadata remembered(String path, [DateTime? at]) =>
+        WorktreeMetadata(
+          path: path,
+          repoPath: '/r',
+          session: RememberedSession(startedAt: at),
+        );
+    AgentRun build(String id, AgentState state) => AgentRun(
+      id: id,
+      kind: AgentKind.build,
+      repoName: 'r',
+      worktreePath: '/w/a',
+      state: state,
+      startedAt: DateTime(2026, 10, 19, 12),
+      updatedAt: DateTime(2026, 10, 19, 12),
+    );
+
+    test('a listed build agent stands for its worktree\'s shortcut', () {
+      final sessions = sessionsByPage(
+        repo,
+        pageKeys: pages,
+        runs: [build('a1', AgentState.running)],
+        isOpen: (_) => false,
+        remembered: [
+          remembered('/w/a', DateTime(2026, 10, 19, 9)),
+          remembered('/w/old'),
+          remembered('/w/b', DateTime(2026, 10, 19, 10)),
+        ],
+      );
+
+      expect(
+        [for (final s in sessions[agentPageKey(AgentKind.build)]!) s.run?.id],
+        ['a1'],
+      );
+      // Newest first; shortcuts from before start times last.
+      expect(
+        [for (final s in sessions[worktreesPageKey]!) s.path],
+        ['/w/b', '/w/old'],
+      );
+    });
+
+    test(
+      'a finished agent with its terminal closed gives the shortcut back',
+      () {
+        final sessions = sessionsByPage(
+          repo,
+          pageKeys: pages,
+          runs: [build('a1', AgentState.done)],
+          isOpen: (_) => false,
+          remembered: [remembered('/w/a', DateTime(2026, 10, 19, 9))],
+        );
+
+        // Under the agent's page still (the newest agent in the worktree), but
+      // as the shortcut rather than the run.
+      final listed = sessions[agentPageKey(AgentKind.build)]!.single;
+      expect(listed.run, isNull);
+      expect(listed.path, '/w/a');
+      },
+    );
   });
 }
