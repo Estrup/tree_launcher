@@ -10,6 +10,7 @@ import 'package:tree_launcher/features/github_issues/presentation/widgets/github
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_styles.dart';
 import 'package:tree_launcher/core/platform/open_external.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// Shows a GitHub issue (title, state, assignees, milestone, labels,
 /// description, comments), pulled from the REST API and cached locally. It is
@@ -215,7 +216,7 @@ class _GithubIssueDialogState extends State<GithubIssueDialog> {
 
   void _showError(Object error) {
     if (!mounted) return;
-    setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    setState(() => _error = userMessage(error));
   }
 
   @override

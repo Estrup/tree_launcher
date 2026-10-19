@@ -10,6 +10,7 @@ import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// `/v1/jira/...`: Jira issues with the user's local tags, and the tags
 /// themselves. Nothing here changes Jira.
@@ -112,12 +113,10 @@ class JiraRoutes {
         ],
       });
     } catch (e) {
-      final message = e.toString().replaceFirst('Exception: ', '');
+      final message = userMessage(e);
       debugPrint('AgentApiServer: /v1/jira/issues failed: $message');
       // Jira's own 400s (e.g. an unknown status) are the caller's to fix.
-      final status = message.startsWith('Jira rejected the request')
-          ? 400
-          : 502;
+      final status = e is JiraApiException && e.statusCode == 400 ? 400 : 502;
       return jsonResponse({'error': message}, status: status);
     }
   }

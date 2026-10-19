@@ -9,10 +9,26 @@ import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
 import 'package:tree_launcher/features/jira/domain/jira_user.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 
+/// A Jira REST API error, with a [message] fit to show the user. [statusCode]
+/// is the HTTP status, or null when no request was made (e.g. no token).
+class JiraApiException implements Exception {
+  const JiraApiException(this.statusCode, this.message);
+
+  final int? statusCode;
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// Talks to the self-hosted Jira Server/Data Center REST API (v2) using
 /// Bearer-token auth. Mirrors the dart:io `HttpClient` pattern in
 /// `GithubApiService`.
 class JiraApiService {
+  /// One connection pool for every request this service makes.
+  late final HttpClient _client = HttpClient()
+    ..connectionTimeout = const Duration(seconds: 15);
+
   /// Fields requested for a single issue. Trims the payload to what the issue
   /// dialog shows.
   static const _issueFields =
@@ -164,49 +180,40 @@ class JiraApiService {
   }) async {
     final pat = await readJiraPat();
     if (pat == null) {
-      throw Exception('No Jira token found at ~/.config/jira-pat.txt');
+      throw const JiraApiException(
+        null,
+        'No Jira token found at ~/.config/jira-pat.txt',
+      );
     }
 
     final host = Uri.parse(jiraBaseUrl).host;
-    final client = HttpClient();
-    try {
-      final request = await client.openUrl(
-        method,
-        Uri.https(host, path, query.isEmpty ? null : query),
-      );
-      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $pat');
-      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      if (body != null) {
-        request.headers.contentType = ContentType.json;
-        request.write(jsonEncode(body));
-      }
-
-      final response = await request.close();
-      final responseBody = await utf8.decodeStream(response);
-
-      if (response.statusCode == 401) {
-        throw Exception(
-          'Jira authentication failed. Check your token at '
-          '~/.config/jira-pat.txt.',
-        );
-      }
-      if (response.statusCode == 403) throw Exception(forbidden);
-      if (response.statusCode == 404) throw Exception(notFound);
-      if (response.statusCode == 400) {
-        throw Exception(
-          'Jira rejected the request: ${_errorMessages(responseBody)}',
-        );
-      }
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          'Jira API error (${response.statusCode}): $responseBody',
-        );
-      }
-
-      return responseBody.trim().isEmpty ? null : jsonDecode(responseBody);
-    } finally {
-      client.close(force: true);
+    final request = await _client.openUrl(
+      method,
+      Uri.https(host, path, query.isEmpty ? null : query),
+    );
+    request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $pat');
+    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+    if (body != null) {
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode(body));
     }
+
+    final response = await request.close();
+    final responseBody = await utf8.decodeStream(response);
+
+    final status = response.statusCode;
+    if (status >= 200 && status < 300) {
+      return responseBody.trim().isEmpty ? null : jsonDecode(responseBody);
+    }
+    throw JiraApiException(status, switch (status) {
+      401 =>
+        'Jira authentication failed. Check your token at '
+            '~/.config/jira-pat.txt.',
+      403 => forbidden,
+      404 => notFound,
+      400 => 'Jira rejected the request: ${_errorMessages(responseBody)}',
+      _ => 'Jira API error ($status): $responseBody',
+    });
   }
 
   /// Pulls Jira's `errorMessages` and per-field `errors` (e.g. a required

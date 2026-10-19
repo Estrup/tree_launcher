@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
 import 'package:tree_launcher/features/jira/domain/jira_user.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// One status in the Jira tab's filter, with how many loaded issues have it.
 class JiraStatusCount {
@@ -361,7 +362,7 @@ class JiraIssuesController extends ChangeNotifier {
   }
 
   static String _message(Object e) =>
-      e.toString().replaceFirst('Exception: ', '');
+      userMessage(e);
 
   void _finishLoad(int generation) {
     if (generation != _generation) return;

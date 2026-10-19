@@ -19,6 +19,7 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/worksp
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree/add_worktree_controls.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree/claude_launch_panel.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 class AddWorktreeResult {
   final String worktreePath;
@@ -617,7 +618,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
       if (mounted) {
         setState(() {
           _creating = false;
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = userMessage(e);
         });
       }
     }

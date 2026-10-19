@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/github_issues/domain/github_milestone.dar
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// One label in the Issues tab's filter, with how many loaded issues have it.
 class GithubLabelCount {
@@ -429,7 +430,7 @@ class GithubIssuesController extends ChangeNotifier {
   }
 
   static String _message(Object e) =>
-      e.toString().replaceFirst('Exception: ', '');
+      userMessage(e);
 
   void _finishLoad(int generation) {
     if (generation != _generation) return;

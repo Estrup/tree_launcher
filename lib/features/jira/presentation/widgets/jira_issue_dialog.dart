@@ -13,6 +13,7 @@ import 'package:tree_launcher/features/jira/domain/jira_user.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_status_menu.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
 import 'package:tree_launcher/core/platform/open_external.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// Shows Jira issue info (summary, status, type, assignee, priority, last
 /// update, description, comments) for [issueKey], pulled from the REST API and
@@ -149,7 +150,7 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
     } catch (e) {
       if (!mounted) return;
       // Keep any stale _issue visible alongside the error.
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = userMessage(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -199,7 +200,7 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
 
   void _showError(Object error) {
     if (!mounted) return;
-    setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    setState(() => _error = userMessage(error));
   }
 
   void _openInBrowser() {

@@ -25,6 +25,10 @@ class GithubResponse {
   const GithubResponse({required this.json, this.nextPage});
 }
 
+/// One connection pool for every GitHub request.
+final HttpClient _client = HttpClient()
+  ..connectionTimeout = const Duration(seconds: 15);
+
 /// Sends a [method] request for [uri] with [config]'s token, and [body] as
 /// JSON when given. Throws a [GithubApiException] for an error status, worded
 /// for [config]'s repo; [forbiddenHint] is added to a 403 that isn't a rate
@@ -36,48 +40,43 @@ Future<GithubResponse> githubRequest(
   Map<String, dynamic>? body,
   String? forbiddenHint,
 }) async {
-  final client = HttpClient();
-  try {
-    final request = await client.openUrl(method, uri);
-    request.headers.set(
-      HttpHeaders.authorizationHeader,
-      'Bearer ${config.token}',
-    );
-    request.headers.set(
-      HttpHeaders.acceptHeader,
-      'application/vnd.github+json',
-    );
-    request.headers.set('X-GitHub-Api-Version', '2022-11-28');
-    request.headers.set(HttpHeaders.userAgentHeader, 'TreeLauncher');
-    if (body != null) {
-      final bytes = utf8.encode(jsonEncode(body));
-      request.headers.contentType = ContentType.json;
-      request.contentLength = bytes.length;
-      request.add(bytes);
-    }
-
-    final response = await request.close();
-    final text = await utf8.decodeStream(response);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw GithubApiException(
-        response.statusCode,
-        githubErrorMessage(
-          response.statusCode,
-          text,
-          repo: '${config.owner}/${config.repo}',
-          rateLimitRemaining: response.headers.value('x-ratelimit-remaining'),
-          rateLimitReset: response.headers.value('x-ratelimit-reset'),
-          forbiddenHint: forbiddenHint,
-        ),
-      );
-    }
-    return GithubResponse(
-      json: text.trim().isEmpty ? null : jsonDecode(text),
-      nextPage: githubNextPage(response.headers.value('link')),
-    );
-  } finally {
-    client.close(force: true);
+  final request = await _client.openUrl(method, uri);
+  request.headers.set(
+    HttpHeaders.authorizationHeader,
+    'Bearer ${config.token}',
+  );
+  request.headers.set(
+    HttpHeaders.acceptHeader,
+    'application/vnd.github+json',
+  );
+  request.headers.set('X-GitHub-Api-Version', '2022-11-28');
+  request.headers.set(HttpHeaders.userAgentHeader, 'TreeLauncher');
+  if (body != null) {
+    final bytes = utf8.encode(jsonEncode(body));
+    request.headers.contentType = ContentType.json;
+    request.contentLength = bytes.length;
+    request.add(bytes);
   }
+
+  final response = await request.close();
+  final text = await utf8.decodeStream(response);
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw GithubApiException(
+      response.statusCode,
+      githubErrorMessage(
+        response.statusCode,
+        text,
+        repo: '${config.owner}/${config.repo}',
+        rateLimitRemaining: response.headers.value('x-ratelimit-remaining'),
+        rateLimitReset: response.headers.value('x-ratelimit-reset'),
+        forbiddenHint: forbiddenHint,
+      ),
+    );
+  }
+  return GithubResponse(
+    json: text.trim().isEmpty ? null : jsonDecode(text),
+    nextPage: githubNextPage(response.headers.value('link')),
+  );
 }
 
 /// The message for a GitHub error response with [statusCode] and [body] on

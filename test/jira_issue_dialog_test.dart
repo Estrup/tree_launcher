@@ -79,7 +79,7 @@ class _WorkflowJiraService extends JiraApiService {
 
   @override
   Future<void> transitionIssue(String key, String transitionId) async {
-    if (rejectWith != null) throw Exception(rejectWith);
+    if (rejectWith != null) throw JiraApiException(400, rejectWith!);
     applied.add(transitionId);
     status = 'In Progress';
   }

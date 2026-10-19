@@ -2,6 +2,7 @@ import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// Creates a worktree that checks out [pr]'s existing head branch and shows a
 /// toast on success or failure (including "already exists"). Used by the
@@ -28,7 +29,7 @@ Future<void> createWorktreeForPr(
           : 'Could not create worktree for ${pr.headBranch}',
     );
   } catch (e) {
-    showAppSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    showAppSnackBar(userMessage(e));
   }
 }
 

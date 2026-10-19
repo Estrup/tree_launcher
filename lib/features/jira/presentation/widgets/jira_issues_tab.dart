@@ -21,6 +21,7 @@ import 'package:tree_launcher/features/workspace/presentation/controllers/worksp
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/action_buttons.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// Shared column widths so the header lines up with every row.
 const double _kTypeWidth = 22;
@@ -513,7 +514,7 @@ class _IssueRowState extends State<_IssueRow> {
       final reason = failures[key];
       if (reason != null) showAppSnackBar('$key: $reason');
     } catch (e) {
-      showAppSnackBar(e.toString().replaceFirst('Exception: ', ''));
+      showAppSnackBar(userMessage(e));
     } finally {
       if (mounted) setState(() => _changingStatus = false);
     }
@@ -526,7 +527,7 @@ class _IssueRowState extends State<_IssueRow> {
     try {
       await jira.assignToMe(widget.issue.key);
     } catch (e) {
-      showAppSnackBar(e.toString().replaceFirst('Exception: ', ''));
+      showAppSnackBar(userMessage(e));
     } finally {
       if (mounted) setState(() => _assigning = false);
     }
@@ -846,7 +847,7 @@ class _BulkBarState extends State<_BulkBar> {
         }
       }
     } catch (e) {
-      showAppSnackBar(e.toString().replaceFirst('Exception: ', ''));
+      showAppSnackBar(userMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -122,7 +122,7 @@ class _FakeJiraService extends JiraApiService {
   @override
   Future<List<JiraIssue>> searchIssues(String jql) async {
     searchedJql.add(jql);
-    if (rejectWith != null) throw Exception(rejectWith);
+    if (rejectWith != null) throw JiraApiException(400, rejectWith!);
     return [
       JiraIssue(
         key: 'AU2-5928',

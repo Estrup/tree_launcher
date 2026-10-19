@@ -6,6 +6,7 @@ import 'package:tree_launcher/features/agent_api/data/api_http.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
+import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// `POST /v1/worktrees`: creates a worktree in the running app.
 class WorktreeRoutes {
@@ -104,7 +105,7 @@ class WorktreeRoutes {
       return jsonResponse({'error': e.toString()}, status: 404);
     } catch (e) {
       debugPrint('AgentApiServer: /v1/worktrees failed: $e');
-      final message = e.toString().replaceFirst('Exception: ', '');
+      final message = userMessage(e);
       final status = message.contains('already exists') ? 409 : 500;
       return jsonResponse({'error': message}, status: status);
     }
