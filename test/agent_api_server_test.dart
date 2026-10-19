@@ -7,6 +7,8 @@ import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/activity/domain/activity_service.dart';
+import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
 import 'package:tree_launcher/features/activity/domain/predefined_issue.dart';
 import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
@@ -201,8 +203,21 @@ class _FakeWorktreeGit extends GitService {
   }
 }
 
+/// The Activity timeline over real stores in [db] and Claude transcripts
+/// under [home].
+ActivityService _activityService(
+  AppDatabase db,
+  Directory home,
+  ManualPostStore posts,
+) => ActivityService(
+  eventStore: WorktreeEventStore(db),
+  claudeActivity: ClaudeSessionActivity(homeDir: home.path),
+  manualPostStore: posts,
+);
+
 /// A server on the live app's state in memory: [repos] (or [catalog]),
-/// [settings] and the given fakes, and real stores in [db].
+/// [settings] and the given fakes, and real stores in [db]. Manual posts go
+/// through [activity] when given, else an Activity controller of its own.
 AgentApiServer _server(
   AppDatabase db,
   Directory home, {
@@ -214,19 +229,31 @@ AgentApiServer _server(
   AgentRegistry? agentRegistry,
   GitService? gitService,
   ManualPostStore? manualPostStore,
+  ActivityController? activity,
   JiraApiService? jiraService,
-}) => AgentApiServer(
-  repos: catalog ?? _FakeRepos(repos),
-  settings: _FakeSettings(settings),
-  worktreeCreator: worktreeCreator ?? _FakeWorktreeCreator(),
-  jiraTagEditor: jiraTagEditor ?? _FakeTagEditor(),
-  agentRegistry: agentRegistry ?? _NoAgents(),
-  gitService: gitService ?? GitService(),
-  eventStore: WorktreeEventStore(db),
-  claudeActivity: ClaudeSessionActivity(homeDir: home.path),
-  manualPostStore: manualPostStore ?? ManualPostStore(db),
-  jiraService: jiraService,
-);
+}) {
+  final posts = manualPostStore ?? ManualPostStore(db);
+  final service = _activityService(db, home, posts);
+  final writer =
+      activity ??
+      ActivityController(
+        eventStore: WorktreeEventStore(db),
+        manualPostStore: posts,
+        service: service,
+      );
+  if (activity == null) addTearDown(writer.dispose);
+  return AgentApiServer(
+    repos: catalog ?? _FakeRepos(repos),
+    settings: _FakeSettings(settings),
+    worktreeCreator: worktreeCreator ?? _FakeWorktreeCreator(),
+    jiraTagEditor: jiraTagEditor ?? _FakeTagEditor(),
+    agentRegistry: agentRegistry ?? _NoAgents(),
+    activity: service,
+    manualPosts: writer,
+    gitService: gitService ?? GitService(),
+    jiraService: jiraService,
+  );
+}
 
 void main() {
   late AppDatabase db;
@@ -629,6 +656,35 @@ void main() {
       expect(entries.single['kind'], 'manual');
       expect(entries.single['hours'], 2.5);
       expect(entries.single['jiraIssue'], 'AU2-9');
+    });
+
+    test('shows a logged post in the open Activity tab at once', () async {
+      final activity = ActivityController(
+        eventStore: WorktreeEventStore(db),
+        manualPostStore: manualStore,
+        service: _activityService(db, tempHome, manualStore),
+      );
+      addTearDown(activity.dispose);
+      // The tab was opened: its timeline is loaded, and empty.
+      await activity.load();
+      expect(activity.entries, isEmpty);
+      final live = _server(
+        db,
+        tempHome,
+        repos: [demo],
+        manualPostStore: manualStore,
+        activity: activity,
+      );
+      await live.start(port: 0);
+      addTearDown(live.stop);
+
+      final (status, _) = await post('/v1/activity', {
+        'repo': 'demo',
+        'issueKey': 'AU2-9',
+      }, port: live.port);
+
+      expect(status, 201);
+      expect(activity.entries.single.jiraIssue, 'AU2-9');
     });
 
     test('keeps an explicit description over the predefined one', () async {

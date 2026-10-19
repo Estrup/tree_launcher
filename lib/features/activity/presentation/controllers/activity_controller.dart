@@ -7,13 +7,14 @@ import 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 import 'package:tree_launcher/features/activity/domain/activity_filter.dart';
 import 'package:tree_launcher/features/activity/domain/activity_service.dart';
 import 'package:tree_launcher/features/activity/domain/manual_post.dart';
+import 'package:tree_launcher/features/activity/domain/manual_post_writer.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 
 // Re-exported so existing imports of `ActivityEntry` via this controller keep
 // working now that the model lives in the domain layer.
 export 'package:tree_launcher/features/activity/domain/activity_entry.dart';
 
-class ActivityController extends ChangeNotifier {
+class ActivityController extends ChangeNotifier implements ManualPostWriter {
   ActivityController({
     required WorktreeEventStore eventStore,
     ClaudeSessionActivity? claudeActivity,
@@ -34,6 +35,10 @@ class ActivityController extends ChangeNotifier {
   /// Live worktrees from the last [load], reused when a manual post is
   /// added/removed so the reload keeps the same worktree context.
   List<Worktree> _lastWorktrees = const [];
+
+  /// Whether the timeline has been loaded, i.e. the Activity tab was opened.
+  /// Until then a new post needs no reload.
+  bool _loaded = false;
 
   bool _loading = false;
   bool get loading => _loading;
@@ -64,6 +69,7 @@ class ActivityController extends ChangeNotifier {
   /// their Claude session history.
   Future<void> load({List<Worktree> currentWorktrees = const []}) async {
     _lastWorktrees = currentWorktrees;
+    _loaded = true;
     _loading = true;
     notifyListeners();
 
@@ -79,24 +85,25 @@ class ActivityController extends ChangeNotifier {
   }
 
   /// Logs a manual activity post (work done outside any worktree), stamped at
-  /// the current time, then reloads the timeline.
-  Future<void> addManualPost({
+  /// the current time, then reloads the timeline if it has been loaded.
+  @override
+  Future<ManualPost> addManualPost({
     required String repoName,
     required String issueKey,
     String description = '',
     double? hours,
   }) async {
-    await _manualPostStore.add(
-      ManualPost(
-        id: ManualPost.newId(),
-        timestamp: DateTime.now(),
-        repoName: repoName,
-        issueKey: issueKey,
-        description: description,
-        hours: hours,
-      ),
+    final post = ManualPost(
+      id: ManualPost.newId(),
+      timestamp: DateTime.now(),
+      repoName: repoName,
+      issueKey: issueKey,
+      description: description,
+      hours: hours,
     );
-    await load(currentWorktrees: _lastWorktrees);
+    await _manualPostStore.add(post);
+    if (_loaded) await load(currentWorktrees: _lastWorktrees);
+    return post;
   }
 
   /// Removes a previously logged manual post by id, then reloads.

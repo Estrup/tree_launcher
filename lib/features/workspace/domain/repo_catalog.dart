@@ -13,3 +13,11 @@ abstract interface class RepoCatalog {
   /// that failed, leaving [repos] empty).
   Future<void> get whenLoaded;
 }
+
+extension LoadedRepos on RepoCatalog {
+  /// [RepoCatalog.repos], once they have been read at startup.
+  Future<List<RepoConfig>> loadedRepos() async {
+    await whenLoaded;
+    return repos;
+  }
+}

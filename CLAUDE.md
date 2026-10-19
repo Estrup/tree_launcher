@@ -78,14 +78,20 @@ Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
 
 - Server: `lib/features/agent_api/data/agent_api_server.dart` — loopback-only,
   `start({port})` / `stop()` / `restart({port})`, `isRunning` / `port` getters.
-- Started at boot from `AppDependencies.startServers()` (`lib/app/dependencies.dart`).
+  Each area's handlers live in `agent_api/data/routes/` (activity, worktrees,
+  jira, agents), with shared request helpers in `api_http.dart`. Adding a
+  capability is a handler in the right routes file.
+- Built and started at boot by `AppDependencies` (`lib/app/dependencies.dart`),
+  the composition root: it gets the app's live controllers (through small
+  domain interfaces such as `RepoCatalog`, `WorktreeCreator`,
+  `JiraTagEditor`, `AgentRegistry`, `ManualPostWriter`), never the saved
+  files, so API writes show in the UI at once.
 - Routes: `GET /health`, `GET /v1/activity`, `POST /v1/activity`,
   `POST /v1/worktrees`, `GET /v1/jira/issues` (by `fixVersion` and/or
   `status`, with local tags), `GET /v1/jira/tags`,
   `PUT /v1/jira/issues/<key>/tags` (local tags only, never Jira),
   `GET`/`POST /v1/agents`, `GET /v1/agents/<id>`,
-  `POST /v1/agents/<id>/status` (agent runs, see below). Adding a
-  capability is a new `_router` line plus a handler.
+  `POST /v1/agents/<id>/status` (agent runs, see below).
 - Agents (`lib/features/agents/`): a run of a Claude session of one kind
   (refine/build/verify/review/docs). Saved prompts carry the kind, and each kind is a
   repo tab. Agents register and report through the API (the tree-launcher

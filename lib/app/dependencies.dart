@@ -13,6 +13,7 @@ import 'package:tree_launcher/features/activity/data/activity_legacy_import.dart
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/activity/data/manual_post_store.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/activity/domain/activity_service.dart';
 import 'package:tree_launcher/features/activity/presentation/controllers/activity_controller.dart';
 import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_legacy_import.dart';
@@ -86,10 +87,15 @@ class AppDependencies {
     settings = SettingsController(store: this.appSettingsStore);
     terminal = TerminalController();
     agents = AgentsController(store: this.agentRunStore);
-    activity = ActivityController(
+    activityService = ActivityService(
       eventStore: this.worktreeEventStore,
       claudeActivity: claudeActivity,
       manualPostStore: this.manualPostStore,
+    );
+    activity = ActivityController(
+      eventStore: this.worktreeEventStore,
+      manualPostStore: this.manualPostStore,
+      service: activityService,
     );
     // Re-report the terminal colors after a palette switch.
     settings.addListener(terminal.syncColors);
@@ -102,10 +108,9 @@ class AppDependencies {
       worktreeCreator: workspace,
       jiraTagEditor: settings,
       agentRegistry: agents,
+      activity: activityService,
+      manualPosts: activity,
       gitService: this.gitService,
-      eventStore: this.worktreeEventStore,
-      claudeActivity: claudeActivity,
-      manualPostStore: this.manualPostStore,
       jiraService: jiraService,
     );
   }
@@ -152,6 +157,9 @@ class AppDependencies {
 
   /// Agent runs and their timelines.
   late final AgentsController agents;
+
+  /// Builds the Activity timeline, for the Activity tab and the agent API.
+  late final ActivityService activityService;
 
   /// The Activity tab's timeline.
   late final ActivityController activity;
