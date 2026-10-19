@@ -101,11 +101,18 @@ Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
 
 ## Agent API
 
+The reference for every route (fields, responses, status codes, examples) is
+`docs/agent-api.md`. When you add or change a route, update it there too:
+`test/agent_api_doc_test.dart` fails while a mounted route has no section in
+it, or a section no route.
+
 - Server: `lib/features/agent_api/data/agent_api_server.dart` — loopback-only,
   `start({port})` / `stop()` / `restart({port})`, `isRunning` / `port` getters.
   Each area's handlers live in `agent_api/data/routes/` (activity, worktrees,
-  jira, agents), with shared request helpers in `api_http.dart`. Adding a
-  capability is a handler in the right routes file.
+  jira, agents), with shared request helpers in `api_http.dart`
+  (`readJsonObject`, `stringField`, `missingFields`, `unsupportedFields`,
+  `boolQuery`, `serverError`). Adding a capability is a handler in the right
+  routes file; routes reject fields they don't take.
 - Built and started at boot by `AppDependencies` (`lib/app/dependencies.dart`),
   the composition root: it gets the app's live controllers (through small
   domain interfaces such as `RepoCatalog`, `WorktreeCreator`,

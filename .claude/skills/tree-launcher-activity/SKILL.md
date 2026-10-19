@@ -10,17 +10,23 @@ description: >-
 
 # Tree Launcher Activity API
 
-Tree Launcher (a macOS git-worktree manager) runs a small **read-only HTTP server bound to
-loopback** that exposes its Activity timeline. The Activity timeline merges:
+Tree Launcher (a macOS git-worktree manager) runs a small **HTTP server bound to loopback**
+for local agents. This skill covers its Activity timeline; the whole API (worktrees, Jira
+issues and tags, agent runs) is described in `docs/agent-api.md` in this repo. The Activity
+timeline merges:
 
-- the durable worktree **created/closed** event log, and
-- **Claude Code session history** (which calendar days work happened in each worktree).
+- the durable worktree **created/closed** event log,
+- **Claude Code session history** (which calendar days work happened in each worktree), and
+- **manual posts**: work logged by hand, with hours.
 
 ## Prerequisites
 
 - The **Tree Launcher app must be running** (the server starts with the app).
-- The API listens on `http://127.0.0.1:8765` (loopback only — not reachable from other machines).
-- No authentication. All endpoints are `GET` only.
+- The API listens on `http://127.0.0.1:8765` (loopback only — not reachable from other machines;
+  the port is set in Settings → Agent API).
+- No authentication, but it only answers local clients: a `Host` other than
+  `127.0.0.1:<port>`/`localhost:<port>` gets 403, and a POST without
+  `Content-Type: application/json` gets 415.
 
 Check it's up:
 
@@ -76,7 +82,8 @@ curl -s 'http://127.0.0.1:8765/v1/activity?repo=tree_launcher&filter=thisWeek' |
       "closedAt": null,
       "isOpen": true,
       "activeDays": ["2026-06-03T00:00:00.000", "2026-06-05T00:00:00.000"],
-      "lastActiveDay": "2026-06-05T00:00:00.000"
+      "lastActiveDay": "2026-06-05T00:00:00.000",
+      "kind": "worktree"
     }
   ]
 }
@@ -90,10 +97,26 @@ Field notes:
 - `activeDays` — date-only (midnight local) ISO strings; one per distinct day Claude was active in
   that worktree. `lastActiveDay` is the most recent.
 - `entries` is sorted newest-first by the most recent of created/closed/last-active.
+- `kind` — `worktree`, or `manual` for a logged post. A manual entry's `worktreePath` is
+  `manual:<id>`, its `worktreeName` the post's description (or issue key), its `createdAt` when it
+  was logged, and it has `hours` when they were given.
+
+## Logging work: `POST /v1/activity`
+
+Logs work done outside any worktree, stamped now; it shows in the app's Activity tab at once.
+
+```bash
+curl -s -X POST 'http://127.0.0.1:8765/v1/activity' -H 'Content-Type: application/json' \
+  -d '{"repo": "tree_launcher", "issueKey": "AU2-1234", "description": "Review", "hours": 1.5}'
+```
+
+`repo` and `issueKey` are required; `description` defaults to the repo's predefined issue with
+that key; `hours` is optional. Returns 201 with the post. Any other field is a 400.
 
 ## Tips
 
 - To answer "what did I work on this week", call `?filter=thisWeek` and group the entries by
   `repoName` and/or `jiraIssue`.
 - `activeDays` is the best signal for *time spent* — count the days, not just created/closed.
+- To total hours, add up the `hours` of the `manual` entries.
 - An unknown `filter` value returns HTTP 400 with `{"error": "..."}`.
