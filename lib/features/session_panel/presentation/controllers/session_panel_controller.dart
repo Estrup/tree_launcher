@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:tree_launcher/core/database/ui_state_store.dart';
 import 'package:tree_launcher/core/errors/user_message.dart';
 import 'package:tree_launcher/features/session_panel/data/worktree_file_system.dart';
+import 'package:tree_launcher/features/session_panel/domain/file_content.dart';
 import 'package:tree_launcher/features/session_panel/presentation/controllers/worktree_files_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_status.dart';
@@ -195,6 +196,10 @@ class SessionPanelController extends ChangeNotifier {
       fileSystem: _fileSystem,
     ),
   );
+
+  /// The file at [path] as text, for the viewer. Throws when it can't be
+  /// read.
+  Future<FileContent> readFile(String path) => _fileSystem.readText(path);
 
   /// The git status last read for [worktree]; null before the first read.
   WorktreeStatus? statusFor(String worktree) => _panels[worktree]?.status;

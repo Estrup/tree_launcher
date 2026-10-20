@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/session_panel/presentation/controllers/session_panel_controller.dart';
 import 'package:tree_launcher/features/session_panel/presentation/widgets/file_icons.dart';
+import 'package:tree_launcher/features/session_panel/presentation/widgets/file_tab_view.dart';
 import 'package:tree_launcher/features/session_panel/presentation/widgets/session_info_tab.dart';
 import 'package:tree_launcher/features/session_panel/presentation/widgets/worktree_files_tab.dart';
 import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
@@ -37,9 +38,10 @@ class SessionPanel extends StatelessWidget {
             child: switch (selected.kind) {
               SessionPanelTabKind.info => SessionInfoTab(session: session),
               SessionPanelTabKind.files => WorktreeFilesTab(worktree: worktree),
-              SessionPanelTabKind.file => _Placeholder(
-                icon: Icons.description_outlined,
-                text: selected.path!,
+              SessionPanelTabKind.file => FileTabView(
+                key: ValueKey(selected.path),
+                worktree: worktree,
+                path: selected.path!,
               ),
             },
           ),
@@ -215,34 +217,6 @@ class _CloseButton extends StatelessWidget {
               icon: Icon(Icons.close_rounded, color: AppColors.textMuted),
             )
           : null,
-    );
-  }
-}
-
-class _Placeholder extends StatelessWidget {
-  const _Placeholder({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 28, color: AppColors.textMuted),
-            const SizedBox(height: 8),
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
