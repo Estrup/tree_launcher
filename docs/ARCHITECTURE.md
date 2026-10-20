@@ -1,36 +1,196 @@
 # Architecture
 
-TreeLauncher is a Flutter desktop app organized around a feature-first structure.
+Tree Launcher is a macOS desktop app, written in Flutter, for working across
+git worktrees. For each repo it lists the worktrees with what they are for
+(Jira issue, GitHub issue or PR, base branch). It starts terminals, VS Code,
+custom commands and Claude sessions in them, in a built-in terminal or
+outside it. It follows the Claude agent runs working on issues, shows the
+repo's Jira issues, GitHub issues and PRs, and keeps an activity timeline for
+time logging. A loopback HTTP API ([agent-api.md](agent-api.md)) lets local
+agents do much of the same.
 
 ## Layout
 
-- `lib/app/`: bootstrap, dependency wiring, and the app shell (`shell/workspace_shell.dart`, `WorkspaceShell`)
-- `lib/core/`: the design system (`design_system/`), database, storage, platform launchers (`platform/`), and small cross-cutting utilities
-- `lib/features/`: feature-owned domain, data, controllers, and widgets
+```
+lib/
+  main.dart                 calls app/bootstrap.dart
+  app/                      the composition root and what spans features
+    bootstrap.dart          startup and quit
+    dependencies.dart       AppDependencies: builds and wires everything
+    app.dart                TreeLauncherApp: providers and MaterialApp
+    shell/                  the main window (WorkspaceShell)
+    use_cases/              flows across features: starting Claude sessions
+                            and agents, running the agent API on its port
+    migrations/             one-time moves of old config.json keys
+  core/                     shared, and not about any one feature
+    database/               AppDatabase (drift), tables, UiStateStore,
+                            the issue cache table, legacy import, backups
+    storage/                ConfigFile (config.json), the data directory
+    design_system/          palettes and theme, notices, form fields,
+                            selection controls, window chrome
+    platform/               LauncherService, openExternal
+    presentation/           IssueListController, the base of the issue tabs
+    widgets/                issue list pieces, settings nav item
+    errors/                 userMessage
+  features/<feature>/
+    domain/                 models, pure logic, small interfaces
+    data/                   I/O: stores, API clients, git, files
+    presentation/
+      controllers/          ChangeNotifiers
+      widgets/
+```
 
-## Main Features
+Tests are in `test/`, flat, one file per area. Database migration tests use
+the schema dumps in `drift_schemas/`.
 
-- `workspace`: repositories, worktrees, repo preferences, launch actions
-- `kanban`: projects, issues, comments, and issue API behavior
-- `terminal`: embedded terminal sessions and terminal panel state
-- `settings`: app settings, persistence, and theme selection
+## Features
 
-## Runtime Flow
+| Feature | What it owns | Main classes |
+|---|---|---|
+| `workspace` | Repos and their settings, worktrees and their metadata, the sidebar, the worktree list and its buttons, the New Worktree / Start Claude dialog | `WorkspaceController` (with the repo registry, selection, preferences, worktree list and worktree metadata controllers), `GitService`, `RepoConfigStore`, `WorktreeMetadataStore` |
+| `terminal` | The built-in terminal (xterm + a PTY), its sessions, Claude CLI commands, handing a session over to Claude Desktop | `TerminalController`, `TerminalSession`, `ClaudeDesktopHandoff`, `buildClaudeCliCommand` |
+| `agents` | Agent runs (refine, build, verify, review, docs), their tabs and cards, the saved prompts that start them | `AgentsController` (the `AgentRegistry`), `AgentRunStore`, `AgentRun`, `ClaudePrompt` |
+| `activity` | The activity timeline: worktree events, the days Claude was active (from its transcripts), manual posts | `ActivityController`, `ActivityService`, `WorktreeEventStore`, `ManualPostStore`, `ClaudeSessionActivity` |
+| `jira` | The Jira tab, the issue dialog, issue titles, local tags | `JiraIssuesController`, `JiraTitlesController`, `JiraApiService`, `JiraIssueCache`, `JiraTagStore` |
+| `github_issues` | The Issues tab and issue dialog | `GithubIssuesController`, `GithubIssuesApiService`, `GithubIssueCache` |
+| `github_prs` | The PRs tab, review-request notices, the GitHub connection and token | `GithubPrsController`, `GithubApiService`, `githubRequest`, `GithubTokenStore` (Keychain) |
+| `settings` | The app settings and the Settings dialog | `SettingsController` (also the `JiraTagEditor` and `AppSettingsSource`), `AppSettingsStore` |
+| `agent_api` | The loopback HTTP API | `AgentApiServer`, `routes/` (see [agent-api.md](agent-api.md)) |
 
-1. `lib/main.dart` calls `app/bootstrap.dart`.
-2. `app/app.dart` builds shared dependencies and registers top-level `Provider` controllers.
-3. Coordinators in `lib/app/coordinators/` handle cross-feature workflows such as:
-   - repo selection -> kanban refresh
-4. Feature widgets read only the controllers they need.
+## The window
 
-## State and Data
+`WorkspaceShell` (`app/shell/workspace_shell.dart`) shows:
 
-- State management uses `Provider` with `ChangeNotifier`.
-- Git and shell integration are local process calls.
-- Settings and repo config are stored in JSON config files.
-- Kanban data is stored in SQLite.
+- **The sidebar** (`repo_sidebar.dart` and `sidebar/` in
+  `lib/features/workspace/presentation/widgets/`):
+  the repos, and under each repo its pages with the Claude sessions and agent
+  runs that belong to them. It collapses to a rail.
+- **The selected repo's pages**, as tabs:
+  - Worktrees;
+  - PRs and Issues, when GitHub is set up;
+  - Jira, when the repo has a project key;
+  - one tab per agent kind that has prompts or runs;
+  - Activity.
 
-## Current Boundary Rule
+  `repo_pages.dart` decides which pages a repo has, and under which page each
+  session goes.
+- **The terminal panel**.
+- **Settings:** the repo's own settings (`RepoSettingsView`) replace the
+  pages. The app's settings open in a dialog (`SettingsDialog`).
 
-Feature UI should live under `lib/features/<feature>/presentation/widgets/`.
-Shared UI should only move into `lib/core/` when it is truly reused across multiple features.
+## Startup
+
+`bootstrap()` runs these in order:
+
+1. **`AppDependencies()`** builds everything.
+2. **`prepareDatabase()`** merges the files from before the database into it,
+   moves old keys out of `config.json` (`WorktreeMetadataLegacyImport`,
+   `ConfigStateImport`), and starts the daily backup.
+3. **`loadState()`** loads settings and agent runs, waiting for them so the
+   first frame has the theme. The repos and their worktrees load in the
+   background.
+4. **`startServers()`** starts the agent API, and prunes the Jira cache in the
+   background.
+5. **`runApp()`**.
+
+When the app is asked to quit, an `AppLifecycleListener` calls
+`AppDependencies.dispose()`: it stops the API, waits for agent-run writes,
+disposes the controllers and closes the database.
+
+## State and dependencies
+
+- **`AppDependencies` is the composition root.** It builds:
+  - the stores and the database;
+  - the services: git, Jira, GitHub, the launcher, Claude activity;
+  - the core controllers: workspace, settings, terminal, agents, activity;
+  - the use cases;
+  - the agent API and `AgentApiControl`.
+
+  It also wires the controllers to each other: palette changes to the
+  terminal, terminal sessions to the agents.
+- **`TreeLauncherApp` provides those instances** with `Provider.value` and
+  `ChangeNotifierProvider.value`. The tab controllers are made lazily by the
+  widget tree instead.
+  - PRs, Issues and Jira are made by `ChangeNotifierProxyProvider`s that
+    follow the selected repo; Jira titles by a plain provider.
+  - Issues and Jira fetch nothing until their tab is opened.
+  - PRs load with the repo, because the worktree list shows PR badges.
+- **Widgets read what they need** with `context.watch` / `context.read`. They
+  don't construct services or reach into `AppDependencies`.
+- **Controllers are the one in-memory copy of the state.** The UI and the
+  agent API both go through them. The API sees them through small interfaces
+  in the features' `domain/`: `RepoCatalog`, `WorktreeCreator`,
+  `AppSettingsSource`, `JiraTagEditor`, `AgentRegistry`, `ManualPostWriter`.
+  So an API write shows in the UI at once.
+- **Flows that span features live in `app/use_cases/`.**
+  - `StartClaudeSession` is the flow behind the Jira, PR and issue buttons.
+  - `AgentLauncher` and `ClaudeSessionLauncher` start, resume and stop
+    sessions in the terminal.
+  - `AgentApiControl` runs the API on the right port.
+- **The Jira and GitHub issue controllers extend `IssueListController`**,
+  which holds the load cycle (a superseded response is dropped), search and
+  selection. Each tab passes its own action to the shared `IssueBulkBar`.
+
+## Data
+
+| What | Where |
+|---|---|
+| Preferences, and repos with their commands, prompts, GitHub and Jira settings | `config.json`, through `ConfigFile` (one lock, atomic writes, no write when nothing changed), split by `AppSettingsStore` and `RepoConfigStore` |
+| Agent runs and events, worktree events, manual posts, issue caches, the Claude transcript index, worktree metadata, local tags, remembered choices | `tree_launcher.db` (SQLite through drift, WAL, on a background isolate) |
+| GitHub tokens | The login Keychain (`GithubTokenStore`) |
+| The Jira token | `~/.config/jira-pat.txt` |
+| Claude Code transcripts | `~/.claude/projects`, read only |
+| Kickoff prompts | `<worktree>/.tree-launcher/kickoff-prompt.md` |
+
+The data directory is `~/Library/Application Support/com.treelauncher.treeLauncher/`.
+`--dart-define=DATA_DIR=…` points the app at another one. CLAUDE.md (Storage)
+has the details: schema changes, migrations and backups.
+
+## Conventions
+
+- **Layers.**
+  - `domain/` holds models, pure logic and the interfaces other parts
+    depend on.
+  - `data/` does the I/O.
+  - `presentation/` has the `ChangeNotifier` controllers and the widgets.
+- **Dependencies between features.** A feature may use another feature's
+  `domain/`. A flow that needs several features' controllers goes in
+  `app/use_cases/`. `core/` knows no feature.
+- **Notices** go through `showAppSnackBar` (`core/design_system/app_snackbar.dart`).
+- **Opening** a URL, file or folder goes through `openExternal`
+  (`core/platform/open_external.dart`). Opening another app goes through
+  `LauncherService`. Both show a notice when that fails.
+- **Errors** shown to the user go through `userMessage()`. Errors a caller
+  acts on are typed:
+  - `JiraApiException` and `GithubApiException` (with the HTTP status);
+  - `WorktreeConflictException`;
+  - `RepoNotFoundException`;
+  - `AgentNotFoundException`.
+- **Tests.**
+  - Stores and controllers use an in-memory database (`testDatabase()`).
+  - Widget tests use the in-memory stores in `test/fake_config_stores.dart`,
+    because database futures don't complete under their fake clock.
+  - The app's wiring can be built for a test with
+    `AppDependencies(database: testDatabase(), …)`.
+
+## Known gaps
+
+What doesn't follow the conventions yet:
+
+- **`core/` depends on a feature.** `core/platform/launcher_service.dart`
+  takes `AppSettings` from `settings`.
+- **I/O in `domain/`.** `activity/domain/activity_service.dart` uses
+  `activity`'s stores, and `jira/domain/jira_pat.dart` reads a file.
+- **Workspace widgets compose other features' widgets directly.** The
+  worktree list shows Jira and PR badges and GitHub issue links, and the
+  sidebar shows agent sessions.
+- **"Jira tags" aren't only for Jira.** The local tags are called Jira tags
+  in code, in the database and in the API (`JiraTag`, `/v1/jira/tags`), but
+  the Issues tab tags GitHub issues with them too.
+- **One very large dialog.** `add_worktree_dialog.dart` is still one large
+  form (about 1,200 lines). Its parts share its state, so splitting it
+  further needs a form controller first.
+- **Formatting.** Many files aren't `dart format`-clean; see CLAUDE.md.
+
+[structural-review.md](structural-review.md) is the review from 2026-10-19
+that led to this structure. It describes the code as it was then.
