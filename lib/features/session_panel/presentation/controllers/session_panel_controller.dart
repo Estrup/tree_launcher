@@ -6,6 +6,8 @@ import 'package:path/path.dart' as p;
 
 import 'package:tree_launcher/core/database/ui_state_store.dart';
 import 'package:tree_launcher/core/errors/user_message.dart';
+import 'package:tree_launcher/features/session_panel/data/worktree_file_system.dart';
+import 'package:tree_launcher/features/session_panel/presentation/controllers/worktree_files_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_status.dart';
 
@@ -55,11 +57,16 @@ class _WorktreePanel {
 /// selected tab and git status. Kept per worktree so switching sessions
 /// switches the panel, and coming back finds it as it was.
 class SessionPanelController extends ChangeNotifier {
-  SessionPanelController({required GitService git, UiStateStore? uiState})
-    : _git = git,
-      _uiState = uiState;
+  SessionPanelController({
+    required GitService git,
+    UiStateStore? uiState,
+    WorktreeFileSystem fileSystem = const WorktreeFileSystem(),
+  }) : _git = git,
+       _uiState = uiState,
+       _fileSystem = fileSystem;
 
   final GitService _git;
+  final WorktreeFileSystem _fileSystem;
 
   /// Where the width and shown state are remembered; null keeps them in
   /// memory only.
@@ -80,6 +87,7 @@ class SessionPanelController extends ChangeNotifier {
   double _width = defaultWidth;
   bool _open = true;
   final Map<String, _WorktreePanel> _panels = {};
+  final Map<String, WorktreeFilesController> _files = {};
   bool _disposed = false;
 
   /// The width the user chose; see [fit] for the one laid out.
@@ -177,6 +185,17 @@ class SessionPanelController extends ChangeNotifier {
     _notify();
   }
 
+  /// [worktree]'s file tree, kept while the app runs so it opens as it
+  /// was left.
+  WorktreeFilesController filesFor(String worktree) => _files.putIfAbsent(
+    worktree,
+    () => WorktreeFilesController(
+      root: worktree,
+      git: _git,
+      fileSystem: _fileSystem,
+    ),
+  );
+
   /// The git status last read for [worktree]; null before the first read.
   WorktreeStatus? statusFor(String worktree) => _panels[worktree]?.status;
 
@@ -229,6 +248,9 @@ class SessionPanelController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    for (final files in _files.values) {
+      files.dispose();
+    }
     super.dispose();
   }
 }

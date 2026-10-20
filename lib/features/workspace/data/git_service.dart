@@ -398,6 +398,27 @@ class GitService {
     return null;
   }
 
+  /// The gitignored paths in [worktreePath], relative to it: files as they
+  /// are, and folders that are ignored as a whole once, ending in `/`
+  /// (git doesn't descend into them). Throws when git fails.
+  Future<Set<String>> ignoredPaths(String worktreePath) async {
+    final result = await _runGit([
+      'ls-files',
+      '--others',
+      '--ignored',
+      '--exclude-standard',
+      '--directory',
+      '-z',
+    ], workingDirectory: worktreePath);
+    if (result.exitCode != 0) {
+      throw Exception(result.stderr.toString().trim());
+    }
+    return {
+      for (final path in (result.stdout as String).split('\x00'))
+        if (path.isNotEmpty) path,
+    };
+  }
+
   /// Removes a worktree from disk and git.
   Future<void> removeWorktree(String repoPath, String worktreePath) async {
     final result = await _runGit([

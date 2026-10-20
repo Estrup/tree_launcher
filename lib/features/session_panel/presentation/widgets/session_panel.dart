@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/session_panel/presentation/controllers/session_panel_controller.dart';
+import 'package:tree_launcher/features/session_panel/presentation/widgets/file_icons.dart';
 import 'package:tree_launcher/features/session_panel/presentation/widgets/session_info_tab.dart';
+import 'package:tree_launcher/features/session_panel/presentation/widgets/worktree_files_tab.dart';
 import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
 
 /// The panel beside a Claude session: its worktree's Info, Files and open
@@ -34,10 +36,7 @@ class SessionPanel extends StatelessWidget {
           Expanded(
             child: switch (selected.kind) {
               SessionPanelTabKind.info => SessionInfoTab(session: session),
-              SessionPanelTabKind.files => const _Placeholder(
-                icon: Icons.folder_outlined,
-                text: 'The file explorer comes here.',
-              ),
+              SessionPanelTabKind.files => WorktreeFilesTab(worktree: worktree),
               SessionPanelTabKind.file => _Placeholder(
                 icon: Icons.description_outlined,
                 text: selected.path!,
@@ -112,10 +111,11 @@ class _Tab extends StatefulWidget {
 class _TabState extends State<_Tab> {
   bool _hovered = false;
 
-  IconData get _icon => switch (widget.tab.kind) {
-    SessionPanelTabKind.info => Icons.info_outline_rounded,
-    SessionPanelTabKind.files => Icons.folder_outlined,
-    SessionPanelTabKind.file => Icons.description_outlined,
+  /// The tab's icon, and for a file its own color.
+  ({IconData icon, Color? color}) get _icon => switch (widget.tab.kind) {
+    SessionPanelTabKind.info => (icon: Icons.info_outline_rounded, color: null),
+    SessionPanelTabKind.files => (icon: Icons.folder_outlined, color: null),
+    SessionPanelTabKind.file => fileIcon(widget.tab.title),
   };
 
   @override
@@ -161,7 +161,7 @@ class _TabState extends State<_Tab> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(_icon, size: 14, color: color),
+                  Icon(_icon.icon, size: 14, color: _icon.color ?? color),
                   const SizedBox(width: 6),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 160),

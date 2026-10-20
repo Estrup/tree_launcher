@@ -36,6 +36,17 @@ class LauncherService {
     }
   }
 
+  /// Opens [file] in VS Code, in the window of the folder [directory] (a new
+  /// one when that folder isn't open).
+  Future<void> openFileInVSCode(String directory, String file) async {
+    final result = await Process.run('which', ['code']);
+    if (result.exitCode == 0) {
+      await _run('code', [directory, file], what: 'VS Code');
+    } else {
+      await _run('open', ['-a', 'Visual Studio Code', file], what: 'VS Code');
+    }
+  }
+
   Future<void> openClaude(String directory, {String? prompt}) async {
     var url = 'claude://code/new?folder=${Uri.encodeComponent(directory)}';
     if (prompt != null && prompt.isNotEmpty) {
