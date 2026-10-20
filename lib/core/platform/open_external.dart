@@ -20,3 +20,16 @@ Future<void> _open(String target) async {
   }
   showAppSnackBar("Couldn't open $target");
 }
+
+/// Shows [path] selected in a Finder window. Shows a notice when that fails.
+void revealInFinder(String path) => unawaited(_reveal(path));
+
+Future<void> _reveal(String path) async {
+  try {
+    final result = await Process.run('open', ['-R', path]);
+    if (result.exitCode == 0) return;
+  } catch (_) {
+    // Reported below.
+  }
+  showAppSnackBar("Couldn't show $path in Finder");
+}

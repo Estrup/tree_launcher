@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
+import 'package:tree_launcher/features/agents/domain/agent_environment.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
@@ -33,11 +34,13 @@ class ClaudeSessionLauncher {
     required SettingsController settings,
     required ClaudeSessionActivity claudeActivity,
     AgentLauncher? agents,
+    int? Function()? apiPort,
   }) : _terminal = terminal,
        _workspace = workspace,
        _settings = settings,
        _claudeActivity = claudeActivity,
-       _agents = agents;
+       _agents = agents,
+       _apiPort = apiPort ?? (() => null);
 
   final TerminalController _terminal;
   final WorkspaceController _workspace;
@@ -46,6 +49,16 @@ class ClaudeSessionLauncher {
 
   /// Resumes a worktree's unfinished agent as that agent (same run id).
   final AgentLauncher? _agents;
+
+  /// The port the agent API is listening on now, or null when it isn't
+  /// running.
+  final int? Function() _apiPort;
+
+  /// The API's address, so a session can save documents through it.
+  Map<String, String> get _environment => {
+    if (_apiPort() case final port?)
+      agentUrlEnvironmentVariable: 'http://127.0.0.1:$port',
+  };
 
   /// Shows the Claude session running in [worktreePath]. Returns false when
   /// there is none.
@@ -81,6 +94,7 @@ class ClaudeSessionLauncher {
         effort: effort,
       ),
       reuseRunning: false,
+      environment: _environment,
       show: show,
     );
     if (session != null && !show) {
@@ -129,6 +143,7 @@ class ClaudeSessionLauncher {
         extraArgs: _settings.settings.claudeCliArgs,
         resume: canContinue,
       ),
+      environment: _environment,
     );
   }
 }

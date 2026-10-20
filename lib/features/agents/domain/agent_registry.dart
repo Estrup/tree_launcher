@@ -26,6 +26,15 @@ abstract class AgentRegistry {
   /// Applies [report] to run [id]. Throws [AgentNotFoundException] when there
   /// is no such run.
   Future<AgentRun> report(String id, AgentReport report);
+
+  /// Adds [message] to run [id]'s timeline without changing the run (its
+  /// state, summary and stages stay as they are). Throws
+  /// [AgentNotFoundException] when there is no such run.
+  Future<void> note(
+    String id,
+    String message, {
+    AgentEventLevel level = AgentEventLevel.info,
+  });
 }
 
 class AgentNotFoundException implements Exception {

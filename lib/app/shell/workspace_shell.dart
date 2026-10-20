@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +9,9 @@ import 'package:tree_launcher/features/activity/presentation/widgets/activity_ta
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agents_tab.dart';
+import 'package:tree_launcher/features/documents/presentation/controllers/documents_controller.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_dialog.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/documents_page.dart';
 import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issues_tab.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_prs_tab.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/pr_review_toast.dart';
@@ -35,9 +40,25 @@ class _WorkspaceShellState extends State<WorkspaceShell>
   bool _sidebarOpen = false;
   TabController? _tabController;
   List<String> _tabKeys = const [];
+  StreamSubscription<String>? _documentRequests;
+
+  @override
+  void initState() {
+    super.initState();
+    // A document asked to be shown (a notice's View, `show: true` from the
+    // API): open it over whatever is on screen.
+    _documentRequests =
+        Provider.of<DocumentsController?>(
+          context,
+          listen: false,
+        )?.openRequests.listen((id) {
+          if (mounted) showDocumentDialog(context, id);
+        });
+  }
 
   @override
   void dispose() {
+    _documentRequests?.cancel();
     _tabController?.dispose();
     super.dispose();
   }
@@ -52,7 +73,13 @@ class _WorkspaceShellState extends State<WorkspaceShell>
     final agents = context.watch<AgentsController>();
     final repo = repoProvider.selectedRepo;
 
-    final tabs = repoPagesFor(repo, agents);
+    final documents = Provider.of<DocumentsController?>(context);
+    final tabs = repoPagesFor(
+      repo,
+      agents,
+      hasDocuments:
+          repo != null && (documents?.hasDocumentsFor(repo.name) ?? false),
+    );
     _syncTabController([
       for (final tab in tabs) tab.key,
     ], repoProvider.repoPageKey);
@@ -260,6 +287,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
       githubIssuesPageKey => const GithubIssuesTab(),
       jiraPageKey => const JiraIssuesTab(),
       activityPageKey => const ActivityTab(),
+      documentsPageKey => const DocumentsPage(),
       _ => const WorktreeList(),
     };
   }

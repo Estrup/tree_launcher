@@ -7,6 +7,11 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
+import 'package:tree_launcher/features/documents/domain/session_document.dart';
+import 'package:tree_launcher/features/documents/presentation/controllers/documents_controller.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_badges.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_dialog.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_panel.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
@@ -58,7 +63,12 @@ class _RepoTileState extends State<RepoTile> {
     final agents = Provider.of<AgentsController?>(context);
     final tp = context.watch<TerminalController>();
     final active = tp.isVisible ? tp.activeSession : null;
-    final pages = repoPagesFor(repo, agents);
+    final documents = Provider.of<DocumentsController?>(context);
+    final pages = repoPagesFor(
+      repo,
+      agents,
+      hasDocuments: documents?.hasDocumentsFor(repo.name) ?? false,
+    );
     final pageKeys = {for (final page in pages) page.key};
 
     final metadata = context.read<WorkspaceController>().metadata;
@@ -101,11 +111,16 @@ class _RepoTileState extends State<RepoTile> {
                   label: run.title ?? run.promptName ?? run.kind.label,
                   icon: run.kind.icon,
                   jiraIssue: run.issueKeys.firstOrNull,
+                  documents: _agentDocuments(documents, run),
                   isRunning: tp.claudeSessionForAgent(run.id) != null,
                   needsYou: agents!.needsYou(run),
                   isActive: active?.agentId == run.id,
                   onTap: () => widget.onOpenAgent(run),
-                  onContextMenu: (position) => _showAgentMenu(position, run),
+                  onContextMenu: (position) => _showAgentMenu(
+                    position,
+                    run,
+                    _agentDocuments(documents, run),
+                  ),
                 ),
               )
             else if (session.path case final path?)
@@ -114,9 +129,22 @@ class _RepoTileState extends State<RepoTile> {
                 child: _ClaudeSessionTile(
                   worktreePath: path,
                   jiraIssue: metadata[path]?.jiraIssue,
+                  documents: _sessionDocuments(
+                    documents,
+                    path,
+                    metadata[path]?.jiraIssue,
+                  ),
                   isRunning: tp.claudeSessionFor(path) != null,
-                  onContextMenu: (position) =>
-                      _showSessionMenu(position, path, page.key),
+                  onContextMenu: (position) => _showSessionMenu(
+                    position,
+                    path,
+                    page.key,
+                    _sessionDocuments(
+                      documents,
+                      path,
+                      metadata[path]?.jiraIssue,
+                    ),
+                  ),
                   isActive:
                       active != null &&
                       active.isClaude &&
@@ -132,11 +160,43 @@ class _RepoTileState extends State<RepoTile> {
     );
   }
 
-  /// Right-click menu of a remembered session in [path] under [pageKey].
+  /// The documents an agent run saved.
+  static List<SessionDocument> _agentDocuments(
+    DocumentsController? documents,
+    AgentRun run,
+  ) => documents?.documentsFor(agentId: run.id) ?? const [];
+
+  /// The documents about the worktree at [path] or its issue.
+  static List<SessionDocument> _sessionDocuments(
+    DocumentsController? documents,
+    String path,
+    String? issueKey,
+  ) =>
+      documents?.documentsForWorktree(path, issueKey: issueKey) ?? const [];
+
+  /// A menu line per document, and its value.
+  List<PopupMenuEntry<String>> _documentItems(
+    List<SessionDocument> documents,
+  ) => [
+    if (documents.isNotEmpty) const PopupMenuDivider(),
+    for (final d in documents)
+      _menuItem('doc:${d.id}', documentIcon(d.format), d.title),
+  ];
+
+  /// Opens the document a menu's [action] names; false for other actions.
+  bool _openDocument(String? action) {
+    if (action == null || !action.startsWith('doc:')) return false;
+    showDocumentDialog(context, action.substring(4));
+    return true;
+  }
+
+  /// Right-click menu of a remembered session in [path] under [pageKey],
+  /// with the [documents] about it.
   Future<void> _showSessionMenu(
     Offset position,
     String path,
     String pageKey,
+    List<SessionDocument> documents,
   ) async {
     final terminal = context.read<TerminalController>();
     final running = terminal.claudeSessionFor(path) != null;
@@ -144,7 +204,9 @@ class _RepoTileState extends State<RepoTile> {
       _menuItem('show', Icons.open_in_new_rounded, 'Show'),
       if (running) _menuItem('stop', Icons.stop_rounded, 'Stop session'),
       _menuItem('remove', Icons.close_rounded, 'Remove shortcut'),
+      ..._documentItems(documents),
     ]);
+    if (_openDocument(action)) return;
     switch (action) {
       case 'show':
         widget.onOpenClaudeSession(path, pageKey);
@@ -155,8 +217,12 @@ class _RepoTileState extends State<RepoTile> {
     }
   }
 
-  /// Right-click menu of an agent's session.
-  Future<void> _showAgentMenu(Offset position, AgentRun run) async {
+  /// Right-click menu of an agent's session, with the [documents] it saved.
+  Future<void> _showAgentMenu(
+    Offset position,
+    AgentRun run,
+    List<SessionDocument> documents,
+  ) async {
     final launcher = context.read<AgentLauncher>();
     final agents = context.read<AgentsController>();
     final action = await _showMenuAt(position, [
@@ -164,7 +230,9 @@ class _RepoTileState extends State<RepoTile> {
       if (launcher.isOpen(run) || !run.state.isFinished)
         _menuItem('stop', Icons.stop_rounded, 'Stop agent'),
       _menuItem('archive', Icons.archive_outlined, 'Archive'),
+      ..._documentItems(documents),
     ]);
+    if (_openDocument(action)) return;
     switch (action) {
       case 'show':
         widget.onOpenAgent(run);
@@ -203,9 +271,12 @@ class _RepoTileState extends State<RepoTile> {
           children: [
             Icon(icon, size: 15, color: AppColors.textSecondary),
             const SizedBox(width: 10),
-            Text(
-              text,
-              style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+            Flexible(
+              child: Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              ),
             ),
           ],
         ),
@@ -348,6 +419,9 @@ class _ClaudeSessionTile extends StatefulWidget {
 
   /// Jira issue key of the session, shown below its name.
   final String? jiraIssue;
+
+  /// The documents about the session, counted below its name.
+  final List<SessionDocument> documents;
   final bool isRunning;
   final bool isActive;
 
@@ -366,6 +440,7 @@ class _ClaudeSessionTile extends StatefulWidget {
     this.label,
     this.icon,
     this.jiraIssue,
+    this.documents = const [],
     required this.isRunning,
     required this.isActive,
     this.needsYou = false,
@@ -469,9 +544,30 @@ class _ClaudeSessionTileState extends State<_ClaudeSessionTile> {
                                   : AppColors.textSecondary,
                             ),
                           ),
-                          if (jiraIssue != null) ...[
+                          if (jiraIssue != null ||
+                              widget.documents.isNotEmpty) ...[
                             const SizedBox(height: 5),
-                            JiraBadge(issueKey: jiraIssue, compact: true),
+                            Row(
+                              children: [
+                                if (jiraIssue != null)
+                                  // Scales a long key down beside the
+                                  // documents count rather than overflowing.
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: JiraBadge(
+                                        issueKey: jiraIssue,
+                                        compact: true,
+                                      ),
+                                    ),
+                                  ),
+                                if (jiraIssue != null &&
+                                    widget.documents.isNotEmpty)
+                                  const SizedBox(width: 6),
+                                DocumentsBadge(documents: widget.documents),
+                              ],
+                            ),
                           ],
                         ],
                       ),

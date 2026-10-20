@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/selection_controls.dart';
 import 'package:tree_launcher/core/platform/launcher_service.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_badges.dart';
 import 'package:tree_launcher/features/github_issues/presentation/widgets/github_issue_badge.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
@@ -552,6 +553,18 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                       ),
                     ),
                   ],
+                  // Shrinks with a narrow name column rather than
+                  // overflowing it.
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: WorktreeDocumentsBadge(
+                        worktreePath: wt.path,
+                        issueKey: wt.jiraIssue,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

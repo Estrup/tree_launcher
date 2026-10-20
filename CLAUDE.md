@@ -3,9 +3,10 @@
 A macOS git-worktree manager (Flutter desktop). Per repo it lists the
 worktrees with what they are for, and starts terminals, VS Code, custom
 commands and Claude sessions in them (in a built-in terminal or outside). It
-follows the Claude agent runs working on issues, shows the repo's Jira
-issues, GitHub issues and PRs, keeps an activity timeline for time logging,
-and exposes a loopback HTTP **agent API** for local AI agents.
+follows the Claude agent runs working on issues, keeps the documents sessions
+save about their work (shown in a built-in WKWebView viewer), shows the
+repo's Jira issues, GitHub issues and PRs, keeps an activity timeline for
+time logging, and exposes a loopback HTTP **agent API** for local AI agents.
 
 - How the code is organised, its conventions and its known gaps:
   `docs/ARCHITECTURE.md`.
@@ -113,6 +114,7 @@ Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
   - Remembered choices (`ui_state`): the last repo, the Claude
     model/effort/prompt, and a repo's last base branch, fixVersion,
     milestone and agent folder.
+  - Saved documents' details (`documents`, `document_issues`).
 
   The stores in `features/*/data/` take the one `AppDatabase` that
   `AppDependencies` owns.
@@ -125,6 +127,9 @@ Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
   4. regenerate the test helpers with
      `dart run drift_dev schema generate drift_schemas/ test/generated_migrations/`;
   5. add the step to `test/database_migration_test.dart`.
+- **`documents/`:** each saved document's one file (`<id>.md`, `.html` or
+  `.pdf`), and rendered Markdown in `documents/.view/` (a cache). The
+  backups don't include it.
 - **`backups/`:** a daily `VACUUM INTO` copy of the database; the newest 7
   are kept.
 - **`config.json` holds configuration only:** the preferences, and the repos
@@ -154,7 +159,7 @@ it, or a section has no route.
   - It is loopback-only, and refuses a foreign `Host` (403) and a non-JSON
     POST/PUT (415).
   - Each area's handlers are in `agent_api/data/routes/` (activity,
-    worktrees, Claude sessions, jira, agents).
+    worktrees, Claude sessions, jira, agents, documents).
   - The shared request helpers are in `api_http.dart`: `readJsonObject`,
     `stringField`, `intField`, `missingFields`, `unsupportedFields`,
     `boolQuery`, `serverError`.
@@ -162,7 +167,8 @@ it, or a section has no route.
 - **It is built and started by `AppDependencies`.** It reaches the app's live
   controllers through small domain interfaces (`RepoCatalog`,
   `WorktreeCreator`, `AppSettingsSource`, `JiraTagEditor`, `AgentRegistry`,
-  `ClaudeSessionStarter`, `ManualPostWriter`), never the saved files, so API writes show in the UI at
+  `ClaudeSessionStarter`, `ManualPostWriter`, `DocumentLibrary`,
+  `DocumentSaver`), never the saved files, so API writes show in the UI at
   once.
 - **Agents** (`lib/features/agents/`): an agent run is a Claude session of
   one kind (refine/build/verify/review/docs).
@@ -170,5 +176,9 @@ it, or a section has no route.
   - Agents register and report through the API; the tree-launcher skill's
     `scripts/agent.py` helper wraps it.
   - Runs started from a tab get `TREE_LAUNCHER_AGENT_ID` and
-    `TREE_LAUNCHER_URL` in their environment.
+    `TREE_LAUNCHER_URL` in their environment; every Claude session in the
+    built-in terminal gets `TREE_LAUNCHER_URL`.
+- **Documents** (`lib/features/documents/`): a session saves its result
+  (one self-contained Markdown, HTML or PDF file) with
+  `POST /v1/documents`; the skill's `agent.py doc` wraps it.
 - **Quick check while running:** `curl http://127.0.0.1:8765/health`.

@@ -115,13 +115,15 @@ class TerminalController extends ChangeNotifier {
   /// shows the one already running there. With [reuseRunning] off it starts
   /// next to any running there (several sessions can share a checkout).
   /// With [show] off it starts in the background, leaving the view as it is.
-  /// Returns the new session, or null when none was started.
+  /// [environment] is added to the shell's. Returns the new session, or null
+  /// when none was started.
   TerminalSession? openClaudeSession(
     String title,
     String workingDirectory,
     String repoPath,
     String command, {
     bool reuseRunning = true,
+    Map<String, String> environment = const {},
     bool show = true,
   }) {
     if (reuseRunning && focusClaudeSession(workingDirectory)) return null;
@@ -131,6 +133,7 @@ class TerminalController extends ChangeNotifier {
       repoPath,
       command,
       isClaude: true,
+      environment: environment,
       show: show,
     );
   }

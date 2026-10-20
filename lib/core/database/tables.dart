@@ -205,3 +205,48 @@ class UiState extends Table {
   @override
   Set<Column> get primaryKey => {scope, key};
 }
+
+/// Documents sessions saved about their work (`features/documents`). The
+/// file itself is in the data directory's `documents/` folder. Keyed by
+/// [agentId] as text, not a foreign key: a document outlives its run.
+@DataClassName('DocumentRow')
+@TableIndex(name: 'documents_repo', columns: {#repo})
+@TableIndex(name: 'documents_agent', columns: {#agentId})
+class Documents extends Table {
+  TextColumn get id => text()();
+  TextColumn get repo => text()();
+  TextColumn get title => text()();
+
+  /// Stable within its agent run: saving it again replaces the document.
+  TextColumn get name => text().nullable()();
+
+  /// `markdown`, `html` or `pdf`.
+  TextColumn get format => text()();
+  TextColumn get agentId => text().nullable()();
+  TextColumn get agentKind => text().nullable()();
+  TextColumn get claudeSessionId => text().nullable()();
+  TextColumn get worktreePath => text().nullable()();
+  TextColumn get branch => text().nullable()();
+  IntColumn get prNumber => integer().nullable()();
+  TextColumn get sourcePath => text().nullable()();
+  IntColumn get sizeBytes => integer()();
+  TextColumn get createdAt => text().map(const IsoDateTime())();
+  TextColumn get updatedAt => text().map(const IsoDateTime())();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// The Jira issues a document is about, in order. Deleting a document
+/// deletes its rows.
+@DataClassName('DocumentIssueRow')
+@TableIndex(name: 'document_issues_key', columns: {#issueKey})
+class DocumentIssues extends Table {
+  TextColumn get documentId =>
+      text().references(Documents, #id, onDelete: KeyAction.cascade)();
+  TextColumn get issueKey => text()();
+  IntColumn get position => integer()();
+
+  @override
+  Set<Column> get primaryKey => {documentId, issueKey};
+}

@@ -7,6 +7,7 @@ import 'package:tree_launcher/app/migrations/config_state_import.dart';
 import 'package:tree_launcher/app/use_cases/agent_api_control.dart';
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
+import 'package:tree_launcher/app/use_cases/save_document.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_in_worktree.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/core/database/app_database.dart';
@@ -26,6 +27,8 @@ import 'package:tree_launcher/features/agent_api/data/agent_api_server.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_legacy_import.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
+import 'package:tree_launcher/features/documents/data/document_store.dart';
+import 'package:tree_launcher/features/documents/presentation/controllers/documents_controller.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issue_cache.dart';
 import 'package:tree_launcher/features/github_issues/data/github_issues_api_service.dart';
 import 'package:tree_launcher/features/github_prs/data/github_api_service.dart';
@@ -59,6 +62,7 @@ class AppDependencies {
     WorktreeEventStore? worktreeEventStore,
     ManualPostStore? manualPostStore,
     AgentRunStore? agentRunStore,
+    DocumentStore? documentStore,
   }) : database = database ?? AppDatabase.open(),
        gitService = gitService ?? GitService(),
        configFile = configFile ?? ConfigFile() {
@@ -66,6 +70,7 @@ class AppDependencies {
         worktreeEventStore ?? WorktreeEventStore(this.database);
     this.manualPostStore = manualPostStore ?? ManualPostStore(this.database);
     this.agentRunStore = agentRunStore ?? AgentRunStore(this.database);
+    this.documentStore = documentStore ?? DocumentStore(this.database);
     jiraIssueCache = JiraIssueCache(this.database);
     githubIssueCache = GithubIssueCache(this.database);
     claudeActivity = ClaudeSessionActivity(database: this.database);
@@ -101,6 +106,7 @@ class AppDependencies {
     settings = SettingsController(store: this.appSettingsStore);
     terminal = TerminalController();
     agents = AgentsController(store: this.agentRunStore);
+    documents = DocumentsController(store: this.documentStore);
     activityService = ActivityService(
       eventStore: this.worktreeEventStore,
       claudeActivity: claudeActivity,
@@ -125,6 +131,7 @@ class AppDependencies {
       settings: settings,
       claudeActivity: claudeActivity,
       agents: agentLauncher,
+      apiPort: () => agentApiServer.port,
     );
     startClaudeSession = StartClaudeSession(
       settings: settings,
@@ -151,6 +158,13 @@ class AppDependencies {
       ),
       activity: activityService,
       manualPosts: activity,
+      documents: documents,
+      documentSaver: SaveDocument(
+        repos: workspace,
+        agents: agents,
+        metadataFor: workspace.metadataFor,
+        documents: documents,
+      ),
       gitService: this.gitService,
       jiraService: jiraService,
     );
@@ -169,6 +183,7 @@ class AppDependencies {
   late final WorktreeEventStore worktreeEventStore;
   late final ManualPostStore manualPostStore;
   late final AgentRunStore agentRunStore;
+  late final DocumentStore documentStore;
   late final JiraIssueCache jiraIssueCache;
 
   /// Per-worktree metadata (issue, base branch, hidden, snoozed, remembered
@@ -210,6 +225,9 @@ class AppDependencies {
 
   /// Agent runs and their timelines.
   late final AgentsController agents;
+
+  /// The documents sessions have saved.
+  late final DocumentsController documents;
 
   /// Builds the Activity timeline, for the Activity tab and the agent API.
   late final ActivityService activityService;
@@ -284,6 +302,7 @@ class AppDependencies {
         (Object e) => debugPrint('Loading repos failed: $e'),
       ),
     );
+    unawaited(documents.load());
     try {
       await Future.wait([settings.loadSettings(), agents.load()]);
     } catch (e) {
@@ -320,6 +339,7 @@ class AppDependencies {
     await agents.flush();
     settings.removeListener(terminal.syncColors);
     agents.dispose();
+    documents.dispose();
     terminal.dispose();
     activity.dispose();
     workspace.dispose();

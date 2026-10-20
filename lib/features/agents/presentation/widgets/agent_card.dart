@@ -10,6 +10,10 @@ import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
+import 'package:tree_launcher/features/documents/domain/session_document.dart';
+import 'package:tree_launcher/features/documents/presentation/controllers/documents_controller.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_dialog.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_panel.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
 import 'package:tree_launcher/core/platform/open_external.dart';
 
@@ -33,6 +37,11 @@ class _AgentCardState extends State<AgentCard> {
   Widget build(BuildContext context) {
     final agents = context.watch<AgentsController>();
     final run = widget.run;
+    final documents =
+        Provider.of<DocumentsController?>(
+          context,
+        )?.documentsFor(agentId: run.id) ??
+        const <SessionDocument>[];
     final liveness = agents.livenessOf(run.id);
     final status = agentStatusStyle(run, liveness);
     final needsYou = agents.needsYou(run);
@@ -162,8 +171,10 @@ class _AgentCardState extends State<AgentCard> {
                       spacing: 6,
                       runSpacing: 6,
                       children: [
+                        for (final document in documents)
+                          _DocumentChip(document: document),
                         for (final link in run.links)
-                          _LinkChip(link: link, worktreePath: run.worktreePath),
+                          _LinkChip(link: link, run: run),
                       ],
                     ),
                   ),
@@ -274,15 +285,90 @@ class _StageStrip extends StatelessWidget {
   }
 }
 
+/// A document the run saved; opens it in the viewer.
+class _DocumentChip extends StatelessWidget {
+  const _DocumentChip({required this.document});
+
+  final SessionDocument document;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Open ${document.title}',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => showDocumentDialog(context, document.id),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.accentMuted,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  documentIcon(document.format),
+                  size: 12,
+                  color: AppColors.accent,
+                ),
+                const SizedBox(width: 4),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 260),
+                  child: Text(
+                    document.title,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: AppColors.accent),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LinkChip extends StatelessWidget {
-  const _LinkChip({required this.link, required this.worktreePath});
+  const _LinkChip({required this.link, required this.run});
 
   final AgentLink link;
-  final String? worktreePath;
+  final AgentRun run;
 
   String get _target => link.isUrl || p.isAbsolute(link.target)
       ? link.target
-      : p.join(worktreePath ?? '', link.target);
+      : p.join(run.worktreePath ?? '', link.target);
+
+  /// A link to a local Markdown, HTML or PDF file opens in the viewer, from
+  /// where it can be saved to the Documents; other files open in VS Code.
+  void _open(BuildContext context) {
+    final target = _target;
+    if (link.isUrl) {
+      openExternal(target);
+    } else if (isViewableDocumentPath(target) &&
+        Provider.of<DocumentsController?>(context, listen: false) != null) {
+      showFileDocumentDialog(
+        context,
+        target,
+        details: DocumentDetails(
+          repoName: run.repoName,
+          title: link.label,
+          agentId: run.id,
+          agentKind: run.kind,
+          claudeSessionId: run.claudeSessionId,
+          worktreePath: run.worktreePath,
+          branch: run.branch,
+          issueKeys: run.issueKeys,
+          prNumber: run.prNumber,
+          sourcePath: target,
+        ),
+      );
+    } else {
+      context.read<LauncherService>().openVSCode(target);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -291,9 +377,7 @@ class _LinkChip extends StatelessWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
-          onTap: () => link.isUrl
-              ? openExternal(_target)
-              : context.read<LauncherService>().openVSCode(_target),
+          onTap: () => _open(context),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(

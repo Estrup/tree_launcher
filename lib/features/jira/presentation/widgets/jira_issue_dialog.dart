@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_badges.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/domain/jira_constants.dart';
@@ -367,6 +368,10 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
           ],
           // No cache and the fetch failed: only the error box shows.
           if (issue != null) ...[
+            IssueDocumentsSection(
+              issueKey: widget.issueKey,
+              bottomSpacing: 28,
+            ),
             const IssueSectionLabel('DESCRIPTION'),
             const SizedBox(height: 10),
             _description(issue.description),

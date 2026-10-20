@@ -18,6 +18,10 @@ import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/domain/claude_session_starter.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
+import 'package:tree_launcher/app/use_cases/save_document.dart';
+import 'package:tree_launcher/features/documents/data/document_store.dart';
+import 'package:tree_launcher/features/documents/domain/session_document.dart';
+import 'package:tree_launcher/features/documents/presentation/controllers/documents_controller.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
@@ -30,6 +34,7 @@ import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_metadata.dart';
 
 import 'test_database.dart';
 
@@ -78,6 +83,13 @@ class _NoAgents implements AgentRegistry {
   @override
   Future<AgentRun> report(String id, AgentReport report) =>
       throw UnimplementedError();
+
+  @override
+  Future<void> note(
+    String id,
+    String message, {
+    AgentEventLevel level = AgentEventLevel.info,
+  }) => throw UnimplementedError();
 }
 
 const _tags = [
@@ -269,6 +281,8 @@ AgentApiServer _server(
   ManualPostStore? manualPostStore,
   ActivityController? activity,
   JiraApiService? jiraService,
+  DocumentsController? documents,
+  WorktreeMetadata? Function(String path)? metadataFor,
 }) {
   final posts = manualPostStore ?? ManualPostStore(db);
   final service = _activityService(db, home, posts);
@@ -280,15 +294,34 @@ AgentApiServer _server(
         service: service,
       );
   if (activity == null) addTearDown(writer.dispose);
+  final repoCatalog = catalog ?? _FakeRepos(repos);
+  final registry = agentRegistry ?? _NoAgents();
+  final library =
+      documents ??
+      DocumentsController(
+        store: DocumentStore(
+          db,
+          directory: () async => '${home.path}/documents',
+        ),
+      );
+  if (documents == null) addTearDown(library.dispose);
   return AgentApiServer(
-    repos: catalog ?? _FakeRepos(repos),
+    repos: repoCatalog,
     settings: _FakeSettings(settings),
     worktreeCreator: worktreeCreator ?? _FakeWorktreeCreator(),
     jiraTagEditor: jiraTagEditor ?? _FakeTagEditor(),
-    agentRegistry: agentRegistry ?? _NoAgents(),
+    agentRegistry: registry,
     claudeSessions: claudeSessions ?? _FakeClaudeSessionStarter(),
     activity: service,
     manualPosts: writer,
+    documents: library,
+    documentSaver: SaveDocument(
+      repos: repoCatalog,
+      agents: registry,
+      metadataFor: metadataFor ?? (_) => null,
+      documents: library,
+      notify: (_, {action}) {},
+    ),
     gitService: gitService ?? GitService(),
     jiraService: jiraService,
   );
@@ -1424,6 +1457,323 @@ void main() {
       expect((await getAgents('/v1/agents?active=1')).$1, 400);
       expect(await count('?archived=false'), 2);
       expect((await getAgents('/v1/agents/ag_missing')).$1, 404);
+    });
+  });
+
+  group('Documents', () {
+    late AgentApiServer docServer;
+    late AgentsController agents;
+    late DocumentsController documents;
+    late Directory files;
+
+    setUp(() async {
+      agents = AgentsController(store: AgentRunStore(db));
+      files = await Directory.systemTemp.createTemp('documents_api');
+      documents = DocumentsController(
+        store: DocumentStore(db, directory: () async => '${files.path}/store'),
+      );
+      docServer = _server(
+        db,
+        tempHome,
+        repos: [
+          RepoConfig(name: 'other', path: '/repos/other'),
+          RepoConfig(name: 'au2office', path: '/repos/au2'),
+        ],
+        agentRegistry: agents,
+        documents: documents,
+        metadataFor: (path) => path == '/w/plain'
+            ? const WorktreeMetadata(
+                path: '/w/plain',
+                repoPath: '/repos/au2',
+                jiraIssue: 'AU2-77',
+              )
+            : null,
+      );
+      await docServer.start(port: 0);
+    });
+
+    tearDown(() async {
+      await docServer.stop();
+      await agents.flush();
+      agents.dispose();
+      documents.dispose();
+      await files.delete(recursive: true);
+    });
+
+    Future<(int, Map<String, dynamic>)> getDocs(String path) =>
+        get(path, port: docServer.port);
+    Future<(int, Map<String, dynamic>)> postDoc(Object body) =>
+        post('/v1/documents', body, port: docServer.port);
+
+    Future<String> runId() async => (await agents.createForLaunch(
+      kind: AgentKind.build,
+      repoName: 'au2office',
+      title: 'Vipps callback',
+      issueKeys: ['AU2-5407'],
+      worktreePath: '/w/vipps-au2-5407',
+      branch: 'feature/vipps-au2-5407',
+      prNumber: 7123,
+    )).id;
+
+    Future<String> file(String name, Object content) async {
+      final f = File('${files.path}/$name');
+      if (content is String) {
+        await f.writeAsString(content);
+      } else {
+        await f.writeAsBytes(content as List<int>);
+      }
+      return f.path;
+    }
+
+    test('saves an HTML file for a run, which it is tied to', () async {
+      final id = await runId();
+      final path = await file(
+        'result.html',
+        '<h1>Result</h1><img src="shots/a.png">',
+      );
+
+      final (status, body) = await postDoc({
+        'agentId': id,
+        'title': 'Result: Vipps',
+        'name': 'result',
+        'path': path,
+      });
+
+      expect(status, 201);
+      expect(body['id'], startsWith('doc_'));
+      expect(body['format'], 'html');
+      expect(body['repo'], 'au2office');
+      expect(body['agentKind'], 'build');
+      expect(body['issueKeys'], ['AU2-5407']);
+      expect(body['worktreePath'], '/w/vipps-au2-5407');
+      expect(body['branch'], 'feature/vipps-au2-5407');
+      expect(body['prNumber'], 7123);
+      expect(body['sourcePath'], path);
+      expect(body['replaced'], isFalse);
+      expect(body['warnings'], [
+        "relative reference won't resolve: shots/a.png",
+      ]);
+      expect(
+        await File(body['filePath'] as String).readAsString(),
+        contains('<h1>Result</h1>'),
+      );
+      expect(
+        agents.eventsFor(id).last.message,
+        'Document saved: Result: Vipps',
+      );
+      expect(agents.runById(id)!.summary, isNull);
+    });
+
+    test('replaces the run\'s document of the same name', () async {
+      final id = await runId();
+      final (_, first) = await postDoc({
+        'agentId': id,
+        'title': 'v1',
+        'name': 'result',
+        'content': '# v1',
+        'format': 'markdown',
+      });
+      final (status, second) = await postDoc({
+        'agentId': id,
+        'title': 'v2',
+        'name': 'result',
+        'path': await file('report.pdf', utf8.encode('%PDF-1.7 …')),
+      });
+
+      expect(status, 200);
+      expect(second['replaced'], isTrue);
+      expect(second['id'], first['id']);
+      expect(second['format'], 'pdf');
+      expect(agents.eventsFor(id).last.message, 'Document updated: v2');
+      expect(documents.documents, hasLength(1));
+    });
+
+    test('a plain session gets its worktree\'s issue', () async {
+      final (status, body) = await postDoc({
+        'repo': 'au2office',
+        'title': 'Notes',
+        'content': '<p>hi</p>',
+        'format': 'html',
+        'worktreePath': '/w/plain',
+      });
+      expect(status, 201);
+      expect(body['issueKeys'], ['AU2-77']);
+      expect(body['agentId'], isNull);
+
+      final (_, given) = await postDoc({
+        'repo': 'au2office',
+        'title': 'Notes',
+        'content': 'x',
+        'format': 'markdown',
+        'worktreePath': '/w/plain',
+        'issueKeys': ['au2-1', 'AU2-2'],
+      });
+      expect(given['issueKeys'], ['AU2-1', 'AU2-2']);
+    });
+
+    test('refuses what it cannot save', () async {
+      final id = await runId();
+      Future<int> status(Map<String, Object?> body) async =>
+          (await postDoc(body)).$1;
+      final text = await file('notes.txt', 'x');
+      final notPdf = await file('fake.pdf', 'hello');
+      final binary = await file('bad.md', [0xff, 0xfe, 0x00]);
+
+      expect(await status({'repo': 'au2office'}), 400); // no title
+      expect(
+        await status({'title': 'T', 'content': 'x', 'format': 'html'}),
+        400,
+      );
+      expect(await status({'repo': 'au2office', 'title': 'T'}), 400);
+      expect(
+        await status({
+          'repo': 'au2office',
+          'title': 'T',
+          'content': 'x',
+          'path': '/tmp/a.md',
+          'format': 'markdown',
+        }),
+        400,
+      );
+      expect(
+        await status({'repo': 'au2office', 'title': 'T', 'content': 'x'}),
+        400,
+      );
+      expect(
+        await status({
+          'repo': 'au2office',
+          'title': 'T',
+          'content': 'x',
+          'format': 'pdf',
+        }),
+        400,
+      );
+      expect(
+        await status({
+          'repo': 'au2office',
+          'title': 'T',
+          'content': 'x',
+          'format': 'markdown',
+          'name': 'result',
+        }),
+        400,
+      );
+      for (final path in [text, notPdf, binary, '${files.path}/missing.md']) {
+        expect(
+          await status({'repo': 'au2office', 'title': 'T', 'path': path}),
+          400,
+          reason: path,
+        );
+      }
+      expect(
+        await status({'repo': 'au2office', 'title': 'T', 'path': 'rel.md'}),
+        400,
+      );
+      expect(
+        await status({
+          'repo': 'au2office',
+          'title': 'T',
+          'path': await file('a.md', '# a'),
+          'format': 'html',
+        }),
+        400,
+      );
+      expect(
+        await status({
+          'agentId': id,
+          'repo': 'other',
+          'title': 'T',
+          'content': 'x',
+          'format': 'html',
+        }),
+        400,
+      );
+      expect(
+        await status({
+          'repo': 'au2office',
+          'title': 'T',
+          'content': 'x',
+          'format': 'html',
+          'issueKeys': ['nope'],
+        }),
+        400,
+      );
+      expect(
+        await status({
+          'repo': 'au2office',
+          'title': 'T',
+          'content': 'x',
+          'format': 'html',
+          'colour': 'red',
+        }),
+        400,
+      );
+      expect(
+        await status({
+          'agentId': 'ag_missing',
+          'title': 'T',
+          'content': 'x',
+          'format': 'html',
+        }),
+        404,
+      );
+      expect(
+        await status({
+          'repo': 'nope',
+          'title': 'T',
+          'content': 'x',
+          'format': 'html',
+        }),
+        404,
+      );
+      expect(
+        await status({
+          'repo': 'au2office',
+          'title': 'T',
+          'content': 'x' * (5 * 1024 * 1024 + 1),
+          'format': 'markdown',
+        }),
+        413,
+      );
+      expect(documents.documents, isEmpty);
+    });
+
+    test('lists and gets documents', () async {
+      final id = await runId();
+      final (_, saved) = await postDoc({
+        'agentId': id,
+        'title': 'Result',
+        'content': '# Result',
+        'format': 'markdown',
+      });
+      await postDoc({
+        'repo': 'other',
+        'title': 'Report',
+        'path': await file('r.pdf', utf8.encode('%PDF-1.4')),
+      });
+
+      Future<int> count(String query) async =>
+          (await getDocs('/v1/documents$query')).$2['count'] as int;
+      expect(await count(''), 2);
+      expect(await count('?repo=au2office'), 1);
+      expect(await count('?agentId=$id'), 1);
+      expect(await count('?issueKey=au2-5407'), 1);
+      expect(await count('?worktree=vipps-au2-5407'), 1);
+      expect(await count('?kind=build'), 1);
+      expect(await count('?format=pdf'), 1);
+      expect((await getDocs('/v1/documents?kind=deploy')).$1, 400);
+      expect((await getDocs('/v1/documents?format=docx')).$1, 400);
+      expect((await getDocs('/v1/documents?repo=nope')).$1, 400);
+
+      final (status, one) = await getDocs('/v1/documents/${saved['id']}');
+      expect(status, 200);
+      expect(one['content'], '# Result');
+      expect(one['title'], 'Result');
+
+      final pdf = documents.documentsFor(format: DocumentFormat.pdf).single;
+      final (_, pdfBody) = await getDocs('/v1/documents/${pdf.id}');
+      expect(pdfBody.containsKey('content'), isFalse);
+      expect((await getDocs('/v1/documents/doc_missing')).$1, 404);
     });
   });
 }

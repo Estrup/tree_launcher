@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_badges.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/pr_worktree_actions.dart';
@@ -265,6 +266,13 @@ class _PullRequestRow extends StatelessWidget {
                   ),
                 ),
               ),
+              if (context.watch<WorkspaceController>().selectedRepo
+                  case final repo?)
+                PullRequestDocumentsBadge(
+                  repoName: repo.name,
+                  number: pr.number,
+                  issueKey: pr.jiraKey,
+                ),
               const SizedBox(width: 8),
               Tooltip(
                 message: 'Claude session for #${pr.number}…',

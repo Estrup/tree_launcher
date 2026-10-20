@@ -11,10 +11,12 @@ import 'package:tree_launcher/features/agent_api/data/api_http.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/activity_routes.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/agent_routes.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/claude_session_routes.dart';
+import 'package:tree_launcher/features/agent_api/data/routes/document_routes.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/jira_routes.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/worktree_routes.dart';
 import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
 import 'package:tree_launcher/features/agents/domain/claude_session_starter.dart';
+import 'package:tree_launcher/features/documents/domain/document_library.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
@@ -27,8 +29,8 @@ import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 ///
 /// v1 surfaces the Activity timeline (and manual posts into it), worktree
 /// creation, starting Claude in a worktree, Jira issues with the user's local tags (which it can set, but
-/// never anything in Jira), and agent runs, which agents register and report
-/// their progress to. Each area's routes live in `routes/`; adding a
+/// never anything in Jira), agent runs, which agents register and report
+/// their progress to, and the documents sessions save about their work. Each area's routes live in `routes/`; adding a
 /// capability is a handler there, mounted in [_router].
 ///
 /// Requests a web page could send are refused: see [_localClientsOnly].
@@ -45,6 +47,8 @@ class AgentApiServer {
     required ClaudeSessionStarter claudeSessions,
     required ActivityService activity,
     required ManualPostWriter manualPosts,
+    required DocumentLibrary documents,
+    required DocumentSaver documentSaver,
     required GitService gitService,
     JiraApiService? jiraService,
   }) : _activityRoutes = ActivityRoutes(
@@ -70,6 +74,11 @@ class AgentApiServer {
          repos: repos,
          gitService: gitService,
          registry: agentRegistry,
+       ),
+       _documentRoutes = DocumentRoutes(
+         repos: repos,
+         library: documents,
+         saver: documentSaver,
        );
 
   /// Default loopback port the agent API listens on.
@@ -80,6 +89,7 @@ class AgentApiServer {
   final ClaudeSessionRoutes _claudeSessionRoutes;
   final JiraRoutes _jiraRoutes;
   final AgentRoutes _agentRoutes;
+  final DocumentRoutes _documentRoutes;
 
   HttpServer? _server;
   bool get isRunning => _server != null;
@@ -160,6 +170,7 @@ class AgentApiServer {
     _claudeSessionRoutes.mount(router);
     _jiraRoutes.mount(router);
     _agentRoutes.mount(router);
+    _documentRoutes.mount(router);
     return router;
   }
 

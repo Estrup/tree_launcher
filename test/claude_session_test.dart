@@ -52,6 +52,7 @@ class _RecordingTerminal extends TerminalController {
     String repoPath,
     String command, {
     bool reuseRunning = true,
+    Map<String, String> environment = const {},
     bool show = true,
   }) {
     launched.add((

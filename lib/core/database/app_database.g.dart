@@ -4714,6 +4714,1144 @@ class UiStateCompanion extends UpdateCompanion<UiStateRow> {
   }
 }
 
+class $DocumentsTable extends Documents
+    with TableInfo<$DocumentsTable, DocumentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DocumentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _repoMeta = const VerificationMeta('repo');
+  @override
+  late final GeneratedColumn<String> repo = GeneratedColumn<String>(
+    'repo',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _formatMeta = const VerificationMeta('format');
+  @override
+  late final GeneratedColumn<String> format = GeneratedColumn<String>(
+    'format',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _agentIdMeta = const VerificationMeta(
+    'agentId',
+  );
+  @override
+  late final GeneratedColumn<String> agentId = GeneratedColumn<String>(
+    'agent_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _agentKindMeta = const VerificationMeta(
+    'agentKind',
+  );
+  @override
+  late final GeneratedColumn<String> agentKind = GeneratedColumn<String>(
+    'agent_kind',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _claudeSessionIdMeta = const VerificationMeta(
+    'claudeSessionId',
+  );
+  @override
+  late final GeneratedColumn<String> claudeSessionId = GeneratedColumn<String>(
+    'claude_session_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _worktreePathMeta = const VerificationMeta(
+    'worktreePath',
+  );
+  @override
+  late final GeneratedColumn<String> worktreePath = GeneratedColumn<String>(
+    'worktree_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _branchMeta = const VerificationMeta('branch');
+  @override
+  late final GeneratedColumn<String> branch = GeneratedColumn<String>(
+    'branch',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _prNumberMeta = const VerificationMeta(
+    'prNumber',
+  );
+  @override
+  late final GeneratedColumn<int> prNumber = GeneratedColumn<int>(
+    'pr_number',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourcePathMeta = const VerificationMeta(
+    'sourcePath',
+  );
+  @override
+  late final GeneratedColumn<String> sourcePath = GeneratedColumn<String>(
+    'source_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sizeBytesMeta = const VerificationMeta(
+    'sizeBytes',
+  );
+  @override
+  late final GeneratedColumn<int> sizeBytes = GeneratedColumn<int>(
+    'size_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, String> createdAt =
+      GeneratedColumn<String>(
+        'created_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($DocumentsTable.$convertercreatedAt);
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, String> updatedAt =
+      GeneratedColumn<String>(
+        'updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($DocumentsTable.$converterupdatedAt);
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    repo,
+    title,
+    name,
+    format,
+    agentId,
+    agentKind,
+    claudeSessionId,
+    worktreePath,
+    branch,
+    prNumber,
+    sourcePath,
+    sizeBytes,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'documents';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DocumentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('repo')) {
+      context.handle(
+        _repoMeta,
+        repo.isAcceptableOrUnknown(data['repo']!, _repoMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_repoMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    }
+    if (data.containsKey('format')) {
+      context.handle(
+        _formatMeta,
+        format.isAcceptableOrUnknown(data['format']!, _formatMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_formatMeta);
+    }
+    if (data.containsKey('agent_id')) {
+      context.handle(
+        _agentIdMeta,
+        agentId.isAcceptableOrUnknown(data['agent_id']!, _agentIdMeta),
+      );
+    }
+    if (data.containsKey('agent_kind')) {
+      context.handle(
+        _agentKindMeta,
+        agentKind.isAcceptableOrUnknown(data['agent_kind']!, _agentKindMeta),
+      );
+    }
+    if (data.containsKey('claude_session_id')) {
+      context.handle(
+        _claudeSessionIdMeta,
+        claudeSessionId.isAcceptableOrUnknown(
+          data['claude_session_id']!,
+          _claudeSessionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('worktree_path')) {
+      context.handle(
+        _worktreePathMeta,
+        worktreePath.isAcceptableOrUnknown(
+          data['worktree_path']!,
+          _worktreePathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('branch')) {
+      context.handle(
+        _branchMeta,
+        branch.isAcceptableOrUnknown(data['branch']!, _branchMeta),
+      );
+    }
+    if (data.containsKey('pr_number')) {
+      context.handle(
+        _prNumberMeta,
+        prNumber.isAcceptableOrUnknown(data['pr_number']!, _prNumberMeta),
+      );
+    }
+    if (data.containsKey('source_path')) {
+      context.handle(
+        _sourcePathMeta,
+        sourcePath.isAcceptableOrUnknown(data['source_path']!, _sourcePathMeta),
+      );
+    }
+    if (data.containsKey('size_bytes')) {
+      context.handle(
+        _sizeBytesMeta,
+        sizeBytes.isAcceptableOrUnknown(data['size_bytes']!, _sizeBytesMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sizeBytesMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DocumentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DocumentRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      repo: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repo'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      ),
+      format: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}format'],
+      )!,
+      agentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agent_id'],
+      ),
+      agentKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agent_kind'],
+      ),
+      claudeSessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}claude_session_id'],
+      ),
+      worktreePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}worktree_path'],
+      ),
+      branch: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}branch'],
+      ),
+      prNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pr_number'],
+      ),
+      sourcePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_path'],
+      ),
+      sizeBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}size_bytes'],
+      )!,
+      createdAt: $DocumentsTable.$convertercreatedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}created_at'],
+        )!,
+      ),
+      updatedAt: $DocumentsTable.$converterupdatedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}updated_at'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $DocumentsTable createAlias(String alias) {
+    return $DocumentsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, String> $convertercreatedAt =
+      const IsoDateTime();
+  static TypeConverter<DateTime, String> $converterupdatedAt =
+      const IsoDateTime();
+}
+
+class DocumentRow extends DataClass implements Insertable<DocumentRow> {
+  final String id;
+  final String repo;
+  final String title;
+
+  /// Stable within its agent run: saving it again replaces the document.
+  final String? name;
+
+  /// `markdown`, `html` or `pdf`.
+  final String format;
+  final String? agentId;
+  final String? agentKind;
+  final String? claudeSessionId;
+  final String? worktreePath;
+  final String? branch;
+  final int? prNumber;
+  final String? sourcePath;
+  final int sizeBytes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const DocumentRow({
+    required this.id,
+    required this.repo,
+    required this.title,
+    this.name,
+    required this.format,
+    this.agentId,
+    this.agentKind,
+    this.claudeSessionId,
+    this.worktreePath,
+    this.branch,
+    this.prNumber,
+    this.sourcePath,
+    required this.sizeBytes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['repo'] = Variable<String>(repo);
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || name != null) {
+      map['name'] = Variable<String>(name);
+    }
+    map['format'] = Variable<String>(format);
+    if (!nullToAbsent || agentId != null) {
+      map['agent_id'] = Variable<String>(agentId);
+    }
+    if (!nullToAbsent || agentKind != null) {
+      map['agent_kind'] = Variable<String>(agentKind);
+    }
+    if (!nullToAbsent || claudeSessionId != null) {
+      map['claude_session_id'] = Variable<String>(claudeSessionId);
+    }
+    if (!nullToAbsent || worktreePath != null) {
+      map['worktree_path'] = Variable<String>(worktreePath);
+    }
+    if (!nullToAbsent || branch != null) {
+      map['branch'] = Variable<String>(branch);
+    }
+    if (!nullToAbsent || prNumber != null) {
+      map['pr_number'] = Variable<int>(prNumber);
+    }
+    if (!nullToAbsent || sourcePath != null) {
+      map['source_path'] = Variable<String>(sourcePath);
+    }
+    map['size_bytes'] = Variable<int>(sizeBytes);
+    {
+      map['created_at'] = Variable<String>(
+        $DocumentsTable.$convertercreatedAt.toSql(createdAt),
+      );
+    }
+    {
+      map['updated_at'] = Variable<String>(
+        $DocumentsTable.$converterupdatedAt.toSql(updatedAt),
+      );
+    }
+    return map;
+  }
+
+  DocumentsCompanion toCompanion(bool nullToAbsent) {
+    return DocumentsCompanion(
+      id: Value(id),
+      repo: Value(repo),
+      title: Value(title),
+      name: name == null && nullToAbsent ? const Value.absent() : Value(name),
+      format: Value(format),
+      agentId: agentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agentId),
+      agentKind: agentKind == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agentKind),
+      claudeSessionId: claudeSessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(claudeSessionId),
+      worktreePath: worktreePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(worktreePath),
+      branch: branch == null && nullToAbsent
+          ? const Value.absent()
+          : Value(branch),
+      prNumber: prNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prNumber),
+      sourcePath: sourcePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourcePath),
+      sizeBytes: Value(sizeBytes),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DocumentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DocumentRow(
+      id: serializer.fromJson<String>(json['id']),
+      repo: serializer.fromJson<String>(json['repo']),
+      title: serializer.fromJson<String>(json['title']),
+      name: serializer.fromJson<String?>(json['name']),
+      format: serializer.fromJson<String>(json['format']),
+      agentId: serializer.fromJson<String?>(json['agentId']),
+      agentKind: serializer.fromJson<String?>(json['agentKind']),
+      claudeSessionId: serializer.fromJson<String?>(json['claudeSessionId']),
+      worktreePath: serializer.fromJson<String?>(json['worktreePath']),
+      branch: serializer.fromJson<String?>(json['branch']),
+      prNumber: serializer.fromJson<int?>(json['prNumber']),
+      sourcePath: serializer.fromJson<String?>(json['sourcePath']),
+      sizeBytes: serializer.fromJson<int>(json['sizeBytes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'repo': serializer.toJson<String>(repo),
+      'title': serializer.toJson<String>(title),
+      'name': serializer.toJson<String?>(name),
+      'format': serializer.toJson<String>(format),
+      'agentId': serializer.toJson<String?>(agentId),
+      'agentKind': serializer.toJson<String?>(agentKind),
+      'claudeSessionId': serializer.toJson<String?>(claudeSessionId),
+      'worktreePath': serializer.toJson<String?>(worktreePath),
+      'branch': serializer.toJson<String?>(branch),
+      'prNumber': serializer.toJson<int?>(prNumber),
+      'sourcePath': serializer.toJson<String?>(sourcePath),
+      'sizeBytes': serializer.toJson<int>(sizeBytes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DocumentRow copyWith({
+    String? id,
+    String? repo,
+    String? title,
+    Value<String?> name = const Value.absent(),
+    String? format,
+    Value<String?> agentId = const Value.absent(),
+    Value<String?> agentKind = const Value.absent(),
+    Value<String?> claudeSessionId = const Value.absent(),
+    Value<String?> worktreePath = const Value.absent(),
+    Value<String?> branch = const Value.absent(),
+    Value<int?> prNumber = const Value.absent(),
+    Value<String?> sourcePath = const Value.absent(),
+    int? sizeBytes,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => DocumentRow(
+    id: id ?? this.id,
+    repo: repo ?? this.repo,
+    title: title ?? this.title,
+    name: name.present ? name.value : this.name,
+    format: format ?? this.format,
+    agentId: agentId.present ? agentId.value : this.agentId,
+    agentKind: agentKind.present ? agentKind.value : this.agentKind,
+    claudeSessionId: claudeSessionId.present
+        ? claudeSessionId.value
+        : this.claudeSessionId,
+    worktreePath: worktreePath.present ? worktreePath.value : this.worktreePath,
+    branch: branch.present ? branch.value : this.branch,
+    prNumber: prNumber.present ? prNumber.value : this.prNumber,
+    sourcePath: sourcePath.present ? sourcePath.value : this.sourcePath,
+    sizeBytes: sizeBytes ?? this.sizeBytes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DocumentRow copyWithCompanion(DocumentsCompanion data) {
+    return DocumentRow(
+      id: data.id.present ? data.id.value : this.id,
+      repo: data.repo.present ? data.repo.value : this.repo,
+      title: data.title.present ? data.title.value : this.title,
+      name: data.name.present ? data.name.value : this.name,
+      format: data.format.present ? data.format.value : this.format,
+      agentId: data.agentId.present ? data.agentId.value : this.agentId,
+      agentKind: data.agentKind.present ? data.agentKind.value : this.agentKind,
+      claudeSessionId: data.claudeSessionId.present
+          ? data.claudeSessionId.value
+          : this.claudeSessionId,
+      worktreePath: data.worktreePath.present
+          ? data.worktreePath.value
+          : this.worktreePath,
+      branch: data.branch.present ? data.branch.value : this.branch,
+      prNumber: data.prNumber.present ? data.prNumber.value : this.prNumber,
+      sourcePath: data.sourcePath.present
+          ? data.sourcePath.value
+          : this.sourcePath,
+      sizeBytes: data.sizeBytes.present ? data.sizeBytes.value : this.sizeBytes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DocumentRow(')
+          ..write('id: $id, ')
+          ..write('repo: $repo, ')
+          ..write('title: $title, ')
+          ..write('name: $name, ')
+          ..write('format: $format, ')
+          ..write('agentId: $agentId, ')
+          ..write('agentKind: $agentKind, ')
+          ..write('claudeSessionId: $claudeSessionId, ')
+          ..write('worktreePath: $worktreePath, ')
+          ..write('branch: $branch, ')
+          ..write('prNumber: $prNumber, ')
+          ..write('sourcePath: $sourcePath, ')
+          ..write('sizeBytes: $sizeBytes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    repo,
+    title,
+    name,
+    format,
+    agentId,
+    agentKind,
+    claudeSessionId,
+    worktreePath,
+    branch,
+    prNumber,
+    sourcePath,
+    sizeBytes,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DocumentRow &&
+          other.id == this.id &&
+          other.repo == this.repo &&
+          other.title == this.title &&
+          other.name == this.name &&
+          other.format == this.format &&
+          other.agentId == this.agentId &&
+          other.agentKind == this.agentKind &&
+          other.claudeSessionId == this.claudeSessionId &&
+          other.worktreePath == this.worktreePath &&
+          other.branch == this.branch &&
+          other.prNumber == this.prNumber &&
+          other.sourcePath == this.sourcePath &&
+          other.sizeBytes == this.sizeBytes &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DocumentsCompanion extends UpdateCompanion<DocumentRow> {
+  final Value<String> id;
+  final Value<String> repo;
+  final Value<String> title;
+  final Value<String?> name;
+  final Value<String> format;
+  final Value<String?> agentId;
+  final Value<String?> agentKind;
+  final Value<String?> claudeSessionId;
+  final Value<String?> worktreePath;
+  final Value<String?> branch;
+  final Value<int?> prNumber;
+  final Value<String?> sourcePath;
+  final Value<int> sizeBytes;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const DocumentsCompanion({
+    this.id = const Value.absent(),
+    this.repo = const Value.absent(),
+    this.title = const Value.absent(),
+    this.name = const Value.absent(),
+    this.format = const Value.absent(),
+    this.agentId = const Value.absent(),
+    this.agentKind = const Value.absent(),
+    this.claudeSessionId = const Value.absent(),
+    this.worktreePath = const Value.absent(),
+    this.branch = const Value.absent(),
+    this.prNumber = const Value.absent(),
+    this.sourcePath = const Value.absent(),
+    this.sizeBytes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DocumentsCompanion.insert({
+    required String id,
+    required String repo,
+    required String title,
+    this.name = const Value.absent(),
+    required String format,
+    this.agentId = const Value.absent(),
+    this.agentKind = const Value.absent(),
+    this.claudeSessionId = const Value.absent(),
+    this.worktreePath = const Value.absent(),
+    this.branch = const Value.absent(),
+    this.prNumber = const Value.absent(),
+    this.sourcePath = const Value.absent(),
+    required int sizeBytes,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       repo = Value(repo),
+       title = Value(title),
+       format = Value(format),
+       sizeBytes = Value(sizeBytes),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<DocumentRow> custom({
+    Expression<String>? id,
+    Expression<String>? repo,
+    Expression<String>? title,
+    Expression<String>? name,
+    Expression<String>? format,
+    Expression<String>? agentId,
+    Expression<String>? agentKind,
+    Expression<String>? claudeSessionId,
+    Expression<String>? worktreePath,
+    Expression<String>? branch,
+    Expression<int>? prNumber,
+    Expression<String>? sourcePath,
+    Expression<int>? sizeBytes,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (repo != null) 'repo': repo,
+      if (title != null) 'title': title,
+      if (name != null) 'name': name,
+      if (format != null) 'format': format,
+      if (agentId != null) 'agent_id': agentId,
+      if (agentKind != null) 'agent_kind': agentKind,
+      if (claudeSessionId != null) 'claude_session_id': claudeSessionId,
+      if (worktreePath != null) 'worktree_path': worktreePath,
+      if (branch != null) 'branch': branch,
+      if (prNumber != null) 'pr_number': prNumber,
+      if (sourcePath != null) 'source_path': sourcePath,
+      if (sizeBytes != null) 'size_bytes': sizeBytes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DocumentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? repo,
+    Value<String>? title,
+    Value<String?>? name,
+    Value<String>? format,
+    Value<String?>? agentId,
+    Value<String?>? agentKind,
+    Value<String?>? claudeSessionId,
+    Value<String?>? worktreePath,
+    Value<String?>? branch,
+    Value<int?>? prNumber,
+    Value<String?>? sourcePath,
+    Value<int>? sizeBytes,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return DocumentsCompanion(
+      id: id ?? this.id,
+      repo: repo ?? this.repo,
+      title: title ?? this.title,
+      name: name ?? this.name,
+      format: format ?? this.format,
+      agentId: agentId ?? this.agentId,
+      agentKind: agentKind ?? this.agentKind,
+      claudeSessionId: claudeSessionId ?? this.claudeSessionId,
+      worktreePath: worktreePath ?? this.worktreePath,
+      branch: branch ?? this.branch,
+      prNumber: prNumber ?? this.prNumber,
+      sourcePath: sourcePath ?? this.sourcePath,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (repo.present) {
+      map['repo'] = Variable<String>(repo.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (format.present) {
+      map['format'] = Variable<String>(format.value);
+    }
+    if (agentId.present) {
+      map['agent_id'] = Variable<String>(agentId.value);
+    }
+    if (agentKind.present) {
+      map['agent_kind'] = Variable<String>(agentKind.value);
+    }
+    if (claudeSessionId.present) {
+      map['claude_session_id'] = Variable<String>(claudeSessionId.value);
+    }
+    if (worktreePath.present) {
+      map['worktree_path'] = Variable<String>(worktreePath.value);
+    }
+    if (branch.present) {
+      map['branch'] = Variable<String>(branch.value);
+    }
+    if (prNumber.present) {
+      map['pr_number'] = Variable<int>(prNumber.value);
+    }
+    if (sourcePath.present) {
+      map['source_path'] = Variable<String>(sourcePath.value);
+    }
+    if (sizeBytes.present) {
+      map['size_bytes'] = Variable<int>(sizeBytes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(
+        $DocumentsTable.$convertercreatedAt.toSql(createdAt.value),
+      );
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(
+        $DocumentsTable.$converterupdatedAt.toSql(updatedAt.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DocumentsCompanion(')
+          ..write('id: $id, ')
+          ..write('repo: $repo, ')
+          ..write('title: $title, ')
+          ..write('name: $name, ')
+          ..write('format: $format, ')
+          ..write('agentId: $agentId, ')
+          ..write('agentKind: $agentKind, ')
+          ..write('claudeSessionId: $claudeSessionId, ')
+          ..write('worktreePath: $worktreePath, ')
+          ..write('branch: $branch, ')
+          ..write('prNumber: $prNumber, ')
+          ..write('sourcePath: $sourcePath, ')
+          ..write('sizeBytes: $sizeBytes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DocumentIssuesTable extends DocumentIssues
+    with TableInfo<$DocumentIssuesTable, DocumentIssueRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DocumentIssuesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _documentIdMeta = const VerificationMeta(
+    'documentId',
+  );
+  @override
+  late final GeneratedColumn<String> documentId = GeneratedColumn<String>(
+    'document_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES documents (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _issueKeyMeta = const VerificationMeta(
+    'issueKey',
+  );
+  @override
+  late final GeneratedColumn<String> issueKey = GeneratedColumn<String>(
+    'issue_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [documentId, issueKey, position];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'document_issues';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DocumentIssueRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('document_id')) {
+      context.handle(
+        _documentIdMeta,
+        documentId.isAcceptableOrUnknown(data['document_id']!, _documentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_documentIdMeta);
+    }
+    if (data.containsKey('issue_key')) {
+      context.handle(
+        _issueKeyMeta,
+        issueKey.isAcceptableOrUnknown(data['issue_key']!, _issueKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_issueKeyMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {documentId, issueKey};
+  @override
+  DocumentIssueRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DocumentIssueRow(
+      documentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}document_id'],
+      )!,
+      issueKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}issue_key'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $DocumentIssuesTable createAlias(String alias) {
+    return $DocumentIssuesTable(attachedDatabase, alias);
+  }
+}
+
+class DocumentIssueRow extends DataClass
+    implements Insertable<DocumentIssueRow> {
+  final String documentId;
+  final String issueKey;
+  final int position;
+  const DocumentIssueRow({
+    required this.documentId,
+    required this.issueKey,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['document_id'] = Variable<String>(documentId);
+    map['issue_key'] = Variable<String>(issueKey);
+    map['position'] = Variable<int>(position);
+    return map;
+  }
+
+  DocumentIssuesCompanion toCompanion(bool nullToAbsent) {
+    return DocumentIssuesCompanion(
+      documentId: Value(documentId),
+      issueKey: Value(issueKey),
+      position: Value(position),
+    );
+  }
+
+  factory DocumentIssueRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DocumentIssueRow(
+      documentId: serializer.fromJson<String>(json['documentId']),
+      issueKey: serializer.fromJson<String>(json['issueKey']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'documentId': serializer.toJson<String>(documentId),
+      'issueKey': serializer.toJson<String>(issueKey),
+      'position': serializer.toJson<int>(position),
+    };
+  }
+
+  DocumentIssueRow copyWith({
+    String? documentId,
+    String? issueKey,
+    int? position,
+  }) => DocumentIssueRow(
+    documentId: documentId ?? this.documentId,
+    issueKey: issueKey ?? this.issueKey,
+    position: position ?? this.position,
+  );
+  DocumentIssueRow copyWithCompanion(DocumentIssuesCompanion data) {
+    return DocumentIssueRow(
+      documentId: data.documentId.present
+          ? data.documentId.value
+          : this.documentId,
+      issueKey: data.issueKey.present ? data.issueKey.value : this.issueKey,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DocumentIssueRow(')
+          ..write('documentId: $documentId, ')
+          ..write('issueKey: $issueKey, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(documentId, issueKey, position);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DocumentIssueRow &&
+          other.documentId == this.documentId &&
+          other.issueKey == this.issueKey &&
+          other.position == this.position);
+}
+
+class DocumentIssuesCompanion extends UpdateCompanion<DocumentIssueRow> {
+  final Value<String> documentId;
+  final Value<String> issueKey;
+  final Value<int> position;
+  final Value<int> rowid;
+  const DocumentIssuesCompanion({
+    this.documentId = const Value.absent(),
+    this.issueKey = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DocumentIssuesCompanion.insert({
+    required String documentId,
+    required String issueKey,
+    required int position,
+    this.rowid = const Value.absent(),
+  }) : documentId = Value(documentId),
+       issueKey = Value(issueKey),
+       position = Value(position);
+  static Insertable<DocumentIssueRow> custom({
+    Expression<String>? documentId,
+    Expression<String>? issueKey,
+    Expression<int>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (documentId != null) 'document_id': documentId,
+      if (issueKey != null) 'issue_key': issueKey,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DocumentIssuesCompanion copyWith({
+    Value<String>? documentId,
+    Value<String>? issueKey,
+    Value<int>? position,
+    Value<int>? rowid,
+  }) {
+    return DocumentIssuesCompanion(
+      documentId: documentId ?? this.documentId,
+      issueKey: issueKey ?? this.issueKey,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (documentId.present) {
+      map['document_id'] = Variable<String>(documentId.value);
+    }
+    if (issueKey.present) {
+      map['issue_key'] = Variable<String>(issueKey.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DocumentIssuesCompanion(')
+          ..write('documentId: $documentId, ')
+          ..write('issueKey: $issueKey, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4729,6 +5867,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $JiraTagsTable jiraTags = $JiraTagsTable(this);
   late final $JiraIssueTagsTable jiraIssueTags = $JiraIssueTagsTable(this);
   late final $UiStateTable uiState = $UiStateTable(this);
+  late final $DocumentsTable documents = $DocumentsTable(this);
+  late final $DocumentIssuesTable documentIssues = $DocumentIssuesTable(this);
   late final Index agentEventsRun = Index(
     'agent_events_run',
     'CREATE INDEX agent_events_run ON agent_events (run_id, id)',
@@ -4744,6 +5884,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final Index worktreeMetadataRepo = Index(
     'worktree_metadata_repo',
     'CREATE INDEX worktree_metadata_repo ON worktree_metadata (repo_path)',
+  );
+  late final Index documentsRepo = Index(
+    'documents_repo',
+    'CREATE INDEX documents_repo ON documents (repo)',
+  );
+  late final Index documentsAgent = Index(
+    'documents_agent',
+    'CREATE INDEX documents_agent ON documents (agent_id)',
+  );
+  late final Index documentIssuesKey = Index(
+    'document_issues_key',
+    'CREATE INDEX document_issues_key ON document_issues (issue_key)',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -4761,10 +5913,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     jiraTags,
     jiraIssueTags,
     uiState,
+    documents,
+    documentIssues,
     agentEventsRun,
     worktreeEventsAt,
     claudeTranscriptsDir,
     worktreeMetadataRepo,
+    documentsRepo,
+    documentsAgent,
+    documentIssuesKey,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4788,6 +5945,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('jira_issue_tags', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'documents',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('document_issues', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -7965,6 +9129,794 @@ typedef $$UiStateTableProcessedTableManager =
       UiStateRow,
       PrefetchHooks Function()
     >;
+typedef $$DocumentsTableCreateCompanionBuilder =
+    DocumentsCompanion Function({
+      required String id,
+      required String repo,
+      required String title,
+      Value<String?> name,
+      required String format,
+      Value<String?> agentId,
+      Value<String?> agentKind,
+      Value<String?> claudeSessionId,
+      Value<String?> worktreePath,
+      Value<String?> branch,
+      Value<int?> prNumber,
+      Value<String?> sourcePath,
+      required int sizeBytes,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$DocumentsTableUpdateCompanionBuilder =
+    DocumentsCompanion Function({
+      Value<String> id,
+      Value<String> repo,
+      Value<String> title,
+      Value<String?> name,
+      Value<String> format,
+      Value<String?> agentId,
+      Value<String?> agentKind,
+      Value<String?> claudeSessionId,
+      Value<String?> worktreePath,
+      Value<String?> branch,
+      Value<int?> prNumber,
+      Value<String?> sourcePath,
+      Value<int> sizeBytes,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$DocumentsTableReferences
+    extends BaseReferences<_$AppDatabase, $DocumentsTable, DocumentRow> {
+  $$DocumentsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$DocumentIssuesTable, List<DocumentIssueRow>>
+  _documentIssuesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.documentIssues,
+    aliasName: 'documents__id__document_issues__document_id',
+  );
+
+  $$DocumentIssuesTableProcessedTableManager get documentIssuesRefs {
+    final manager = $$DocumentIssuesTableTableManager(
+      $_db,
+      $_db.documentIssues,
+    ).filter((f) => f.documentId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_documentIssuesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$DocumentsTableFilterComposer
+    extends Composer<_$AppDatabase, $DocumentsTable> {
+  $$DocumentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repo => $composableBuilder(
+    column: $table.repo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get format => $composableBuilder(
+    column: $table.format,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get agentId => $composableBuilder(
+    column: $table.agentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get agentKind => $composableBuilder(
+    column: $table.agentKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get claudeSessionId => $composableBuilder(
+    column: $table.claudeSessionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get worktreePath => $composableBuilder(
+    column: $table.worktreePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get branch => $composableBuilder(
+    column: $table.branch,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get prNumber => $composableBuilder(
+    column: $table.prNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourcePath => $composableBuilder(
+    column: $table.sourcePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sizeBytes => $composableBuilder(
+    column: $table.sizeBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, String> get createdAt =>
+      $composableBuilder(
+        column: $table.createdAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, String> get updatedAt =>
+      $composableBuilder(
+        column: $table.updatedAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  Expression<bool> documentIssuesRefs(
+    Expression<bool> Function($$DocumentIssuesTableFilterComposer f) f,
+  ) {
+    final $$DocumentIssuesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.documentIssues,
+      getReferencedColumn: (t) => t.documentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DocumentIssuesTableFilterComposer(
+            $db: $db,
+            $table: $db.documentIssues,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DocumentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DocumentsTable> {
+  $$DocumentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repo => $composableBuilder(
+    column: $table.repo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get format => $composableBuilder(
+    column: $table.format,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get agentId => $composableBuilder(
+    column: $table.agentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get agentKind => $composableBuilder(
+    column: $table.agentKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get claudeSessionId => $composableBuilder(
+    column: $table.claudeSessionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get worktreePath => $composableBuilder(
+    column: $table.worktreePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get branch => $composableBuilder(
+    column: $table.branch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get prNumber => $composableBuilder(
+    column: $table.prNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourcePath => $composableBuilder(
+    column: $table.sourcePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sizeBytes => $composableBuilder(
+    column: $table.sizeBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DocumentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DocumentsTable> {
+  $$DocumentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get repo =>
+      $composableBuilder(column: $table.repo, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get format =>
+      $composableBuilder(column: $table.format, builder: (column) => column);
+
+  GeneratedColumn<String> get agentId =>
+      $composableBuilder(column: $table.agentId, builder: (column) => column);
+
+  GeneratedColumn<String> get agentKind =>
+      $composableBuilder(column: $table.agentKind, builder: (column) => column);
+
+  GeneratedColumn<String> get claudeSessionId => $composableBuilder(
+    column: $table.claudeSessionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get worktreePath => $composableBuilder(
+    column: $table.worktreePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get branch =>
+      $composableBuilder(column: $table.branch, builder: (column) => column);
+
+  GeneratedColumn<int> get prNumber =>
+      $composableBuilder(column: $table.prNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get sourcePath => $composableBuilder(
+    column: $table.sourcePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get sizeBytes =>
+      $composableBuilder(column: $table.sizeBytes, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> documentIssuesRefs<T extends Object>(
+    Expression<T> Function($$DocumentIssuesTableAnnotationComposer a) f,
+  ) {
+    final $$DocumentIssuesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.documentIssues,
+      getReferencedColumn: (t) => t.documentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DocumentIssuesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.documentIssues,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DocumentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DocumentsTable,
+          DocumentRow,
+          $$DocumentsTableFilterComposer,
+          $$DocumentsTableOrderingComposer,
+          $$DocumentsTableAnnotationComposer,
+          $$DocumentsTableCreateCompanionBuilder,
+          $$DocumentsTableUpdateCompanionBuilder,
+          (DocumentRow, $$DocumentsTableReferences),
+          DocumentRow,
+          PrefetchHooks Function({bool documentIssuesRefs})
+        > {
+  $$DocumentsTableTableManager(_$AppDatabase db, $DocumentsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DocumentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DocumentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DocumentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> repo = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String?> name = const Value.absent(),
+                Value<String> format = const Value.absent(),
+                Value<String?> agentId = const Value.absent(),
+                Value<String?> agentKind = const Value.absent(),
+                Value<String?> claudeSessionId = const Value.absent(),
+                Value<String?> worktreePath = const Value.absent(),
+                Value<String?> branch = const Value.absent(),
+                Value<int?> prNumber = const Value.absent(),
+                Value<String?> sourcePath = const Value.absent(),
+                Value<int> sizeBytes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DocumentsCompanion(
+                id: id,
+                repo: repo,
+                title: title,
+                name: name,
+                format: format,
+                agentId: agentId,
+                agentKind: agentKind,
+                claudeSessionId: claudeSessionId,
+                worktreePath: worktreePath,
+                branch: branch,
+                prNumber: prNumber,
+                sourcePath: sourcePath,
+                sizeBytes: sizeBytes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String repo,
+                required String title,
+                Value<String?> name = const Value.absent(),
+                required String format,
+                Value<String?> agentId = const Value.absent(),
+                Value<String?> agentKind = const Value.absent(),
+                Value<String?> claudeSessionId = const Value.absent(),
+                Value<String?> worktreePath = const Value.absent(),
+                Value<String?> branch = const Value.absent(),
+                Value<int?> prNumber = const Value.absent(),
+                Value<String?> sourcePath = const Value.absent(),
+                required int sizeBytes,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DocumentsCompanion.insert(
+                id: id,
+                repo: repo,
+                title: title,
+                name: name,
+                format: format,
+                agentId: agentId,
+                agentKind: agentKind,
+                claudeSessionId: claudeSessionId,
+                worktreePath: worktreePath,
+                branch: branch,
+                prNumber: prNumber,
+                sourcePath: sourcePath,
+                sizeBytes: sizeBytes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DocumentsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({documentIssuesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (documentIssuesRefs) db.documentIssues,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (documentIssuesRefs)
+                    await $_getPrefetchedData<
+                      DocumentRow,
+                      $DocumentsTable,
+                      DocumentIssueRow
+                    >(
+                      currentTable: table,
+                      referencedTable: $$DocumentsTableReferences
+                          ._documentIssuesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$DocumentsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).documentIssuesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.documentId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DocumentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DocumentsTable,
+      DocumentRow,
+      $$DocumentsTableFilterComposer,
+      $$DocumentsTableOrderingComposer,
+      $$DocumentsTableAnnotationComposer,
+      $$DocumentsTableCreateCompanionBuilder,
+      $$DocumentsTableUpdateCompanionBuilder,
+      (DocumentRow, $$DocumentsTableReferences),
+      DocumentRow,
+      PrefetchHooks Function({bool documentIssuesRefs})
+    >;
+typedef $$DocumentIssuesTableCreateCompanionBuilder =
+    DocumentIssuesCompanion Function({
+      required String documentId,
+      required String issueKey,
+      required int position,
+      Value<int> rowid,
+    });
+typedef $$DocumentIssuesTableUpdateCompanionBuilder =
+    DocumentIssuesCompanion Function({
+      Value<String> documentId,
+      Value<String> issueKey,
+      Value<int> position,
+      Value<int> rowid,
+    });
+
+final class $$DocumentIssuesTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $DocumentIssuesTable, DocumentIssueRow> {
+  $$DocumentIssuesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $DocumentsTable _documentIdTable(_$AppDatabase db) =>
+      db.documents.createAlias('document_issues__document_id__documents__id');
+
+  $$DocumentsTableProcessedTableManager get documentId {
+    final $_column = $_itemColumn<String>('document_id')!;
+
+    final manager = $$DocumentsTableTableManager(
+      $_db,
+      $_db.documents,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_documentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DocumentIssuesTableFilterComposer
+    extends Composer<_$AppDatabase, $DocumentIssuesTable> {
+  $$DocumentIssuesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get issueKey => $composableBuilder(
+    column: $table.issueKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DocumentsTableFilterComposer get documentId {
+    final $$DocumentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.documentId,
+      referencedTable: $db.documents,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DocumentsTableFilterComposer(
+            $db: $db,
+            $table: $db.documents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DocumentIssuesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DocumentIssuesTable> {
+  $$DocumentIssuesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get issueKey => $composableBuilder(
+    column: $table.issueKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DocumentsTableOrderingComposer get documentId {
+    final $$DocumentsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.documentId,
+      referencedTable: $db.documents,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DocumentsTableOrderingComposer(
+            $db: $db,
+            $table: $db.documents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DocumentIssuesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DocumentIssuesTable> {
+  $$DocumentIssuesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get issueKey =>
+      $composableBuilder(column: $table.issueKey, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  $$DocumentsTableAnnotationComposer get documentId {
+    final $$DocumentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.documentId,
+      referencedTable: $db.documents,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DocumentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.documents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DocumentIssuesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DocumentIssuesTable,
+          DocumentIssueRow,
+          $$DocumentIssuesTableFilterComposer,
+          $$DocumentIssuesTableOrderingComposer,
+          $$DocumentIssuesTableAnnotationComposer,
+          $$DocumentIssuesTableCreateCompanionBuilder,
+          $$DocumentIssuesTableUpdateCompanionBuilder,
+          (DocumentIssueRow, $$DocumentIssuesTableReferences),
+          DocumentIssueRow,
+          PrefetchHooks Function({bool documentId})
+        > {
+  $$DocumentIssuesTableTableManager(
+    _$AppDatabase db,
+    $DocumentIssuesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DocumentIssuesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DocumentIssuesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DocumentIssuesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> documentId = const Value.absent(),
+                Value<String> issueKey = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DocumentIssuesCompanion(
+                documentId: documentId,
+                issueKey: issueKey,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String documentId,
+                required String issueKey,
+                required int position,
+                Value<int> rowid = const Value.absent(),
+              }) => DocumentIssuesCompanion.insert(
+                documentId: documentId,
+                issueKey: issueKey,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DocumentIssuesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({documentId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (documentId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.documentId,
+                                referencedTable: $$DocumentIssuesTableReferences
+                                    ._documentIdTable(db),
+                                referencedColumn:
+                                    $$DocumentIssuesTableReferences
+                                        ._documentIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DocumentIssuesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DocumentIssuesTable,
+      DocumentIssueRow,
+      $$DocumentIssuesTableFilterComposer,
+      $$DocumentIssuesTableOrderingComposer,
+      $$DocumentIssuesTableAnnotationComposer,
+      $$DocumentIssuesTableCreateCompanionBuilder,
+      $$DocumentIssuesTableUpdateCompanionBuilder,
+      (DocumentIssueRow, $$DocumentIssuesTableReferences),
+      DocumentIssueRow,
+      PrefetchHooks Function({bool documentId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7991,4 +9943,8 @@ class $AppDatabaseManager {
       $$JiraIssueTagsTableTableManager(_db, _db.jiraIssueTags);
   $$UiStateTableTableManager get uiState =>
       $$UiStateTableTableManager(_db, _db.uiState);
+  $$DocumentsTableTableManager get documents =>
+      $$DocumentsTableTableManager(_db, _db.documents);
+  $$DocumentIssuesTableTableManager get documentIssues =>
+      $$DocumentIssuesTableTableManager(_db, _db.documentIssues);
 }

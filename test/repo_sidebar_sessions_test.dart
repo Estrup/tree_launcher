@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/gestures.dart';
@@ -8,6 +9,10 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
+import 'package:tree_launcher/features/documents/data/document_store.dart';
+import 'package:tree_launcher/features/documents/domain/session_document.dart';
+import 'package:tree_launcher/features/documents/presentation/controllers/documents_controller.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_badges.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
@@ -110,6 +115,7 @@ void main() {
   Future<void> pumpSidebar(
     WidgetTester tester, {
     AgentsController? agents,
+    DocumentsController? documents,
   }) async {
     await tester.pumpWidget(
       MultiProvider(
@@ -119,6 +125,10 @@ void main() {
           ChangeNotifierProvider<TerminalController>.value(value: terminal),
           if (agents != null)
             ChangeNotifierProvider<AgentsController>.value(value: agents),
+          if (documents != null)
+            ChangeNotifierProvider<DocumentsController>.value(
+              value: documents,
+            ),
           ChangeNotifierProvider<JiraTitlesController>(
             create: (_) => _FakeJiraTitles(),
           ),
@@ -215,6 +225,48 @@ void main() {
       [for (final m in workspace.metadata.sessionsFor(repoPath)) m.path],
       [withIssue],
     );
+  });
+
+  testWidgets("a session counts its issue's documents and lists them", (
+    tester,
+  ) async {
+    late DocumentsController documents;
+    await tester.runAsync(() async {
+      documents = DocumentsController(
+        store: DocumentStore(
+          testDatabase(),
+          directory: () async => '${tempDir.path}/documents',
+        ),
+      );
+      await documents.save(
+        DocumentDetails(
+          repoName: workspace.selectedRepo!.name,
+          title: 'Afklaring: udlån',
+          issueKeys: ['AU2-5788'],
+        ),
+        DocumentFormat.markdown,
+        utf8.encode('# Afklaring'),
+      );
+    });
+    addTearDown(documents.dispose);
+    await pumpSidebar(tester, documents: documents);
+
+    // Under the session with the issue, not under the one without.
+    expect(find.byType(DocumentsBadge), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(DocumentsBadge),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.text('udlaan-sker-til-en-kontakt-au2-5788'),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Afklaring: udlån'), findsOneWidget);
   });
 
   testWidgets("a build agent stands for its worktree's shortcut while listed", (

@@ -3,15 +3,17 @@
 A small HTTP API on loopback that local agents (Claude Code sessions and the
 skills they run) use to read and change what Tree Launcher knows: the activity
 timeline, worktrees and the Claude sessions in them, Jira issues with the
-user's local tags, and agent runs.
+user's local tags, agent runs, and the documents sessions save about their
+work.
 Everything goes through the running app, so a change made here shows in the
 app at once, and the other way round.
 
 - **Base URL:** `http://127.0.0.1:8765`. The port is set in Settings → Agent
   API. A debug build started with `--dart-define=AGENT_API_PORT=8766` uses
   that port instead and doesn't save it.
-- **Agents started from Tree Launcher** get `TREE_LAUNCHER_URL` (the base URL)
-  and `TREE_LAUNCHER_AGENT_ID` (their run's id) in their environment.
+- **Claude sessions started in the built-in terminal** get `TREE_LAUNCHER_URL`
+  (the base URL) in their environment. Agents also get
+  `TREE_LAUNCHER_AGENT_ID` (their run's id).
 - **Check it's up:** `curl http://127.0.0.1:8765/health`.
 - **Code:** `lib/features/agent_api/data/`. `agent_api_server.dart` is the
   server; each area's handlers are in `routes/`.
@@ -30,6 +32,9 @@ app at once, and the other way round.
 | POST | `/v1/agents` | Register an agent run |
 | GET | `/v1/agents/<id>` | One agent run with its latest timeline events |
 | POST | `/v1/agents/<id>/status` | Report an agent run's progress |
+| GET | `/v1/documents` | Saved documents, filtered |
+| POST | `/v1/documents` | Save a document: Markdown, HTML or PDF |
+| GET | `/v1/documents/<id>` | One document, with its text |
 
 ## Conventions
 
@@ -63,11 +68,12 @@ that header pass both checks.
 | Status | When |
 |---|---|
 | 200 | Done |
-| 201 | Created: a post, a worktree, an agent run, a Claude session |
+| 201 | Created: a post, a worktree, an agent run, a Claude session, a document |
 | 400 | The request is wrong: a missing or invalid field, an unknown filter, a field the route doesn't take |
 | 403 | Not a local client (see above) |
-| 404 | No such repo, worktree, issue, fixVersion or agent run |
+| 404 | No such repo, worktree, issue, fixVersion, agent run or document |
 | 409 | The worktree, its folder or its branch already exists |
+| 413 | A document over its size limit |
 | 415 | A POST or PUT that isn't JSON |
 | 500 | The app failed unexpectedly; `error` says what failed and why |
 | 502 | Jira failed (Jira's own 400s, e.g. an unknown status, come back as 400) |
@@ -487,6 +493,84 @@ How a report changes the run:
 | `startedAt`, `updatedAt`, `finishedAt` | When it started, last changed, and finished (null while unfinished). |
 | `archived` | Whether the user archived it. Archived runs older than 30 days are dropped. |
 
+## Documents
+
+A **document** is what a session writes about its work: a result, a
+clarification, a review, a verification report. The app copies it into its
+data directory (`documents/`), so it outlives the worktree, and shows it in
+its viewer: on the repo's Documents page, on the agent's card, on the
+worktree row and in the Jira issue dialog. The tree-launcher skill's
+`scripts/agent.py doc` wraps saving one.
+
+**One self-contained file.** A document is Markdown, HTML or PDF, stored as
+the one file. Nothing it refers to is copied or downloaded, so HTML inlines
+its images (`data:` URIs), CSS (`<style>`) and scripts (`<script>`). A
+relative reference won't show in the viewer, and a web reference only
+loads while online. Saving still succeeds; the response's `warnings` name
+each such reference.
+
+### `POST /v1/documents`
+
+Saves a document.
+
+| Field | |
+|---|---|
+| `agentId` | Optional. The agent run it came from (`$TREE_LAUNCHER_AGENT_ID`). Its repo, worktree, branch, issues, PR and Claude session become the document's, unless given here, and its timeline gets a *Document saved* line. |
+| `repo` | Required without `agentId`. With `agentId`, must be the run's repo if given. |
+| `title` | Required. |
+| `name` | Optional. Needs `agentId`. A stable name within the run, e.g. `result`: saving the same name in the same run replaces that document. |
+| `content` | The document as text (Markdown or HTML), up to 5 MB. Exactly one of `content` and `path`. |
+| `path` | An absolute path to a `.md`, `.markdown`, `.html`, `.htm` or `.pdf` file to copy, up to 50 MB. A PDF can only be given this way. |
+| `format` | `markdown` or `html`. Required with `content`; with `path` it comes from the extension. |
+| `worktreePath` | Optional. The worktree it is about. Without `issueKeys` (and no run issues), the worktree's recorded Jira issue is used. |
+| `issueKeys` | Optional. Jira keys, as a list or a comma-separated string. |
+| `prNumber` | Optional. A number. |
+| `claudeSessionId` | Optional. The Claude Code session. |
+| `show` | Optional boolean. `true` opens the document in the app at once; otherwise a notice offers to. |
+
+**201** returns the new document (see *A document*) with `warnings` and
+`"replaced": false`. **200** with `"replaced": true` when `name` replaced
+the run's document of that name.
+
+**Errors:**
+- 400: a missing `title` or `repo`; neither or both of `content` and
+  `path`; a relative `path`; a file that is missing, unreadable, not a
+  document by its extension, a `.pdf` that isn't a PDF, or text that isn't
+  UTF-8; a `format` that doesn't match the file, or `pdf` with `content`;
+  `name` without `agentId`; a run in another repo; an invalid key; or a
+  field the route doesn't take;
+- 404: an unknown `agentId` or repo;
+- 413: `content` over 5 MB or a file over 50 MB.
+
+### `GET /v1/documents?repo=<name>&agentId=<id>&issueKey=<key>&worktree=<path or name>&kind=<kind>&format=<format>`
+
+The documents matching every given filter, most recently updated first,
+without their text. `worktree` is a worktree's path or folder name; `kind`
+is the agent kind of the run they came from. Returns
+`{"count": 1, "documents": [<document>, …]}`. **400** for an unknown repo,
+kind or format.
+
+### `GET /v1/documents/<id>`
+
+The document, with `content`: its text, for Markdown and HTML. A PDF has
+no `content`; read it at `filePath`. **404** for an unknown id.
+
+There is no route to delete a document; that is done in the app.
+
+### A document
+
+| Field | |
+|---|---|
+| `id` | `doc_` and 8 characters. |
+| `repo`, `title`, `name` | Where it belongs, its title, and its stable name within its run (or null). |
+| `format` | `markdown`, `html` or `pdf`. |
+| `agentId`, `agentKind` | The run it came from and its kind, if any. |
+| `issueKeys`, `worktreePath`, `branch`, `prNumber`, `claudeSessionId` | What it is about. |
+| `sourcePath` | The file it was copied from, if any. |
+| `filePath` | The stored file. |
+| `sizeBytes` | Its size. |
+| `createdAt`, `updatedAt` | When it was first saved, and last replaced. |
+
 ## Examples
 
 ```bash
@@ -523,6 +607,12 @@ curl -s -X PUT "$TL/v1/jira/issues/AU2-5928/tags" \
 curl -s -X POST "$TL/v1/agents/$TREE_LAUNCHER_AGENT_ID/status" \
   -H 'Content-Type: application/json' \
   -d '{"state": "waiting", "stage": "spec", "message": "Spec ready: 5 AC, approve?"}'
+
+# An agent saves its result, replacing it if it saves again
+curl -s -X POST "$TL/v1/documents" -H 'Content-Type: application/json' \
+  -d '{"agentId": "'"$TREE_LAUNCHER_AGENT_ID"'", "name": "result",
+       "title": "Result: Vipps callback returns 500",
+       "path": "'"$PWD"'/.factory/result.html"}'
 ```
 
 ## Changing the API

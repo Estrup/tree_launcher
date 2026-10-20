@@ -28,6 +28,8 @@ part 'app_database.g.dart';
     JiraTags,
     JiraIssueTags,
     UiState,
+    Documents,
+    DocumentIssues,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -59,7 +61,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   /// Each version's changes, applied in order to a database from before it.
   /// Dump the schema after adding one (see CLAUDE.md, Storage); the
@@ -78,6 +80,14 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(jiraTags);
         await m.createTable(jiraIssueTags);
         await m.createTable(uiState);
+      }
+      if (from < 4) {
+        // Documents saved by sessions.
+        await m.createTable(documents);
+        await m.createTable(documentIssues);
+        await m.createIndex(documentsRepo);
+        await m.createIndex(documentsAgent);
+        await m.createIndex(documentIssuesKey);
       }
     },
   );

@@ -55,6 +55,7 @@ the schema dumps in `drift_schemas/`.
 | `github_issues` | The Issues tab and issue dialog | `GithubIssuesController`, `GithubIssuesApiService`, `GithubIssueCache` |
 | `github_prs` | The PRs tab, review-request notices, the GitHub connection and token | `GithubPrsController`, `GithubApiService`, `githubRequest`, `GithubTokenStore` (Keychain) |
 | `settings` | The app settings and the Settings dialog | `SettingsController` (also the `JiraTagEditor` and `AppSettingsSource`), `AppSettingsStore` |
+| `documents` | The documents sessions save about their work (Markdown, HTML, PDF), the Documents page and the WKWebView viewer | `DocumentsController` (the `DocumentLibrary`), `DocumentStore`, `SessionDocument`, `DocumentView` |
 | `agent_api` | The loopback HTTP API | `AgentApiServer`, `routes/` (see [agent-api.md](agent-api.md)) |
 
 ## The window
@@ -70,6 +71,7 @@ the schema dumps in `drift_schemas/`.
   - PRs and Issues, when GitHub is set up;
   - Jira, when the repo has a project key;
   - one tab per agent kind that has prompts or runs;
+  - Documents, when the repo has saved documents;
   - Activity.
 
   `repo_pages.dart` decides which pages a repo has, and under which page each
@@ -121,7 +123,8 @@ disposes the controllers and closes the database.
   agent API both go through them. The API sees them through small interfaces
   in the features' `domain/`: `RepoCatalog`, `WorktreeCreator`,
   `AppSettingsSource`, `JiraTagEditor`, `AgentRegistry`,
-  `ClaudeSessionStarter`, `ManualPostWriter`. So an API write shows in the UI at once.
+  `ClaudeSessionStarter`, `ManualPostWriter`, `DocumentLibrary`,
+  `DocumentSaver`. So an API write shows in the UI at once.
 - **Flows that span features live in `app/use_cases/`.**
   - `StartClaudeSession` is the flow behind the Jira, PR and issue buttons.
   - `StartClaudeInWorktree` is the same through the agent API
@@ -129,6 +132,8 @@ disposes the controllers and closes the database.
     calls `StartClaudeSession.launch`, which doesn't remember the choices.
   - `AgentLauncher` and `ClaudeSessionLauncher` start, resume and stop
     sessions in the terminal.
+  - `SaveDocument` saves a document sent through the agent API
+    (`POST /v1/documents`), tied to its agent run or worktree.
   - `AgentApiControl` runs the API on the right port.
 - **The Jira and GitHub issue controllers extend `IssueListController`**,
   which holds the load cycle (a superseded response is dropped), search and
@@ -139,7 +144,8 @@ disposes the controllers and closes the database.
 | What | Where |
 |---|---|
 | Preferences, and repos with their commands, prompts, GitHub and Jira settings | `config.json`, through `ConfigFile` (one lock, atomic writes, no write when nothing changed), split by `AppSettingsStore` and `RepoConfigStore` |
-| Agent runs and events, worktree events, manual posts, issue caches, the Claude transcript index, worktree metadata, local tags, remembered choices | `tree_launcher.db` (SQLite through drift, WAL, on a background isolate) |
+| Agent runs and events, worktree events, manual posts, issue caches, the Claude transcript index, worktree metadata, local tags, remembered choices, documents' details | `tree_launcher.db` (SQLite through drift, WAL, on a background isolate) |
+| Saved documents' files | `documents/<id>.md`, `.html` or `.pdf` in the data directory; rendered Markdown is cached in `documents/.view/` |
 | GitHub tokens | The login Keychain (`GithubTokenStore`) |
 | The Jira token | `~/.config/jira-pat.txt` |
 | Claude Code transcripts | `~/.claude/projects`, read only |

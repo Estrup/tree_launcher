@@ -6,6 +6,7 @@ import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/selection_controls.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
+import 'package:tree_launcher/features/documents/presentation/widgets/document_badges.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
@@ -609,6 +610,7 @@ class _IssueRowState extends State<_IssueRow> {
                         ),
                       ),
                     ),
+                    IssueDocumentsBadge(issueKey: issue.key),
                     if (widget.allTags.isNotEmpty)
                       // The summary keeps at least 40% of the cell.
                       ConstrainedBox(

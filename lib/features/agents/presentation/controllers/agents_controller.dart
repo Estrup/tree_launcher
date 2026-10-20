@@ -224,6 +224,19 @@ class AgentsController extends ChangeNotifier implements AgentRegistry {
     return result.run;
   }
 
+  @override
+  Future<void> note(
+    String id,
+    String message, {
+    AgentEventLevel level = AgentEventLevel.info,
+  }) async {
+    await load();
+    if (!_runs.containsKey(id)) throw AgentNotFoundException(id);
+    _addEvent(
+      AgentEvent(agentId: id, at: _clock(), message: message, level: level),
+    );
+  }
+
   /// Creates the run for an agent the app is about to launch, so its card
   /// shows at once and the agent can report under its id.
   Future<AgentRun> createForLaunch({

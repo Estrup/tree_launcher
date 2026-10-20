@@ -46,6 +46,9 @@ dependencies:
   # allows) can only dump schemas against drift 2.34.0.
   drift: 2.34.0
   sqlite3: ^3.5.2
+  # The document viewer (WKWebView) and its Markdown rendering.
+  webview_flutter: ^4.13.1
+  markdown: ^7.3.0
 
 dependency_overrides:
   xterm:

@@ -13,6 +13,7 @@ const worktreesPageKey = 'worktrees';
 const prsPageKey = 'prs';
 const githubIssuesPageKey = 'issues';
 const jiraPageKey = 'jira';
+const documentsPageKey = 'documents';
 const activityPageKey = 'activity';
 
 String agentPageKey(AgentKind kind) => 'agents:${kind.name}';
@@ -42,8 +43,13 @@ class RepoPage {
 }
 
 /// The pages [repo] has: PRs, Issues and Jira when configured, an agent page
-/// per kind it has prompts or runs of, and worktrees and activity always.
-List<RepoPage> repoPagesFor(RepoConfig? repo, AgentsController? agents) => [
+/// per kind it has prompts or runs of, Documents when it [hasDocuments], and
+/// worktrees and activity always.
+List<RepoPage> repoPagesFor(
+  RepoConfig? repo,
+  AgentsController? agents, {
+  bool hasDocuments = false,
+}) => [
   const RepoPage(
     key: worktreesPageKey,
     label: 'Worktrees',
@@ -77,6 +83,12 @@ List<RepoPage> repoPagesFor(RepoConfig? repo, AgentsController? agents) => [
           agentKind: kind,
           badge: agents.needsYouCount(repo.name, kind),
         ),
+  if (hasDocuments)
+    const RepoPage(
+      key: documentsPageKey,
+      label: 'Documents',
+      icon: Icons.article_outlined,
+    ),
   const RepoPage(
     key: activityPageKey,
     label: 'Activity',
