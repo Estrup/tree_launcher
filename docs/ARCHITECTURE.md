@@ -49,6 +49,7 @@ the schema dumps in `drift_schemas/`.
 |---|---|---|
 | `workspace` | Repos and their settings, worktrees and their metadata, the sidebar, the worktree list and its buttons, the New Worktree / Start Claude dialog | `WorkspaceController` (with the repo registry, selection, preferences, worktree list and worktree metadata controllers), `GitService`, `RepoConfigStore`, `WorktreeMetadataStore` |
 | `terminal` | The built-in terminal (xterm + a PTY), its sessions, Claude CLI commands, handing a session over to Claude Desktop | `TerminalController`, `TerminalSession`, `ClaudeDesktopHandoff`, `buildClaudeCliCommand` |
+| `session_panel` | The resizable panel beside a Claude session in the built-in terminal: its worktree's Info (branch, base, upstream, changes, issue, PR, agent run, documents), Files and open file tabs | `SessionPanelController` (width, shown state, tabs and git status per worktree), `SessionPanelSplit`, `SessionPanel`, `SessionInfoTab`, `GitService.worktreeStatus` |
 | `agents` | Agent runs (refine, build, verify, review, docs), their tabs and cards, the saved prompts that start them | `AgentsController` (the `AgentRegistry`), `AgentRunStore`, `AgentRun`, `ClaudePrompt` |
 | `activity` | The activity timeline: worktree events, the days Claude was active (from its transcripts), manual posts | `ActivityController`, `ActivityService`, `WorktreeEventStore`, `ManualPostStore`, `ClaudeSessionActivity` |
 | `jira` | The Jira tab, the issue dialog, issue titles, local tags | `JiraIssuesController`, `JiraTitlesController`, `JiraApiService`, `JiraIssueCache`, `JiraTagStore` |
@@ -76,7 +77,10 @@ the schema dumps in `drift_schemas/`.
 
   `repo_pages.dart` decides which pages a repo has, and under which page each
   session goes.
-- **The terminal panel**.
+- **The terminal panel**. Beside a Claude session it shows the session
+  panel (`session_panel`), resized from the handle between them. Dragging
+  moves a guide line and the width changes on release, since every
+  terminal resize makes the Claude CLI redraw.
 - **Settings:** the repo's own settings (`RepoSettingsView`) replace the
   pages. The app's settings open in a dialog (`SettingsDialog`).
 
@@ -104,7 +108,8 @@ disposes the controllers and closes the database.
 - **`AppDependencies` is the composition root.** It builds:
   - the stores and the database;
   - the services: git, Jira, GitHub, the launcher, Claude activity;
-  - the core controllers: workspace, settings, terminal, agents, activity;
+  - the core controllers: workspace, settings, terminal, the session
+    panel, agents, activity;
   - the use cases;
   - the agent API and `AgentApiControl`.
 
@@ -199,6 +204,9 @@ What doesn't follow the conventions yet:
 - **One very large dialog.** `add_worktree_dialog.dart` is still one large
   form (about 1,200 lines). Its parts share its state, so splitting it
   further needs a form controller first.
+- **The session panel's PR row only covers the selected repo.** The PR
+  list is the selected repo's, so a Claude session of another repo shows no
+  PR there.
 - **Formatting.** Many files aren't `dart format`-clean; see CLAUDE.md.
 
 [structural-review.md](structural-review.md) is the review from 2026-10-19

@@ -28,6 +28,7 @@ class TreeLauncherApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: dependencies.workspace),
         ChangeNotifierProvider.value(value: dependencies.settings),
         ChangeNotifierProvider.value(value: dependencies.terminal),
+        ChangeNotifierProvider.value(value: dependencies.sessionPanel),
         ChangeNotifierProvider.value(value: dependencies.agents),
         ChangeNotifierProvider.value(value: dependencies.documents),
         ChangeNotifierProvider.value(value: dependencies.activity),

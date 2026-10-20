@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
+import 'package:tree_launcher/features/workspace/domain/worktree_status.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 
 class GitService {
@@ -327,6 +328,74 @@ class GitService {
       throw Exception(mergeRes.stderr.toString().trim());
     }
     return PullResult(updated: true, commits: behind, branch: branch);
+  }
+
+  /// Where the checkout at [worktreePath] stands: branch, HEAD, upstream,
+  /// changed files and, given a [baseBranch], how far it is ahead of and
+  /// behind it. The base is compared as `origin/<base>` when that exists,
+  /// else as the local branch. Throws when git status fails.
+  Future<WorktreeStatus> worktreeStatus(
+    String worktreePath, {
+    String? baseBranch,
+  }) async {
+    final statusRes = await _runGit([
+      'status',
+      '--porcelain=v2',
+      '--branch',
+    ], workingDirectory: worktreePath);
+    if (statusRes.exitCode != 0) {
+      throw Exception(statusRes.stderr.toString().trim());
+    }
+    final status = WorktreeStatus.parse(statusRes.stdout as String);
+    if (status.commit == null) return status;
+
+    final subjectRes = await _runGit([
+      'log',
+      '-1',
+      '--format=%s',
+    ], workingDirectory: worktreePath);
+    final subject = subjectRes.exitCode == 0
+        ? (subjectRes.stdout as String).trim()
+        : null;
+
+    final base = baseBranch == null || baseBranch.trim().isEmpty
+        ? null
+        : await _resolveBase(worktreePath, baseBranch.trim());
+    if (base == null) return status.withDetails(subject: subject);
+
+    // `<base>...HEAD` counts "<behind>\t<ahead>".
+    final countRes = await _runGit([
+      'rev-list',
+      '--left-right',
+      '--count',
+      '$base...HEAD',
+    ], workingDirectory: worktreePath);
+    if (countRes.exitCode != 0) return status.withDetails(subject: subject);
+    final parts = (countRes.stdout as String).trim().split(RegExp(r'\s+'));
+    return status.withDetails(
+      subject: subject,
+      base: base,
+      behindBase: int.tryParse(parts.first) ?? 0,
+      aheadOfBase: parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
+    );
+  }
+
+  /// The ref to compare [baseBranch] as: `origin/<base>` when it exists,
+  /// else [baseBranch] itself when it exists, else null.
+  Future<String?> _resolveBase(String worktreePath, String baseBranch) async {
+    for (final ref in [
+      if (!baseBranch.startsWith('origin/')) 'origin/$baseBranch',
+      baseBranch,
+    ]) {
+      final res = await _runGit([
+        'rev-parse',
+        '--verify',
+        '--quiet',
+        '$ref^{commit}',
+      ], workingDirectory: worktreePath);
+      if (res.exitCode == 0) return ref;
+    }
+    return null;
   }
 
   /// Removes a worktree from disk and git.

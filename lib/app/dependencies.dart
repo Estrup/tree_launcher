@@ -37,6 +37,7 @@ import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/data/jira_tag_store.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
+import 'package:tree_launcher/features/session_panel/presentation/controllers/session_panel_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
@@ -105,6 +106,10 @@ class AppDependencies {
     );
     settings = SettingsController(store: this.appSettingsStore);
     terminal = TerminalController();
+    sessionPanel = SessionPanelController(
+      git: this.gitService,
+      uiState: uiStateStore,
+    );
     agents = AgentsController(store: this.agentRunStore);
     documents = DocumentsController(store: this.documentStore);
     activityService = ActivityService(
@@ -223,6 +228,9 @@ class AppDependencies {
   /// The built-in terminal's sessions.
   late final TerminalController terminal;
 
+  /// The panel beside a Claude session in the built-in terminal.
+  late final SessionPanelController sessionPanel;
+
   /// Agent runs and their timelines.
   late final AgentsController agents;
 
@@ -303,6 +311,7 @@ class AppDependencies {
       ),
     );
     unawaited(documents.load());
+    unawaited(sessionPanel.load());
     try {
       await Future.wait([settings.loadSettings(), agents.load()]);
     } catch (e) {
@@ -341,6 +350,7 @@ class AppDependencies {
     agents.dispose();
     documents.dispose();
     terminal.dispose();
+    sessionPanel.dispose();
     activity.dispose();
     workspace.dispose();
     settings.dispose();

@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/terminal_theme.dart';
+import 'package:tree_launcher/features/session_panel/presentation/controllers/session_panel_controller.dart';
+import 'package:tree_launcher/features/session_panel/presentation/widgets/session_panel.dart';
+import 'package:tree_launcher/features/session_panel/presentation/widgets/session_panel_split.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart'
     as terminal;
@@ -11,8 +14,9 @@ import 'terminal_context_menu.dart';
 import 'terminal_header_actions.dart';
 import 'terminal_key_handler.dart';
 
-/// The built-in terminal: a header bar over the active session. Sessions are
-/// switched from the sidebar and the worktree rows, not from tabs here.
+/// The built-in terminal: a header bar over the active session, with the
+/// session panel at its right for a Claude session. Sessions are switched
+/// from the sidebar and the worktree rows, not from tabs here.
 class TerminalFullView extends StatelessWidget {
   const TerminalFullView({super.key});
 
@@ -21,6 +25,8 @@ class TerminalFullView extends StatelessWidget {
     final tp = context.watch<terminal.TerminalController>();
     if (!tp.isVisible || tp.sessions.isEmpty) return const SizedBox.shrink();
     final active = tp.activeSession;
+    final panel = context.watch<SessionPanelController>();
+    final showPanel = active != null && active.isClaude && panel.isOpen;
 
     return Container(
       color: AppColors.base,
@@ -30,11 +36,26 @@ class TerminalFullView extends StatelessWidget {
             title: active?.title,
             actions: active == null
                 ? null
-                : TerminalHeaderActions(session: active),
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TerminalHeaderActions(session: active),
+                      if (active.isClaude) ...[
+                        const SizedBox(width: 6),
+                        _PanelToggle(
+                          open: panel.isOpen,
+                          onPressed: panel.toggle,
+                        ),
+                      ],
+                    ],
+                  ),
           ),
           Expanded(
             child: active != null
-                ? _TerminalBody(session: active)
+                ? SessionPanelSplit(
+                    terminal: _TerminalBody(session: active),
+                    panel: showPanel ? SessionPanel(session: active) : null,
+                  )
                 : const SizedBox.shrink(),
           ),
         ],
@@ -78,6 +99,39 @@ class _HeaderBar extends StatelessWidget {
           ),
           if (actions != null) ...[const SizedBox(width: 12), actions!],
         ],
+      ),
+    );
+  }
+}
+
+/// Shows or hides the panel beside Claude sessions.
+class _PanelToggle extends StatelessWidget {
+  const _PanelToggle({required this.open, required this.onPressed});
+
+  final bool open;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 28,
+      height: 28,
+      child: IconButton(
+        tooltip: open ? 'Hide the side panel' : 'Show the side panel',
+        padding: EdgeInsets.zero,
+        iconSize: 16,
+        style: IconButton.styleFrom(
+          backgroundColor: open ? AppColors.surface2 : Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(7),
+            side: BorderSide(color: AppColors.border),
+          ),
+        ),
+        onPressed: onPressed,
+        icon: Icon(
+          Icons.view_sidebar_outlined,
+          color: open ? AppColors.textPrimary : AppColors.textMuted,
+        ),
       ),
     );
   }
