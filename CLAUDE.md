@@ -154,15 +154,15 @@ it, or a section has no route.
   - It is loopback-only, and refuses a foreign `Host` (403) and a non-JSON
     POST/PUT (415).
   - Each area's handlers are in `agent_api/data/routes/` (activity,
-    worktrees, jira, agents).
+    worktrees, Claude sessions, jira, agents).
   - The shared request helpers are in `api_http.dart`: `readJsonObject`,
-    `stringField`, `missingFields`, `unsupportedFields`, `boolQuery`,
-    `serverError`.
+    `stringField`, `intField`, `missingFields`, `unsupportedFields`,
+    `boolQuery`, `serverError`.
   - Routes reject fields they don't take.
 - **It is built and started by `AppDependencies`.** It reaches the app's live
   controllers through small domain interfaces (`RepoCatalog`,
   `WorktreeCreator`, `AppSettingsSource`, `JiraTagEditor`, `AgentRegistry`,
-  `ManualPostWriter`), never the saved files, so API writes show in the UI at
+  `ClaudeSessionStarter`, `ManualPostWriter`), never the saved files, so API writes show in the UI at
   once.
 - **Agents** (`lib/features/agents/`): an agent run is a Claude session of
   one kind (refine/build/verify/review/docs).

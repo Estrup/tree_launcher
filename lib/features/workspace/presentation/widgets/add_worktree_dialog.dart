@@ -475,30 +475,27 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     String? baseBranch,
   }) {
     final repo = context.read<WorkspaceController>().selectedRepo;
-    switch (_promptKey) {
-      case _contextPromptKey:
-        return widget.contextPrompt ??
-            claudeContextPromptFor(issue: issue, base: baseBranch);
-      case _kickoffPromptKey:
-        final existing = _existing;
-        return existing == null ? null : kickoffPromptLaunchPrompt(existing);
-      case _noPromptKey:
-        return null;
-    }
-    final index = int.tryParse(_promptKey.substring(_savedPromptPrefix.length));
-    final prompts = repo?.claudePrompts ?? const [];
-    if (index == null || index >= prompts.length) return null;
+    final saved = _selectedSavedPrompt;
+    final ClaudePromptChoice choice = switch (_promptKey) {
+      _contextPromptKey => ContextClaudePrompt(widget.contextPrompt),
+      _kickoffPromptKey => const KickoffClaudePrompt(),
+      _ when saved != null => SavedClaudePrompt(saved),
+      _ => const NoClaudePrompt(),
+    };
     // A new branch has no PR yet; an existing one may.
     final branch =
         _existing?.branch ?? (_createNewBranch ? null : _selectedBranch);
-    return resolveClaudePrompt(
-      prompts[index],
+    return firstClaudeMessage(
+      choice,
       issue: issue,
       baseBranch: baseBranch,
       worktreeName: p.basename(worktreePath),
       worktreePath: worktreePath,
       repoName: repo?.name,
-      prNumber: widget.prNumber ?? openPrNumberForBranch(context, branch),
+      prNumber: saved == null
+          ? null
+          : widget.prNumber ?? openPrNumberForBranch(context, branch),
+      kickoffPromptPath: _existing?.kickoffPromptPath,
     );
   }
 

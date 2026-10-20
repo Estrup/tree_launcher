@@ -16,6 +16,7 @@ import 'package:tree_launcher/features/agents/domain/agent_event.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
+import 'package:tree_launcher/features/agents/domain/claude_session_starter.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
@@ -187,6 +188,38 @@ class _FakeWorktreeCreator implements WorktreeCreator {
   }
 }
 
+/// Records the most recent request and answers as the app would, or throws
+/// [failWith] when set.
+class _FakeClaudeSessionStarter implements ClaudeSessionStarter {
+  ClaudeSessionRequest? lastRequest;
+  Exception? failWith;
+  AgentRun? agent;
+
+  @override
+  Future<StartedClaudeSession> start(ClaudeSessionRequest request) async {
+    lastRequest = request;
+    if (failWith != null) throw failWith!;
+    final name = request.newWorktree?.worktreeName ?? request.existingWorktree!;
+    return StartedClaudeSession(
+      repoName: request.repoName,
+      worktree: StartedWorktree(
+        name: name,
+        path: '/repos/$name',
+        branch: request.newWorktree?.newBranch ?? 'sen/$name',
+        baseBranch: request.newWorktree?.baseBranch,
+        issueKey: request.issueKey,
+        created: request.newWorktree != null,
+      ),
+      title: 'Claude: $name',
+      promptId: request.prompt,
+      prompt: request.promptText,
+      model: request.model,
+      effort: request.effort,
+      agent: agent,
+    );
+  }
+}
+
 /// Lists one worktree for the repo at `/repos/au2`; fails for any other.
 class _FakeWorktreeGit extends GitService {
   @override
@@ -231,6 +264,7 @@ AgentApiServer _server(
   WorktreeCreator? worktreeCreator,
   JiraTagEditor? jiraTagEditor,
   AgentRegistry? agentRegistry,
+  ClaudeSessionStarter? claudeSessions,
   GitService? gitService,
   ManualPostStore? manualPostStore,
   ActivityController? activity,
@@ -252,6 +286,7 @@ AgentApiServer _server(
     worktreeCreator: worktreeCreator ?? _FakeWorktreeCreator(),
     jiraTagEditor: jiraTagEditor ?? _FakeTagEditor(),
     agentRegistry: agentRegistry ?? _NoAgents(),
+    claudeSessions: claudeSessions ?? _FakeClaudeSessionStarter(),
     activity: service,
     manualPosts: writer,
     gitService: gitService ?? GitService(),
@@ -264,16 +299,19 @@ void main() {
   late Directory tempHome;
   late AgentApiServer server;
   late _FakeWorktreeCreator creator;
+  late _FakeClaudeSessionStarter starter;
 
   setUp(() async {
     db = testDatabase();
     tempHome = await Directory.systemTemp.createTemp('agent_api_home');
     creator = _FakeWorktreeCreator();
+    starter = _FakeClaudeSessionStarter();
     server = _server(
       db,
       tempHome,
       settings: AppSettings(defaultBranchPrefix: 'feature'),
       worktreeCreator: creator,
+      claudeSessions: starter,
     );
     // Port 0 → OS picks a free loopback port.
     await server.start(port: 0);
@@ -577,6 +615,226 @@ void main() {
       expect(status, 201);
       expect(body['worktreeName'], 'my-feature');
       expect(body['branch'], 'feature/my-feature');
+    });
+  });
+
+  group('POST /v1/claude/sessions', () {
+    Map<String, dynamic> newWorktree() => {
+      'repo': 'demo',
+      'issueKey': 'AU2-5407',
+      'title': 'Vipps Mobilepay callback http 500',
+      'baseBranch': 'develop',
+      'prompt': 'Factory: Refine',
+      'model': 'opus',
+      'effort': 'medium',
+    };
+
+    test('starts in a new worktree named after the issue', () async {
+      final (status, body) = await post('/v1/claude/sessions', newWorktree());
+
+      expect(status, 201);
+      final request = starter.lastRequest!;
+      expect(request.repoName, 'demo');
+      expect(request.existingWorktree, isNull);
+      expect(
+        request.newWorktree!.worktreeName,
+        'vipps-mobilepay-callback-http-500-au2-5407',
+      );
+      // The branch defaults to the worktree name, with the prefix.
+      expect(
+        request.newWorktree!.newBranch,
+        'feature/vipps-mobilepay-callback-http-500-au2-5407',
+      );
+      expect(request.newWorktree!.baseBranch, 'develop');
+      expect(request.issueKey, 'AU2-5407');
+      expect(request.title, 'Vipps Mobilepay callback http 500');
+      expect(request.prompt, 'Factory: Refine');
+      expect(request.model, 'opus');
+      expect(request.effort, 'medium');
+      expect(request.show, isFalse);
+
+      expect(body['repo'], 'demo');
+      expect(body['worktree'], {
+        'name': 'vipps-mobilepay-callback-http-500-au2-5407',
+        'path': '/repos/vipps-mobilepay-callback-http-500-au2-5407',
+        'branch': 'feature/vipps-mobilepay-callback-http-500-au2-5407',
+        'baseBranch': 'develop',
+        'issueKey': 'AU2-5407',
+        'created': true,
+        'kickoffPromptPath': null,
+      });
+      expect(body['session'], {
+        'title': 'Claude: vipps-mobilepay-callback-http-500-au2-5407',
+        'promptId': 'Factory: Refine',
+        'prompt': null,
+        'model': 'opus',
+        'effort': 'medium',
+      });
+      expect(body['agent'], isNull);
+    });
+
+    test('returns the agent run when one was started', () async {
+      final now = DateTime(2026, 10, 20, 9);
+      starter.agent = AgentRun(
+        id: 'ag_abcdefgh',
+        kind: AgentKind.refine,
+        repoName: 'demo',
+        startedAt: now,
+        updatedAt: now,
+      );
+      final (status, body) = await post('/v1/claude/sessions', newWorktree());
+
+      expect(status, 201);
+      expect(body['agent']['id'], 'ag_abcdefgh');
+      expect(body['agent']['kind'], 'refine');
+    });
+
+    test('takes explicit names, normalised, and the other fields', () async {
+      final (status, _) = await post('/v1/claude/sessions', {
+        'repo': 'demo',
+        'worktreeName': 'My Fix',
+        'branch': 'My Branch',
+        'baseBranch': 'main',
+        'kickoffPrompt': '# Plan',
+        'promptText': 'Fix {issue}',
+        'prNumber': '42',
+        'model': 'Sonnet',
+        'show': true,
+      });
+
+      expect(status, 201);
+      final request = starter.lastRequest!;
+      expect(request.newWorktree!.worktreeName, 'my-fix');
+      expect(request.newWorktree!.newBranch, 'feature/my-branch');
+      expect(request.newWorktree!.kickoffPrompt, '# Plan');
+      expect(request.promptText, 'Fix {issue}');
+      expect(request.prNumber, 42);
+      expect(request.model, 'sonnet');
+      expect(request.show, isTrue);
+    });
+
+    test('starts in an existing worktree', () async {
+      final (status, body) = await post('/v1/claude/sessions', {
+        'repo': 'demo',
+        'existingWorktree': 'develop',
+        'prompt': ':issue-context',
+        'issueKey': 'AU2-1',
+      });
+
+      expect(status, 201);
+      expect(starter.lastRequest!.existingWorktree, 'develop');
+      expect(starter.lastRequest!.newWorktree, isNull);
+      expect(body['worktree']['created'], isFalse);
+    });
+
+    test('needs a worktree name and base branch for a new worktree', () async {
+      final (status, body) = await post('/v1/claude/sessions', {
+        'repo': 'demo',
+        'issueKey': 'AU2-1',
+      });
+
+      expect(status, 400);
+      expect(body['error'], contains('worktreeName'));
+      expect(body['error'], contains('baseBranch'));
+      expect(starter.lastRequest, isNull);
+    });
+
+    test('refuses new-worktree fields with existingWorktree', () async {
+      final (status, body) = await post('/v1/claude/sessions', {
+        'repo': 'demo',
+        'existingWorktree': 'develop',
+        'baseBranch': 'main',
+        'kickoffPrompt': '# Plan',
+      });
+
+      expect(status, 400);
+      expect(body['error'], startsWith('baseBranch, kickoffPrompt only apply'));
+      expect(starter.lastRequest, isNull);
+    });
+
+    test('refuses prompt with promptText', () async {
+      final (status, body) = await post('/v1/claude/sessions', {
+        ...newWorktree(),
+        'promptText': 'Hello',
+      });
+
+      expect(status, 400);
+      expect(body['error'], contains('not both'));
+    });
+
+    test('refuses invalid fields before starting anything', () async {
+      for (final (field, value, error) in [
+        ('issueKey', 'au2 1', 'issueKey:'),
+        ('worktreeName', 'has/slash', 'worktreeName:'),
+        ('branch', 'a/b', 'branch:'),
+        ('prNumber', 'x', 'prNumber must be a number'),
+        ('model', 'gpt', 'unknown model'),
+        ('effort', 'extreme', 'unknown effort'),
+        ('show', 'yes', 'show must be true or false'),
+        ('slot', 2, 'unsupported field(s): slot'),
+      ]) {
+        final (status, body) = await post('/v1/claude/sessions', {
+          ...newWorktree(),
+          field: value,
+        });
+        expect(status, 400, reason: field);
+        expect(body['error'], startsWith(error), reason: field);
+      }
+      final (_, body) = await post('/v1/claude/sessions', {
+        ...newWorktree(),
+        'model': 'gpt',
+      });
+      expect(body['models'], ['fable', 'opus', 'sonnet']);
+      expect(starter.lastRequest, isNull);
+    });
+
+    test('maps what the starter throws to statuses', () async {
+      Future<(int, Map<String, dynamic>)> failing(Exception e) {
+        starter.failWith = e;
+        return post('/v1/claude/sessions', newWorktree());
+      }
+
+      var (status, body) = await failing(const RepoNotFoundException('demo'));
+      expect(status, 404);
+
+      (status, body) = await failing(
+        const WorktreeNotFoundException('demo', 'gone'),
+      );
+      expect(status, 404);
+      expect(body['error'], contains('gone'));
+
+      (status, body) = await failing(
+        const WorktreeConflictException('branch already exists'),
+      );
+      expect(status, 409);
+      expect(body['error'], 'branch already exists');
+
+      (status, body) = await failing(
+        const ClaudePromptException(
+          'unknown prompt "Nope"',
+          details: {
+            'prompts': ['Fix', ':issue-context', ':kickoff'],
+          },
+        ),
+      );
+      expect(status, 400);
+      expect(body['error'], 'unknown prompt "Nope"');
+      expect(body['prompts'], ['Fix', ':issue-context', ':kickoff']);
+
+      (status, body) = await failing(
+        const ClaudeStartFailedException(
+          'no terminal',
+          StartedWorktree(
+            name: 'w',
+            path: '/repos/w',
+            branch: 'feature/w',
+            created: true,
+          ),
+        ),
+      );
+      expect(status, 500);
+      expect(body['error'], contains('no terminal'));
+      expect(body['worktree']['path'], '/repos/w');
     });
   });
 

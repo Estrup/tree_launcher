@@ -10,9 +10,11 @@ import 'package:tree_launcher/features/activity/domain/manual_post_writer.dart';
 import 'package:tree_launcher/features/agent_api/data/api_http.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/activity_routes.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/agent_routes.dart';
+import 'package:tree_launcher/features/agent_api/data/routes/claude_session_routes.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/jira_routes.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/worktree_routes.dart';
 import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
+import 'package:tree_launcher/features/agents/domain/claude_session_starter.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
@@ -24,7 +26,7 @@ import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 /// AI agents (for use in Claude Code skills).
 ///
 /// v1 surfaces the Activity timeline (and manual posts into it), worktree
-/// creation, Jira issues with the user's local tags (which it can set, but
+/// creation, starting Claude in a worktree, Jira issues with the user's local tags (which it can set, but
 /// never anything in Jira), and agent runs, which agents register and report
 /// their progress to. Each area's routes live in `routes/`; adding a
 /// capability is a handler there, mounted in [_router].
@@ -40,6 +42,7 @@ class AgentApiServer {
     required WorktreeCreator worktreeCreator,
     required JiraTagEditor jiraTagEditor,
     required AgentRegistry agentRegistry,
+    required ClaudeSessionStarter claudeSessions,
     required ActivityService activity,
     required ManualPostWriter manualPosts,
     required GitService gitService,
@@ -53,6 +56,10 @@ class AgentApiServer {
        _worktreeRoutes = WorktreeRoutes(
          settings: settings,
          creator: worktreeCreator,
+       ),
+       _claudeSessionRoutes = ClaudeSessionRoutes(
+         settings: settings,
+         starter: claudeSessions,
        ),
        _jiraRoutes = JiraRoutes(
          repos: repos,
@@ -70,6 +77,7 @@ class AgentApiServer {
 
   final ActivityRoutes _activityRoutes;
   final WorktreeRoutes _worktreeRoutes;
+  final ClaudeSessionRoutes _claudeSessionRoutes;
   final JiraRoutes _jiraRoutes;
   final AgentRoutes _agentRoutes;
 
@@ -149,6 +157,7 @@ class AgentApiServer {
     final router = Router()..get('/health', _health);
     _activityRoutes.mount(router);
     _worktreeRoutes.mount(router);
+    _claudeSessionRoutes.mount(router);
     _jiraRoutes.mount(router);
     _agentRoutes.mount(router);
     return router;

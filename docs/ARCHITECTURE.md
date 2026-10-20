@@ -120,10 +120,13 @@ disposes the controllers and closes the database.
 - **Controllers are the one in-memory copy of the state.** The UI and the
   agent API both go through them. The API sees them through small interfaces
   in the features' `domain/`: `RepoCatalog`, `WorktreeCreator`,
-  `AppSettingsSource`, `JiraTagEditor`, `AgentRegistry`, `ManualPostWriter`.
-  So an API write shows in the UI at once.
+  `AppSettingsSource`, `JiraTagEditor`, `AgentRegistry`,
+  `ClaudeSessionStarter`, `ManualPostWriter`. So an API write shows in the UI at once.
 - **Flows that span features live in `app/use_cases/`.**
   - `StartClaudeSession` is the flow behind the Jira, PR and issue buttons.
+  - `StartClaudeInWorktree` is the same through the agent API
+    (`POST /v1/claude/sessions`): it creates or finds the worktree, then
+    calls `StartClaudeSession.launch`, which doesn't remember the choices.
   - `AgentLauncher` and `ClaudeSessionLauncher` start, resume and stop
     sessions in the terminal.
   - `AgentApiControl` runs the API on the right port.

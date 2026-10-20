@@ -2,7 +2,8 @@
 
 A small HTTP API on loopback that local agents (Claude Code sessions and the
 skills they run) use to read and change what Tree Launcher knows: the activity
-timeline, worktrees, Jira issues with the user's local tags, and agent runs.
+timeline, worktrees and the Claude sessions in them, Jira issues with the
+user's local tags, and agent runs.
 Everything goes through the running app, so a change made here shows in the
 app at once, and the other way round.
 
@@ -21,6 +22,7 @@ app at once, and the other way round.
 | GET | `/v1/activity` | The activity timeline: worktrees and manual posts |
 | POST | `/v1/activity` | Log a manual activity post |
 | POST | `/v1/worktrees` | Create a worktree, optionally with a kickoff prompt |
+| POST | `/v1/claude/sessions` | Start Claude in a new or an existing worktree, as the Start Claude Session dialog does |
 | GET | `/v1/jira/issues` | A Jira project's issues by fixVersion and/or status, with local tags |
 | GET | `/v1/jira/tags` | The user's local tags |
 | PUT | `/v1/jira/issues/<key>/tags` | Set an issue's local tags |
@@ -61,10 +63,10 @@ that header pass both checks.
 | Status | When |
 |---|---|
 | 200 | Done |
-| 201 | Created: a post, a worktree, an agent run |
+| 201 | Created: a post, a worktree, an agent run, a Claude session |
 | 400 | The request is wrong: a missing or invalid field, an unknown filter, a field the route doesn't take |
 | 403 | Not a local client (see above) |
-| 404 | No such repo, issue, fixVersion or agent run |
+| 404 | No such repo, worktree, issue, fixVersion or agent run |
 | 409 | The worktree, its folder or its branch already exists |
 | 415 | A POST or PUT that isn't JSON |
 | 500 | The app failed unexpectedly; `error` says what failed and why |
@@ -206,6 +208,95 @@ request.
 - 404: no repo with that name;
 - 409: the folder, the branch or the worktree already exists, in git's words.
   Nothing was created and no prompt was written.
+
+## Claude sessions
+
+### `POST /v1/claude/sessions`
+
+Does in one request what the Start Claude Session dialog does (the ✨ button
+on a Jira issue, PR or GitHub issue): creates a worktree or picks an existing
+one, then starts Claude there in the built-in terminal with a prompt, model
+and effort. When the prompt is a saved prompt with an agent kind, it starts
+as an agent run of that kind, with `TREE_LAUNCHER_AGENT_ID` and
+`TREE_LAUNCHER_URL` in its environment, exactly as from the dialog.
+
+| Field | |
+|---|---|
+| `repo` | Required. A repo name. |
+| `existingWorktree` | Optional. Start in this worktree of the repo instead of creating one: its folder name or its absolute path. |
+| `worktreeName` | New worktree only. The folder name. Required unless `issueKey` and `title` are both given; then it is made from them as the Jira button does, e.g. `vipps-mobilepay-callback-http-500-au2-5407`. |
+| `baseBranch` | New worktree only. Required. The branch to start from. |
+| `branch` | New worktree only. Optional. The new branch without the prefix; defaults to the worktree name. Becomes `<prefix>/<branch>` when Settings has a branch prefix. |
+| `kickoffPrompt` | New worktree only. Optional. Text written to `<worktree>/.tree-launcher/kickoff-prompt.md`, as in `POST /v1/worktrees`. |
+| `issueKey` | Optional. The Jira issue. A new worktree records it; in an existing worktree it is used for this session only, and defaults to the worktree's recorded issue. |
+| `prompt` | Optional. A saved prompt's name in the repo (any case), or a built-in: `:issue-context` (*Context: Working on issue … where the base branch is …*) or `:kickoff` (points Claude at the staged kickoff file). Left out, with no `promptText`: Claude starts without a first message. |
+| `promptText` | Optional. A first message of your own. Not with `prompt`. |
+| `prNumber` | Optional. A number. Fills `{pr}` and is recorded on an agent run. |
+| `title` | Optional. The agent run's title, e.g. the issue's summary. |
+| `model` | Optional. `fable`, `opus` or `sonnet`. Left out: no `--model`, so the CLI's default. |
+| `effort` | Optional. `low`, `medium`, `high`, `xhigh` or `max`. Left out: no `--effort`. |
+| `show` | Optional. `true` brings the new terminal tab to the front. Otherwise it starts in the background and a notice in the app offers to show it. |
+
+`worktreeName` and `branch` are normalised and checked as in
+`POST /v1/worktrees`.
+
+**The first message.** A saved prompt's and `promptText`'s placeholders are
+filled in: `{issue}`, `{pr}`, `{base_branch}` (in an existing worktree, the
+one it was created from), `{worktree}`, `{path}` and `{repo}`. The branch's
+open PR isn't looked up for `{pr}`; pass `prNumber`.
+
+**What it doesn't do.** It doesn't change what the dialog preselects next
+time (model, effort, prompt, base branch, shared checkout). A session already
+running in an existing worktree is left alone: the new one starts next to it.
+
+Everything that can be checked before creating the worktree is checked
+first, so a request that fails at the prompt never leaves a worktree behind.
+
+**201:**
+
+```json
+{
+  "repo": "au2office",
+  "worktree": {
+    "name": "vipps-mobilepay-callback-http-500-au2-5407",
+    "path": "/Users/me/Projects/au2-project/vipps-mobilepay-callback-http-500-au2-5407",
+    "branch": "sen/vipps-mobilepay-callback-http-500-au2-5407",
+    "baseBranch": "develop",
+    "issueKey": "AU2-5407",
+    "created": true,
+    "kickoffPromptPath": null
+  },
+  "session": {
+    "title": "Refinement: AU2-5407",
+    "promptId": "Factory: Refine",
+    "prompt": "kør /refine-factory AU2-5407",
+    "model": "opus",
+    "effort": "medium"
+  },
+  "agent": {"id": "ag_k3j9x2pq", "kind": "refine", "state": "starting", …}
+}
+```
+
+- `worktree.created` is false for an existing worktree.
+- `session.title` is the terminal tab's title. `session.prompt` is the first
+  message as sent (null for none). `session.promptId` is what the session is
+  recorded with: the saved prompt's name, `:issue-context`, `:kickoff`, or
+  null.
+- `agent` is the run (see [A run](#a-run)) when the prompt has a kind, else
+  null. Follow it with `GET /v1/agents/<id>`.
+
+**Errors:**
+- 400: a missing or invalid field, a field the route doesn't take,
+  new-worktree fields with `existingWorktree`, `prompt` with `promptText`,
+  an unknown prompt (with `prompts`: the saved names and the built-ins),
+  `:kickoff` without a kickoff prompt, a prompt using `{issue}` without an
+  issue key or `{pr}` without `prNumber`, an unknown `model` or `effort`
+  (with `models` / `efforts`);
+- 404: no repo with that name, or no such worktree in it;
+- 409: the folder, the branch or the worktree already exists. Nothing was
+  created;
+- 500: the worktree was created but Claude didn't start. The body has
+  `worktree` too; start Claude in it with `existingWorktree`.
 
 ## Jira
 
@@ -414,6 +505,11 @@ jq -n --arg repo au2office --arg baseBranch develop --arg branch au2-6001 \
     kickoffPrompt: $kickoffPrompt}' |
   curl -s -X POST "$TL/v1/worktrees" -H 'Content-Type: application/json' --data @-
 
+# Create a worktree for an issue and start a refine agent in it
+curl -s -X POST "$TL/v1/claude/sessions" -H 'Content-Type: application/json'   -d '{"repo": "au2office", "issueKey": "AU2-5407",
+       "title": "Vipps Mobilepay callback http 500", "baseBranch": "develop",
+       "prompt": "Factory: Refine", "model": "opus", "effort": "medium"}'
+
 # The issues in review in a fixVersion, then tag one
 curl -s -G "$TL/v1/jira/issues" --data-urlencode project=AU2 \
   --data-urlencode 'fixVersion=au2office 2.41.3' --data-urlencode status=Review
@@ -433,6 +529,7 @@ curl -s -X POST "$TL/v1/agents/$TREE_LAUNCHER_AGENT_ID/status" \
    - `readJsonObject` to read the body;
    - `stringField` for string fields;
    - `missingFields` and `unsupportedFields` for field errors;
+   - `intField` for number fields;
    - `boolQuery` for boolean query parameters;
    - `serverError` for an unexpected failure.
 2. Read and write through the app's controllers, via a small interface in the

@@ -1,5 +1,6 @@
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
+import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
@@ -48,8 +49,43 @@ class StartClaudeSession {
       prompt: promptId ?? noClaudePromptId,
       useExistingWorktree: useExistingWorktree,
     );
+    await launch(
+      repo: repo,
+      worktreePath: worktreePath,
+      branch: branch,
+      prompt: prompt,
+      promptId: promptId,
+      savedPrompt: savedPrompt,
+      model: model,
+      effort: effort,
+      issueKey: issueKey,
+      title: title,
+      prNumber: prNumber,
+    );
+  }
+
+  /// Starts Claude as [call] does, without remembering the choices: for a
+  /// start the user didn't pick in the dialog, such as one through the
+  /// agent API. [show] brings the new tab to the front.
+  ///
+  /// Returns the tab's title, and the agent run when [savedPrompt] has a
+  /// kind.
+  Future<({String title, AgentRun? agent})> launch({
+    required RepoConfig repo,
+    required String worktreePath,
+    String? branch,
+    String? prompt,
+    String? promptId,
+    ClaudePrompt? savedPrompt,
+    String? model,
+    String? effort,
+    String? issueKey,
+    String? title,
+    int? prNumber,
+    bool show = false,
+  }) async {
     if (savedPrompt != null && savedPrompt.kind != null) {
-      await _agents.start(
+      final run = await _agents.start(
         repoPath: repo.path,
         repoName: repo.name,
         prompt: savedPrompt,
@@ -61,10 +97,11 @@ class StartClaudeSession {
         prNumber: prNumber,
         model: model,
         effort: effort,
+        show: show,
       );
-      return;
+      return (title: AgentLauncher.titleFor(run), agent: run);
     }
-    await _sessions.start(
+    final sessionTitle = await _sessions.start(
       repoPath: repo.path,
       worktreePath: worktreePath,
       prompt: prompt,
@@ -72,6 +109,8 @@ class StartClaudeSession {
       effort: effort,
       issueKey: issueKey,
       promptId: promptId,
+      show: show,
     );
+    return (title: sessionTitle, agent: null);
   }
 }

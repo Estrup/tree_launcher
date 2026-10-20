@@ -67,25 +67,12 @@ class WorktreeRoutes {
     ];
     if (missing.isNotEmpty) return missingFields(missing);
 
-    final worktreeName = normalizeWorktreeName(worktreeInput!);
-    final branchSuffix = normalizeWorktreeName(branchInput!);
-
-    final worktreeError = validateWorktreeName(worktreeName);
-    if (worktreeError != null) {
-      return jsonResponse({
-        'error': 'worktreeName: $worktreeError',
-      }, status: 400);
-    }
-    final branchError = validateWorktreeName(branchSuffix);
-    if (branchError != null) {
-      return jsonResponse({'error': 'branch: $branchError'}, status: 400);
-    }
-    if (issueKey != null) {
-      final jiraError = validateJiraKey(issueKey);
-      if (jiraError != null) {
-        return jsonResponse({'error': 'issueKey: $jiraError'}, status: 400);
-      }
-    }
+    final names = normalizedWorktreeNames(worktreeInput!, branchInput!);
+    if (names.error != null) return names.error!;
+    final worktreeName = names.worktreeName;
+    final branchSuffix = names.branch;
+    final keyError = issueKeyError(issueKey);
+    if (keyError != null) return keyError;
 
     try {
       final newBranch = buildBranchName(
@@ -118,4 +105,32 @@ class WorktreeRoutes {
       return serverError('create worktree', e);
     }
   }
+}
+
+/// [worktreeInput] and [branchInput] normalised (lowercased, spaces to
+/// dashes) and validated by the app's naming rules; [branch] is still
+/// without the prefix. When either is invalid, [error] is the 400 to send.
+({String worktreeName, String branch, Response? error}) normalizedWorktreeNames(
+  String worktreeInput,
+  String branchInput,
+) {
+  final worktreeName = normalizeWorktreeName(worktreeInput);
+  final branch = normalizeWorktreeName(branchInput);
+  Response? error;
+  if (validateWorktreeName(worktreeName) case final message?) {
+    error = jsonResponse({'error': 'worktreeName: $message'}, status: 400);
+  } else if (validateWorktreeName(branch) case final message?) {
+    error = jsonResponse({'error': 'branch: $message'}, status: 400);
+  }
+  return (worktreeName: worktreeName, branch: branch, error: error);
+}
+
+/// The 400 for an [issueKey] that isn't a Jira key; null when it is one or
+/// there is none.
+Response? issueKeyError(String? issueKey) {
+  if (issueKey == null) return null;
+  final error = validateJiraKey(issueKey);
+  return error == null
+      ? null
+      : jsonResponse({'error': 'issueKey: $error'}, status: 400);
 }

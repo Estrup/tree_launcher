@@ -46,6 +46,23 @@ String? stringField(Map<String, dynamic> body, String key) {
   return s.isEmpty ? null : s;
 }
 
+/// [body]'s [key] as a whole number (a JSON number or a numeric string);
+/// null when it is missing. Anything else is the 400 to send.
+({int? value, Response? error}) intField(
+  Map<String, dynamic> body,
+  String key,
+) {
+  final raw = body[key];
+  if (raw == null) return (value: null, error: null);
+  final value = raw is int ? raw : int.tryParse(raw.toString().trim());
+  return value == null
+      ? (
+          value: null,
+          error: jsonResponse({'error': '$key must be a number'}, status: 400),
+        )
+      : (value: value, error: null);
+}
+
 /// The 500 for an unexpected failure while doing [what] (e.g. "load
 /// activity"), logged with the error.
 Response serverError(String what, Object error) {

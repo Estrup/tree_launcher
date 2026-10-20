@@ -55,8 +55,8 @@ class AgentLauncher {
 
   /// Creates a run for [prompt] (which must have a kind) and starts its
   /// Claude session in [worktreePath] with [resolvedPrompt] as the first
-  /// message, in the background (a notice offers to show it). A build
-  /// agent's worktree is remembered as a sidebar session.
+  /// message, in the background (a notice offers to show it) unless [show].
+  /// A build agent's worktree is remembered as a sidebar session.
   Future<AgentRun> start({
     required String repoPath,
     required String repoName,
@@ -69,6 +69,7 @@ class AgentLauncher {
     int? prNumber,
     String? model,
     String? effort,
+    bool show = false,
   }) async {
     final kind = prompt.kind;
     if (kind == null) {
@@ -98,9 +99,9 @@ class AgentLauncher {
       ),
       agentId: run.id,
       environment: _environment(run),
-      show: false,
+      show: show,
     );
-    if (session != null) {
+    if (session != null && !show) {
       showAppSnackBar(
         'Started ${titleFor(run)}',
         action: SnackBarAction(

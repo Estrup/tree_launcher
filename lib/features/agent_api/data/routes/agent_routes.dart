@@ -178,16 +178,9 @@ class AgentRoutes {
       }
     }
 
-    int? prNumber;
-    final prRaw = body['prNumber'];
-    if (prRaw != null) {
-      prNumber = prRaw is int ? prRaw : int.tryParse(prRaw.toString().trim());
-      if (prNumber == null) {
-        return jsonResponse({
-          'error': 'prNumber must be a number',
-        }, status: 400);
-      }
-    }
+    final pr = intField(body, 'prNumber');
+    if (pr.error != null) return pr.error!;
+    final prNumber = pr.value;
 
     try {
       final result = await registry.register(

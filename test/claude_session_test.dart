@@ -39,6 +39,7 @@ class _RecordingTerminal extends TerminalController {
           String repo,
           String command,
           bool reuseRunning,
+          bool show,
         })
       >[];
   final running = <String>{};
@@ -59,6 +60,7 @@ class _RecordingTerminal extends TerminalController {
       repo: repoPath,
       command: command,
       reuseRunning: reuseRunning,
+      show: show,
     ));
     running.add(workingDirectory);
     return null;
@@ -368,6 +370,21 @@ void main() {
         expect(savedPrompts(), isEmpty);
       },
     );
+
+    test('start runs in the background unless asked to show it', () async {
+      final title = await launcher().start(
+        repoPath: '/repos/demo',
+        worktreePath: worktree,
+      );
+      await launcher().start(
+        repoPath: '/repos/demo',
+        worktreePath: worktree,
+        show: true,
+      );
+
+      expect(title, 'Claude: repo-a');
+      expect([for (final l in terminal.launched) l.show], [false, true]);
+    });
 
     test('start runs next to a session already in the worktree', () async {
       terminal.running.add(worktree);

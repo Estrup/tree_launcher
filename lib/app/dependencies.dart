@@ -7,6 +7,7 @@ import 'package:tree_launcher/app/migrations/config_state_import.dart';
 import 'package:tree_launcher/app/use_cases/agent_api_control.dart';
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
+import 'package:tree_launcher/app/use_cases/start_claude_in_worktree.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/core/database/database_backup.dart';
@@ -141,6 +142,13 @@ class AppDependencies {
       worktreeCreator: workspace,
       jiraTagEditor: settings,
       agentRegistry: agents,
+      claudeSessions: StartClaudeInWorktree(
+        repos: workspace,
+        creator: workspace,
+        git: this.gitService,
+        metadataFor: workspace.metadataFor,
+        start: startClaudeSession,
+      ),
       activity: activityService,
       manualPosts: activity,
       gitService: this.gitService,

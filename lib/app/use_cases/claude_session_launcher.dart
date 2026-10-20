@@ -57,8 +57,9 @@ class ClaudeSessionLauncher {
   /// Claude session already running there, e.g. in a shared checkout used
   /// for several issues; [issueKey] goes in its tab title. [promptId] is
   /// the prompt it was started with, remembered with the shortcut. It starts
-  /// in the background; a notice offers to show it.
-  Future<void> start({
+  /// in the background, a notice offering to show it, unless [show]. Returns
+  /// its tab title.
+  Future<String> start({
     required String repoPath,
     required String worktreePath,
     String? prompt,
@@ -66,6 +67,7 @@ class ClaudeSessionLauncher {
     String? effort,
     String? issueKey,
     String? promptId,
+    bool show = false,
   }) async {
     final title = claudeSessionTitle(worktreePath, issueKey: issueKey);
     final session = _terminal.openClaudeSession(
@@ -79,9 +81,9 @@ class ClaudeSessionLauncher {
         effort: effort,
       ),
       reuseRunning: false,
-      show: false,
+      show: show,
     );
-    if (session != null) {
+    if (session != null && !show) {
       showAppSnackBar(
         'Started $title',
         action: SnackBarAction(
@@ -95,6 +97,7 @@ class ClaudeSessionLauncher {
       worktreePath,
       promptId: promptId,
     );
+    return title;
   }
 
   /// Opens a remembered session from its sidebar shortcut: shows the running
