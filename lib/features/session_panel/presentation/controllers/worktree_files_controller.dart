@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:tree_launcher/core/errors/user_message.dart';
 import 'package:tree_launcher/features/session_panel/data/worktree_file_system.dart';
 import 'package:tree_launcher/features/session_panel/domain/file_entry.dart';
+import 'package:tree_launcher/features/session_panel/domain/file_filter.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 
 /// One line of the file tree: an entry at a depth.
@@ -16,6 +17,7 @@ class FileTreeRow {
     required this.expanded,
     required this.ignored,
     this.loading = false,
+    this.isMatch = false,
   });
 
   final FileEntry entry;
@@ -31,6 +33,9 @@ class FileTreeRow {
 
   /// Whether this open folder's entries are still being read.
   final bool loading;
+
+  /// While filtering: whether it matches the filter itself.
+  final bool isMatch;
 }
 
 /// The file tree of one worktree: every file on disk, gitignored ones
@@ -72,6 +77,13 @@ class WorktreeFilesController extends ChangeNotifier {
   List<FileTreeRow>? _rows;
   bool _disposed = false;
 
+  String _filter = '';
+
+  /// Everything under the worktree, walked for the filter; null until
+  /// walked, and again after a change on disk.
+  WalkResult? _walked;
+  Future<void>? _walking;
+
   /// The paths that changed on disk, in batches, while attached.
   Stream<Set<String>> get changes => _changes.stream;
 
@@ -81,8 +93,65 @@ class WorktreeFilesController extends ChangeNotifier {
   /// Whether the worktree's own folder is still being read the first time.
   bool get isLoading => !_children.containsKey(root) && _errors[root] == null;
 
-  /// The visible lines: the worktree's entries and those of open folders.
-  List<FileTreeRow> get rows => _rows ??= _buildRows();
+  /// The visible lines: the worktree's entries and those of open folders,
+  /// or while [isFiltering], the matches under their folders.
+  List<FileTreeRow> get rows =>
+      _rows ??= isFiltering ? _buildFilteredRows() : _buildRows();
+
+  /// The filter typed; empty when not filtering.
+  String get filter => _filter;
+
+  bool get isFiltering => _filter.trim().isNotEmpty;
+
+  /// Whether the worktree is still being walked for the filter.
+  bool get isWalking => isFiltering && _walked == null;
+
+  /// Whether the walk for the filter stopped at its limit, so some files
+  /// may be missing from the matches.
+  bool get isFilterTruncated => isFiltering && (_walked?.truncated ?? false);
+
+  /// How many entries match the filter.
+  int get matchCount => isFiltering ? rows.where((r) => r.isMatch).length : 0;
+
+  /// Filters the tree by [query] (see `matchesFilter`); empty shows the
+  /// whole tree again, as it was. The worktree is walked the first time.
+  void setFilter(String query) {
+    if (query == _filter) return;
+    _filter = query;
+    if (isFiltering) _walkIfNeeded();
+    _changedRows();
+  }
+
+  /// Ends filtering and shows [path] in the tree, its folders open, and
+  /// it too when it is a folder.
+  Future<void> reveal(String path, {required bool isDirectory}) async {
+    _filter = '';
+    _changedRows();
+    final folders = <String>[];
+    var folder = isDirectory ? path : p.dirname(path);
+    while (p.isWithin(root, folder)) {
+      folders.add(folder);
+      folder = p.dirname(folder);
+    }
+    for (final folder in folders.reversed) {
+      await expand(folder);
+    }
+  }
+
+  void _walkIfNeeded() {
+    if (_walked != null || _walking != null) return;
+    _walking = () async {
+      try {
+        _walked = await _fs.walk(root, include: {..._expanded});
+      } catch (e) {
+        debugPrint('Walking $root failed: $e');
+        _walked = const WalkResult([], truncated: false);
+      } finally {
+        _walking = null;
+        _changedRows();
+      }
+    }();
+  }
 
   bool isExpanded(String directory) => _expanded.contains(directory);
 
@@ -214,6 +283,9 @@ class WorktreeFilesController extends ChangeNotifier {
         if (_children.containsKey(p.dirname(path))) p.dirname(path),
     };
     unawaited(_reload(directories));
+    // Walk again for the filter, now or when it is next used.
+    _walked = null;
+    if (isFiltering) _walkIfNeeded();
     _changes.add(changed);
   }
 
@@ -240,6 +312,23 @@ class WorktreeFilesController extends ChangeNotifier {
 
     add(root, 0);
     return rows;
+  }
+
+  List<FileTreeRow> _buildFilteredRows() {
+    final walked = _walked;
+    if (walked == null) return const [];
+    final hits = filterTree(root, walked.entries, _filter);
+    return [
+      for (var i = 0; i < hits.length; i++)
+        FileTreeRow(
+          entry: hits[i].entry,
+          depth: hits[i].depth,
+          // Open when the next line is in it.
+          expanded: i + 1 < hits.length && hits[i + 1].depth > hits[i].depth,
+          ignored: isIgnored(hits[i].entry.path),
+          isMatch: hits[i].isMatch,
+        ),
+    ];
   }
 
   String _relative(String path) =>

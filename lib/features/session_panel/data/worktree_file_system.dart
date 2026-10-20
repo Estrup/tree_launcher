@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
@@ -29,6 +30,33 @@ class WorktreeFileSystem {
     }
     return entries..sort(compareEntries);
   }
+
+  /// Folders [walk] doesn't go into unless asked to: dependencies and build
+  /// output, large and rarely what is searched for.
+  static const skippedFolders = {
+    'node_modules',
+    'bin',
+    'obj',
+    'build',
+    '.dart_tool',
+    '.build',
+    'Pods',
+    '.gradle',
+    '.vs',
+  };
+
+  /// The most entries [walk] collects.
+  static const walkLimit = 50000;
+
+  /// Every entry under [root], for the filter, read on a background
+  /// isolate. Folders in [skippedFolders] are listed but not gone into,
+  /// unless their path is in [include]; links aren't followed. Stops after
+  /// [limit] entries. A folder that can't be read is left out.
+  Future<WalkResult> walk(
+    String root, {
+    Set<String> include = const {},
+    int limit = walkLimit,
+  }) => Isolate.run(() => _walk(root, include, limit));
 
   /// The largest file [readText] reads.
   static const maxTextBytes = 2 * 1024 * 1024;
@@ -69,4 +97,41 @@ class WorktreeFileSystem {
       return const Stream.empty();
     }
   }
+}
+
+/// What [WorktreeFileSystem.walk] found.
+class WalkResult {
+  const WalkResult(this.entries, {required this.truncated});
+
+  final List<FileEntry> entries;
+
+  /// Whether it stopped at its limit before seeing everything.
+  final bool truncated;
+}
+
+WalkResult _walk(String root, Set<String> include, int limit) {
+  final entries = <FileEntry>[];
+  final pending = [root];
+  while (pending.isNotEmpty) {
+    final directory = pending.removeLast();
+    final List<FileSystemEntity> listed;
+    try {
+      listed = Directory(directory).listSync(followLinks: false);
+    } on FileSystemException {
+      continue;
+    }
+    for (final entity in listed) {
+      final name = p.basename(entity.path);
+      if (isHiddenEntry(name)) continue;
+      final isDirectory = entity is Directory;
+      entries.add(FileEntry(path: entity.path, isDirectory: isDirectory));
+      if (entries.length >= limit) return WalkResult(entries, truncated: true);
+      if (isDirectory &&
+          (!WorktreeFileSystem.skippedFolders.contains(name) ||
+              include.contains(entity.path))) {
+        pending.add(entity.path);
+      }
+    }
+  }
+  return WalkResult(entries, truncated: false);
 }

@@ -8,12 +8,15 @@ import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/platform/launcher_service.dart';
 import 'package:tree_launcher/core/platform/open_external.dart';
+import 'package:tree_launcher/features/session_panel/data/worktree_file_system.dart';
 import 'package:tree_launcher/features/session_panel/presentation/controllers/session_panel_controller.dart';
 import 'package:tree_launcher/features/session_panel/presentation/controllers/worktree_files_controller.dart';
 import 'package:tree_launcher/features/session_panel/presentation/widgets/file_icons.dart';
 
 /// The worktree's files as a tree: everything on disk, gitignored entries
 /// dimmed. A folder opens on click and a file opens in a tab of the panel.
+/// The filter box shows the matches under their folders; clicking a folder
+/// there shows it in the whole tree.
 class WorktreeFilesTab extends StatefulWidget {
   const WorktreeFilesTab({super.key, required this.worktree});
 
@@ -28,12 +31,14 @@ class WorktreeFilesTab extends StatefulWidget {
 
 class _WorktreeFilesTabState extends State<WorktreeFilesTab> {
   late WorktreeFilesController _files;
+  final _filterText = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _files = context.read<SessionPanelController>().filesFor(widget.worktree)
       ..attach();
+    _filterText.text = _files.filter;
   }
 
   @override
@@ -43,13 +48,26 @@ class _WorktreeFilesTabState extends State<WorktreeFilesTab> {
       _files.detach();
       _files = context.read<SessionPanelController>().filesFor(widget.worktree)
         ..attach();
+      _filterText.text = _files.filter;
     }
   }
 
   @override
   void dispose() {
     _files.detach();
+    _filterText.dispose();
     super.dispose();
+  }
+
+  void _clearFilter() {
+    _filterText.clear();
+    _files.setFilter('');
+  }
+
+  /// Ends filtering and shows [row]'s entry in the whole tree.
+  void _reveal(FileTreeRow row) {
+    _filterText.clear();
+    _files.reveal(row.entry.path, isDirectory: row.entry.isDirectory);
   }
 
   @override
@@ -61,6 +79,8 @@ class _WorktreeFilesTabState extends State<WorktreeFilesTab> {
       listenable: _files,
       builder: (context, _) {
         final rows = _files.rows;
+        final filtering = _files.isFiltering;
+        final query = _files.filter.trim();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -69,13 +89,25 @@ class _WorktreeFilesTabState extends State<WorktreeFilesTab> {
               onCollapseAll: _files.collapseAll,
               onRefresh: _files.refresh,
             ),
+            _FilterField(
+              controller: _filterText,
+              onChanged: _files.setFilter,
+              onClear: _clearFilter,
+            ),
+            if (filtering && !_files.isWalking)
+              _FilterNote(
+                matches: _files.matchCount,
+                truncated: _files.isFilterTruncated,
+              ),
             Expanded(
               child: _files.error != null
                   ? _Message(_files.error!, color: AppColors.error)
                   : _files.isLoading
                   ? const _Message('Reading…')
+                  : _files.isWalking
+                  ? const _Message('Searching…')
                   : rows.isEmpty
-                  ? const _Message('No files')
+                  ? _Message(filtering ? 'No matches' : 'No files')
                   : ListView.builder(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       itemExtent: WorktreeFilesTab.rowHeight,
@@ -85,9 +117,12 @@ class _WorktreeFilesTabState extends State<WorktreeFilesTab> {
                         return _FileRow(
                           row: row,
                           selected: row.entry.path == selectedPath,
-                          onTap: () => row.entry.isDirectory
-                              ? _files.toggle(row.entry.path)
-                              : panel.openFile(widget.worktree, row.entry.path),
+                          highlight: filtering && row.isMatch ? query : null,
+                          onTap: () => !row.entry.isDirectory
+                              ? panel.openFile(widget.worktree, row.entry.path)
+                              : filtering
+                              ? _reveal(row)
+                              : _files.toggle(row.entry.path),
                           onContextMenu: (position) =>
                               _showMenu(context, position, row),
                         );
@@ -119,6 +154,11 @@ class _WorktreeFilesTabState extends State<WorktreeFilesTab> {
       items: [
         if (!row.entry.isDirectory)
           const PopupMenuItem(value: _MenuAction.open, child: Text('Open')),
+        if (_files.isFiltering)
+          const PopupMenuItem(
+            value: _MenuAction.showInTree,
+            child: Text('Show in tree'),
+          ),
         if (launcher != null)
           const PopupMenuItem(
             value: _MenuAction.vscode,
@@ -143,6 +183,8 @@ class _WorktreeFilesTabState extends State<WorktreeFilesTab> {
     switch (action) {
       case _MenuAction.open:
         panel.openFile(widget.worktree, path);
+      case _MenuAction.showInTree:
+        _reveal(row);
       case _MenuAction.vscode:
         launcher?.openFileInVSCode(widget.worktree, path);
       case _MenuAction.reveal:
@@ -162,7 +204,116 @@ class _WorktreeFilesTabState extends State<WorktreeFilesTab> {
   }
 }
 
-enum _MenuAction { open, vscode, reveal, copyPath, copyRelativePath }
+enum _MenuAction {
+  open,
+  showInTree,
+  vscode,
+  reveal,
+  copyPath,
+  copyRelativePath,
+}
+
+/// The filter box. Escape clears it.
+class _FilterField extends StatelessWidget {
+  const _FilterField({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+      child: CallbackShortcuts(
+        bindings: {const SingleActivator(LogicalKeyboardKey.escape): onClear},
+        child: SizedBox(
+          height: 28,
+          child: ValueListenableBuilder(
+            valueListenable: controller,
+            builder: (context, value, _) => TextField(
+              controller: controller,
+              onChanged: onChanged,
+              style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Filter files (a / searches paths)',
+                hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  size: 15,
+                  color: AppColors.textMuted,
+                ),
+                prefixIconConstraints: const BoxConstraints(minWidth: 30),
+                suffixIcon: value.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear',
+                        iconSize: 13,
+                        padding: EdgeInsets.zero,
+                        onPressed: onClear,
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                suffixIconConstraints: const BoxConstraints(
+                  minWidth: 28,
+                  minHeight: 28,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 7),
+                filled: true,
+                fillColor: AppColors.base,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide(color: AppColors.accent),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// How many entries match, and whether the search stopped early.
+class _FilterNote extends StatelessWidget {
+  const _FilterNote({required this.matches, required this.truncated});
+
+  final int matches;
+  final bool truncated;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = matches == 1 ? '1 match' : '$matches matches';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      child: Text(
+        truncated
+            ? '$count · stopped after '
+                  '${WorktreeFileSystem.walkLimit ~/ 1000}k files'
+            : count,
+        style: TextStyle(
+          fontSize: 11,
+          color: truncated ? AppColors.error : AppColors.textMuted,
+        ),
+      ),
+    );
+  }
+}
 
 class _Toolbar extends StatelessWidget {
   const _Toolbar({
@@ -243,10 +394,14 @@ class _FileRow extends StatefulWidget {
     required this.selected,
     required this.onTap,
     required this.onContextMenu,
+    this.highlight,
   });
 
   final FileTreeRow row;
   final bool selected;
+
+  /// The filter text to mark in the name, if any.
+  final String? highlight;
   final VoidCallback onTap;
   final ValueChanged<Offset> onContextMenu;
 
@@ -327,8 +482,8 @@ class _FileRowState extends State<_FileRow> {
                     Expanded(
                       child: Opacity(
                         opacity: opacity,
-                        child: Text(
-                          entry.name,
+                        child: Text.rich(
+                          _nameSpan(entry.name, widget.highlight),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                           style: TextStyle(
@@ -347,6 +502,29 @@ class _FileRowState extends State<_FileRow> {
       ),
     );
   }
+}
+
+/// [name] with the first case-insensitive occurrence of [highlight] (or of
+/// its last path segment) marked.
+TextSpan _nameSpan(String name, String? highlight) {
+  final query = highlight?.split('/').last.toLowerCase() ?? '';
+  final start = query.isEmpty ? -1 : name.toLowerCase().indexOf(query);
+  if (start == -1) return TextSpan(text: name);
+  final end = start + query.length;
+  return TextSpan(
+    children: [
+      TextSpan(text: name.substring(0, start)),
+      TextSpan(
+        text: name.substring(start, end),
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: AppColors.accent,
+          backgroundColor: AppColors.accent.withValues(alpha: 0.12),
+        ),
+      ),
+      TextSpan(text: name.substring(end)),
+    ],
+  );
 }
 
 /// The vertical lines that show which folder a line is in.
