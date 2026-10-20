@@ -204,8 +204,6 @@ class _RepoSidebarState extends State<RepoSidebar> {
               children: [
                 Expanded(child: SidebarAddRepoButton(onPressed: widget.onAddRepo)),
                 const SizedBox(width: 8),
-                SidebarTerminalToggle(),
-                const SizedBox(width: 8),
                 SidebarSettingsButton(onPressed: widget.onOpenSettings),
               ],
             ),
@@ -288,8 +286,6 @@ class _RepoSidebarState extends State<RepoSidebar> {
                 accent: true,
                 onTap: widget.onAddRepo,
               ),
-              const SizedBox(height: 8),
-              SidebarTerminalToggle(),
               const SizedBox(height: 8),
               SidebarRailIconButton(
                 icon: Icons.tune_rounded,

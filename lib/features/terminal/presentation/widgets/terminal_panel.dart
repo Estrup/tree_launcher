@@ -31,10 +31,6 @@ class TerminalFullView extends StatelessWidget {
             actions: active == null
                 ? null
                 : TerminalHeaderActions(session: active),
-            onClose: active == null
-                ? null
-                : () => tp.closeTerminal(tp.activeIndex),
-            onHide: () => tp.toggleVisibility(),
           ),
           Expanded(
             child: active != null
@@ -48,28 +44,19 @@ class TerminalFullView extends StatelessWidget {
 }
 
 class _HeaderBar extends StatelessWidget {
-  /// Title of the active session, shown after the TERMINAL label.
+  /// Title of the active session.
   final String? title;
 
-  /// The active session's worktree links and launchers, shown before the
-  /// close and hide buttons.
+  /// The active session's worktree links and launchers.
   final Widget? actions;
 
-  /// Closes the active session; null hides the button.
-  final VoidCallback? onClose;
-  final VoidCallback onHide;
-
-  const _HeaderBar({
-    this.title,
-    this.actions,
-    this.onClose,
-    required this.onHide,
-  });
+  const _HeaderBar({this.title, this.actions});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 40,
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: AppColors.surface0,
         border: Border(
@@ -78,100 +65,19 @@ class _HeaderBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const SizedBox(width: 8),
-          Icon(Icons.terminal_rounded, size: 14, color: AppColors.terminal),
-          const SizedBox(width: 6),
-          Text(
-            'TERMINAL',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textMuted,
-              letterSpacing: 0.8,
-            ),
-          ),
-          if (title != null) ...[
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                title!,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          Expanded(
+            child: Text(
+              title ?? '',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
             ),
-          ],
-          const SizedBox(width: 12),
-          const Spacer(),
-          if (actions != null) ...[
-            actions!,
-            Container(
-              width: 1,
-              height: 16,
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              color: AppColors.borderSubtle,
-            ),
-          ],
-          if (onClose != null) ...[
-            _IconBtn(
-              icon: Icons.close_rounded,
-              tooltip: 'Close session',
-              onPressed: onClose!,
-            ),
-            const SizedBox(width: 2),
-          ],
-          _IconBtn(
-            icon: Icons.remove_rounded,
-            tooltip: 'Hide terminal',
-            onPressed: onHide,
           ),
-          const SizedBox(width: 4),
+          if (actions != null) ...[const SizedBox(width: 12), actions!],
         ],
-      ),
-    );
-  }
-}
-
-class _IconBtn extends StatefulWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  const _IconBtn({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  @override
-  State<_IconBtn> createState() => _IconBtnState();
-}
-
-class _IconBtnState extends State<_IconBtn> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onPressed,
-          child: Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: _hovered ? AppColors.surface2 : Colors.transparent,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Icon(
-              widget.icon,
-              size: 14,
-              color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
-            ),
-          ),
-        ),
       ),
     );
   }

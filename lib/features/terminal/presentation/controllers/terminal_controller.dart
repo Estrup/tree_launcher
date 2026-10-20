@@ -260,7 +260,7 @@ class TerminalController extends ChangeNotifier {
     // Start the PTY and run the command for every command session up front,
     // not just the focused one. Only the active session's _TerminalBody is
     // built, so without this the background sessions wouldn't start their PTY
-    // (or run their command) until the user manually focused each tab.
+    // (or run their command) until the user showed each one.
     // Deferred to endOfFrame so the active session's TerminalView has been
     // laid out and reports correct dimensions before startPty(). The
     // !isPtyStarted guards here and in the view make the start idempotent.
@@ -316,17 +316,6 @@ class TerminalController extends ChangeNotifier {
     if (_sessions.isEmpty) {
       _visible = false;
     }
-  }
-
-  void setActive(int index) {
-    if (index < 0 || index >= _sessions.length) return;
-    _activeIndex = index;
-    notifyListeners();
-  }
-
-  void toggleVisibility() {
-    _visible = !_visible;
-    notifyListeners();
   }
 
   void hide() {

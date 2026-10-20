@@ -9,11 +9,15 @@ class PrBadge extends StatefulWidget {
   final String htmlUrl;
   final bool compact;
 
+  /// A fixed height, to line up with buttons beside it; null fits the text.
+  final double? height;
+
   const PrBadge({
     super.key,
     required this.number,
     required this.htmlUrl,
     this.compact = false,
+    this.height,
   });
 
   @override
@@ -37,13 +41,16 @@ class _PrBadgeState extends State<PrBadge> {
         child: Tooltip(
           message: 'Open PR #${widget.number}',
           child: Container(
+            height: widget.height,
             padding: EdgeInsets.symmetric(
               horizontal: widget.compact ? 8 : 10,
               vertical: widget.compact ? 3 : 5,
             ),
             decoration: BoxDecoration(
               color: _prColor.withValues(alpha: _hovered ? 0.18 : 0.1),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(
+                widget.height == null ? 6 : 7,
+              ),
               border: Border.all(
                 color: _prColor.withValues(alpha: _hovered ? 0.4 : 0.2),
               ),

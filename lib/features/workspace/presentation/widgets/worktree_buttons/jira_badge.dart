@@ -8,7 +8,15 @@ class JiraBadge extends StatefulWidget {
   final String issueKey;
   final bool compact;
 
-  const JiraBadge({super.key, required this.issueKey, this.compact = false});
+  /// A fixed height, to line up with buttons beside it; null fits the text.
+  final double? height;
+
+  const JiraBadge({
+    super.key,
+    required this.issueKey,
+    this.compact = false,
+    this.height,
+  });
 
   @override
   State<JiraBadge> createState() => _JiraBadgeState();
@@ -69,13 +77,16 @@ class _JiraBadgeState extends State<JiraBadge> {
               ? 'View ${widget.issueKey}'
               : '${widget.issueKey}: $title',
           child: Container(
+            height: widget.height,
             padding: EdgeInsets.symmetric(
               horizontal: widget.compact ? 8 : 10,
               vertical: widget.compact ? 3 : 5,
             ),
             decoration: BoxDecoration(
               color: _jiraColor.withValues(alpha: _hovered ? 0.18 : 0.1),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(
+                widget.height == null ? 6 : 7,
+              ),
               border: Border.all(
                 color: _jiraColor.withValues(alpha: _hovered ? 0.4 : 0.2),
               ),

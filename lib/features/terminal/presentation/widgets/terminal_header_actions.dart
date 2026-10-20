@@ -52,11 +52,16 @@ class TerminalHeaderActions extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (jiraKey != null && jiraKey.isNotEmpty) ...[
-          JiraBadge(issueKey: jiraKey, compact: true),
+          JiraBadge(issueKey: jiraKey, compact: true, height: 28),
           const SizedBox(width: 6),
         ],
         if (pr != null) ...[
-          PrBadge(number: pr.number, htmlUrl: pr.htmlUrl, compact: true),
+          PrBadge(
+            number: pr.number,
+            htmlUrl: pr.htmlUrl,
+            compact: true,
+            height: 28,
+          ),
           const SizedBox(width: 6),
         ],
         VscodeButton(

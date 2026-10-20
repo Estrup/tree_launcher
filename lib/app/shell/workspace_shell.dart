@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/presentation/widgets/activity_tab.dart';
@@ -84,196 +83,182 @@ class _WorkspaceShellState extends State<WorkspaceShell>
       for (final tab in tabs) tab.key,
     ], repoProvider.repoPageKey);
 
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.backquote, meta: true): () {
-          final tp = context.read<TerminalController>();
-          if (tp.sessions.isNotEmpty) {
-            tp.toggleVisibility();
+    return Scaffold(
+      backgroundColor: AppColors.base,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCollapsed = constraints.maxWidth < _collapseBreakpoint;
+
+          // Auto-close overlay when window grows past breakpoint
+          if (!isCollapsed && _sidebarOpen) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _sidebarOpen = false);
+            });
           }
-        },
-      },
-      child: Focus(
-        autofocus: true,
-        child: Scaffold(
-          backgroundColor: AppColors.base,
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isCollapsed = constraints.maxWidth < _collapseBreakpoint;
 
-              // Auto-close overlay when window grows past breakpoint
-              if (!isCollapsed && _sidebarOpen) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) setState(() => _sidebarOpen = false);
-                });
-              }
+          if (repoProvider.showSettings) {
+            return const RepoSettingsView();
+          }
 
-              if (repoProvider.showSettings) {
-                return const RepoSettingsView();
-              }
-
-              return Stack(
+          return Stack(
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      if (!isCollapsed)
-                        RepoSidebar(
-                          onAddRepo: () => AddRepoDialog.show(context),
-                          onOpenSettings: () => SettingsDialog.show(context),
+                  if (!isCollapsed)
+                    RepoSidebar(
+                      onAddRepo: () => AddRepoDialog.show(context),
+                      onOpenSettings: () => SettingsDialog.show(context),
+                    ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _buildHeader(
+                          context,
+                          repoProvider,
+                          showMenuButton: isCollapsed,
                         ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            _buildHeader(
-                              context,
-                              repoProvider,
-                              showMenuButton: isCollapsed,
-                            ),
-                            Expanded(
-                              child: isTerminalActive
-                                  ? const TerminalFullView()
-                                  : Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 24,
-                                            right: 24,
-                                            top: 16,
-                                            bottom: 0,
-                                          ),
-                                          child: AnimatedBuilder(
-                                            animation: _tabController!,
-                                            builder: (context, _) {
-                                              final currentIndex =
-                                                  _tabController!.index;
-                                              return Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: SingleChildScrollView(
-                                                      scrollDirection:
-                                                          Axis.horizontal,
-                                                      child: Row(
-                                                        children: [
-                                                          Container(
-                                                            padding:
-                                                                const EdgeInsets.all(
-                                                                  4,
-                                                                ),
-                                                            decoration: BoxDecoration(
-                                                              color: AppColors
-                                                                  .surface0,
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    10,
-                                                                  ),
+                        Expanded(
+                          child: isTerminalActive
+                              ? const TerminalFullView()
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 24,
+                                        right: 24,
+                                        top: 16,
+                                        bottom: 0,
+                                      ),
+                                      child: AnimatedBuilder(
+                                        animation: _tabController!,
+                                        builder: (context, _) {
+                                          final currentIndex =
+                                              _tabController!.index;
+                                          return Row(
+                                            children: [
+                                              Expanded(
+                                                child: SingleChildScrollView(
+                                                  scrollDirection:
+                                                      Axis.horizontal,
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.all(
+                                                              4,
                                                             ),
-                                                            child: Row(
-                                                              mainAxisSize:
-                                                                  MainAxisSize
-                                                                      .min,
-                                                              children: [
-                                                                for (
-                                                                  var i = 0;
-                                                                  i < tabs.length;
-                                                                  i++
-                                                                )
-                                                                  _buildSegmentTab(
-                                                                    text: tabs[i]
-                                                                        .label,
-                                                                    index: i,
-                                                                    currentIndex:
-                                                                        currentIndex,
-                                                                    icon: tabs[i]
-                                                                        .icon,
-                                                                    badge: tabs[i]
-                                                                        .badge,
-                                                                    onTap: () =>
-                                                                        repoProvider.showRepoPage(
+                                                        decoration: BoxDecoration(
+                                                          color: AppColors
+                                                              .surface0,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10,
+                                                              ),
+                                                        ),
+                                                        child: Row(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          children: [
+                                                            for (
+                                                              var i = 0;
+                                                              i < tabs.length;
+                                                              i++
+                                                            )
+                                                              _buildSegmentTab(
+                                                                text: tabs[i]
+                                                                    .label,
+                                                                index: i,
+                                                                currentIndex:
+                                                                    currentIndex,
+                                                                icon: tabs[i]
+                                                                    .icon,
+                                                                badge: tabs[i]
+                                                                    .badge,
+                                                                onTap: () =>
+                                                                    repoProvider
+                                                                        .showRepoPage(
                                                                           tabs[i]
                                                                               .key,
                                                                         ),
-                                                                  ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ],
+                                                              ),
+                                                          ],
+                                                        ),
                                                       ),
-                                                    ),
+                                                    ],
                                                   ),
-                                                  if (_tabKeys[currentIndex] ==
-                                                      worktreesPageKey) ...[
-                                                    const SizedBox(width: 12),
-                                                    const WorktreeListOptionsButton(),
-                                                  ],
-                                                ],
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Expanded(
-                                          child: TabBarView(
-                                            controller: _tabController,
-                                            physics:
-                                                const NeverScrollableScrollPhysics(),
-                                            children: [
-                                              for (final tab in tabs)
-                                                _pageBody(tab),
+                                                ),
+                                              ),
+                                              if (_tabKeys[currentIndex] ==
+                                                  worktreesPageKey) ...[
+                                                const SizedBox(width: 12),
+                                                const WorktreeListOptionsButton(),
+                                              ],
                                             ],
-                                          ),
-                                        ),
-                                      ],
+                                          );
+                                        },
+                                      ),
                                     ),
-                            ),
-                          ],
+                                    const SizedBox(height: 16),
+                                    Expanded(
+                                      child: TabBarView(
+                                        controller: _tabController,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        children: [
+                                          for (final tab in tabs)
+                                            _pageBody(tab),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  // Scrim
-                  if (isCollapsed && _sidebarOpen)
-                    GestureDetector(
-                      onTap: () => setState(() => _sidebarOpen = false),
-                      child: AnimatedOpacity(
-                        opacity: _sidebarOpen ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Container(color: Colors.black54),
-                      ),
-                    ),
-                  // Sliding sidebar overlay
-                  if (isCollapsed)
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      top: 0,
-                      bottom: 0,
-                      left: _sidebarOpen ? 0 : -240,
-                      width: 240,
-                      child: Material(
-                        elevation: 8,
-                        color: Colors.transparent,
-                        child: RepoSidebar(
-                          allowCollapse: false,
-                          onAddRepo: () {
-                            setState(() => _sidebarOpen = false);
-                            AddRepoDialog.show(context);
-                          },
-                          onOpenSettings: () {
-                            setState(() => _sidebarOpen = false);
-                            SettingsDialog.show(context);
-                          },
-                        ),
-                      ),
-                    ),
-                  // New PR review-request notification
-                  const PrReviewToast(),
                 ],
-              );
-            },
-          ),
-        ),
+              ),
+              // Scrim
+              if (isCollapsed && _sidebarOpen)
+                GestureDetector(
+                  onTap: () => setState(() => _sidebarOpen = false),
+                  child: AnimatedOpacity(
+                    opacity: _sidebarOpen ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Container(color: Colors.black54),
+                  ),
+                ),
+              // Sliding sidebar overlay
+              if (isCollapsed)
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  top: 0,
+                  bottom: 0,
+                  left: _sidebarOpen ? 0 : -240,
+                  width: 240,
+                  child: Material(
+                    elevation: 8,
+                    color: Colors.transparent,
+                    child: RepoSidebar(
+                      allowCollapse: false,
+                      onAddRepo: () {
+                        setState(() => _sidebarOpen = false);
+                        AddRepoDialog.show(context);
+                      },
+                      onOpenSettings: () {
+                        setState(() => _sidebarOpen = false);
+                        SettingsDialog.show(context);
+                      },
+                    ),
+                  ),
+                ),
+              // New PR review-request notification
+              const PrReviewToast(),
+            ],
+          );
+        },
       ),
     );
   }
