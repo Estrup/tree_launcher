@@ -395,6 +395,10 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     return jira.isNotEmpty ? jira : _existing?.jiraIssue;
   }
 
+  /// The GitHub issue the session is for: the one the dialog was opened from,
+  /// else the picked existing worktree's.
+  int? get _githubIssue => widget.githubIssue ?? _existing?.githubIssue;
+
   /// Picks [option] in the prompt panel. Unless the user chose new / existing
   /// themselves, an agent other than build runs in an existing worktree
   /// (it only reads the code); anything else goes back to the default.
@@ -528,7 +532,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           claudePrompt: _resolvePrompt(
             worktreePath: existing.path,
             issue: issue,
-            githubIssue: existing.githubIssue,
+            githubIssue: _githubIssue,
             baseBranch: existing.baseBranch,
           ),
           claudeModel: _model,
@@ -601,7 +605,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                       ? _resolvePrompt(
                           worktreePath: worktreePath,
                           issue: jira.isNotEmpty ? jira : null,
-                          githubIssue: widget.githubIssue,
+                          githubIssue: _githubIssue,
                           baseBranch: _selectedBranch,
                         )
                       : null,
