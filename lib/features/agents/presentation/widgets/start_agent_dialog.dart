@@ -197,6 +197,7 @@ class _StartAgentDialogState extends State<StartAgentDialog> {
   String? _resolved(Worktree? worktree) => resolveClaudePrompt(
     _prompt,
     issue: _issueKey,
+    githubIssue: worktree?.githubIssue,
     baseBranch: worktree?.baseBranch ?? worktree?.branch,
     worktreeName: worktree?.name ?? '',
     worktreePath: worktree?.path ?? '',
@@ -213,6 +214,13 @@ class _StartAgentDialogState extends State<StartAgentDialog> {
     final issue = _issueKey;
     if (issue == null && _prompt.prompt.contains('{issue}')) {
       setState(() => _error = '${_prompt.name} needs a Jira issue');
+      return;
+    }
+    if (worktree.githubIssue == null &&
+        _prompt.prompt.contains('{github_issue}')) {
+      setState(
+        () => _error = '${_prompt.name} needs a worktree with a GitHub issue',
+      );
       return;
     }
     if (issue != null) {

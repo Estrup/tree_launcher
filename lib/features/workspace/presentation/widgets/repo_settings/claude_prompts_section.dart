@@ -107,7 +107,7 @@ class _ClaudePromptsSectionState extends State<RepoClaudePromptsSection>
                     Text(
                       'Prompt templates offered by the Claude button on a worktree. '
                       'A prompt with an agent kind starts that kind of agent from its tab. '
-                      'Substitutions: {issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}.',
+                      'Substitutions: {issue}, {github_issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}.',
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textMuted,
@@ -325,7 +325,7 @@ class _ClaudePromptEditorState extends State<_ClaudePromptEditor> {
           Padding(
             padding: const EdgeInsets.only(left: 44),
             child: Text(
-              'Substitutions: {issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}.',
+              'Substitutions: {issue}, {github_issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}.',
               style: TextStyle(fontSize: 13, color: AppColors.textMuted),
             ),
           ),

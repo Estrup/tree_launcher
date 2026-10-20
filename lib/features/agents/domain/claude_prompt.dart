@@ -13,9 +13,10 @@ const kickoffPromptId = ':kickoff';
 const noClaudePromptId = ':none';
 
 /// A reusable, named prompt template for launching Claude in a worktree.
-/// Placeholders ({issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}) are
-/// filled from the worktree before launch; {pr} is the number of its open pull
-/// request.
+/// Placeholders ({issue}, {github_issue}, {pr}, {base_branch}, {worktree},
+/// {path}, {repo}) are filled from the worktree before launch; {issue} is its
+/// Jira key, {github_issue} its GitHub issue number and {pr} the number of its
+/// open pull request.
 class ClaudePrompt {
   final String name;
   final String prompt;

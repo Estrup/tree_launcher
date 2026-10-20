@@ -56,6 +56,7 @@ String? resolveWorktreePrompt(
 }) => resolveClaudePrompt(
   prompt,
   issue: wt.jiraIssue,
+  githubIssue: wt.githubIssue,
   baseBranch: wt.baseBranch,
   worktreeName: wt.name,
   worktreePath: wt.path,
@@ -68,6 +69,7 @@ String? resolveWorktreePrompt(
 String? resolveClaudePrompt(
   ClaudePrompt prompt, {
   String? issue,
+  int? githubIssue,
   String? baseBranch,
   required String worktreeName,
   required String worktreePath,
@@ -76,6 +78,7 @@ String? resolveClaudePrompt(
 }) => fillClaudePlaceholders(
   prompt.prompt,
   issue: issue,
+  githubIssue: githubIssue,
   baseBranch: baseBranch,
   worktreeName: worktreeName,
   worktreePath: worktreePath,
@@ -88,6 +91,7 @@ String? resolveClaudePrompt(
 String? fillClaudePlaceholders(
   String template, {
   String? issue,
+  int? githubIssue,
   String? baseBranch,
   required String worktreeName,
   required String worktreePath,
@@ -96,6 +100,7 @@ String? fillClaudePlaceholders(
 }) {
   var p = template;
   p = p.replaceAll('{issue}', issue ?? '');
+  p = p.replaceAll('{github_issue}', githubIssue == null ? '' : '$githubIssue');
   p = p.replaceAll('{pr}', prNumber == null ? '' : '$prNumber');
   p = p.replaceAll('{base_branch}', baseBranch ?? '');
   p = p.replaceAll('{worktree}', worktreeName);
@@ -106,14 +111,19 @@ String? fillClaudePlaceholders(
 }
 
 /// Why [template] can't be filled in: it uses `{issue}` without an [issue],
-/// or `{pr}` without a [prNumber]. Null when it can.
+/// `{github_issue}` without a [githubIssue], or `{pr}` without a [prNumber].
+/// Null when it can.
 String? missingPlaceholderValue(
   String template, {
   String? issue,
+  int? githubIssue,
   int? prNumber,
 }) {
   if (issue == null && template.contains('{issue}')) {
     return 'the prompt uses {issue}, but there is no issue key';
+  }
+  if (githubIssue == null && template.contains('{github_issue}')) {
+    return 'the prompt uses {github_issue}, but there is no GitHub issue';
   }
   if (prNumber == null && template.contains('{pr}')) {
     return 'the prompt uses {pr}, but there is no PR number';
@@ -165,6 +175,7 @@ class TextClaudePrompt extends ClaudePromptChoice {
 String? firstClaudeMessage(
   ClaudePromptChoice choice, {
   String? issue,
+  int? githubIssue,
   String? baseBranch,
   required String worktreeName,
   required String worktreePath,
@@ -180,6 +191,7 @@ String? firstClaudeMessage(
   SavedClaudePrompt(:final prompt) => resolveClaudePrompt(
     prompt,
     issue: issue,
+    githubIssue: githubIssue,
     baseBranch: baseBranch,
     worktreeName: worktreeName,
     worktreePath: worktreePath,
@@ -189,6 +201,7 @@ String? firstClaudeMessage(
   TextClaudePrompt(:final text) => fillClaudePlaceholders(
     text,
     issue: issue,
+    githubIssue: githubIssue,
     baseBranch: baseBranch,
     worktreeName: worktreeName,
     worktreePath: worktreePath,

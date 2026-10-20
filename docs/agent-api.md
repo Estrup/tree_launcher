@@ -241,9 +241,11 @@ as an agent run of that kind, with `TREE_LAUNCHER_AGENT_ID` and
 `POST /v1/worktrees`.
 
 **The first message.** A saved prompt's and `promptText`'s placeholders are
-filled in: `{issue}`, `{pr}`, `{base_branch}` (in an existing worktree, the
+filled in: `{issue}`, `{github_issue}` (the GitHub issue an existing
+worktree is linked to), `{pr}`, `{base_branch}` (in an existing worktree, the
 one it was created from), `{worktree}`, `{path}` and `{repo}`. The branch's
-open PR isn't looked up for `{pr}`; pass `prNumber`.
+open PR isn't looked up for `{pr}`; pass `prNumber`. A new worktree has no
+GitHub issue, so `{github_issue}` only works in an existing one.
 
 **What it doesn't do.** It doesn't change what the dialog preselects next
 time (model, effort, prompt, base branch, shared checkout). A session already
@@ -290,7 +292,8 @@ first, so a request that fails at the prompt never leaves a worktree behind.
   new-worktree fields with `existingWorktree`, `prompt` with `promptText`,
   an unknown prompt (with `prompts`: the saved names and the built-ins),
   `:kickoff` without a kickoff prompt, a prompt using `{issue}` without an
-  issue key or `{pr}` without `prNumber`, an unknown `model` or `effort`
+  issue key, `{github_issue}` without a linked GitHub issue or `{pr}` without
+  `prNumber`, an unknown `model` or `effort`
   (with `models` / `efforts`);
 - 404: no repo with that name, or no such worktree in it;
 - 409: the folder, the branch or the worktree already exists. Nothing was

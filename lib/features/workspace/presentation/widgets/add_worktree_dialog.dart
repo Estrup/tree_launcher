@@ -472,6 +472,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   String? _resolvePrompt({
     required String worktreePath,
     String? issue,
+    int? githubIssue,
     String? baseBranch,
   }) {
     final repo = context.read<WorkspaceController>().selectedRepo;
@@ -488,6 +489,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     return firstClaudeMessage(
       choice,
       issue: issue,
+      githubIssue: githubIssue,
       baseBranch: baseBranch,
       worktreeName: p.basename(worktreePath),
       worktreePath: worktreePath,
@@ -526,6 +528,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           claudePrompt: _resolvePrompt(
             worktreePath: existing.path,
             issue: issue,
+            githubIssue: existing.githubIssue,
             baseBranch: existing.baseBranch,
           ),
           claudeModel: _model,
@@ -598,6 +601,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                       ? _resolvePrompt(
                           worktreePath: worktreePath,
                           issue: jira.isNotEmpty ? jira : null,
+                          githubIssue: widget.githubIssue,
                           baseBranch: _selectedBranch,
                         )
                       : null,

@@ -43,7 +43,7 @@ class StartClaudeInWorktree implements ClaudeSessionStarter {
   final WorktreeCreator _creator;
   final GitService _git;
 
-  /// A worktree's recorded issue, base branch and kickoff file.
+  /// A worktree's recorded issues, base branch and kickoff file.
   final WorktreeMetadata? Function(String worktreePath) _metadataFor;
 
   final StartClaudeSession _start;
@@ -71,12 +71,19 @@ class StartClaudeInWorktree implements ClaudeSessionStarter {
       _check(
         prompt.choice,
         issue: worktree.issueKey,
+        githubIssue: metadata?.githubIssue,
         prNumber: request.prNumber,
         kickoffMissing: worktree.kickoffPromptPath == null
             ? 'worktree ${found.name} has no kickoff prompt staged'
             : null,
       );
-      return _launch(repo, worktree, request, prompt);
+      return _launch(
+        repo,
+        worktree,
+        request,
+        prompt,
+        githubIssue: metadata?.githubIssue,
+      );
     }
 
     final wanted = request.newWorktree!;
@@ -170,6 +177,7 @@ class StartClaudeInWorktree implements ClaudeSessionStarter {
   void _check(
     ClaudePromptChoice choice, {
     String? issue,
+    int? githubIssue,
     int? prNumber,
     String? kickoffMissing,
   }) {
@@ -183,6 +191,7 @@ class StartClaudeInWorktree implements ClaudeSessionStarter {
       _ when template != null => missingPlaceholderValue(
         template,
         issue: issue,
+        githubIssue: githubIssue,
         prNumber: prNumber,
       ),
       _ => null,
@@ -205,11 +214,13 @@ class StartClaudeInWorktree implements ClaudeSessionStarter {
     RepoConfig repo,
     StartedWorktree worktree,
     ClaudeSessionRequest request,
-    _PickedPrompt prompt,
-  ) async {
+    _PickedPrompt prompt, {
+    int? githubIssue,
+  }) async {
     final message = firstClaudeMessage(
       prompt.choice,
       issue: worktree.issueKey,
+      githubIssue: githubIssue,
       baseBranch: worktree.baseBranch,
       worktreeName: p.basename(worktree.path),
       worktreePath: worktree.path,
