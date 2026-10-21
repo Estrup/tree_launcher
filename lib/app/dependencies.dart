@@ -8,6 +8,7 @@ import 'package:tree_launcher/app/use_cases/agent_api_control.dart';
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
 import 'package:tree_launcher/app/use_cases/save_document.dart';
+import 'package:tree_launcher/app/use_cases/jira_issue_base_branches.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_in_worktree.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/core/database/app_database.dart';
@@ -172,6 +173,10 @@ class AppDependencies {
       ),
       gitService: this.gitService,
       jiraService: jiraService,
+      issueBaseBranches: JiraIssueBaseBranches(
+        repos: workspace,
+        jira: jiraService,
+      ),
     );
     agentApi = AgentApiControl(server: agentApiServer, settings: settings);
   }

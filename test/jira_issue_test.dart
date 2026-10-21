@@ -22,6 +22,28 @@ void main() {
       );
     });
 
+    test('reads the fixVersion ids and keeps them in the cache', () {
+      final issue = JiraIssue.fromApiJson({
+        'key': 'AU2-1',
+        'fields': {
+          'summary': 's',
+          'fixVersions': [
+            {'id': '29501', 'name': '2.41'},
+            {'id': 29502, 'name': '2.42'},
+          ],
+        },
+      });
+      expect(issue.fixVersionIds, ['29501', '29502']);
+      expect(JiraIssue.fromJson(issue.toJson()).fixVersionIds, [
+        '29501',
+        '29502',
+      ]);
+      expect(
+        JiraIssue(key: 'AU2-2', summary: 's').toJson(),
+        isNot(contains('fixVersionIds')),
+      );
+    });
+
     test('parses nested fields and comments', () {
       final issue = JiraIssue.fromApiJson({
         'key': 'AU2-1234',

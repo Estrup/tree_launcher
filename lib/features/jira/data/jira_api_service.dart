@@ -32,11 +32,12 @@ class JiraApiService {
   /// Fields requested for a single issue. Trims the payload to what the issue
   /// dialog shows.
   static const _issueFields =
-      'summary,status,issuetype,assignee,priority,description,updated,comment';
+      'summary,status,issuetype,assignee,priority,description,updated,comment,'
+      'fixVersions';
 
   /// Fields requested for issue lists (no description or comments).
   static const _listFields =
-      'summary,status,issuetype,assignee,priority,updated';
+      'summary,status,issuetype,assignee,priority,updated,fixVersions';
 
   /// Page size for searches, and the most issues a single search returns.
   static const _pageSize = 100;

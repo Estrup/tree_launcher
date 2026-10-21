@@ -3,6 +3,7 @@ import 'package:shelf_router/shelf_router.dart';
 
 import 'package:tree_launcher/features/agent_api/data/api_http.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
+import 'package:tree_launcher/features/workspace/domain/issue_base_branches.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 
@@ -11,11 +12,16 @@ class WorktreeRoutes {
   WorktreeRoutes({
     required AppSettingsSource settings,
     required WorktreeCreator creator,
+    IssueBaseBranches? baseBranches,
   }) : _settings = settings,
-       _creator = creator;
+       _creator = creator,
+       _baseBranches = baseBranches;
 
   final AppSettingsSource _settings;
   final WorktreeCreator _creator;
+
+  /// Fills in a missing `baseBranch` from the issue's fixVersion.
+  final IssueBaseBranches? _baseBranches;
 
   void mount(Router router) => router..post('/v1/worktrees', _create);
 
@@ -32,7 +38,8 @@ class WorktreeRoutes {
   ///
   /// JSON body:
   /// - `repo` (required) — repo name, as in `GET /v1/activity?repo=`.
-  /// - `baseBranch` (required) — branch the worktree is created from.
+  /// - `baseBranch` — branch the worktree is created from. Optional with an
+  ///   `issueKey` whose fixVersion the repo maps to a branch.
   /// - `branch` (required) — the new-branch suffix; the full branch becomes
   ///   `<defaultBranchPrefix>/<branch>` when a prefix is configured.
   /// - `worktreeName` (required) — the worktree directory name.
@@ -53,11 +60,13 @@ class WorktreeRoutes {
     if (unknown.isNotEmpty) return unsupportedFields(unknown, _fields);
 
     final repo = stringField(body, 'repo');
-    final baseBranch = stringField(body, 'baseBranch');
     final branchInput = stringField(body, 'branch');
     final worktreeInput = stringField(body, 'worktreeName');
     final issueKey = stringField(body, 'issueKey');
     final kickoffPrompt = stringField(body, 'kickoffPrompt');
+    final baseBranch =
+        stringField(body, 'baseBranch') ??
+        await mappedBaseBranch(_baseBranches, repo, issueKey);
 
     final missing = [
       if (repo == null) 'repo',
@@ -105,6 +114,18 @@ class WorktreeRoutes {
       return serverError('create worktree', e);
     }
   }
+}
+
+/// The branch [repo] maps to [issueKey]'s fixVersion, when both are given
+/// and the key is valid; else null.
+Future<String?> mappedBaseBranch(
+  IssueBaseBranches? baseBranches,
+  String? repo,
+  String? issueKey,
+) async {
+  if (baseBranches == null || repo == null || issueKey == null) return null;
+  if (issueKeyError(issueKey) != null) return null;
+  return baseBranches.baseBranchFor(repo, issueKey);
 }
 
 /// [worktreeInput] and [branchInput] normalised (lowercased, spaces to

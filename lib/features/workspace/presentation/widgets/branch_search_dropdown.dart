@@ -8,12 +8,18 @@ class BranchSearchDropdown extends StatefulWidget {
   final ValueChanged<String> onSelected;
   final bool enabled;
 
+  /// Whether each typed value is reported through [onSelected] too. When
+  /// false only a branch picked from the list is, and leaving the field
+  /// without picking one puts the last picked branch back.
+  final bool reportTyped;
+
   const BranchSearchDropdown({
     super.key,
     required this.branches,
     required this.onSelected,
     this.selectedBranch,
     this.enabled = true,
+    this.reportTyped = true,
   });
 
   @override
@@ -31,9 +37,14 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
   OverlayEntry? _overlayEntry;
   List<String> _filtered = [];
 
+  /// The branch last picked (or given), shown again when the field is left
+  /// without picking one and typed values aren't reported.
+  String? _picked;
+
   @override
   void initState() {
     super.initState();
+    _picked = widget.selectedBranch;
     if (widget.selectedBranch != null) {
       _controller.text = widget.selectedBranch!;
     }
@@ -64,7 +75,13 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
       _showOverlay();
     } else {
       // Delay to allow tap on overlay item
-      Future.delayed(const Duration(milliseconds: 200), _removeOverlay);
+      Future.delayed(const Duration(milliseconds: 200), () {
+        _removeOverlay();
+        if (!widget.reportTyped && mounted && !_focusNode.hasFocus) {
+          _controller.text = _picked ?? '';
+          setState(() => _filtered = widget.branches);
+        }
+      });
     }
   }
 
@@ -143,6 +160,7 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
                         isSelected: isSelected,
                         onTap: () {
                           _controller.text = branch;
+                          _picked = branch;
                           widget.onSelected(branch);
                           _focusNode.unfocus();
                           _removeOverlay();
@@ -178,7 +196,7 @@ class _BranchSearchDropdownState extends State<BranchSearchDropdown> {
         onChanged: (value) {
           // Commit the typed value to the parent so it's used even when the
           // user doesn't tap a suggestion row.
-          widget.onSelected(value);
+          if (widget.reportTyped) widget.onSelected(value);
           setState(() {
             _filtered = _filterBranches(value);
           });

@@ -60,6 +60,9 @@ class JiraIssue {
   final DateTime? updated;
   final List<JiraComment> comments;
 
+  /// Ids of the issue's fixVersions (`JiraVersion.id`).
+  final List<String> fixVersionIds;
+
   const JiraIssue({
     required this.key,
     required this.summary,
@@ -71,6 +74,7 @@ class JiraIssue {
     this.description,
     this.updated,
     this.comments = const [],
+    this.fixVersionIds = const [],
   });
 
   /// Reads `fields.<key>.name` defensively (nested objects may be null).
@@ -93,6 +97,7 @@ class JiraIssue {
     final rawComments = comment is Map<String, dynamic>
         ? (comment['comments'] as List<dynamic>? ?? const [])
         : const [];
+    final versions = fields['fixVersions'];
 
     return JiraIssue(
       key: json['key'] as String? ?? '',
@@ -112,6 +117,11 @@ class JiraIssue {
           .whereType<Map<String, dynamic>>()
           .map(JiraComment.fromApiJson)
           .toList(),
+      fixVersionIds: [
+        if (versions is List)
+          for (final v in versions.whereType<Map<String, dynamic>>())
+            if (v['id'] != null) v['id'].toString(),
+      ],
     );
   }
 
@@ -132,6 +142,9 @@ class JiraIssue {
           .whereType<Map<String, dynamic>>()
           .map(JiraComment.fromJson)
           .toList(),
+      fixVersionIds:
+          (json['fixVersionIds'] as List<dynamic>?)?.cast<String>() ??
+          const [],
     );
   }
 
@@ -146,6 +159,7 @@ class JiraIssue {
     if (description != null) 'description': description,
     if (updated != null) 'updated': updated!.toIso8601String(),
     'comments': comments.map((c) => c.toJson()).toList(),
+    if (fixVersionIds.isNotEmpty) 'fixVersionIds': fixVersionIds,
   };
 
   JiraIssue copyWith({
@@ -159,6 +173,7 @@ class JiraIssue {
     String? description,
     DateTime? updated,
     List<JiraComment>? comments,
+    List<String>? fixVersionIds,
   }) {
     return JiraIssue(
       key: key ?? this.key,
@@ -171,6 +186,7 @@ class JiraIssue {
       description: description ?? this.description,
       updated: updated ?? this.updated,
       comments: comments ?? this.comments,
+      fixVersionIds: fixVersionIds ?? this.fixVersionIds,
     );
   }
 }

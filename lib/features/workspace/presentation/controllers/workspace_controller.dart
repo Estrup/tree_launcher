@@ -237,6 +237,20 @@ class WorkspaceController extends ChangeNotifier
     return updated;
   }
 
+  Future<RepoConfig?> updateJiraVersionBranch(
+    RepoConfig repo,
+    String versionId,
+    String? branch,
+  ) async {
+    final updated = await preferences.updateJiraVersionBranch(
+      repo,
+      versionId,
+      branch,
+    );
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
   Future<RepoConfig?> updateGithubMilestone(
     RepoConfig repo,
     int? milestoneNumber,

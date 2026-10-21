@@ -112,6 +112,22 @@ class RepoPreferencesController extends ChangeNotifier {
     return updated;
   }
 
+  /// Maps the fixVersion [versionId] to [branch], the default base branch of
+  /// its issues' new worktrees; null or empty removes the mapping.
+  Future<RepoConfig?> updateJiraVersionBranch(
+    RepoConfig repo,
+    String versionId,
+    String? branch,
+  ) async {
+    final trimmed = branch?.trim();
+    final branches = {...repo.jiraVersionBranches}..remove(versionId);
+    if (trimmed != null && trimmed.isNotEmpty) branches[versionId] = trimmed;
+    final updated = repo.copyWith(jiraVersionBranches: branches);
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
   /// Remembers the Issues tab's milestone pick; null for all open issues.
   Future<RepoConfig?> updateGithubMilestone(
     RepoConfig repo,

@@ -28,6 +28,10 @@ class RepoConfig {
   /// Id of the fixVersion last picked in the Jira tab, so it is remembered.
   final String? jiraFixVersionId;
 
+  /// The default base branch per fixVersion id: a new worktree for an issue
+  /// in that version is created from it.
+  final Map<String, String> jiraVersionBranches;
+
   /// Number of the milestone last picked in the Issues tab, so it is
   /// remembered; null for all open issues.
   final int? githubMilestoneNumber;
@@ -56,6 +60,7 @@ class RepoConfig {
     this.githubConfig,
     this.jiraProjectKey,
     this.jiraFixVersionId,
+    this.jiraVersionBranches = const {},
     this.githubMilestoneNumber,
     this.predefinedIssues = const [],
     this.useNestedWorktrees = false,
@@ -88,6 +93,10 @@ class RepoConfig {
           : null,
       jiraProjectKey: json['jiraProjectKey'] as String?,
       jiraFixVersionId: json['jiraFixVersionId'] as String?,
+      jiraVersionBranches:
+          (json['jiraVersionBranches'] as Map<String, dynamic>?)
+              ?.cast<String, String>() ??
+          const {},
       githubMilestoneNumber: json['githubMilestoneNumber'] as int?,
       predefinedIssues:
           (json['predefinedIssues'] as List<dynamic>?)
@@ -110,6 +119,8 @@ class RepoConfig {
       'githubConfig': githubConfig!.toJson(),
     if (jiraProjectKey != null) 'jiraProjectKey': jiraProjectKey,
     if (jiraFixVersionId != null) 'jiraFixVersionId': jiraFixVersionId,
+    if (jiraVersionBranches.isNotEmpty)
+      'jiraVersionBranches': jiraVersionBranches,
     if (githubMilestoneNumber != null)
       'githubMilestoneNumber': githubMilestoneNumber,
     'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
@@ -131,6 +142,7 @@ class RepoConfig {
     bool clearJiraProjectKey = false,
     String? jiraFixVersionId,
     bool clearJiraFixVersionId = false,
+    Map<String, String>? jiraVersionBranches,
     int? githubMilestoneNumber,
     bool clearGithubMilestoneNumber = false,
     List<PredefinedIssue>? predefinedIssues,
@@ -153,6 +165,7 @@ class RepoConfig {
       jiraFixVersionId: clearJiraFixVersionId
           ? null
           : (jiraFixVersionId ?? this.jiraFixVersionId),
+      jiraVersionBranches: jiraVersionBranches ?? this.jiraVersionBranches,
       githubMilestoneNumber: clearGithubMilestoneNumber
           ? null
           : (githubMilestoneNumber ?? this.githubMilestoneNumber),
@@ -161,6 +174,15 @@ class RepoConfig {
       agentWorkingDirectory:
           agentWorkingDirectory ?? this.agentWorkingDirectory,
     );
+  }
+
+  /// The base branch mapped to the first of [fixVersionIds] that has one.
+  String? baseBranchForFixVersions(Iterable<String> fixVersionIds) {
+    for (final id in fixVersionIds) {
+      final branch = jiraVersionBranches[id];
+      if (branch != null) return branch;
+    }
+    return null;
   }
 
   @override

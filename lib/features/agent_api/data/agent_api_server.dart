@@ -21,6 +21,7 @@ import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
+import 'package:tree_launcher/features/workspace/domain/issue_base_branches.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 
@@ -51,6 +52,7 @@ class AgentApiServer {
     required DocumentSaver documentSaver,
     required GitService gitService,
     JiraApiService? jiraService,
+    IssueBaseBranches? issueBaseBranches,
   }) : _activityRoutes = ActivityRoutes(
          repos: repos,
          gitService: gitService,
@@ -60,10 +62,12 @@ class AgentApiServer {
        _worktreeRoutes = WorktreeRoutes(
          settings: settings,
          creator: worktreeCreator,
+         baseBranches: issueBaseBranches,
        ),
        _claudeSessionRoutes = ClaudeSessionRoutes(
          settings: settings,
          starter: claudeSessions,
+         baseBranches: issueBaseBranches,
        ),
        _jiraRoutes = JiraRoutes(
          repos: repos,

@@ -232,6 +232,7 @@ class JiraIssuesTab extends StatelessWidget {
   }) {
     final jira = context.watch<JiraIssuesController>();
     final settings = context.watch<SettingsController>();
+    final repo = context.watch<WorkspaceController>().selectedRepo;
     final selected = jira.selectedKeys;
     final selectionActive = selected.isNotEmpty;
     final allSelected = visible.every((i) => selected.contains(i.key));
@@ -269,6 +270,13 @@ class JiraIssuesTab extends StatelessWidget {
             itemCount: visible.length,
             itemBuilder: (context, index) {
               final issue = visible[index];
+              // The branch mapped to the issue's fixVersion; an issue cached
+              // before fixVersions were fetched falls back to the listed one.
+              final baseBranch = repo?.baseBranchForFixVersions([
+                ...issue.fixVersionIds,
+                if (!jira.isSearching && jira.selectedVersion != null)
+                  jira.selectedVersion!.id,
+              ]);
               return _IssueRow(
                 issue: issue,
                 worktree: worktreesByIssue[issue.key],
@@ -291,6 +299,7 @@ class JiraIssuesTab extends StatelessWidget {
                     issue.summary,
                   ),
                   initialJiraKey: issue.key,
+                  initialBaseBranch: baseBranch,
                   contextTitle: issue.summary,
                 ),
                 onStartClaude: () => AddWorktreeDialog.startClaudeSession(
@@ -301,6 +310,7 @@ class JiraIssuesTab extends StatelessWidget {
                     issue.summary,
                   ),
                   initialJiraKey: issue.key,
+                  initialBaseBranch: baseBranch,
                   contextTitle: issue.summary,
                 ),
               );

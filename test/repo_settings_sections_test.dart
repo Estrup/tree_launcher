@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
+import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
@@ -18,6 +20,21 @@ class _FakeGit extends GitService {
   @override
   Future<WorktreeListResult> getWorktrees(String repoPath) async =>
       WorktreeListResult(worktrees: const [], isBareLayout: false);
+
+  @override
+  Future<List<String>> listBranches(String repoPath) async => [
+    'develop',
+    'releases/2.41',
+  ];
+}
+
+class _FakeJira extends JiraApiService {
+  @override
+  Future<List<JiraVersion>> fetchVersions(String projectKey) async => const [
+    JiraVersion(id: '1', name: '2.40', released: true),
+    JiraVersion(id: '2', name: '2.41'),
+    JiraVersion(id: '3', name: '2.42'),
+  ];
 }
 
 void main() {
@@ -26,7 +43,12 @@ void main() {
 
   setUp(() async {
     store = FakeRepoConfigStore([
-      RepoConfig(name: 'demo', path: '/repos/demo', jiraProjectKey: 'AU2'),
+      RepoConfig(
+        name: 'demo',
+        path: '/repos/demo',
+        jiraProjectKey: 'AU2',
+        jiraVersionBranches: {'2': 'releases/2.41'},
+      ),
     ]);
     workspace = WorkspaceController(
       gitService: _FakeGit(),
@@ -44,8 +66,11 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: workspace,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: workspace),
+          Provider<JiraApiService>.value(value: _FakeJira()),
+        ],
         child: MaterialApp(
           theme: AppTheme.current,
           home: Scaffold(body: section),
@@ -96,6 +121,55 @@ void main() {
     await tester.enterText(field('e.g. AU2'), 'OA');
     await tester.pump(const Duration(milliseconds: 500));
     expect(store.savedRepos.single.jiraProjectKey, 'OA');
+  });
+
+  testWidgets('lists the mapped fixVersions and removes a mapping', (
+    tester,
+  ) async {
+    await pump(tester, const RepoJiraSection());
+    await tester.pump();
+
+    expect(find.text('2.41'), findsOneWidget);
+    expect(find.text('releases/2.41'), findsOneWidget);
+    expect(find.text('2.42'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pump();
+    expect(store.savedRepos.single.jiraVersionBranches, isEmpty);
+    expect(find.text('No fixVersion has a default branch.'), findsOneWidget);
+  });
+
+  testWidgets('maps another fixVersion from the add row', (tester) async {
+    await pump(tester, const RepoJiraSection());
+    await tester.pump();
+
+    await tester.tap(find.text('Add Mapping'));
+    await tester.pump();
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    // Neither the mapped 2.41 nor the released 2.40 is offered.
+    expect(find.text('2.41'), findsOneWidget);
+    expect(find.text('2.40'), findsNothing);
+    await tester.tap(find.text('2.42').last);
+    await tester.pumpAndSettle();
+
+    // Typing searches the branches without saving anything.
+    await tester.tap(find.byType(TextField).last);
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).last, 'dev');
+    await tester.pump();
+    expect(find.text('develop'), findsOneWidget);
+    expect(store.savedRepos.single.jiraVersionBranches, {'2': 'releases/2.41'});
+
+    await tester.tap(find.text('develop').last);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(store.savedRepos.single.jiraVersionBranches, {
+      '2': 'releases/2.41',
+      '3': 'develop',
+    });
+    // Every unreleased version has a branch now.
+    expect(find.text('Add Mapping'), findsNothing);
   });
 
   testWidgets('a pasted GitHub URL fills owner and repo', (tester) async {

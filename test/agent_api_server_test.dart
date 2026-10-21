@@ -30,6 +30,7 @@ import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
+import 'package:tree_launcher/features/workspace/domain/issue_base_branches.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
@@ -162,6 +163,13 @@ class _FakeJiraService extends JiraApiService {
 
 /// Records the most recent call and synthesizes a result. Throws
 /// [RepoNotFoundException] for any repo not in [knownRepos].
+/// Issue AU2-77's fixVersion maps to `releases/2.41` in repo demo.
+class _FakeBaseBranches implements IssueBaseBranches {
+  @override
+  Future<String?> baseBranchFor(String repoName, String issueKey) async =>
+      repoName == 'demo' && issueKey == 'AU2-77' ? 'releases/2.41' : null;
+}
+
 class _FakeWorktreeCreator implements WorktreeCreator {
   Map<String, dynamic>? lastCall;
   Set<String> knownRepos = {'demo'};
@@ -281,6 +289,7 @@ AgentApiServer _server(
   ManualPostStore? manualPostStore,
   ActivityController? activity,
   JiraApiService? jiraService,
+  IssueBaseBranches? issueBaseBranches,
   DocumentsController? documents,
   WorktreeMetadata? Function(String path)? metadataFor,
 }) {
@@ -324,6 +333,7 @@ AgentApiServer _server(
     ),
     gitService: gitService ?? GitService(),
     jiraService: jiraService,
+    issueBaseBranches: issueBaseBranches,
   );
 }
 
@@ -345,6 +355,7 @@ void main() {
       settings: AppSettings(defaultBranchPrefix: 'feature'),
       worktreeCreator: creator,
       claudeSessions: starter,
+      issueBaseBranches: _FakeBaseBranches(),
     );
     // Port 0 → OS picks a free loopback port.
     await server.start(port: 0);
@@ -588,6 +599,21 @@ void main() {
       expect(body['error'], contains('missing'));
     });
 
+    test('takes the base branch mapped to the issue\'s fixVersion', () async {
+      final (status, _) = await post(
+        '/v1/worktrees',
+        validBody()
+          ..remove('baseBranch')
+          ..['issueKey'] = 'AU2-77',
+      );
+      expect(status, 201);
+      expect(creator.lastCall!['baseBranch'], 'releases/2.41');
+
+      // An explicit base branch wins.
+      await post('/v1/worktrees', validBody()..['issueKey'] = 'AU2-77');
+      expect(creator.lastCall!['baseBranch'], 'main');
+    });
+
     test('creates a worktree, applying the branch prefix', () async {
       final (status, body) = await post('/v1/worktrees', validBody());
       expect(status, 201);
@@ -770,6 +796,17 @@ void main() {
       expect(body['error'], contains('worktreeName'));
       expect(body['error'], contains('baseBranch'));
       expect(starter.lastRequest, isNull);
+    });
+
+    test('takes the base branch mapped to the issue\'s fixVersion', () async {
+      final (status, _) = await post(
+        '/v1/claude/sessions',
+        newWorktree()
+          ..remove('baseBranch')
+          ..['issueKey'] = 'AU2-77',
+      );
+      expect(status, 201);
+      expect(starter.lastRequest!.newWorktree!.baseBranch, 'releases/2.41');
     });
 
     test('refuses new-worktree fields with existingWorktree', () async {

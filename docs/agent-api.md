@@ -183,7 +183,7 @@ and records the Jira issue and base branch with it.
 | Field | |
 |---|---|
 | `repo` | Required. A repo name. |
-| `baseBranch` | Required. The branch to start from; its latest `origin/` state is fetched first. |
+| `baseBranch` | Required, unless `issueKey` is given and the repo maps one of the issue's fixVersions to a branch (Repo settings → Jira); then that branch is used. The branch to start from; its latest `origin/` state is fetched first. |
 | `branch` | Required. The new branch's name *without* the prefix: it becomes `<prefix>/<branch>` when Settings has a branch prefix. |
 | `worktreeName` | Required. The worktree's folder name. |
 | `issueKey` | Optional. The Jira issue it is for. |
@@ -231,7 +231,7 @@ as an agent run of that kind, with `TREE_LAUNCHER_AGENT_ID` and
 | `repo` | Required. A repo name. |
 | `existingWorktree` | Optional. Start in this worktree of the repo instead of creating one: its folder name or its absolute path. |
 | `worktreeName` | New worktree only. The folder name. Required unless `issueKey` and `title` are both given; then it is made from them as the Jira button does, e.g. `vipps-mobilepay-callback-http-500-au2-5407`. |
-| `baseBranch` | New worktree only. Required. The branch to start from. |
+| `baseBranch` | New worktree only. Required, unless `issueKey` is given and the repo maps one of the issue's fixVersions to a branch (Repo settings → Jira); then that branch is used. The branch to start from. |
 | `branch` | New worktree only. Optional. The new branch without the prefix; defaults to the worktree name. Becomes `<prefix>/<branch>` when Settings has a branch prefix. |
 | `kickoffPrompt` | New worktree only. Optional. Text written to `<worktree>/.tree-launcher/kickoff-prompt.md`, as in `POST /v1/worktrees`. |
 | `issueKey` | Optional. The Jira issue. A new worktree records it; in an existing worktree it is used for this session only, and defaults to the worktree's recorded issue. |

@@ -136,6 +136,36 @@ void main() {
     });
   });
 
+  group('RepoConfig fixVersion branches', () {
+    test('round-trip through JSON and are omitted when empty', () {
+      final repo = RepoConfig(
+        name: 'demo',
+        path: '/repos/demo',
+        jiraVersionBranches: {'29501': 'releases/2.41'},
+      );
+      final restored = RepoConfig.fromJson(repo.toJson());
+      expect(restored.jiraVersionBranches, {'29501': 'releases/2.41'});
+      expect(restored.copyWith(name: 'x').jiraVersionBranches, {
+        '29501': 'releases/2.41',
+      });
+      expect(
+        RepoConfig(name: 'demo', path: '/repos/demo').toJson(),
+        isNot(contains('jiraVersionBranches')),
+      );
+    });
+
+    test('give the branch of the first mapped fixVersion', () {
+      final repo = RepoConfig(
+        name: 'demo',
+        path: '/repos/demo',
+        jiraVersionBranches: {'2': 'releases/2.42', '3': 'releases/2.43'},
+      );
+      expect(repo.baseBranchForFixVersions(['1', '3', '2']), 'releases/2.43');
+      expect(repo.baseBranchForFixVersions(['1']), isNull);
+      expect(repo.baseBranchForFixVersions(const []), isNull);
+    });
+  });
+
   group('RepoConfig GitHub issues', () {
     test('round-trip the Issues tab settings and issue links', () {
       final repo = RepoConfig(

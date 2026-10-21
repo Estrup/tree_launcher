@@ -6,12 +6,28 @@ import 'package:tree_launcher/app/dependencies.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
+import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
+import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/settings_dialog.dart';
+import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings_view.dart';
 
 import 'fake_config_stores.dart';
 import 'test_database.dart';
+
+/// Jira with no versions, so the Jira section never calls the real one.
+class _NoJira extends JiraApiService {
+  @override
+  Future<List<JiraVersion>> fetchVersions(String projectKey) async => const [];
+}
+
+/// Git without processes for the branch lists, which a widget test's fake
+/// clock never lets finish.
+class _NoBranchesGit extends GitService {
+  @override
+  Future<List<String>> listBranches(String repoPath) async => const [];
+}
 
 /// Opens every section of the settings dialog and of the repo settings,
 /// which were split into many files, so a section that fails to build
@@ -29,6 +45,7 @@ void main() {
   setUp(() async {
     dependencies = AppDependencies(
       database: testDatabase(),
+      gitService: _NoBranchesGit(),
       configFile: ConfigFile(path: '/tmp/tree_launcher_smoke_config.json'),
       repoConfigStore: FakeRepoConfigStore([
         RepoConfig(
@@ -71,6 +88,7 @@ void main() {
             ChangeNotifierProvider.value(value: dependencies.settings),
             ChangeNotifierProvider.value(value: dependencies.agentApi),
             Provider.value(value: dependencies.configFile),
+            Provider<JiraApiService>.value(value: _NoJira()),
           ],
           child: MaterialApp(
             theme: AppTheme.current,

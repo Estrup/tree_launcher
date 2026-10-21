@@ -6,6 +6,7 @@ import 'package:tree_launcher/features/agent_api/data/routes/worktree_routes.dar
 import 'package:tree_launcher/features/agents/domain/claude_session_starter.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
+import 'package:tree_launcher/features/workspace/domain/issue_base_branches.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 
@@ -15,11 +16,16 @@ class ClaudeSessionRoutes {
   ClaudeSessionRoutes({
     required AppSettingsSource settings,
     required ClaudeSessionStarter starter,
+    IssueBaseBranches? baseBranches,
   }) : _settings = settings,
-       _starter = starter;
+       _starter = starter,
+       _baseBranches = baseBranches;
 
   final AppSettingsSource _settings;
   final ClaudeSessionStarter _starter;
+
+  /// Fills in a missing `baseBranch` from the issue's fixVersion.
+  final IssueBaseBranches? _baseBranches;
 
   void mount(Router router) => router..post('/v1/claude/sessions', _start);
 
@@ -94,7 +100,11 @@ class ClaudeSessionRoutes {
         (issueKey != null && title != null
             ? worktreeNameForJiraIssue(issueKey, title)
             : null);
-    final baseBranch = stringField(body, 'baseBranch');
+    final baseBranch =
+        stringField(body, 'baseBranch') ??
+        (existingWorktree == null
+            ? await mappedBaseBranch(_baseBranches, repo, issueKey)
+            : null);
     final missing = [
       if (repo == null) 'repo',
       if (existingWorktree == null && worktreeInput == null) 'worktreeName',
