@@ -4,15 +4,19 @@ import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/terminal_theme.dart';
+import 'package:tree_launcher/core/platform/launcher_service.dart';
+import 'package:tree_launcher/core/platform/open_external.dart';
 import 'package:tree_launcher/features/session_panel/presentation/controllers/session_panel_controller.dart';
 import 'package:tree_launcher/features/session_panel/presentation/widgets/session_panel.dart';
 import 'package:tree_launcher/features/session_panel/presentation/widgets/session_panel_split.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/terminal/domain/terminal_link.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart'
     as terminal;
 import 'terminal_context_menu.dart';
 import 'terminal_header_actions.dart';
 import 'terminal_key_handler.dart';
+import 'terminal_links.dart';
 
 /// The built-in terminal: a header bar over the active session, with the
 /// session panel at its right for a Claude session. Sessions are switched
@@ -147,6 +151,7 @@ class _TerminalBody extends StatefulWidget {
 
 class _TerminalBodyState extends State<_TerminalBody> {
   late final TerminalController _terminalController;
+  final _viewKey = GlobalKey<TerminalViewState>();
 
   @override
   void initState() {
@@ -185,6 +190,29 @@ class _TerminalBodyState extends State<_TerminalBody> {
     }
   }
 
+  /// Opens a Cmd+clicked [link]: a URL in the browser, a folder in Finder,
+  /// and a file in the side panel of a Claude session or in VS Code.
+  void _openLink(TerminalLink link) {
+    final session = widget.session;
+    switch (link.target) {
+      case UrlLinkTarget(:final url):
+        openExternal(url);
+      case PathLinkTarget(:final path):
+        if (link.isDirectory) {
+          openExternal(path);
+        } else if (session.isClaude as bool) {
+          context.read<SessionPanelController>()
+            ..openFile(session.workingDirectory as String, path)
+            ..show();
+        } else {
+          context.read<LauncherService?>()?.openFileInVSCode(
+            session.workingDirectory as String,
+            path,
+          );
+        }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsController>().settings;
@@ -203,37 +231,46 @@ class _TerminalBodyState extends State<_TerminalBody> {
           );
         }
       },
-      child: TerminalView(
-        widget.session.terminal as Terminal,
+      child: TerminalLinks(
+        terminal: widget.session.terminal as Terminal,
         controller: _terminalController,
-        theme: appTerminalTheme,
-        textStyle: TerminalStyle(
-          fontFamily: fontFamily,
-          fontSize: fontSize,
-          height: 1.9,
-          // Text fonts for symbols the main font lacks, tried before the
-          // system fallback, which would pick Apple Color Emoji for some
-          // (e.g. the Claude CLI's ⏺ bullet) and draw a wide emoji.
-          fontFamilyFallback: [
-            fontFamily,
-            'Menlo',
-            'Apple Symbols',
-            'STIX Two Math',
-          ],
+        viewKey: _viewKey,
+        workingDirectory: widget.session.workingDirectory as String,
+        onOpen: _openLink,
+        builder: (context, mouseCursor) => TerminalView(
+          widget.session.terminal as Terminal,
+          key: _viewKey,
+          controller: _terminalController,
+          theme: appTerminalTheme,
+          textStyle: TerminalStyle(
+            fontFamily: fontFamily,
+            fontSize: fontSize,
+            height: 1.9,
+            // Text fonts for symbols the main font lacks, tried before the
+            // system fallback, which would pick Apple Color Emoji for some
+            // (e.g. the Claude CLI's ⏺ bullet) and draw a wide emoji.
+            fontFamilyFallback: [
+              fontFamily,
+              'Menlo',
+              'Apple Symbols',
+              'STIX Two Math',
+            ],
+          ),
+          textScaler: TextScaler.noScaling,
+          // Painted in the terminal background, so the gutter reads as part of
+          // the terminal rather than a frame around it.
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          mouseCursor: mouseCursor,
+          autofocus: true,
+          hardwareKeyboardOnly: true,
+          onKeyEvent: (node, event) =>
+              terminalShiftEnterHandler(
+                widget.session.terminal as Terminal,
+                node,
+                event,
+              ) ??
+              KeyEventResult.ignored,
         ),
-        textScaler: TextScaler.noScaling,
-        // Painted in the terminal background, so the gutter reads as part of
-        // the terminal rather than a frame around it.
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        autofocus: true,
-        hardwareKeyboardOnly: true,
-        onKeyEvent: (node, event) =>
-            terminalShiftEnterHandler(
-              widget.session.terminal as Terminal,
-              node,
-              event,
-            ) ??
-            KeyEventResult.ignored,
       ),
     );
   }

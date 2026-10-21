@@ -128,6 +128,11 @@ class SessionPanelController extends ChangeNotifier {
     _save({_openKey: _open});
   }
 
+  /// Shows the panel when it is hidden.
+  void show() {
+    if (!_open) toggle();
+  }
+
   /// Sets the chosen width (at least [minWidth]) and remembers it.
   void setWidth(double width) {
     final next = math.max(minWidth, width);
