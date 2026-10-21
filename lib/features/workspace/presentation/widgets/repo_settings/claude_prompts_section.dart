@@ -54,6 +54,14 @@ class _ClaudePromptsSectionState extends State<RepoClaudePromptsSection>
     _save();
   }
 
+  void _reorderPrompt(int oldIndex, int newIndex) {
+    setState(() {
+      final prompt = _prompts.removeAt(oldIndex);
+      _prompts.insert(newIndex > oldIndex ? newIndex - 1 : newIndex, prompt);
+    });
+    _save();
+  }
+
   void _closeEditor() {
     final index = _editingIndex;
     setState(() {
@@ -105,7 +113,8 @@ class _ClaudePromptsSectionState extends State<RepoClaudePromptsSection>
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Prompt templates offered by the Claude button on a worktree. '
+                      'Prompt templates offered by the Claude button on a worktree, '
+                      'in this order (drag to reorder). '
                       'A prompt with an agent kind starts that kind of agent from its tab. '
                       'Substitutions: {issue}, {github_issue}, {pr}, {base_branch}, {worktree}, {path}, {repo}.',
                       style: TextStyle(
@@ -159,28 +168,39 @@ class _ClaudePromptsSectionState extends State<RepoClaudePromptsSection>
               ),
             )
           else
-            ...List.generate(_prompts.length, (index) {
-              return _ClaudePromptRow(
-                key: ValueKey('prompt_$index'),
-                prompt: _prompts[index],
-                onTap: () => setState(() => _editingIndex = index),
-                onRemove: () => _removePrompt(index),
-              );
-            }),
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              onReorder: _reorderPrompt,
+              children: [
+                for (var index = 0; index < _prompts.length; index++)
+                  _ClaudePromptRow(
+                    key: ObjectKey(_prompts[index]),
+                    index: index,
+                    prompt: _prompts[index],
+                    onTap: () => setState(() => _editingIndex = index),
+                    onRemove: () => _removePrompt(index),
+                  ),
+              ],
+            ),
         ],
       ),
     );
   }
 }
 
-/// A prompt in the Claude Prompts list: just the name; tap to edit.
+/// A prompt in the Claude Prompts list: just the name; tap to edit, drag the
+/// handle to reorder. The order is the order the prompts are offered in.
 class _ClaudePromptRow extends StatefulWidget {
+  final int index;
   final ClaudePrompt prompt;
   final VoidCallback onTap;
   final VoidCallback onRemove;
 
   const _ClaudePromptRow({
     super.key,
+    required this.index,
     required this.prompt,
     required this.onTap,
     required this.onRemove,
@@ -205,7 +225,7 @@ class _ClaudePromptRowState extends State<_ClaudePromptRow> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+          padding: const EdgeInsets.fromLTRB(8, 10, 10, 10),
           decoration: BoxDecoration(
             color: _hovered ? AppColors.surface1 : AppColors.surface0,
             borderRadius: BorderRadius.circular(10),
@@ -213,6 +233,18 @@ class _ClaudePromptRowState extends State<_ClaudePromptRow> {
           ),
           child: Row(
             children: [
+              ReorderableDragStartListener(
+                index: widget.index,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.grab,
+                  child: Icon(
+                    Icons.drag_indicator_rounded,
+                    size: 18,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
               Icon(
                 Icons.auto_awesome_rounded,
                 size: 16,
