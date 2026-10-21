@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
+import 'package:tree_launcher/features/jira/domain/jira_trigger.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 import 'package:tree_launcher/features/workspace/data/worktree_metadata_store.dart';
@@ -247,6 +248,15 @@ class WorkspaceController extends ChangeNotifier
       versionId,
       branch,
     );
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
+  Future<RepoConfig?> updateJiraTriggers(
+    RepoConfig repo,
+    List<JiraTrigger> triggers,
+  ) async {
+    final updated = await preferences.updateJiraTriggers(repo, triggers);
     _replaceSelection(repo, updated);
     return updated;
   }

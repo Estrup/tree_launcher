@@ -250,3 +250,16 @@ class DocumentIssues extends Table {
   @override
   Set<Column> get primaryKey => {documentId, issueKey};
 }
+
+/// The issues a Jira trigger has fired for, while they still match it, so a
+/// restart or the next poll doesn't fire again. An issue that stops matching
+/// is dropped, so it fires again when it matches again.
+@DataClassName('JiraTriggerIssueRow')
+class JiraTriggerIssues extends Table {
+  TextColumn get triggerId => text()();
+  TextColumn get issueKey => text()();
+  TextColumn get firedAt => text().map(const IsoDateTime())();
+
+  @override
+  Set<Column> get primaryKey => {triggerId, issueKey};
+}

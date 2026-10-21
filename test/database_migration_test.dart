@@ -14,7 +14,7 @@ void main() {
 
   setUpAll(() => verifier = SchemaVerifier(GeneratedHelper()));
 
-  for (final (from, to) in [(1, 2), (2, 3), (3, 4), (1, 4)]) {
+  for (final (from, to) in [(1, 2), (2, 3), (3, 4), (4, 5), (1, 5)]) {
     test('migrates from v$from to v$to', () async {
       final schema = await verifier.schemaAt(from);
       final db = AppDatabase(schema.newConnection());
@@ -24,10 +24,10 @@ void main() {
   }
 
   test('a new database matches the latest dump', () async {
-    final schema = await verifier.schemaAt(4);
+    final schema = await verifier.schemaAt(5);
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 4);
+    await verifier.migrateAndValidate(db, 5);
   });
 
   test('keeps the data of v1 when migrating to the latest', () async {
@@ -39,11 +39,12 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 4);
+    await verifier.migrateAndValidate(db, 5);
 
     final posts = await db.select(db.manualPosts).get();
     expect(posts.single.issueKey, 'AU2-1');
     expect(await db.select(db.worktreeMeta).get(), isEmpty);
     expect(await db.select(db.documents).get(), isEmpty);
+    expect(await db.select(db.jiraTriggerIssues).get(), isEmpty);
   });
 }

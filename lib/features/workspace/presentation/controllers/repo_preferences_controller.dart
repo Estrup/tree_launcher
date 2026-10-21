@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
+import 'package:tree_launcher/features/jira/domain/jira_trigger.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
@@ -123,6 +124,16 @@ class RepoPreferencesController extends ChangeNotifier {
     final branches = {...repo.jiraVersionBranches}..remove(versionId);
     if (trimmed != null && trimmed.isNotEmpty) branches[versionId] = trimmed;
     final updated = repo.copyWith(jiraVersionBranches: branches);
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  Future<RepoConfig?> updateJiraTriggers(
+    RepoConfig repo,
+    List<JiraTrigger> triggers,
+  ) async {
+    final updated = repo.copyWith(jiraTriggers: triggers);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;

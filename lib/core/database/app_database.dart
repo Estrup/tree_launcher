@@ -30,6 +30,7 @@ part 'app_database.g.dart';
     UiState,
     Documents,
     DocumentIssues,
+    JiraTriggerIssues,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -61,7 +62,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   /// Each version's changes, applied in order to a database from before it.
   /// Dump the schema after adding one (see CLAUDE.md, Storage); the
@@ -88,6 +89,10 @@ class AppDatabase extends _$AppDatabase {
         await m.createIndex(documentsRepo);
         await m.createIndex(documentsAgent);
         await m.createIndex(documentIssuesKey);
+      }
+      if (from < 5) {
+        // The issues Jira triggers have fired for.
+        await m.createTable(jiraTriggerIssues);
       }
     },
   );

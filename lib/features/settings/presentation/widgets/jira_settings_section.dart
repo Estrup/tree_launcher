@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
+import 'package:tree_launcher/features/jira/domain/jira_trigger_schedule.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 
-/// Settings → Jira: the tags issues can get in the Jira tab. They are added,
-/// renamed, recolored, reordered and deleted here.
+/// Settings → Jira: when Jira is checked for the repos' triggers, and the
+/// tags issues can get in the Jira tab (added, renamed, recolored,
+/// reordered and deleted here).
 class JiraSettingsSection extends StatefulWidget {
   const JiraSettingsSection({super.key});
 
@@ -56,13 +61,32 @@ class _JiraSettingsSectionState extends State<JiraSettingsSection> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Your own tags for Jira issues, set in the Jira tab. Saved on '
-            'this Mac only, never sent to Jira.',
+            'When Jira is checked for triggers, and your own tags for Jira '
+            'issues.',
             style: TextStyle(
               fontSize: 13,
               color: AppColors.textMuted.withValues(alpha: 0.8),
             ),
           ),
+          const SizedBox(height: 32),
+          Text(
+            'TRIGGER CHECKS',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "The repos' triggers (Repo settings → Jira) run when Jira is "
+            'checked. A change made while checks are off or outside the hours '
+            'fires at the next check.',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 12),
+          const _TriggerScheduleEditor(),
           const SizedBox(height: 32),
           Text(
             'TAGS',
@@ -72,6 +96,12 @@ class _JiraSettingsSectionState extends State<JiraSettingsSection> {
               color: AppColors.textMuted,
               letterSpacing: 1.2,
             ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Your own tags for Jira issues, set in the Jira tab. Saved on '
+            'this Mac only, never sent to Jira.',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
           const SizedBox(height: 12),
           if (tags.isEmpty)
@@ -330,4 +360,163 @@ class _ColorDot extends StatelessWidget {
     height: size,
     decoration: BoxDecoration(color: color, shape: BoxShape.circle),
   );
+}
+
+/// Whether, how often and between which times Jira is checked for triggers.
+/// The interval and hours save after a pause, once they are valid.
+class _TriggerScheduleEditor extends StatefulWidget {
+  const _TriggerScheduleEditor();
+
+  @override
+  State<_TriggerScheduleEditor> createState() => _TriggerScheduleEditorState();
+}
+
+class _TriggerScheduleEditorState extends State<_TriggerScheduleEditor> {
+  late final JiraTriggerSchedule _saved = context
+      .read<SettingsController>()
+      .settings
+      .jiraTriggerSchedule;
+  late final _interval = TextEditingController(
+    text: '${_saved.intervalMinutes}',
+  );
+  late final _from = TextEditingController(
+    text: _saved.from == null ? '' : formatTimeOfDay(_saved.from!),
+  );
+  late final _until = TextEditingController(
+    text: _saved.until == null ? '' : formatTimeOfDay(_saved.until!),
+  );
+  Timer? _saveTimer;
+
+  @override
+  void dispose() {
+    _saveTimer?.cancel();
+    _interval.dispose();
+    _from.dispose();
+    _until.dispose();
+    super.dispose();
+  }
+
+  int? get _intervalMinutes {
+    final minutes = int.tryParse(_interval.text.trim());
+    return minutes != null && minutes >= 1 && minutes <= 1440 ? minutes : null;
+  }
+
+  /// What is wrong with the typed values; null when they can be saved.
+  String? get _error {
+    if (_intervalMinutes == null) return 'Check every 1 to 1440 minutes.';
+    final from = _from.text.trim();
+    final until = _until.text.trim();
+    if (from.isEmpty && until.isEmpty) return null;
+    if (parseTimeOfDay(from) == null || parseTimeOfDay(until) == null) {
+      return 'Give both times as HH:mm, or leave both empty for all day.';
+    }
+    return null;
+  }
+
+  void _changed() {
+    setState(() {});
+    _saveTimer?.cancel();
+    if (_error != null) return;
+    _saveTimer = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      final settings = context.read<SettingsController>();
+      final from = parseTimeOfDay(_from.text);
+      final until = parseTimeOfDay(_until.text);
+      settings.updateJiraTriggerSchedule(
+        settings.settings.jiraTriggerSchedule.copyWith(
+          intervalMinutes: _intervalMinutes,
+          from: from,
+          until: until,
+          clearHours: from == null,
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsController>();
+    final schedule = settings.settings.jiraTriggerSchedule;
+    final label = TextStyle(fontSize: 13, color: AppColors.textSecondary);
+    final error = _error;
+    Widget field(
+      TextEditingController controller, {
+      required double width,
+      required String hint,
+      bool digitsOnly = false,
+    }) => SizedBox(
+      width: width,
+      child: TextField(
+        controller: controller,
+        enabled: schedule.enabled,
+        style: appFormFieldTextStyle(context, monospace: true),
+        inputFormatters: [
+          digitsOnly
+              ? FilteringTextInputFormatter.digitsOnly
+              : FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
+        ],
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: appFormFieldHintStyle(context, monospace: true),
+        ),
+        onChanged: (_) => _changed(),
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => settings.updateJiraTriggerSchedule(
+              schedule.copyWith(enabled: !schedule.enabled),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: Checkbox(
+                    value: schedule.enabled,
+                    onChanged: (on) => settings.updateJiraTriggerSchedule(
+                      schedule.copyWith(enabled: on ?? false),
+                    ),
+                    activeColor: AppColors.accent,
+                    side: BorderSide(color: AppColors.textMuted),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text('Check Jira for triggers', style: label),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text('Every', style: label),
+            field(_interval, width: 70, hint: '10', digitsOnly: true),
+            Text('minutes, between', style: label),
+            field(_from, width: 90, hint: '07:00'),
+            Text('and', style: label),
+            field(_until, width: 90, hint: '17:00'),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          error ?? 'Leave the times empty to check all day.',
+          style: TextStyle(
+            fontSize: 12,
+            color: error != null ? AppColors.error : AppColors.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
 }

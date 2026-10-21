@@ -95,8 +95,8 @@ the schema dumps in `drift_schemas/`.
 3. **`loadState()`** loads settings and agent runs, waiting for them so the
    first frame has the theme. The repos and their worktrees load in the
    background.
-4. **`startServers()`** starts the agent API, and prunes the Jira cache in the
-   background.
+4. **`startServers()`** starts the agent API and the Jira trigger polling,
+   and prunes the Jira cache in the background.
 5. **`runApp()`**.
 
 When the app is asked to quit, an `AppLifecycleListener` calls
@@ -129,7 +129,8 @@ disposes the controllers and closes the database.
   in the features' `domain/`: `RepoCatalog`, `WorktreeCreator`,
   `AppSettingsSource`, `JiraTagEditor`, `AgentRegistry`,
   `ClaudeSessionStarter`, `ManualPostWriter`, `DocumentLibrary`,
-  `DocumentSaver`. So an API write shows in the UI at once.
+  `DocumentSaver`, `IssueBaseBranches`. So an API write shows in the UI at
+  once.
 - **Flows that span features live in `app/use_cases/`.**
   - `StartClaudeSession` is the flow behind the Jira, PR and issue buttons.
   - `StartClaudeInWorktree` is the same through the agent API
@@ -140,6 +141,15 @@ disposes the controllers and closes the database.
   - `SaveDocument` saves a document sent through the agent API
     (`POST /v1/documents`), tied to its agent run or worktree.
   - `AgentApiControl` runs the API on the right port.
+  - `JiraIssueBaseBranches` gives the API an issue's default base branch,
+    from the repo's fixVersion → branch mapping.
+  - `JiraTriggerWatcher` polls Jira for the repos' `JiraTrigger`s (an issue
+    in a fixVersion moves to a status, or is created) on the settings'
+    `JiraTriggerSchedule` (on/off, interval, hours), and starts each new
+    match through `StartClaudeInWorktree`: in the rule's worktree, else the
+    issue's own, else a new one from the version's branch. The issues a rule
+    has fired for are kept in the `jira_trigger_issues` table until they
+    stop matching.
 - **The Jira and GitHub issue controllers extend `IssueListController`**,
   which holds the load cycle (a superseded response is dropped), search and
   selection. Each tab passes its own action to the shared `IssueBulkBar`.

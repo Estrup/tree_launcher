@@ -5852,6 +5852,277 @@ class DocumentIssuesCompanion extends UpdateCompanion<DocumentIssueRow> {
   }
 }
 
+class $JiraTriggerIssuesTable extends JiraTriggerIssues
+    with TableInfo<$JiraTriggerIssuesTable, JiraTriggerIssueRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $JiraTriggerIssuesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _triggerIdMeta = const VerificationMeta(
+    'triggerId',
+  );
+  @override
+  late final GeneratedColumn<String> triggerId = GeneratedColumn<String>(
+    'trigger_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _issueKeyMeta = const VerificationMeta(
+    'issueKey',
+  );
+  @override
+  late final GeneratedColumn<String> issueKey = GeneratedColumn<String>(
+    'issue_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, String> firedAt =
+      GeneratedColumn<String>(
+        'fired_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($JiraTriggerIssuesTable.$converterfiredAt);
+  @override
+  List<GeneratedColumn> get $columns => [triggerId, issueKey, firedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'jira_trigger_issues';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<JiraTriggerIssueRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('trigger_id')) {
+      context.handle(
+        _triggerIdMeta,
+        triggerId.isAcceptableOrUnknown(data['trigger_id']!, _triggerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_triggerIdMeta);
+    }
+    if (data.containsKey('issue_key')) {
+      context.handle(
+        _issueKeyMeta,
+        issueKey.isAcceptableOrUnknown(data['issue_key']!, _issueKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_issueKeyMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {triggerId, issueKey};
+  @override
+  JiraTriggerIssueRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return JiraTriggerIssueRow(
+      triggerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}trigger_id'],
+      )!,
+      issueKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}issue_key'],
+      )!,
+      firedAt: $JiraTriggerIssuesTable.$converterfiredAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}fired_at'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $JiraTriggerIssuesTable createAlias(String alias) {
+    return $JiraTriggerIssuesTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, String> $converterfiredAt =
+      const IsoDateTime();
+}
+
+class JiraTriggerIssueRow extends DataClass
+    implements Insertable<JiraTriggerIssueRow> {
+  final String triggerId;
+  final String issueKey;
+  final DateTime firedAt;
+  const JiraTriggerIssueRow({
+    required this.triggerId,
+    required this.issueKey,
+    required this.firedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['trigger_id'] = Variable<String>(triggerId);
+    map['issue_key'] = Variable<String>(issueKey);
+    {
+      map['fired_at'] = Variable<String>(
+        $JiraTriggerIssuesTable.$converterfiredAt.toSql(firedAt),
+      );
+    }
+    return map;
+  }
+
+  JiraTriggerIssuesCompanion toCompanion(bool nullToAbsent) {
+    return JiraTriggerIssuesCompanion(
+      triggerId: Value(triggerId),
+      issueKey: Value(issueKey),
+      firedAt: Value(firedAt),
+    );
+  }
+
+  factory JiraTriggerIssueRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return JiraTriggerIssueRow(
+      triggerId: serializer.fromJson<String>(json['triggerId']),
+      issueKey: serializer.fromJson<String>(json['issueKey']),
+      firedAt: serializer.fromJson<DateTime>(json['firedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'triggerId': serializer.toJson<String>(triggerId),
+      'issueKey': serializer.toJson<String>(issueKey),
+      'firedAt': serializer.toJson<DateTime>(firedAt),
+    };
+  }
+
+  JiraTriggerIssueRow copyWith({
+    String? triggerId,
+    String? issueKey,
+    DateTime? firedAt,
+  }) => JiraTriggerIssueRow(
+    triggerId: triggerId ?? this.triggerId,
+    issueKey: issueKey ?? this.issueKey,
+    firedAt: firedAt ?? this.firedAt,
+  );
+  JiraTriggerIssueRow copyWithCompanion(JiraTriggerIssuesCompanion data) {
+    return JiraTriggerIssueRow(
+      triggerId: data.triggerId.present ? data.triggerId.value : this.triggerId,
+      issueKey: data.issueKey.present ? data.issueKey.value : this.issueKey,
+      firedAt: data.firedAt.present ? data.firedAt.value : this.firedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('JiraTriggerIssueRow(')
+          ..write('triggerId: $triggerId, ')
+          ..write('issueKey: $issueKey, ')
+          ..write('firedAt: $firedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(triggerId, issueKey, firedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is JiraTriggerIssueRow &&
+          other.triggerId == this.triggerId &&
+          other.issueKey == this.issueKey &&
+          other.firedAt == this.firedAt);
+}
+
+class JiraTriggerIssuesCompanion extends UpdateCompanion<JiraTriggerIssueRow> {
+  final Value<String> triggerId;
+  final Value<String> issueKey;
+  final Value<DateTime> firedAt;
+  final Value<int> rowid;
+  const JiraTriggerIssuesCompanion({
+    this.triggerId = const Value.absent(),
+    this.issueKey = const Value.absent(),
+    this.firedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  JiraTriggerIssuesCompanion.insert({
+    required String triggerId,
+    required String issueKey,
+    required DateTime firedAt,
+    this.rowid = const Value.absent(),
+  }) : triggerId = Value(triggerId),
+       issueKey = Value(issueKey),
+       firedAt = Value(firedAt);
+  static Insertable<JiraTriggerIssueRow> custom({
+    Expression<String>? triggerId,
+    Expression<String>? issueKey,
+    Expression<String>? firedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (triggerId != null) 'trigger_id': triggerId,
+      if (issueKey != null) 'issue_key': issueKey,
+      if (firedAt != null) 'fired_at': firedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  JiraTriggerIssuesCompanion copyWith({
+    Value<String>? triggerId,
+    Value<String>? issueKey,
+    Value<DateTime>? firedAt,
+    Value<int>? rowid,
+  }) {
+    return JiraTriggerIssuesCompanion(
+      triggerId: triggerId ?? this.triggerId,
+      issueKey: issueKey ?? this.issueKey,
+      firedAt: firedAt ?? this.firedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (triggerId.present) {
+      map['trigger_id'] = Variable<String>(triggerId.value);
+    }
+    if (issueKey.present) {
+      map['issue_key'] = Variable<String>(issueKey.value);
+    }
+    if (firedAt.present) {
+      map['fired_at'] = Variable<String>(
+        $JiraTriggerIssuesTable.$converterfiredAt.toSql(firedAt.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('JiraTriggerIssuesCompanion(')
+          ..write('triggerId: $triggerId, ')
+          ..write('issueKey: $issueKey, ')
+          ..write('firedAt: $firedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5869,6 +6140,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $UiStateTable uiState = $UiStateTable(this);
   late final $DocumentsTable documents = $DocumentsTable(this);
   late final $DocumentIssuesTable documentIssues = $DocumentIssuesTable(this);
+  late final $JiraTriggerIssuesTable jiraTriggerIssues =
+      $JiraTriggerIssuesTable(this);
   late final Index agentEventsRun = Index(
     'agent_events_run',
     'CREATE INDEX agent_events_run ON agent_events (run_id, id)',
@@ -5915,6 +6188,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     uiState,
     documents,
     documentIssues,
+    jiraTriggerIssues,
     agentEventsRun,
     worktreeEventsAt,
     claudeTranscriptsDir,
@@ -9917,6 +10191,182 @@ typedef $$DocumentIssuesTableProcessedTableManager =
       DocumentIssueRow,
       PrefetchHooks Function({bool documentId})
     >;
+typedef $$JiraTriggerIssuesTableCreateCompanionBuilder =
+    JiraTriggerIssuesCompanion Function({
+      required String triggerId,
+      required String issueKey,
+      required DateTime firedAt,
+      Value<int> rowid,
+    });
+typedef $$JiraTriggerIssuesTableUpdateCompanionBuilder =
+    JiraTriggerIssuesCompanion Function({
+      Value<String> triggerId,
+      Value<String> issueKey,
+      Value<DateTime> firedAt,
+      Value<int> rowid,
+    });
+
+class $$JiraTriggerIssuesTableFilterComposer
+    extends Composer<_$AppDatabase, $JiraTriggerIssuesTable> {
+  $$JiraTriggerIssuesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get triggerId => $composableBuilder(
+    column: $table.triggerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get issueKey => $composableBuilder(
+    column: $table.issueKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, String> get firedAt =>
+      $composableBuilder(
+        column: $table.firedAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+}
+
+class $$JiraTriggerIssuesTableOrderingComposer
+    extends Composer<_$AppDatabase, $JiraTriggerIssuesTable> {
+  $$JiraTriggerIssuesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get triggerId => $composableBuilder(
+    column: $table.triggerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get issueKey => $composableBuilder(
+    column: $table.issueKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get firedAt => $composableBuilder(
+    column: $table.firedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$JiraTriggerIssuesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $JiraTriggerIssuesTable> {
+  $$JiraTriggerIssuesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get triggerId =>
+      $composableBuilder(column: $table.triggerId, builder: (column) => column);
+
+  GeneratedColumn<String> get issueKey =>
+      $composableBuilder(column: $table.issueKey, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, String> get firedAt =>
+      $composableBuilder(column: $table.firedAt, builder: (column) => column);
+}
+
+class $$JiraTriggerIssuesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $JiraTriggerIssuesTable,
+          JiraTriggerIssueRow,
+          $$JiraTriggerIssuesTableFilterComposer,
+          $$JiraTriggerIssuesTableOrderingComposer,
+          $$JiraTriggerIssuesTableAnnotationComposer,
+          $$JiraTriggerIssuesTableCreateCompanionBuilder,
+          $$JiraTriggerIssuesTableUpdateCompanionBuilder,
+          (
+            JiraTriggerIssueRow,
+            BaseReferences<
+              _$AppDatabase,
+              $JiraTriggerIssuesTable,
+              JiraTriggerIssueRow
+            >,
+          ),
+          JiraTriggerIssueRow,
+          PrefetchHooks Function()
+        > {
+  $$JiraTriggerIssuesTableTableManager(
+    _$AppDatabase db,
+    $JiraTriggerIssuesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$JiraTriggerIssuesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$JiraTriggerIssuesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$JiraTriggerIssuesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> triggerId = const Value.absent(),
+                Value<String> issueKey = const Value.absent(),
+                Value<DateTime> firedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => JiraTriggerIssuesCompanion(
+                triggerId: triggerId,
+                issueKey: issueKey,
+                firedAt: firedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String triggerId,
+                required String issueKey,
+                required DateTime firedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => JiraTriggerIssuesCompanion.insert(
+                triggerId: triggerId,
+                issueKey: issueKey,
+                firedAt: firedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$JiraTriggerIssuesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $JiraTriggerIssuesTable,
+      JiraTriggerIssueRow,
+      $$JiraTriggerIssuesTableFilterComposer,
+      $$JiraTriggerIssuesTableOrderingComposer,
+      $$JiraTriggerIssuesTableAnnotationComposer,
+      $$JiraTriggerIssuesTableCreateCompanionBuilder,
+      $$JiraTriggerIssuesTableUpdateCompanionBuilder,
+      (
+        JiraTriggerIssueRow,
+        BaseReferences<
+          _$AppDatabase,
+          $JiraTriggerIssuesTable,
+          JiraTriggerIssueRow
+        >,
+      ),
+      JiraTriggerIssueRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9947,4 +10397,6 @@ class $AppDatabaseManager {
       $$DocumentsTableTableManager(_db, _db.documents);
   $$DocumentIssuesTableTableManager get documentIssues =>
       $$DocumentIssuesTableTableManager(_db, _db.documentIssues);
+  $$JiraTriggerIssuesTableTableManager get jiraTriggerIssues =>
+      $$JiraTriggerIssuesTableTableManager(_db, _db.jiraTriggerIssues);
 }

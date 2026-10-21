@@ -1,6 +1,7 @@
 import 'package:tree_launcher/features/activity/domain/predefined_issue.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
+import 'package:tree_launcher/features/jira/domain/jira_trigger.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/vscode_config.dart';
 
@@ -32,6 +33,9 @@ class RepoConfig {
   /// in that version is created from it.
   final Map<String, String> jiraVersionBranches;
 
+  /// Rules that start a Claude session when an issue changes in Jira.
+  final List<JiraTrigger> jiraTriggers;
+
   /// Number of the milestone last picked in the Issues tab, so it is
   /// remembered; null for all open issues.
   final int? githubMilestoneNumber;
@@ -61,6 +65,7 @@ class RepoConfig {
     this.jiraProjectKey,
     this.jiraFixVersionId,
     this.jiraVersionBranches = const {},
+    this.jiraTriggers = const [],
     this.githubMilestoneNumber,
     this.predefinedIssues = const [],
     this.useNestedWorktrees = false,
@@ -97,6 +102,11 @@ class RepoConfig {
           (json['jiraVersionBranches'] as Map<String, dynamic>?)
               ?.cast<String, String>() ??
           const {},
+      jiraTriggers:
+          (json['jiraTriggers'] as List<dynamic>?)
+              ?.map((e) => JiraTrigger.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
       githubMilestoneNumber: json['githubMilestoneNumber'] as int?,
       predefinedIssues:
           (json['predefinedIssues'] as List<dynamic>?)
@@ -121,6 +131,8 @@ class RepoConfig {
     if (jiraFixVersionId != null) 'jiraFixVersionId': jiraFixVersionId,
     if (jiraVersionBranches.isNotEmpty)
       'jiraVersionBranches': jiraVersionBranches,
+    if (jiraTriggers.isNotEmpty)
+      'jiraTriggers': jiraTriggers.map((t) => t.toJson()).toList(),
     if (githubMilestoneNumber != null)
       'githubMilestoneNumber': githubMilestoneNumber,
     'predefinedIssues': predefinedIssues.map((i) => i.toJson()).toList(),
@@ -143,6 +155,7 @@ class RepoConfig {
     String? jiraFixVersionId,
     bool clearJiraFixVersionId = false,
     Map<String, String>? jiraVersionBranches,
+    List<JiraTrigger>? jiraTriggers,
     int? githubMilestoneNumber,
     bool clearGithubMilestoneNumber = false,
     List<PredefinedIssue>? predefinedIssues,
@@ -166,6 +179,7 @@ class RepoConfig {
           ? null
           : (jiraFixVersionId ?? this.jiraFixVersionId),
       jiraVersionBranches: jiraVersionBranches ?? this.jiraVersionBranches,
+      jiraTriggers: jiraTriggers ?? this.jiraTriggers,
       githubMilestoneNumber: clearGithubMilestoneNumber
           ? null
           : (githubMilestoneNumber ?? this.githubMilestoneNumber),

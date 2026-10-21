@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/window_chrome.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
+import 'package:tree_launcher/features/jira/domain/jira_trigger_schedule.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
@@ -82,6 +83,13 @@ class SettingsController extends ChangeNotifier
 
   Future<void> updateAgentApiPort(int port) async {
     _settings = _settings.copyWith(agentApiPort: port);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  Future<void> updateJiraTriggerSchedule(JiraTriggerSchedule schedule) async {
+    if (schedule == _settings.jiraTriggerSchedule) return;
+    _settings = _settings.copyWith(jiraTriggerSchedule: schedule);
     await _store.save(_settings);
     notifyListeners();
   }

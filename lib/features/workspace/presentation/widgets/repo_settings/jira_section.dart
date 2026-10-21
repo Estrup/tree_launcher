@@ -10,6 +10,7 @@ import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/branch_search_dropdown.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/repo_settings_section_state.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/jira_triggers_list.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/settings_controls.dart';
 
 class RepoJiraSection extends StatefulWidget {
@@ -122,15 +123,7 @@ class _JiraSectionState extends State<RepoJiraSection>
           ),
           if (savedKey != null) ...[
             const SizedBox(height: 32),
-            _SectionLabel('DEFAULT BRANCH PER FIXVERSION'),
-            const SizedBox(height: 4),
-            Text(
-              'A new worktree for an issue in the version starts from this '
-              'branch.',
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-            ),
-            const SizedBox(height: 12),
-            _VersionBranches(key: ValueKey(savedKey), projectKey: savedKey),
+            _VersionRules(key: ValueKey(savedKey), projectKey: savedKey),
           ],
         ],
       ),
@@ -155,18 +148,19 @@ class _SectionLabel extends StatelessWidget {
   );
 }
 
-/// The fixVersions mapped to a default base branch, each with its branch,
-/// and a row to map another version.
-class _VersionBranches extends StatefulWidget {
-  const _VersionBranches({super.key, required this.projectKey});
+/// What the repo does per fixVersion: the versions mapped to a default base
+/// branch, each with its branch and a row to map another version, and the
+/// Jira triggers.
+class _VersionRules extends StatefulWidget {
+  const _VersionRules({super.key, required this.projectKey});
 
   final String projectKey;
 
   @override
-  State<_VersionBranches> createState() => _VersionBranchesState();
+  State<_VersionRules> createState() => _VersionRulesState();
 }
 
-class _VersionBranchesState extends State<_VersionBranches> {
+class _VersionRulesState extends State<_VersionRules> {
   List<JiraVersion>? _versions;
   List<String> _branches = const [];
   String? _error;
@@ -204,6 +198,38 @@ class _VersionBranchesState extends State<_VersionBranches> {
 
   @override
   Widget build(BuildContext context) {
+    final versions = _versions;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionLabel('DEFAULT BRANCH PER FIXVERSION'),
+        const SizedBox(height: 4),
+        Text(
+          'A new worktree for an issue in the version starts from this '
+          'branch.',
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+        const SizedBox(height: 12),
+        _mappings(context),
+        if (versions != null) ...[
+          const SizedBox(height: 32),
+          _SectionLabel('TRIGGERS'),
+          const SizedBox(height: 4),
+          Text(
+            'When an issue in the version moves to the status or is created, '
+            'a Claude session starts with the prompt. Only changes after a '
+            'trigger is turned on or edited count. How often Jira is checked '
+            'is set in Settings → Jira.',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 12),
+          JiraTriggersList(versions: versions),
+        ],
+      ],
+    );
+  }
+
+  Widget _mappings(BuildContext context) {
     final workspace = context.watch<WorkspaceController>();
     final mapped = workspace.selectedRepo?.jiraVersionBranches ?? const {};
     if (_error != null) {

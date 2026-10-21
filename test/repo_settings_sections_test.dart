@@ -172,6 +172,28 @@ void main() {
     expect(find.text('Add Mapping'), findsNothing);
   });
 
+  testWidgets('adds a trigger on the first unreleased fixVersion', (
+    tester,
+  ) async {
+    await pump(tester, const RepoJiraSection());
+    await tester.pump();
+    expect(find.text('No triggers.'), findsOneWidget);
+
+    await tester.tap(find.text('Add Trigger'));
+    await tester.pump();
+    final trigger = store.savedRepos.single.jiraTriggers.single;
+    expect(trigger.fixVersionId, '2');
+    expect(trigger.enabled, isTrue);
+    expect(
+      find.text('Pick a saved prompt to turn the trigger on.'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(field('e.g. QA Rejected'), 'QA');
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(store.savedRepos.single.jiraTriggers.single.status, 'QA');
+  });
+
   testWidgets('a pasted GitHub URL fills owner and repo', (tester) async {
     await pump(tester, const RepoGithubSection());
 

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
+import 'package:tree_launcher/features/jira/domain/jira_trigger_schedule.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/jira_settings_section.dart';
@@ -149,11 +150,44 @@ void main() {
       return config;
     }
 
+    testWidgets('saves the trigger checks once they are valid', (tester) async {
+      final config = await pump(tester, AppSettings());
+      Finder field(String hint) => find.widgetWithText(TextField, hint);
+
+      await tester.enterText(field('07:00'), '7:00');
+      await tester.pump(const Duration(seconds: 1));
+      // Only one time given: not saved.
+      expect(find.textContaining('Give both times'), findsOneWidget);
+      expect(
+        config.savedSettings.jiraTriggerSchedule,
+        const JiraTriggerSchedule(),
+      );
+
+      await tester.enterText(field('17:00'), '17:30');
+      await tester.enterText(find.widgetWithText(TextField, '10'), '15');
+      await tester.pump(const Duration(seconds: 1));
+      expect(
+        config.savedSettings.jiraTriggerSchedule,
+        const JiraTriggerSchedule(
+          intervalMinutes: 15,
+          from: 7 * 60,
+          until: 17 * 60 + 30,
+        ),
+      );
+
+      await tester.tap(find.text('Check Jira for triggers'));
+      await tester.pump();
+      expect(config.savedSettings.jiraTriggerSchedule.enabled, isFalse);
+    });
+
     testWidgets('adds a tag from the field', (tester) async {
       final config = await pump(tester, AppSettings());
       expect(find.text('No tags yet'), findsOneWidget);
 
-      await tester.enterText(find.byType(TextField), 'Blocked');
+      await tester.enterText(
+        find.widgetWithText(TextField, 'New tag, e.g. Blocked'),
+        'Blocked',
+      );
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
@@ -167,7 +201,10 @@ void main() {
         AppSettings(jiraTags: const [_blocked]),
       );
 
-      await tester.enterText(find.byType(TextField).first, 'Stuck');
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Blocked'),
+        'Stuck',
+      );
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 

@@ -115,6 +115,7 @@ Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
     model/effort/prompt, and a repo's last base branch, fixVersion,
     milestone and agent folder.
   - Saved documents' details (`documents`, `document_issues`).
+  - The issues each Jira trigger has fired for (`jira_trigger_issues`).
 
   The stores in `features/*/data/` take the one `AppDatabase` that
   `AppDependencies` owns.
@@ -133,7 +134,8 @@ Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
 - **`backups/`:** a daily `VACUUM INTO` copy of the database; the newest 7
   are kept.
 - **`config.json` holds configuration only:** the preferences, and the repos
-  with their commands, prompts, GitHub and Jira settings. It only changes when
+  with their commands, prompts, GitHub and Jira settings (including the
+  fixVersion → branch mapping and the Jira triggers). It only changes when
   configuration does (`ConfigFile` skips writes that change nothing).
   `AppSettingsStore` and `RepoConfigStore` keep the models whole and decide
   per field where it is saved.

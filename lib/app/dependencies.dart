@@ -9,6 +9,7 @@ import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
 import 'package:tree_launcher/app/use_cases/save_document.dart';
 import 'package:tree_launcher/app/use_cases/jira_issue_base_branches.dart';
+import 'package:tree_launcher/app/use_cases/jira_trigger_watcher.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_in_worktree.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/core/database/app_database.dart';
@@ -37,6 +38,7 @@ import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/data/jira_tag_store.dart';
+import 'package:tree_launcher/features/jira/data/jira_trigger_store.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/session_panel/presentation/controllers/session_panel_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
@@ -149,19 +151,37 @@ class AppDependencies {
     // Watch the terminal's agent sessions (busy / waiting / exited).
     agents.attachTerminal(terminal);
 
+    claudeSessionStarter = StartClaudeInWorktree(
+      repos: workspace,
+      creator: workspace,
+      git: this.gitService,
+      metadataFor: workspace.metadataFor,
+      start: startClaudeSession,
+    );
+    jiraTriggers = JiraTriggerWatcher(
+      repos: workspace,
+      settings: settings,
+      jira: jiraService,
+      store: JiraTriggerStore(this.database),
+      starter: claudeSessionStarter,
+      worktreesOf: workspace.metadata.forRepo,
+      isRunning: (repoName, issueKey) => agents.runs.any(
+        (run) =>
+            run.repoName == repoName &&
+            run.issueKeys.contains(issueKey) &&
+            !run.state.isFinished &&
+            agentLauncher.isOpen(run),
+      ),
+    );
+    settings.addListener(jiraTriggers.settingsChanged);
+
     agentApiServer = AgentApiServer(
       repos: workspace,
       settings: settings,
       worktreeCreator: workspace,
       jiraTagEditor: settings,
       agentRegistry: agents,
-      claudeSessions: StartClaudeInWorktree(
-        repos: workspace,
-        creator: workspace,
-        git: this.gitService,
-        metadataFor: workspace.metadataFor,
-        start: startClaudeSession,
-      ),
+      claudeSessions: claudeSessionStarter,
       activity: activityService,
       manualPosts: activity,
       documents: documents,
@@ -257,6 +277,14 @@ class AppDependencies {
   /// The Start Claude flow behind the Jira, PR and issue buttons.
   late final StartClaudeSession startClaudeSession;
 
+  /// Starts Claude in a new or an existing worktree in one go, for the agent
+  /// API and the Jira triggers.
+  late final StartClaudeInWorktree claudeSessionStarter;
+
+  /// Polls Jira for the repos' triggers, on the settings' schedule, and
+  /// starts their sessions.
+  late final JiraTriggerWatcher jiraTriggers;
+
   /// Loopback-only HTTP API that exposes app data to local AI agents.
   late final AgentApiServer agentApiServer;
 
@@ -324,10 +352,12 @@ class AppDependencies {
     }
   }
 
-  /// Starts long-lived background services (currently just the agent API),
-  /// on the port from the settings [loadState] loaded. Never throws.
+  /// Starts long-lived background services: the agent API, on the port from
+  /// the settings [loadState] loaded, and the Jira trigger polling. Never
+  /// throws.
   Future<void> startServers() async {
     await agentApi.start();
+    jiraTriggers.start();
     unawaited(_pruneJiraCache());
   }
 
@@ -348,6 +378,7 @@ class AppDependencies {
   /// when the app quits.
   Future<void> dispose() async {
     _backupTimer?.cancel();
+    jiraTriggers.dispose();
     await agentApiServer.stop();
     agentApi.dispose();
     await agents.flush();

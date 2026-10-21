@@ -1,4 +1,5 @@
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
+import 'package:tree_launcher/features/jira/domain/jira_trigger_schedule.dart';
 
 enum TerminalApp { terminal, ghostty, custom }
 
@@ -52,6 +53,9 @@ class AppSettings {
   /// Issue key -> ids of the [jiraTags] it has.
   final Map<String, List<String>> jiraTagsByIssue;
 
+  /// When Jira is checked for the repos' triggers.
+  final JiraTriggerSchedule jiraTriggerSchedule;
+
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
     this.customTerminalCommand,
@@ -69,6 +73,7 @@ class AppSettings {
     this.claudeUseExistingWorktree = false,
     this.jiraTags = const [],
     this.jiraTagsByIssue = const {},
+    this.jiraTriggerSchedule = const JiraTriggerSchedule(),
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -107,6 +112,11 @@ class AppSettings {
             in (json['jiraTagsByIssue'] as Map<String, dynamic>? ?? {}).entries)
           if (value is List) key: value.whereType<String>().toList(),
       },
+      jiraTriggerSchedule: json['jiraTriggerSchedule'] is Map<String, dynamic>
+          ? JiraTriggerSchedule.fromJson(
+              json['jiraTriggerSchedule'] as Map<String, dynamic>,
+            )
+          : const JiraTriggerSchedule(),
     );
   }
 
@@ -127,6 +137,7 @@ class AppSettings {
     'claudeUseExistingWorktree': claudeUseExistingWorktree,
     'jiraTags': [for (final tag in jiraTags) tag.toJson()],
     'jiraTagsByIssue': jiraTagsByIssue,
+    'jiraTriggerSchedule': jiraTriggerSchedule.toJson(),
   };
 
   /// The tags [issueKey] has, in [jiraTags] order.
@@ -157,6 +168,7 @@ class AppSettings {
     bool? claudeUseExistingWorktree,
     List<JiraTag>? jiraTags,
     Map<String, List<String>>? jiraTagsByIssue,
+    JiraTriggerSchedule? jiraTriggerSchedule,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -183,6 +195,7 @@ class AppSettings {
           claudeUseExistingWorktree ?? this.claudeUseExistingWorktree,
       jiraTags: jiraTags ?? this.jiraTags,
       jiraTagsByIssue: jiraTagsByIssue ?? this.jiraTagsByIssue,
+      jiraTriggerSchedule: jiraTriggerSchedule ?? this.jiraTriggerSchedule,
     );
   }
 }
