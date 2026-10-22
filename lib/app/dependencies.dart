@@ -37,6 +37,7 @@ import 'package:tree_launcher/features/github_issues/data/github_issues_api_serv
 import 'package:tree_launcher/features/github_prs/data/github_api_service.dart';
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
+import 'package:tree_launcher/features/jira/data/jira_comment_draft_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/data/jira_tag_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_trigger_store.dart';
@@ -85,6 +86,7 @@ class AppDependencies {
     launcherService = LauncherService();
     uiStateStore = UiStateStore(this.database);
     jiraTagStore = JiraTagStore(this.database);
+    jiraCommentDrafts = JiraCommentDraftStore(uiStateStore);
     // Both stores share the one ConfigFile, so their saves are serialised.
     this.repoConfigStore =
         repoConfigStore ??
@@ -227,6 +229,9 @@ class AppDependencies {
 
   /// The local issue tags.
   late final JiraTagStore jiraTagStore;
+
+  /// Unsent Jira comments, kept in [uiStateStore].
+  late final JiraCommentDraftStore jiraCommentDrafts;
   late final GithubIssueCache githubIssueCache;
 
   /// Claude transcript activity, indexed in [database].

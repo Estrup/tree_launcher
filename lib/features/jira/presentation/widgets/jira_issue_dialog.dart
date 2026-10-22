@@ -6,27 +6,37 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
 import 'package:tree_launcher/features/documents/presentation/widgets/document_badges.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
+import 'package:tree_launcher/features/jira/data/jira_comment_draft_store.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
+import 'package:tree_launcher/features/jira/domain/jira_attachment.dart';
 import 'package:tree_launcher/features/jira/domain/jira_constants.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
 import 'package:tree_launcher/features/jira/domain/jira_user.dart';
+import 'package:tree_launcher/features/jira/domain/jira_wiki_markup.dart';
+import 'package:tree_launcher/features/jira/presentation/widgets/jira_comment_composer.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_status_menu.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
+import 'package:tree_launcher/features/jira/presentation/widgets/jira_wiki_text.dart';
 import 'package:tree_launcher/core/platform/open_external.dart';
 import 'package:tree_launcher/core/errors/user_message.dart';
 
 /// Shows Jira issue info (summary, status, type, assignee, priority, last
-/// update, description, comments) for [issueKey], pulled from the REST API and
-/// cached locally. Cached data is shown instantly; on a cache miss it
-/// auto-fetches. The status can be changed and the issue assigned to the
-/// token's user from here.
+/// update, description, attachments, comments) for [issueKey], pulled from
+/// the REST API and cached locally. Cached data is shown instantly; on a
+/// cache miss it auto-fetches. The status can be changed, the issue assigned
+/// to the token's user, and a comment written (kept as a draft until sent)
+/// from here.
 ///
 /// Self-contained transient dialog (no provider) — mirrors `AddManualPostDialog`.
 class JiraIssueDialog extends StatefulWidget {
   final String issueKey;
   final JiraApiService service;
   final JiraIssueCache cache;
+  final JiraCommentDraftStore drafts;
+
+  /// Opens a downloaded attachment or a link.
+  final UrlOpener open;
 
   /// Called after the issue's status or assignee was changed here, so lists
   /// showing it can reload.
@@ -37,6 +47,8 @@ class JiraIssueDialog extends StatefulWidget {
     required this.issueKey,
     required this.service,
     required this.cache,
+    required this.drafts,
+    this.open = openExternal,
     this.onIssueChanged,
   });
 
@@ -45,6 +57,8 @@ class JiraIssueDialog extends StatefulWidget {
     required String issueKey,
     JiraApiService? service,
     JiraIssueCache? cache,
+    JiraCommentDraftStore? drafts,
+    UrlOpener open = openExternal,
     VoidCallback? onIssueChanged,
   }) {
     return showDialog<void>(
@@ -53,6 +67,8 @@ class JiraIssueDialog extends StatefulWidget {
         issueKey: issueKey,
         service: service ?? context.read<JiraApiService>(),
         cache: cache ?? context.read<JiraIssueCache>(),
+        drafts: drafts ?? context.read<JiraCommentDraftStore>(),
+        open: open,
         onIssueChanged: onIssueChanged,
       ),
     );
@@ -79,6 +95,12 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
   /// The token's user, once known; hides "Assign to me" on their issues.
   JiraUser? _me;
   bool _assigning = false;
+
+  /// Display names of the users the issue mentions, by username.
+  final _mentionNames = <String, String>{};
+
+  /// Attachment ids and image references being downloaded to open.
+  final _opening = <String>{};
 
   @override
   void initState() {
@@ -130,6 +152,7 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
         _issue = cached.issue;
         _fetchedAt = cached.fetchedAt;
       });
+      _resolveMentions(cached.issue);
       return;
     }
     await _refresh();
@@ -148,6 +171,7 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
         _issue = issue;
         _fetchedAt = DateTime.now();
       });
+      _resolveMentions(issue);
     } catch (e) {
       if (!mounted) return;
       // Keep any stale _issue visible alongside the error.
@@ -199,13 +223,68 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
     }
   }
 
+  /// Looks up the display names of the users [issue] mentions, so mentions
+  /// show names instead of usernames. One that fails keeps its username.
+  Future<void> _resolveMentions(JiraIssue issue) async {
+    final users = jiraWikiMentions(
+      [
+        issue.description ?? '',
+        for (final c in issue.comments) c.body,
+      ].join('\n'),
+    ).where((u) => !_mentionNames.containsKey(u));
+    for (final user in users) {
+      try {
+        final found = await widget.service.fetchUser(user);
+        if (!mounted) return;
+        setState(() => _mentionNames[user] = found.displayName);
+      } catch (e) {
+        debugPrint('Jira user lookup failed for $user: $e');
+      }
+    }
+  }
+
+  /// Downloads [attachment] (tracked as [busyKey]) and opens it in its
+  /// default app.
+  Future<void> _openAttachment(
+    JiraAttachment attachment, {
+    String? busyKey,
+  }) async {
+    final key = busyKey ?? attachment.id;
+    if (_opening.contains(key)) return;
+    setState(() => _opening.add(key));
+    try {
+      widget.open(await widget.service.downloadAttachment(attachment));
+    } catch (e) {
+      _showError(e);
+    } finally {
+      if (mounted) setState(() => _opening.remove(key));
+    }
+  }
+
+  /// Opens an image reference (`!source!`): the issue's attachment with that
+  /// name, or the URL.
+  void _openImage(String source) {
+    if (source.startsWith('http://') || source.startsWith('https://')) {
+      widget.open(source);
+      return;
+    }
+    final attachment = _issue?.attachmentNamed(source);
+    if (attachment == null) {
+      _showError('$source is not attached to ${widget.issueKey}.');
+      return;
+    }
+    _openAttachment(attachment, busyKey: source);
+  }
+
+  String? _mentionName(String user) => _mentionNames[user];
+
   void _showError(Object error) {
     if (!mounted) return;
     setState(() => _error = userMessage(error));
   }
 
   void _openInBrowser() {
-    openExternal('$jiraBaseUrl${widget.issueKey}');
+    widget.open('$jiraBaseUrl${widget.issueKey}');
   }
 
   @override
@@ -375,10 +454,25 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
             const IssueSectionLabel('DESCRIPTION'),
             const SizedBox(height: 10),
             _description(issue.description),
+            if (issue.attachments.isNotEmpty) ...[
+              const SizedBox(height: 28),
+              IssueSectionLabel('ATTACHMENTS', count: issue.attachments.length),
+              const SizedBox(height: 10),
+              _attachments(issue.attachments),
+            ],
             const SizedBox(height: 28),
             IssueSectionLabel('COMMENTS', count: issue.comments.length),
             const SizedBox(height: 12),
             _comments(issue.comments),
+            const SizedBox(height: 4),
+            JiraCommentComposer(
+              issueKey: widget.issueKey,
+              service: widget.service,
+              drafts: widget.drafts,
+              onPosted: _refresh,
+              mentionName: _mentionName,
+              onOpenImage: _openImage,
+            ),
           ],
         ],
       ),
@@ -568,6 +662,36 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
     );
   }
 
+  /// Marks a comment only [role] (e.g. Consultants) can see.
+  Widget _visibilityBadge(String role) {
+    final color = AppColors.claude;
+    return Tooltip(
+      message: 'Only $role can see this comment',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.lock_outline_rounded, size: 11, color: color),
+            const SizedBox(width: 3),
+            Text(
+              role,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _fact(IconData icon, String text, {required String tooltip}) {
     return Tooltip(
       message: tooltip,
@@ -586,15 +710,60 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
   }
 
   Widget _description(String? description) {
-    final empty = description == null || description.trim().isEmpty;
-    return SelectableText(
-      empty ? 'No description' : description.trim(),
-      style: TextStyle(
-        fontSize: 14,
-        height: 1.55,
-        color: empty ? AppColors.textMuted : AppColors.textPrimary,
-      ),
+    if (description == null || description.trim().isEmpty) {
+      return Text(
+        'No description',
+        style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+      );
+    }
+    return _wikiText(description.trim(), fontSize: 14);
+  }
+
+  Widget _wikiText(String markup, {required double fontSize}) => JiraWikiText(
+    markup,
+    fontSize: fontSize,
+    onOpenImage: _openImage,
+    busyImages: _opening,
+    mentionName: _mentionName,
+    openUrl: widget.open,
+  );
+
+  /// The issue's files, newest last as Jira lists them; a click downloads
+  /// and opens one.
+  Widget _attachments(List<JiraAttachment> attachments) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final a in attachments)
+          Tooltip(
+            message: [
+              if (a.author != null) a.author!,
+              if (a.created != null) formatAbsoluteTime(a.created!),
+            ].join(' · '),
+            child: JiraFileChip(
+              name: a.filename,
+              icon: _fileIcon(a),
+              detail: formatFileSize(a.size),
+              busy: _opening.contains(a.id),
+              onTap: () => _openAttachment(a),
+            ),
+          ),
+      ],
     );
+  }
+
+  static IconData _fileIcon(JiraAttachment a) {
+    if (a.isImage) return Icons.image_outlined;
+    final name = a.filename.toLowerCase();
+    if (name.endsWith('.pdf')) return Icons.picture_as_pdf_outlined;
+    if (RegExp(r'\.(zip|gz|7z|rar)$').hasMatch(name)) {
+      return Icons.folder_zip_outlined;
+    }
+    if (RegExp(r'\.(xlsx?|csv)$').hasMatch(name)) {
+      return Icons.table_chart_outlined;
+    }
+    return Icons.insert_drive_file_outlined;
   }
 
   Widget _comments(List<JiraComment> comments) {
@@ -649,6 +818,10 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
                         ),
                       ),
                     ],
+                    if (c.visibility != null) ...[
+                      const SizedBox(width: 8),
+                      _visibilityBadge(c.visibility!),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -661,15 +834,13 @@ class _JiraIssueDialogState extends State<JiraIssueDialog> {
                   decoration: BoxDecoration(
                     color: AppColors.surface2,
                     borderRadius: BorderRadius.circular(10),
+                    border: c.visibility == null
+                        ? null
+                        : Border.all(
+                            color: AppColors.claude.withValues(alpha: 0.35),
+                          ),
                   ),
-                  child: SelectableText(
-                    c.body.trim(),
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      height: 1.5,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
+                  child: _wikiText(c.body.trim(), fontSize: 13.5),
                 ),
               ],
             ),

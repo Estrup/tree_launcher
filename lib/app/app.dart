@@ -43,6 +43,7 @@ class TreeLauncherApp extends StatelessWidget {
         Provider.value(value: dependencies.claudeActivity),
         Provider.value(value: dependencies.jiraService),
         Provider.value(value: dependencies.jiraIssueCache),
+        Provider.value(value: dependencies.jiraCommentDrafts),
         Provider.value(value: dependencies.githubIssuesService),
         Provider.value(value: dependencies.githubIssueCache),
         ChangeNotifierProxyProvider<WorkspaceController, GithubPrsController>(

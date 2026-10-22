@@ -1,3 +1,5 @@
+import 'package:tree_launcher/features/jira/domain/jira_attachment.dart';
+
 /// A single comment on a Jira issue. Bodies are plain wiki-markup strings on
 /// Jira Server/Data Center (not Cloud ADF JSON), so [body] is just a String.
 class JiraComment {
@@ -5,22 +7,31 @@ class JiraComment {
   final String body;
   final DateTime? created;
 
+  /// The role or group the comment is restricted to (e.g. `Consultants`), or
+  /// null when everyone can see it.
+  final String? visibility;
+
   const JiraComment({
     required this.author,
     required this.body,
     this.created,
+    this.visibility,
   });
 
   /// Parses the comment shape from the raw Jira REST API
   /// (`fields.comment.comments[]`).
   factory JiraComment.fromApiJson(Map<String, dynamic> json) {
     final author = json['author'];
+    final visibility = json['visibility'];
     return JiraComment(
       author: author is Map<String, dynamic>
           ? (author['displayName'] as String? ?? '')
           : '',
       body: json['body'] as String? ?? '',
       created: DateTime.tryParse(json['created'] as String? ?? ''),
+      visibility: visibility is Map<String, dynamic>
+          ? visibility['value'] as String?
+          : null,
     );
   }
 
@@ -30,6 +41,7 @@ class JiraComment {
       author: json['author'] as String? ?? '',
       body: json['body'] as String? ?? '',
       created: DateTime.tryParse(json['created'] as String? ?? ''),
+      visibility: json['visibility'] as String?,
     );
   }
 
@@ -37,6 +49,7 @@ class JiraComment {
     'author': author,
     'body': body,
     if (created != null) 'created': created!.toIso8601String(),
+    if (visibility != null) 'visibility': visibility,
   };
 }
 
@@ -59,6 +72,7 @@ class JiraIssue {
   final String? description;
   final DateTime? updated;
   final List<JiraComment> comments;
+  final List<JiraAttachment> attachments;
 
   /// Ids of the issue's fixVersions (`JiraVersion.id`).
   final List<String> fixVersionIds;
@@ -74,8 +88,14 @@ class JiraIssue {
     this.description,
     this.updated,
     this.comments = const [],
+    this.attachments = const [],
     this.fixVersionIds = const [],
   });
+
+  /// The attachment an image reference such as `!screenshot.png!` names: the
+  /// newest one with that file name, as Jira picks it.
+  JiraAttachment? attachmentNamed(String filename) =>
+      attachments.where((a) => a.filename == filename).lastOrNull;
 
   /// Reads `fields.<key>.name` defensively (nested objects may be null).
   static String? _nestedName(Map<String, dynamic> fields, String key) {
@@ -98,6 +118,7 @@ class JiraIssue {
         ? (comment['comments'] as List<dynamic>? ?? const [])
         : const [];
     final versions = fields['fixVersions'];
+    final rawAttachments = fields['attachment'];
 
     return JiraIssue(
       key: json['key'] as String? ?? '',
@@ -117,6 +138,11 @@ class JiraIssue {
           .whereType<Map<String, dynamic>>()
           .map(JiraComment.fromApiJson)
           .toList(),
+      attachments: [
+        if (rawAttachments is List)
+          for (final a in rawAttachments.whereType<Map<String, dynamic>>())
+            JiraAttachment.fromApiJson(a),
+      ],
       fixVersionIds: [
         if (versions is List)
           for (final v in versions.whereType<Map<String, dynamic>>())
@@ -142,6 +168,10 @@ class JiraIssue {
           .whereType<Map<String, dynamic>>()
           .map(JiraComment.fromJson)
           .toList(),
+      attachments: (json['attachments'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(JiraAttachment.fromJson)
+          .toList(),
       fixVersionIds:
           (json['fixVersionIds'] as List<dynamic>?)?.cast<String>() ??
           const [],
@@ -159,6 +189,8 @@ class JiraIssue {
     if (description != null) 'description': description,
     if (updated != null) 'updated': updated!.toIso8601String(),
     'comments': comments.map((c) => c.toJson()).toList(),
+    if (attachments.isNotEmpty)
+      'attachments': attachments.map((a) => a.toJson()).toList(),
     if (fixVersionIds.isNotEmpty) 'fixVersionIds': fixVersionIds,
   };
 
@@ -173,6 +205,7 @@ class JiraIssue {
     String? description,
     DateTime? updated,
     List<JiraComment>? comments,
+    List<JiraAttachment>? attachments,
     List<String>? fixVersionIds,
   }) {
     return JiraIssue(
@@ -186,6 +219,7 @@ class JiraIssue {
       description: description ?? this.description,
       updated: updated ?? this.updated,
       comments: comments ?? this.comments,
+      attachments: attachments ?? this.attachments,
       fixVersionIds: fixVersionIds ?? this.fixVersionIds,
     );
   }

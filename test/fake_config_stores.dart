@@ -1,3 +1,4 @@
+import 'package:tree_launcher/features/jira/data/jira_comment_draft_store.dart';
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
@@ -118,4 +119,28 @@ class MemoryWorktreeMetadataStore implements WorktreeMetadataStore {
       if (!entry.isEmpty) saved.putIfAbsent(entry.path, () => entry);
     }
   }
+}
+
+class MemoryJiraCommentDraftStore implements JiraCommentDraftStore {
+  final drafts = <String, JiraCommentDraft>{};
+  bool consultantsOnly = false;
+
+  @override
+  Future<JiraCommentDraft?> read(String issueKey) async => drafts[issueKey];
+
+  @override
+  Future<void> write(String issueKey, JiraCommentDraft? draft) async {
+    if (draft == null || draft.body.trim().isEmpty) {
+      drafts.remove(issueKey);
+    } else {
+      drafts[issueKey] = draft;
+    }
+  }
+
+  @override
+  Future<bool> lastConsultantsOnly() async => consultantsOnly;
+
+  @override
+  Future<void> rememberConsultantsOnly(bool value) async =>
+      consultantsOnly = value;
 }

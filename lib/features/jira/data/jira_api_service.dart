@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
+import 'package:tree_launcher/features/jira/domain/jira_attachment.dart';
 import 'package:tree_launcher/features/jira/domain/jira_constants.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_pat.dart';
@@ -33,7 +37,7 @@ class JiraApiService {
   /// dialog shows.
   static const _issueFields =
       'summary,status,issuetype,assignee,priority,description,updated,comment,'
-      'fixVersions';
+      'fixVersions,attachment';
 
   /// Fields requested for issue lists (no description or comments).
   static const _listFields =
@@ -115,6 +119,90 @@ class JiraApiService {
     );
   }
 
+  /// Adds a comment with [body] (wiki markup) to [key]. With [visibleToRole]
+  /// only that project role (e.g. [jiraConsultantsRole]) can see it.
+  Future<void> addComment(
+    String key,
+    String body, {
+    String? visibleToRole,
+  }) async {
+    await _requestJson(
+      '/rest/api/2/issue/$key/comment',
+      const {},
+      method: 'POST',
+      body: {
+        'body': body,
+        if (visibleToRole != null)
+          'visibility': {'type': 'role', 'value': visibleToRole},
+      },
+      notFound: 'Jira issue not found: $key',
+      forbidden: 'Not allowed to comment on $key.',
+    );
+  }
+
+  /// Users who can see [key] whose username, name or e-mail matches [query]:
+  /// the people a comment on it can mention.
+  Future<List<JiraUser>> searchMentionableUsers(
+    String key,
+    String query, {
+    int limit = 8,
+  }) async {
+    final json = await _requestJson('/rest/api/2/user/viewissue/search', {
+      'issueKey': key,
+      'username': query,
+      'maxResults': '$limit',
+    });
+    return (json as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .map(JiraUser.fromApiJson)
+        .where((u) => u.name.isNotEmpty)
+        .toList();
+  }
+
+  /// The user with the username [name], e.g. one a comment mentions. Looked
+  /// up once per app session.
+  Future<JiraUser> fetchUser(String name) =>
+      _users[name] ??= _requestJson('/rest/api/2/user', {'username': name})
+          .then((json) => JiraUser.fromApiJson(json as Map<String, dynamic>))
+          .catchError((Object e) {
+            // Don't remember a failure; the next call tries again.
+            _users.remove(name);
+            throw e;
+          });
+
+  static final _users = <String, Future<JiraUser>>{};
+
+  /// Downloads [attachment] to a temporary folder (once; a later call reuses
+  /// the file) and returns its path, to open in its default app.
+  Future<String> downloadAttachment(JiraAttachment attachment) async {
+    final dir = Directory(
+      p.join(
+        (await getTemporaryDirectory()).path,
+        'jira-attachments',
+        attachment.id,
+      ),
+    );
+    final file = File(p.join(dir.path, p.basename(attachment.filename)));
+    if (await file.exists() && await file.length() == attachment.size) {
+      return file.path;
+    }
+    final pat = await _pat();
+    final request = await _client.getUrl(Uri.parse(attachment.contentUrl));
+    request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $pat');
+    final response = await request.close();
+    if (response.statusCode != 200) {
+      await response.drain<void>();
+      throw JiraApiException(
+        response.statusCode,
+        "Couldn't download ${attachment.filename} "
+        '(Jira answered ${response.statusCode}).',
+      );
+    }
+    await dir.create(recursive: true);
+    await response.pipe(file.openWrite());
+    return file.path;
+  }
+
   /// Fetches every version of [projectKey], in Jira's project order.
   Future<List<JiraVersion>> fetchVersions(String projectKey) async {
     final json = await _requestJson(
@@ -179,14 +267,7 @@ class JiraApiService {
     String notFound = 'Jira resource not found.',
     String forbidden = 'Jira access denied.',
   }) async {
-    final pat = await readJiraPat();
-    if (pat == null) {
-      throw const JiraApiException(
-        null,
-        'No Jira token found at ~/.config/jira-pat.txt',
-      );
-    }
-
+    final pat = await _pat();
     final host = Uri.parse(jiraBaseUrl).host;
     final request = await _client.openUrl(
       method,
@@ -215,6 +296,17 @@ class JiraApiService {
       400 => 'Jira rejected the request: ${_errorMessages(responseBody)}',
       _ => 'Jira API error ($status): $responseBody',
     });
+  }
+
+  static Future<String> _pat() async {
+    final pat = await readJiraPat();
+    if (pat == null) {
+      throw const JiraApiException(
+        null,
+        'No Jira token found at ~/.config/jira-pat.txt',
+      );
+    }
+    return pat;
   }
 
   /// Pulls Jira's `errorMessages` and per-field `errors` (e.g. a required

@@ -156,4 +156,46 @@ void main() {
       expect(restored.comments, isEmpty);
     });
   });
+  test('reads attachments and comment visibility, and caches them', () {
+    final issue = JiraIssue.fromApiJson({
+      'key': 'AU2-1',
+      'fields': {
+        'summary': 's',
+        'attachment': [
+          {
+            'id': '901',
+            'filename': 'image.png',
+            'size': 2048,
+            'mimeType': 'image/png',
+            'content': 'https://jira/secure/attachment/901/image.png',
+            'author': {'displayName': 'Susanne'},
+            'created': '2025-11-11T10:29:42.000+0100',
+          },
+        ],
+        'comment': {
+          'comments': [
+            {
+              'body': 'intern',
+              'visibility': {'type': 'role', 'value': 'Consultants'},
+            },
+            {'body': 'offentlig'},
+          ],
+        },
+      },
+    });
+
+    for (final i in [issue, JiraIssue.fromJson(issue.toJson())]) {
+      final a = i.attachments.single;
+      expect(a.id, '901');
+      expect(a.filename, 'image.png');
+      expect(a.size, 2048);
+      expect(a.isImage, isTrue);
+      expect(a.contentUrl, 'https://jira/secure/attachment/901/image.png');
+      expect(a.author, 'Susanne');
+      expect(a.created, isNotNull);
+      expect([for (final c in i.comments) c.visibility], ['Consultants', null]);
+      expect(i.attachmentNamed('image.png'), isNotNull);
+      expect(i.attachmentNamed('other.png'), isNull);
+    }
+  });
 }

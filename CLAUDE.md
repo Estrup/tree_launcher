@@ -115,7 +115,8 @@ Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
   - The local issue tags (`jira_tags`, `jira_issue_tags`).
   - Remembered choices (`ui_state`): the last repo, the Claude
     model/effort/prompt, and a repo's last base branch, fixVersion,
-    milestone and agent folder.
+    milestone and agent folder. Also the unsent Jira comments
+    (`JiraCommentDraftStore`, one draft per issue key).
   - Saved documents' details (`documents`, `document_issues`).
   - The issues each Jira trigger has fired for (`jira_trigger_issues`).
 

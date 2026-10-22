@@ -3,3 +3,6 @@
 /// host is derived from this via `Uri.parse(jiraBaseUrl).host`, so this const
 /// is the single source of truth for both the browser link and API calls.
 const String jiraBaseUrl = 'https://jira.elbek-vejrup.dk/browse/';
+
+/// The project role a consultant-only comment is restricted to.
+const String jiraConsultantsRole = 'Consultants';
