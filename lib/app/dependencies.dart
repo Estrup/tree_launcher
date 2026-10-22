@@ -16,6 +16,7 @@ import 'package:tree_launcher/core/database/app_database.dart';
 import 'package:tree_launcher/core/database/database_backup.dart';
 import 'package:tree_launcher/core/database/legacy_importer.dart';
 import 'package:tree_launcher/core/database/ui_state_store.dart';
+import 'package:tree_launcher/core/logging/app_log.dart';
 import 'package:tree_launcher/core/platform/launcher_service.dart';
 import 'package:tree_launcher/core/storage/app_data_directory.dart';
 import 'package:tree_launcher/core/storage/config_file.dart';
@@ -294,6 +295,25 @@ class AppDependencies {
 
   Timer? _backupTimer;
 
+  /// The app's log, once [openLog] has opened the one in the data directory.
+  AppLog get log => AppLog.current;
+
+  /// Opens the log in the data directory's `logs/` folder, so everything
+  /// after (the `debugPrint`s too) is written there. Call first.
+  Future<void> openLog() async {
+    final log = AppLog(
+      directory: p.join(await appDataDirectory(), 'logs'),
+      echo: kDebugMode,
+    );
+    AppLog.current = log;
+    log.captureDebugPrint();
+    await log.open();
+    appLog(
+      'app',
+      'Tree Launcher started, data in ${p.dirname(log.directory!)}',
+    );
+  }
+
   /// Merges the files from before the database into it (renaming each to
   /// `*.migrated`) and moves the per-worktree metadata, local tags and
   /// remembered choices out of `config.json`, then starts the daily backup. Call before the controllers load. Guarded
@@ -379,6 +399,7 @@ class AppDependencies {
   Future<void> dispose() async {
     _backupTimer?.cancel();
     jiraTriggers.dispose();
+    appLog('app', 'Tree Launcher quit');
     await agentApiServer.stop();
     agentApi.dispose();
     await agents.flush();
@@ -391,5 +412,6 @@ class AppDependencies {
     workspace.dispose();
     settings.dispose();
     await database.close();
+    await log.flush();
   }
 }

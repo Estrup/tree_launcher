@@ -6,6 +6,7 @@ import 'package:tree_launcher/features/github_prs/data/github_api_service.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/core/logging/app_log.dart';
 
 /// A pending notification that the current user has been asked to review a PR.
 class PrReviewNotification {
@@ -138,8 +139,18 @@ class GithubPrsController extends ChangeNotifier {
       _detectReviewRequests(prs);
       _pullRequests = prs;
       _lastRefreshed = DateTime.now();
+      appLog(
+        'github',
+        'Loaded ${prs.length} open PRs of ${config.owner}/${config.repo}',
+        level: LogLevel.debug,
+      );
     } catch (e) {
       _error = e.toString();
+      appLog(
+        'github',
+        'Loading the PRs of ${config.owner}/${config.repo} failed: $e',
+        level: LogLevel.warning,
+      );
     } finally {
       _isLoading = false;
       notifyListeners();

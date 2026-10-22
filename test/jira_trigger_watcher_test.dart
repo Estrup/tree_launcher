@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:tree_launcher/core/logging/app_log.dart';
 import 'package:tree_launcher/app/use_cases/jira_trigger_watcher.dart';
 import 'package:tree_launcher/features/agents/domain/claude_session_starter.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
@@ -51,13 +53,16 @@ class _Starter implements ClaudeSessionStarter {
   Future<StartedClaudeSession> start(ClaudeSessionRequest request) async {
     requests.add(request);
     if (failWith != null) throw failWith!;
+    final created = request.newWorktree;
+    final name = created?.worktreeName ?? p.basename(request.existingWorktree!);
     return StartedClaudeSession(
       repoName: request.repoName,
-      worktree: const StartedWorktree(
-        name: 'w',
-        path: '/w',
-        branch: 'b',
-        created: false,
+      worktree: StartedWorktree(
+        name: name,
+        path: '/repos/$name',
+        branch: created?.newBranch ?? 'b',
+        baseBranch: created?.baseBranch,
+        created: created != null,
       ),
       title: 't',
     );
@@ -104,6 +109,7 @@ void main() {
   );
 
   setUp(() {
+    AppLog.current = AppLog();
     jira = _Jira();
     starter = _Starter();
     store = JiraTriggerStore(testDatabase());
@@ -133,7 +139,27 @@ void main() {
     expect(request.newWorktree!.baseBranch, 'releases/2.41');
     expect(request.newWorktree!.worktreeName, 'fix-login-au2-7');
     expect(request.newWorktree!.newBranch, 'feature/fix-login-au2-7');
-    expect(notices.single, 'Jira trigger started Fix for AU2-7');
+    expect(
+      notices.single,
+      'Jira trigger: started Fix for AU2-7 in fix-login-au2-7 '
+      '(new, from releases/2.41)',
+    );
+    expect(w.lastCheck!.started, 1);
+    expect(
+      AppLog.current.entries.map((e) => (e.source, e.message)),
+      containsAll([
+        (
+          'jira-triggers',
+          'demo: "Fix" when an issue in version 2 moves to QA Rejected: '
+              '1 matching, 1 new',
+        ),
+        (
+          'jira-triggers',
+          'started Fix for AU2-7 in fix-login-au2-7 (new, from releases/2.41)',
+        ),
+        ('jira-triggers', 'Checked 1 trigger: 1 started'),
+      ]),
+    );
 
     // Still matching: not again.
     await w.poll();
@@ -197,6 +223,14 @@ void main() {
       "Jira trigger: couldn't start Fix for AU2-9, its fixVersion has no "
           'default branch',
     ]);
+    expect(AppLog.current.entries.last.level, LogLevel.info);
+    expect(
+      AppLog.current.entries
+          .where((e) => e.message.contains("couldn't start Fix for AU2-9"))
+          .single
+          .level,
+      LogLevel.warning,
+    );
   });
 
   test('reports a failed start', () async {
@@ -269,6 +303,18 @@ void main() {
       w.start();
       await pumpEventQueue();
       expect(jira.searched, isEmpty);
+    });
+
+    test('checks by hand outside the hours', () async {
+      schedule(const JiraTriggerSchedule(from: 7 * 60, until: 17 * 60));
+      now = DateTime(2026, 10, 21, 18);
+      final w = watcher(repo());
+      addTearDown(w.dispose);
+      w.start();
+
+      await w.checkNow();
+      expect(jira.searched, hasLength(1));
+      expect(w.lastCheck!.at, now);
     });
 
     test('checks at once when turned back on', () async {

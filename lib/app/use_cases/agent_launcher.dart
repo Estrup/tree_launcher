@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
+import 'package:tree_launcher/core/logging/app_log.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/agents/domain/agent_environment.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
@@ -100,6 +101,12 @@ class AgentLauncher {
       agentId: run.id,
       environment: _environment(run),
       show: show,
+    );
+    appLog(
+      'claude',
+      'Started ${titleFor(run)} (${kind.label} agent ${run.id}, prompt '
+          '"${prompt.name}") in $worktreePath'
+          '${model == null ? '' : ', $model'}${effort == null ? '' : '/$effort'}',
     );
     if (session != null && !show) {
       showAppSnackBar(

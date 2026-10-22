@@ -9,6 +9,7 @@ import 'package:tree_launcher/features/jira/domain/jira_user.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/core/errors/user_message.dart';
+import 'package:tree_launcher/core/logging/app_log.dart';
 
 /// One status in the Jira tab's filter, with how many loaded issues have it.
 class JiraStatusCount {
@@ -250,6 +251,11 @@ class JiraIssuesController extends IssueListController<JiraIssue, String> {
       fixVersionIssuesJql(key, version.id),
     );
     if (!isCurrent(generation)) return;
+    appLog(
+      'jira',
+      'Loaded ${issues.length} issues of $key ${version.name}',
+      level: LogLevel.debug,
+    );
     _issues = issues;
     loaded();
     if (_me == null) _loadMe();

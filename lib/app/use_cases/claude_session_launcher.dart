@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/core/design_system/app_snackbar.dart';
+import 'package:tree_launcher/core/logging/app_log.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/agents/domain/agent_environment.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
@@ -96,6 +97,12 @@ class ClaudeSessionLauncher {
       reuseRunning: false,
       environment: _environment,
       show: show,
+    );
+    appLog(
+      'claude',
+      'Started $title in $worktreePath'
+          '${promptId == null ? '' : ', prompt $promptId'}'
+          '${model == null ? '' : ', $model'}${effort == null ? '' : '/$effort'}',
     );
     if (session != null && !show) {
       showAppSnackBar(

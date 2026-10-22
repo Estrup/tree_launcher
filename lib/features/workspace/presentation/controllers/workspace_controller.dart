@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:tree_launcher/core/logging/app_log.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/activity/domain/worktree_event.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
@@ -436,6 +437,11 @@ class WorkspaceController extends ChangeNotifier
         .where((s) => s.isNotEmpty)
         .toList();
     final name = segments.isEmpty ? worktreePath : segments.last;
+    appLog(
+      'worktrees',
+      '${type == WorktreeEventType.created ? 'Created' : 'Removed'} $name in '
+          '${repo.name}${branch == null || branch.isEmpty ? '' : ' ($branch)'}',
+    );
     _eventStore.append(
       WorktreeEvent(
         timestamp: DateTime.now(),

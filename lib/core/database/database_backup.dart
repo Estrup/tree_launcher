@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:tree_launcher/core/database/app_database.dart';
+import 'package:tree_launcher/core/logging/app_log.dart';
 
 /// Keeps one copy of the database per day (`tree_launcher-2026-10-19.db`) in
 /// [directory], made with `VACUUM INTO`, and deletes all but the newest
@@ -51,6 +52,7 @@ class DatabaseBackup {
         if (await tmp.exists()) await tmp.delete();
         await _db.customStatement('VACUUM INTO ?', [tmp.path]);
         await tmp.rename(target.path);
+        appLog('app', 'Backed up the database to ${target.path}');
       }
       await _prune();
     } catch (e) {

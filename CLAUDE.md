@@ -83,6 +83,8 @@ existing files: a whole-file format buries the change in reformatting.
   store behind a controller's back. The agent API goes through them too.
 - **Shared helpers:**
   - `showAppSnackBar` for notices;
+  - `appLog(source, message, level:)` for the app's log (the Log window and
+    `logs/`): log what the app does on its own and what goes wrong;
   - `openExternal` (or `LauncherService` for apps) to open things;
   - `userMessage(e)` for an error's text;
   - `IssueListController` / `IssueBulkBar` for issue lists.
@@ -133,6 +135,13 @@ Data lives in `~/Library/Application Support/com.treelauncher.treeLauncher/`.
   backups don't include it.
 - **`backups/`:** a daily `VACUUM INTO` copy of the database; the newest 7
   are kept.
+- **`logs/`:** the app's log, one plain-text file a day (`YYYY-MM-DD.log`,
+  kept 14 days): one line per entry, `time LEVEL source message`, a
+  message's later lines indented. Sources include `jira-triggers`,
+  `agent-api`, `agents`, `claude`, `worktrees`, `jira`, `github` and `app`
+  (every `debugPrint`). Read it to see what the app did, e.g.
+  `grep jira-triggers logs/$(date +%F).log`. The Log button in the sidebar
+  shows it live.
 - **`config.json` holds configuration only:** the preferences, and the repos
   with their commands, prompts, GitHub and Jira settings (including the
   fixVersion → branch mapping and the Jira triggers). It only changes when

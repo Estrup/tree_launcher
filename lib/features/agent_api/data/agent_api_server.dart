@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
 
 import 'package:tree_launcher/features/activity/domain/activity_service.dart';
 import 'package:tree_launcher/features/activity/domain/manual_post_writer.dart';
+import 'package:tree_launcher/core/logging/app_log.dart';
 import 'package:tree_launcher/features/agent_api/data/api_http.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/activity_routes.dart';
 import 'package:tree_launcher/features/agent_api/data/routes/agent_routes.dart';
@@ -105,7 +105,7 @@ class AgentApiServer {
   Future<void> start({int port = defaultPort}) async {
     if (_server != null) return;
     final handler = const Pipeline()
-        .addMiddleware(logRequests())
+        .addMiddleware(_logRequests)
         .addMiddleware(_localClientsOnly(port))
         .addHandler(_router.call);
     try {
@@ -114,18 +114,52 @@ class AgentApiServer {
         InternetAddress.loopbackIPv4,
         port,
       );
-      debugPrint(
-        'AgentApiServer listening on http://127.0.0.1:${_server!.port}',
-      );
+      appLog(_source, 'Listening on http://127.0.0.1:${_server!.port}');
     } catch (e) {
-      debugPrint('AgentApiServer failed to start on port $port: $e');
+      appLog(
+        _source,
+        'Failed to start on port $port: $e',
+        level: LogLevel.error,
+      );
     }
   }
 
   Future<void> stop() async {
-    await _server?.close(force: true);
+    final server = _server;
+    if (server == null) return;
     _server = null;
+    await server.close(force: true);
+    appLog(_source, 'Stopped');
   }
+
+  static const _source = 'agent-api';
+
+  /// Logs each request with its status and time: reads as debug, changes as
+  /// info, refusals as warnings and failures as errors.
+  static Handler _logRequests(Handler inner) => (request) async {
+    final watch = Stopwatch()..start();
+    final query = request.url.hasQuery ? '?${request.url.query}' : '';
+    final what = '${request.method} /${request.url.path}$query';
+    try {
+      final response = await inner(request);
+      final status = response.statusCode;
+      appLog(
+        _source,
+        '$what → $status (${watch.elapsedMilliseconds} ms)',
+        level: status >= 500
+            ? LogLevel.error
+            : status >= 400
+            ? LogLevel.warning
+            : request.method == 'GET'
+            ? LogLevel.debug
+            : LogLevel.info,
+      );
+      return response;
+    } catch (e) {
+      appLog(_source, '$what failed: $e', level: LogLevel.error);
+      rethrow;
+    }
+  };
 
   /// Stops the server (if running) and starts it again on [port]. Like [start],
   /// never throws — a failed rebind leaves the server stopped.

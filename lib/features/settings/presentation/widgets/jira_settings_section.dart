@@ -7,6 +7,7 @@ import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/domain/jira_trigger_schedule.dart';
+import 'package:tree_launcher/features/jira/presentation/widgets/jira_trigger_check_bar.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 
@@ -87,6 +88,8 @@ class _JiraSettingsSectionState extends State<JiraSettingsSection> {
           ),
           const SizedBox(height: 12),
           const _TriggerScheduleEditor(),
+          const SizedBox(height: 8),
+          const JiraTriggerCheckBar(),
           const SizedBox(height: 32),
           Text(
             'TAGS',

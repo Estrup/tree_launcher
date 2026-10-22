@@ -4,6 +4,7 @@ import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
+import 'package:tree_launcher/features/log/presentation/widgets/log_dialog.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
@@ -204,6 +205,12 @@ class _RepoSidebarState extends State<RepoSidebar> {
               children: [
                 Expanded(child: SidebarAddRepoButton(onPressed: widget.onAddRepo)),
                 const SizedBox(width: 8),
+                SidebarSettingsButton(
+                  icon: Icons.receipt_long_outlined,
+                  tooltip: 'Log',
+                  onPressed: () => LogDialog.show(context),
+                ),
+                const SizedBox(width: 8),
                 SidebarSettingsButton(onPressed: widget.onOpenSettings),
               ],
             ),
@@ -285,6 +292,12 @@ class _RepoSidebarState extends State<RepoSidebar> {
                 tooltip: 'Add Repo',
                 accent: true,
                 onTap: widget.onAddRepo,
+              ),
+              const SizedBox(height: 8),
+              SidebarRailIconButton(
+                icon: Icons.receipt_long_outlined,
+                tooltip: 'Log',
+                onTap: () => LogDialog.show(context),
               ),
               const SizedBox(height: 8),
               SidebarRailIconButton(

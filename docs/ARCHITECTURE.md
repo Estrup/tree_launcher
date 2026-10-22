@@ -88,7 +88,8 @@ the schema dumps in `drift_schemas/`.
 
 `bootstrap()` runs these in order:
 
-1. **`AppDependencies()`** builds everything.
+1. **`AppDependencies()`** builds everything, and **`openLog()`** opens the
+   log in `logs/` (and captures `debugPrint` into it).
 2. **`prepareDatabase()`** merges the files from before the database into it,
    moves old keys out of `config.json` (`WorktreeMetadataLegacyImport`,
    `ConfigStateImport`), and starts the daily backup.
@@ -143,7 +144,8 @@ disposes the controllers and closes the database.
   - `AgentApiControl` runs the API on the right port.
   - `JiraIssueBaseBranches` gives the API an issue's default base branch,
     from the repo's fixVersion → branch mapping.
-  - `JiraTriggerWatcher` polls Jira for the repos' `JiraTrigger`s (an issue
+  - `JiraTriggerWatcher` (a `ChangeNotifier`: last and next check,
+    `checkNow()`) polls Jira for the repos' `JiraTrigger`s (an issue
     in a fixVersion moves to a status, or is created) on the settings'
     `JiraTriggerSchedule` (on/off, interval, hours), and starts each new
     match through `StartClaudeInWorktree`: in the rule's worktree, else the

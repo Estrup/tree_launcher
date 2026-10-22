@@ -3,6 +3,8 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:tree_launcher/core/logging/app_log.dart';
+
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
 import 'package:tree_launcher/features/agents/domain/agent_event.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
@@ -314,6 +316,18 @@ class AgentsController extends ChangeNotifier implements AgentRegistry {
   }
 
   void _addEvent(AgentEvent event) {
+    final run = _runs[event.agentId];
+    appLog(
+      'agents',
+      '${run == null ? event.agentId : '${run.kind.label} ${run.id} '
+                    '(${run.repoName}${run.issueKeys.isEmpty ? '' : ', ${run.issueKeys.join(', ')}'})'}'
+          '${event.stage == null ? '' : ' [${event.stage}]'}: ${event.message}',
+      level: switch (event.level) {
+        AgentEventLevel.warning => LogLevel.warning,
+        AgentEventLevel.error => LogLevel.error,
+        _ => LogLevel.info,
+      },
+    );
     final list = _events.putIfAbsent(event.agentId, () => []);
     list.add(event);
     if (list.length > maxEventsPerRun) list.removeAt(0);

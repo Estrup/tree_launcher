@@ -167,7 +167,14 @@ class _AddRepoButtonState extends State<SidebarAddRepoButton> {
 
 class SidebarSettingsButton extends StatefulWidget {
   final VoidCallback onPressed;
-  const SidebarSettingsButton({super.key, required this.onPressed});
+  final IconData icon;
+  final String? tooltip;
+  const SidebarSettingsButton({
+    super.key,
+    required this.onPressed,
+    this.icon = Icons.tune_rounded,
+    this.tooltip,
+  });
 
   @override
   State<SidebarSettingsButton> createState() => _SettingsButtonState();
@@ -178,7 +185,7 @@ class _SettingsButtonState extends State<SidebarSettingsButton> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
+    final button = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
@@ -193,13 +200,15 @@ class _SettingsButtonState extends State<SidebarSettingsButton> {
             border: Border.all(color: AppColors.border),
           ),
           child: Icon(
-            Icons.tune_rounded,
+            widget.icon,
             size: 16,
             color: _hovered ? AppColors.textPrimary : AppColors.textMuted,
           ),
         ),
       ),
     );
+    final tooltip = widget.tooltip;
+    return tooltip == null ? button : Tooltip(message: tooltip, child: button);
   }
 }
 

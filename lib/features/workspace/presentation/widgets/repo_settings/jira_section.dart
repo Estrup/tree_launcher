@@ -6,6 +6,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/errors/user_message.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
+import 'package:tree_launcher/features/jira/presentation/widgets/jira_trigger_check_bar.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/branch_search_dropdown.dart';
@@ -222,7 +223,9 @@ class _VersionRulesState extends State<_VersionRules> {
             'is set in Settings → Jira.',
             style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
+          const JiraTriggerCheckBar(),
+          const SizedBox(height: 8),
           JiraTriggersList(versions: versions),
         ],
       ],

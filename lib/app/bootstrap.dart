@@ -13,6 +13,8 @@ Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final dependencies = AppDependencies();
+  // First, so everything after is in the log.
+  await dependencies.openLog();
   // Import the pre-database files before anything reads the stores.
   await dependencies.prepareDatabase();
   await dependencies.loadState();
