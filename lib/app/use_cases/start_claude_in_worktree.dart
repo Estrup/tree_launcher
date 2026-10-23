@@ -164,6 +164,12 @@ class StartClaudeInWorktree implements ClaudeSessionStarter {
         },
       );
     }
+    if (saved.kind case final kind? when !repo.usesAgentType(kind)) {
+      throw ClaudePromptException(
+        'prompt "${saved.name}" starts a "${kind.id}" agent, and that agent '
+        'type is switched off for repo ${repo.name}',
+      );
+    }
     return (
       choice: SavedClaudePrompt(saved),
       saved: saved,

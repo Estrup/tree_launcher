@@ -329,6 +329,7 @@ AgentApiServer _server(
       agents: registry,
       metadataFor: metadataFor ?? (_) => null,
       documents: library,
+      settings: _FakeSettings(settings),
       notify: (_, {action}) {},
     ),
     gitService: gitService ?? GitService(),
@@ -1255,7 +1256,11 @@ void main() {
         db,
         tempHome,
         repos: [
-          RepoConfig(name: 'other', path: '/repos/other'),
+          RepoConfig(
+            name: 'other',
+            path: '/repos/other',
+            disabledAgentTypes: const [AgentKind.support],
+          ),
           RepoConfig(name: 'au2office', path: '/repos/au2'),
         ],
         gitService: _FakeWorktreeGit(),
@@ -1349,6 +1354,32 @@ void main() {
         expect(body['issueKeys'], ['AU2-1']);
         expect(body['stages'], hasLength(2));
       });
+
+      test(
+        "takes the catalog's types, but not one the repo switched off",
+        () async {
+          final (status, body) = await postAgents('/v1/agents', {
+            'kind': 'Support',
+            'repo': 'au2office',
+          });
+          expect(status, 201);
+          expect(body['kind'], 'support');
+
+          final (off, error) = await postAgents('/v1/agents', {
+            'kind': 'support',
+            'repo': 'other',
+          });
+          expect(off, 409);
+          expect(error['error'], contains('switched off'));
+
+          final (unknown, listed) = await postAgents('/v1/agents', {
+            'kind': 'deploy',
+            'repo': 'au2office',
+          });
+          expect(unknown, 400);
+          expect(listed['error'], contains('support'));
+        },
+      );
 
       test('rejects bad registrations', () async {
         expect(

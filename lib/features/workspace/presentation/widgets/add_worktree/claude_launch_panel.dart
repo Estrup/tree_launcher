@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
 
 /// The Claude part of the Start Claude dialog: the prompt to start with, the
@@ -97,7 +98,7 @@ class ClaudeLaunchPanel extends StatelessWidget {
           Text(
             'Runs ${buildClaudeCliCommand(extraArgs: cliArgs, model: model, effort: effort)} '
             'in the built-in terminal'
-            '${agentKind == null ? '' : ' as a ${agentKind!.label.toLowerCase()} agent'}.',
+            '${agentKind == null ? '' : ' as a ${agentTypeOf(context, agentKind!).label.toLowerCase()} agent'}.',
             style: TextStyle(
               fontSize: 11,
               color: AppColors.textMuted.withValues(alpha: 0.6),

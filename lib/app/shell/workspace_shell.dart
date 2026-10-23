@@ -76,6 +76,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
     final tabs = repoPagesFor(
       repo,
       agents,
+      agentTypes: agentTypesOf(context),
       hasDocuments:
           repo != null && (documents?.hasDocumentsFor(repo.name) ?? false),
     );

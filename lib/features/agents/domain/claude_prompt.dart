@@ -38,7 +38,7 @@ class ClaudePrompt {
   Map<String, dynamic> toJson() => {
     'name': name,
     'prompt': prompt,
-    if (kind != null) 'kind': kind!.name,
+    if (kind != null) 'kind': kind!.id,
   };
 
   ClaudePrompt copyWith({

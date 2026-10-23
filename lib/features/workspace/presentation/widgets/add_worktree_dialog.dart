@@ -7,7 +7,6 @@ import 'package:tree_launcher/app/use_cases/claude_session_launcher.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
@@ -407,14 +406,15 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
     if (_targetChosen) return;
     final kind = _selectedSavedPrompt?.kind;
     _useExisting =
-        _defaultUseExisting || (kind != null && kind != AgentKind.build);
+        _defaultUseExisting ||
+        (kind != null &&
+            !agentTypeOf(context, kind, listen: false).ownsWorktree);
   }
 
   /// The Claude prompt toggles. None selected means no first message.
   List<PromptOption> _promptOptions() {
-    final prompts =
-        context.read<WorkspaceController>().selectedRepo?.claudePrompts ??
-        const [];
+    final repo = context.read<WorkspaceController>().selectedRepo;
+    final prompts = repo?.claudePrompts ?? const [];
     final existing = _existing;
     final contextPrompt =
         widget.contextPrompt ??
@@ -437,16 +437,25 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           preview: 'Staged when the worktree was created',
         ),
       for (var i = 0; i < prompts.length; i++)
-        PromptOption(
-          key: '$_savedPromptPrefix$i',
-          label: prompts[i].name,
-          icon: prompts[i].kind?.icon ?? Icons.bookmark_border_rounded,
-          preview: prompts[i].kind == null
-              ? _firstLine(prompts[i].prompt)
-              : '${prompts[i].kind!.label} agent · '
-                    '${_firstLine(prompts[i].prompt)}',
-        ),
+        // An agent prompt of a type the repo switched off can't start.
+        if (prompts[i].kind == null || repo!.usesAgentType(prompts[i].kind!))
+          _savedPromptOption(i, prompts[i]),
     ];
+  }
+
+  PromptOption _savedPromptOption(int index, ClaudePrompt prompt) {
+    final kind = prompt.kind;
+    final type = kind == null
+        ? null
+        : agentTypeOf(context, kind, listen: false);
+    return PromptOption(
+      key: '$_savedPromptPrefix$index',
+      label: prompt.name,
+      icon: type?.iconData ?? Icons.bookmark_border_rounded,
+      preview: type == null
+          ? _firstLine(prompt.prompt)
+          : '${type.label} agent · ${_firstLine(prompt.prompt)}',
+    );
   }
 
   /// What the picked prompt is recorded as (see [AddWorktreeResult.promptId]).

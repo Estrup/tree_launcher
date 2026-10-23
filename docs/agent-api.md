@@ -296,7 +296,8 @@ first, so a request that fails at the prompt never leaves a worktree behind.
 **Errors:**
 - 400: a missing or invalid field, a field the route doesn't take,
   new-worktree fields with `existingWorktree`, `prompt` with `promptText`,
-  an unknown prompt (with `prompts`: the saved names and the built-ins),
+  an unknown prompt (with `prompts`: the saved names and the built-ins), a
+  prompt whose agent type is switched off for the repo,
   `:kickoff` without a kickoff prompt, a prompt using `{issue}` without an
   issue key, `{github_issue}` without a linked GitHub issue or `{pr}` without
   `prNumber`, an unknown `model` or `effort`
@@ -381,9 +382,12 @@ them all. **200** returns `{"key": "AU2-5928", "tags": ["Blocked", "Demo"]}`.
 
 ## Agents
 
-An **agent run** is one Claude session of a kind (`refine`, `build`, `verify`,
-`review` or `docs`) working on a repo, usually on one or more Jira issues in a
-worktree. The app shows the runs in each kind's tab of the repo. Agents
+An **agent run** is one Claude session of a kind working on a repo, usually
+on one or more Jira issues in a worktree. The kinds are the ids of the agent
+types the user keeps in **Settings → Agents**; the app starts with `refine`,
+`build`, `verify`, `review`, `docs` and `support`. Each repo switches the
+types it uses on or off (**Repo settings → Agents**), and the app shows the
+runs in each type's tab of the repo. Agents
 register when they start and report as they go; the tree-launcher skill's
 `scripts/agent.py` wraps these calls. A run started from the app is created
 before the agent starts, and gets its id in `TREE_LAUNCHER_AGENT_ID`.
@@ -408,12 +412,13 @@ The runs, most recently updated first. Every filter is optional:
 | Query | |
 |---|---|
 | `repo` | Runs in this repo. |
-| `kind` | Runs of this kind. |
+| `kind` | Runs of this kind (any case). |
 | `active` | `true`: unfinished runs only; `false`: finished runs only. |
 | `issue` | Runs working on this issue key (any case). |
 | `archived` | `true` includes archived runs, which are left out otherwise. |
 
-Returns `{"count": 2, "agents": [<run>, …]}`. **400** for an unknown `kind`, or
+Returns `{"count": 2, "agents": [<run>, …]}`. **400** for a `kind` that isn't
+an agent type (the error lists them), or
 an `active` or `archived` that isn't `true` or `false`.
 
 ### `GET /v1/agents/<id>`
@@ -429,7 +434,7 @@ Registers a run.
 | Field | |
 |---|---|
 | `id` | Optional. A run the app created when it launched the agent (`$TREE_LAUNCHER_AGENT_ID`); the other fields update it. |
-| `kind` | Required without `id`. |
+| `kind` | Required without `id`. The id of an agent type (any case). |
 | `repo` | Required without `id`, unless `worktreePath` is a worktree of a repo, which is then used. |
 | `prompt`, `title`, `worktreePath`, `branch`, `model`, `effort` | Optional strings. |
 | `prNumber` | Optional. A number. |
@@ -441,9 +446,11 @@ Without `id`, an unfinished, unarchived run with the same `kind`, `repo`,
 resumed session (**200**). A new run is **201**. Both return the run.
 
 **Errors:**
-- 400: a missing `kind` or `repo`, an unknown kind, an invalid key, or a
-  field the route doesn't take;
-- 404: an unknown `id` or repo.
+- 400: a missing `kind` or `repo`, a kind that isn't an agent type (the
+  error lists them), an invalid key, or a field the route doesn't take;
+- 404: an unknown `id` or repo;
+- 409: the kind is switched off for the repo (`repo`, or the run's with
+  `id`).
 
 ### `POST /v1/agents/<id>/status`
 
@@ -546,7 +553,7 @@ the run's document of that name.
 
 The documents matching every given filter, most recently updated first,
 without their text. `worktree` is a worktree's path or folder name; `kind`
-is the agent kind of the run they came from. Returns
+is the agent kind of the run they came from (an agent type's id). Returns
 `{"count": 1, "documents": [<document>, …]}`. **400** for an unknown repo,
 kind or format.
 

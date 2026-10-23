@@ -8,6 +8,7 @@ import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
 import 'package:tree_launcher/features/documents/domain/document_library.dart';
 import 'package:tree_launcher/features/documents/domain/session_document.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
@@ -20,13 +21,16 @@ class DocumentRoutes {
     required RepoCatalog repos,
     required DocumentLibrary library,
     required DocumentSaver saver,
+    required AppSettingsSource settings,
   }) : _repos = repos,
        _library = library,
-       _saver = saver;
+       _saver = saver,
+       _settings = settings;
 
   final RepoCatalog _repos;
   final DocumentLibrary _library;
   final DocumentSaver _saver;
+  final AppSettingsSource _settings;
 
   void mount(Router router) => router
     ..get('/v1/documents', _list)
@@ -53,11 +57,12 @@ class DocumentRoutes {
     }
     final kindName = param('kind');
     final kind = AgentKind.tryParse(kindName);
-    if (kindName != null && kind == null) {
+    final types = _settings.settings.agentTypes;
+    if (kindName != null && !types.any((t) => t.kind == kind)) {
       return jsonResponse({
         'error':
             'unknown kind "$kindName" — expected one of: '
-            '${AgentKind.values.map((k) => k.name).join(', ')}',
+            '${types.map((t) => t.kind.id).join(', ')}',
       }, status: 400);
     }
     final formatName = param('format');

@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/design_system/window_chrome.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/domain/jira_trigger_schedule.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag_editor.dart';
@@ -233,6 +235,56 @@ class SettingsController extends ChangeNotifier
 
   Future<void> _saveJiraTags(List<JiraTag> tags) async {
     _settings = _settings.copyWith(jiraTags: tags);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
+  /// Adds an agent type called [label], with an id made from it, and returns
+  /// it; null when [label] has no letters or digits.
+  Future<AgentType?> addAgentType(String label) async {
+    final trimmed = label.trim();
+    final types = _settings.agentTypes;
+    final kind = agentKindForLabel(trimmed, types.map((t) => t.kind));
+    if (kind == null) return null;
+    final used = types.map((t) => t.color).toSet();
+    final type = AgentType(
+      kind: kind,
+      label: trimmed,
+      color: agentTypeColors.firstWhere(
+        (c) => !used.contains(c),
+        orElse: () => defaultAgentTypeColor,
+      ),
+    );
+    await _saveAgentTypes([...types, type]);
+    return type;
+  }
+
+  /// Replaces the agent type with [type]'s id (a rename, icon or color).
+  Future<void> updateAgentType(AgentType type) async {
+    await _saveAgentTypes([
+      for (final t in _settings.agentTypes) t.kind == type.kind ? type : t,
+    ]);
+  }
+
+  /// Moves the agent type at [oldIndex] to [newIndex], counted before the
+  /// move as a reorderable list reports it.
+  Future<void> reorderAgentTypes(int oldIndex, int newIndex) async {
+    final types = List.of(_settings.agentTypes);
+    final type = types.removeAt(oldIndex);
+    types.insert(newIndex > oldIndex ? newIndex - 1 : newIndex, type);
+    await _saveAgentTypes(types);
+  }
+
+  /// Deletes an agent type. Its runs, documents and prompts keep its id.
+  Future<void> removeAgentType(AgentKind kind) async {
+    await _saveAgentTypes([
+      for (final t in _settings.agentTypes)
+        if (t.kind != kind) t,
+    ]);
+  }
+
+  Future<void> _saveAgentTypes(List<AgentType> types) async {
+    _settings = _settings.copyWith(agentTypes: types);
     await _store.save(_settings);
     notifyListeners();
   }

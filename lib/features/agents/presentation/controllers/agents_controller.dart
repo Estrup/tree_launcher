@@ -319,7 +319,7 @@ class AgentsController extends ChangeNotifier implements AgentRegistry {
     final run = _runs[event.agentId];
     appLog(
       'agents',
-      '${run == null ? event.agentId : '${run.kind.label} ${run.id} '
+      '${run == null ? event.agentId : '${run.kind.id} ${run.id} '
                     '(${run.repoName}${run.issueKeys.isEmpty ? '' : ', ${run.issueKeys.join(', ')}'})'}'
           '${event.stage == null ? '' : ' [${event.stage}]'}: ${event.message}',
       level: switch (event.level) {

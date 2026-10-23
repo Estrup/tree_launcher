@@ -183,7 +183,10 @@ it, or a section has no route.
   `DocumentSaver`), never the saved files, so API writes show in the UI at
   once.
 - **Agents** (`lib/features/agents/`): an agent run is a Claude session of
-  one kind (refine/build/verify/review/docs).
+  one kind: an agent type of the catalog in Settings → Agents
+  (`AgentType` in `AppSettings.agentTypes`, starting with
+  refine/build/verify/review/docs/support). A repo switches types off in
+  `RepoConfig.disabledAgentTypes`; the API refuses those (409).
   - Saved prompts carry the kind, and each kind is a repo tab.
   - Agents register and report through the API; the tree-launcher skill's
     `scripts/agent.py` helper wraps it.

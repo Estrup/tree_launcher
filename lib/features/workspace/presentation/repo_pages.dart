@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
@@ -16,7 +17,7 @@ const jiraPageKey = 'jira';
 const documentsPageKey = 'documents';
 const activityPageKey = 'activity';
 
-String agentPageKey(AgentKind kind) => 'agents:${kind.name}';
+String agentPageKey(AgentKind kind) => 'agents:${kind.id}';
 
 /// One of a repo's pages: a tab above the repo's content, and an entry under
 /// the repo in the sidebar with the Claude sessions that belong to it.
@@ -43,11 +44,12 @@ class RepoPage {
 }
 
 /// The pages [repo] has: PRs, Issues and Jira when configured, an agent page
-/// per kind it has prompts or runs of, Documents when it [hasDocuments], and
-/// worktrees and activity always.
+/// per type of [agentTypes] it has switched on and has prompts or runs of,
+/// Documents when it [hasDocuments], and worktrees and activity always.
 List<RepoPage> repoPagesFor(
   RepoConfig? repo,
   AgentsController? agents, {
+  required List<AgentType> agentTypes,
   bool hasDocuments = false,
 }) => [
   const RepoPage(
@@ -74,14 +76,15 @@ List<RepoPage> repoPagesFor(
       icon: Icons.confirmation_number_outlined,
     ),
   if (repo != null && agents != null)
-    for (final kind in AgentKind.values)
-      if (showsAgentTab(repo.name, repo.claudePrompts, agents, kind))
+    for (final type in agentTypes)
+      if (repo.usesAgentType(type.kind) &&
+          showsAgentTab(repo.name, repo.claudePrompts, agents, type.kind))
         RepoPage(
-          key: agentPageKey(kind),
-          label: kind.label,
-          icon: kind.icon,
-          agentKind: kind,
-          badge: agents.needsYouCount(repo.name, kind),
+          key: agentPageKey(type.kind),
+          label: type.label,
+          icon: type.iconData,
+          agentKind: type.kind,
+          badge: agents.needsYouCount(repo.name, type.kind),
         ),
   if (hasDocuments)
     const RepoPage(
@@ -167,16 +170,22 @@ typedef PageSession = ({
 /// among [pageKeys]), newest first in a fixed order that status updates
 /// don't move: [repo]'s agent [runs] that show (see [showsAgentSession];
 /// [isOpen] says whether a run's terminal is open), and the [remembered]
-/// session shortcuts, in the order remembered. A build agent's worktree is
-/// also a shortcut; while that agent is listed it stands for it.
+/// session shortcuts, in the order remembered. The worktree of an agent
+/// whose type [AgentType.ownsWorktree] (of [agentTypes]) is also a shortcut;
+/// while that agent is listed it stands for it.
 Map<String, List<PageSession>> sessionsByPage(
   RepoConfig repo, {
+  required List<AgentType> agentTypes,
   required Set<String> pageKeys,
   required Iterable<AgentRun> runs,
   required bool Function(AgentRun run) isOpen,
   required Iterable<WorktreeMetadata> remembered,
 }) {
   final sessions = <String, List<PageSession>>{};
+  final worktreeOwnerKinds = {
+    for (final type in agentTypes)
+      if (type.ownsWorktree) type.kind,
+  };
   final buildAgentPaths = <String>{};
   for (final run in runs) {
     if (run.repoName != repo.name) continue;
@@ -185,7 +194,9 @@ Map<String, List<PageSession>> sessionsByPage(
         .putIfAbsent(agentPageKey(run.kind), () => [])
         .add((startedAt: run.startedAt, order: 0, path: null, run: run));
     final path = run.worktreePath;
-    if (run.kind == AgentKind.build && path != null) buildAgentPaths.add(path);
+    if (worktreeOwnerKinds.contains(run.kind) && path != null) {
+      buildAgentPaths.add(path);
+    }
   }
   for (final (index, worktree) in remembered.indexed) {
     if (buildAgentPaths.contains(worktree.path)) continue;

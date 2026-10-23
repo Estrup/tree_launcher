@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agents_tab.dart';
 import 'package:tree_launcher/features/documents/data/document_store.dart';
@@ -124,11 +125,20 @@ void main() {
   test('a repo gets a Documents page once it has a document', () {
     final repo = workspace.selectedRepo;
     expect(
-      repoPagesFor(repo, agents).map((p) => p.key),
+      repoPagesFor(
+        repo,
+        agents,
+        agentTypes: defaultAgentTypes,
+      ).map((p) => p.key),
       isNot(contains(documentsPageKey)),
     );
     expect(
-      repoPagesFor(repo, agents, hasDocuments: true).map((p) => p.key),
+      repoPagesFor(
+        repo,
+        agents,
+        agentTypes: defaultAgentTypes,
+        hasDocuments: true,
+      ).map((p) => p.key),
       contains(documentsPageKey),
     );
   });

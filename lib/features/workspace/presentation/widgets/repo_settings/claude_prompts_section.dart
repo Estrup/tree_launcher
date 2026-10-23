@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:provider/provider.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/settings_controls.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/repo_settings_section_state.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
+import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 
 class RepoClaudePromptsSection extends StatefulWidget {
   const RepoClaudePromptsSection({super.key});
@@ -333,6 +334,16 @@ class _ClaudePromptEditorState extends State<_ClaudePromptEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final repo = context.watch<WorkspaceController>().selectedRepo;
+    final kind = widget.prompt.kind;
+    final type = kind == null ? null : agentTypeOf(context, kind);
+    // The types switched on for the repo, and the prompt's own even if not.
+    final types = [
+      for (final t in agentTypesOf(context))
+        if (t.kind == kind || (repo?.usesAgentType(t.kind) ?? true)) t,
+      if (type != null && !agentTypesOf(context).any((t) => t.kind == kind))
+        type,
+    ];
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -392,26 +403,30 @@ class _ClaudePromptEditorState extends State<_ClaudePromptEditor> {
                 onTap: () =>
                     widget.onChanged(widget.prompt.copyWith(clearKind: true)),
               ),
-              for (final kind in AgentKind.values)
+              for (final t in types)
                 _KindOption(
-                  label: kind.label,
-                  icon: kind.icon,
-                  color: kind.color,
-                  selected: widget.prompt.kind == kind,
+                  label: t.label,
+                  icon: t.iconData,
+                  color: t.colorValue,
+                  selected: kind == t.kind,
                   onTap: () =>
-                      widget.onChanged(widget.prompt.copyWith(kind: kind)),
+                      widget.onChanged(widget.prompt.copyWith(kind: t.kind)),
                 ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            widget.prompt.kind == null
-                ? 'An ordinary prompt, offered when starting Claude.'
-                : 'Starts a ${widget.prompt.kind!.label.toLowerCase()} agent: '
-                      'offered in the ${widget.prompt.kind!.label} tab, which '
-                      'shows what the agent reports.',
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
+          Text(switch (type) {
+            null => 'An ordinary prompt, offered when starting Claude.',
+            _ when !agentTypesOf(context).any((t) => t.kind == kind) =>
+              'Starts a "${kind!.id}" agent, which is no longer an agent '
+                  'type (Settings → Agents), so it can\'t start.',
+            _ when repo != null && !repo.usesAgentType(kind!) =>
+              '${type.label} agents are switched off for this repo '
+                  '(Agents), so it can\'t start.',
+            _ =>
+              'Starts a ${type.label.toLowerCase()} agent: offered in the '
+                  '${type.label} tab, which shows what the agent reports.',
+          }, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
           const SizedBox(height: 20),
           _label('PROMPT'),
           const SizedBox(height: 6),

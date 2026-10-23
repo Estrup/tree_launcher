@@ -7,8 +7,8 @@ import 'package:tree_launcher/core/design_system/app_snackbar.dart';
 import 'package:tree_launcher/core/logging/app_log.dart';
 import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/agents/domain/agent_environment.dart';
-import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
@@ -44,9 +44,13 @@ class AgentLauncher {
   /// another), or null when it isn't running.
   final int? Function() _apiPort;
 
-  /// Terminal tab title for [run].
-  static String titleFor(AgentRun run) =>
-      '${run.kind.label}: ${run.issueKey ?? p.basename(run.worktreePath ?? run.repoName)}';
+  /// Terminal tab title for [run], whose kind is [type].
+  static String titleFor(AgentRun run, AgentType type) =>
+      '${type.label}: ${run.issueKey ?? p.basename(run.worktreePath ?? run.repoName)}';
+
+  /// Terminal tab title for [run], with its kind looked up in the catalog.
+  String tabTitleFor(AgentRun run) =>
+      titleFor(run, _settings.settings.agentType(run.kind));
 
   Map<String, String> _environment(AgentRun run) => {
     agentIdEnvironmentVariable: run.id,
@@ -54,10 +58,12 @@ class AgentLauncher {
       agentUrlEnvironmentVariable: 'http://127.0.0.1:$port',
   };
 
-  /// Creates a run for [prompt] (which must have a kind) and starts its
-  /// Claude session in [worktreePath] with [resolvedPrompt] as the first
-  /// message, in the background (a notice offers to show it) unless [show].
-  /// A build agent's worktree is remembered as a sidebar session.
+  /// Creates a run for [prompt] (which must have a kind the catalog has and
+  /// the repo has switched on) and starts its Claude session in
+  /// [worktreePath] with [resolvedPrompt] as the first message, in the
+  /// background (a notice offers to show it) unless [show]. The worktree of
+  /// an agent that [AgentType.ownsWorktree] is remembered as a sidebar
+  /// session.
   Future<AgentRun> start({
     required String repoPath,
     required String repoName,
@@ -76,6 +82,21 @@ class AgentLauncher {
     if (kind == null) {
       throw ArgumentError('prompt "${prompt.name}" has no agent kind');
     }
+    final types = _settings.settings.agentTypes;
+    final type = types.where((t) => t.kind == kind).firstOrNull;
+    if (type == null) {
+      throw ArgumentError(
+        'prompt "${prompt.name}" starts a "${kind.id}" agent, which is no '
+        'longer an agent type (Settings → Agents)',
+      );
+    }
+    final repo = _workspace.repos.where((r) => r.name == repoName).firstOrNull;
+    if (repo != null && !repo.usesAgentType(kind)) {
+      throw ArgumentError(
+        '${type.label} agents are switched off for $repoName '
+        '(repo settings → Agents)',
+      );
+    }
     final run = await _agents.createForLaunch(
       kind: kind,
       repoName: repoName,
@@ -89,7 +110,7 @@ class AgentLauncher {
       effort: effort,
     );
     final session = _terminal.openAgentSession(
-      titleFor(run),
+      tabTitleFor(run),
       worktreePath,
       repoPath,
       buildClaudeCliCommand(
@@ -104,20 +125,20 @@ class AgentLauncher {
     );
     appLog(
       'claude',
-      'Started ${titleFor(run)} (${kind.label} agent ${run.id}, prompt '
+      'Started ${tabTitleFor(run)} (${type.label} agent ${run.id}, prompt '
           '"${prompt.name}") in $worktreePath'
           '${model == null ? '' : ', $model'}${effort == null ? '' : '/$effort'}',
     );
     if (session != null && !show) {
       showAppSnackBar(
-        'Started ${titleFor(run)}',
+        'Started ${tabTitleFor(run)}',
         action: SnackBarAction(
           label: 'Show',
           onPressed: () => _terminal.showSession(session),
         ),
       );
     }
-    if (kind == AgentKind.build) {
+    if (type.ownsWorktree) {
       await _workspace.rememberClaudeSession(
         repoPath,
         worktreePath,
@@ -167,7 +188,7 @@ class AgentLauncher {
     final canContinue =
         sessionId == null && await _claudeActivity.hasSessions(path);
     _terminal.openAgentSession(
-      titleFor(run),
+      tabTitleFor(run),
       path,
       repoPath,
       buildClaudeCliCommand(

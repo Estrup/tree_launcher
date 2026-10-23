@@ -45,6 +45,7 @@ class _AgentCardState extends State<AgentCard> {
     final liveness = agents.livenessOf(run.id);
     final status = agentStatusStyle(run, liveness);
     final needsYou = agents.needsYou(run);
+    final type = agentTypeOf(context, run.kind);
     final subtitle = [
       if (run.worktreePath != null) p.basename(run.worktreePath!),
       if (run.prNumber != null) 'PR #${run.prNumber}',
@@ -85,7 +86,7 @@ class _AgentCardState extends State<AgentCard> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      run.title ?? run.promptName ?? run.kind.label,
+                      run.title ?? run.promptName ?? type.label,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 14,
@@ -111,14 +112,14 @@ class _AgentCardState extends State<AgentCard> {
               Row(
                 children: [
                   if (run.promptName != null) ...[
-                    Icon(run.kind.icon, size: 12, color: run.kind.color),
+                    Icon(type.iconData, size: 12, color: type.colorValue),
                     const SizedBox(width: 4),
                     Text(
                       run.promptName!,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: run.kind.color,
+                        color: type.colorValue,
                       ),
                     ),
                     if (subtitle.isNotEmpty) const SizedBox(width: 10),

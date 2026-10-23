@@ -78,11 +78,13 @@ class AgentApiServer {
          repos: repos,
          gitService: gitService,
          registry: agentRegistry,
+         settings: settings,
        ),
        _documentRoutes = DocumentRoutes(
          repos: repos,
          library: documents,
          saver: documentSaver,
+         settings: settings,
        );
 
   /// Default loopback port the agent API listens on.

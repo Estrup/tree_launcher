@@ -149,6 +149,7 @@ class _SessionInfoTabState extends State<SessionInfoTab> {
     final agents = context.watch<AgentsController?>();
     final agentId = session.agentId;
     final run = agentId == null ? null : agents?.runById(agentId);
+    final type = run == null ? null : agentTypeOf(context, run.kind);
 
     final documents = context.watch<DocumentsController?>();
     final docs =
@@ -249,13 +250,13 @@ class _SessionInfoTabState extends State<SessionInfoTab> {
                 label: 'Kind',
                 child: Row(
                   children: [
-                    Icon(run.kind.icon, size: 13, color: run.kind.color),
+                    Icon(type!.iconData, size: 13, color: type.colorValue),
                     const SizedBox(width: 6),
                     Flexible(
                       child: _Value(
                         run.title == null
-                            ? run.kind.label
-                            : '${run.kind.label} · ${run.title}',
+                            ? type.label
+                            : '${type.label} · ${run.title}',
                       ),
                     ),
                   ],

@@ -141,7 +141,7 @@ class DocumentStore {
         name: Value(d.name),
         format: d.format.name,
         agentId: Value(d.agentId),
-        agentKind: Value(d.agentKind?.name),
+        agentKind: Value(d.agentKind?.id),
         claudeSessionId: Value(d.claudeSessionId),
         worktreePath: Value(d.worktreePath),
         branch: Value(d.branch),

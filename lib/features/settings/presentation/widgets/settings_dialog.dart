@@ -5,6 +5,7 @@ import 'package:tree_launcher/core/storage/config_file.dart';
 import 'package:tree_launcher/core/widgets/settings_nav_item.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/agent_api_settings_section.dart';
+import 'package:tree_launcher/features/settings/presentation/widgets/agent_types_settings_section.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/help_settings_section.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/jira_settings_section.dart';
 import 'package:tree_launcher/features/settings/presentation/widgets/repositories_settings_section.dart';
@@ -17,6 +18,7 @@ enum _SettingsSection {
   terminals,
   repositories,
   jira,
+  agents,
   agentApi,
   help,
 }
@@ -166,6 +168,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           ),
                         ),
                         SettingsNavItem(
+                          icon: Icons.smart_toy_outlined,
+                          label: 'Agents',
+                          isSelected:
+                              _selectedSection == _SettingsSection.agents,
+                          onTap: () => setState(
+                            () => _selectedSection = _SettingsSection.agents,
+                          ),
+                        ),
+                        SettingsNavItem(
                           icon: Icons.api_rounded,
                           label: 'Agent API',
                           isSelected:
@@ -217,6 +228,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         return const RepositoriesSettingsSection();
       case _SettingsSection.jira:
         return const JiraSettingsSection();
+      case _SettingsSection.agents:
+        return const AgentTypesSettingsSection();
       case _SettingsSection.agentApi:
         return const AgentApiSettingsSection();
       case _SettingsSection.help:

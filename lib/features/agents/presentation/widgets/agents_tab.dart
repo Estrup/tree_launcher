@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_card.dart';
@@ -33,6 +34,7 @@ class _AgentsTabState extends State<AgentsTab> {
     final agents = context.watch<AgentsController>();
     if (repo == null) return const SizedBox.shrink();
     final kind = widget.kind;
+    final type = agentTypeOf(context, kind);
     final prompts = [
       for (final prompt in repo.claudePrompts)
         if (prompt.kind == kind) prompt,
@@ -101,7 +103,7 @@ class _AgentsTabState extends State<AgentsTab> {
                 ),
                 const SizedBox(width: 8),
               ],
-              _NewAgentButton(kind: kind, prompts: prompts),
+              _NewAgentButton(type: type, prompts: prompts),
             ],
           ),
         ),
@@ -109,7 +111,7 @@ class _AgentsTabState extends State<AgentsTab> {
         Expanded(
           child: visible.isEmpty
               ? _EmptyState(
-                  kind: kind,
+                  type: type,
                   filter: _filter,
                   hasPrompts: prompts.isNotEmpty,
                 )
@@ -130,15 +132,15 @@ class _AgentsTabState extends State<AgentsTab> {
 /// The "New … agent" button: starts one from a prompt of the tab's kind; with
 /// several, a menu picks which.
 class _NewAgentButton extends StatelessWidget {
-  const _NewAgentButton({required this.kind, required this.prompts});
+  const _NewAgentButton({required this.type, required this.prompts});
 
-  final AgentKind kind;
+  final AgentType type;
   final List<ClaudePrompt> prompts;
 
   @override
   Widget build(BuildContext context) {
-    final color = kind.color;
-    final label = 'New ${kind.label.toLowerCase()} agent';
+    final color = type.colorValue;
+    final label = 'New ${type.label.toLowerCase()} agent';
     final enabled = prompts.isNotEmpty;
     final button = Container(
       height: 32,
@@ -178,7 +180,7 @@ class _NewAgentButton extends StatelessWidget {
     if (!enabled) {
       return Tooltip(
         message:
-            'Give a prompt the ${kind.label} kind in repo settings → Claude Prompts',
+            'Give a prompt the ${type.label} kind in repo settings → Claude Prompts',
         child: button,
       );
     }
@@ -187,7 +189,7 @@ class _NewAgentButton extends StatelessWidget {
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: () =>
-              StartAgentDialog.show(context, kind: kind, prompt: prompts.first),
+              StartAgentDialog.show(context, type: type, prompt: prompts.first),
           child: button,
         ),
       );
@@ -197,7 +199,7 @@ class _NewAgentButton extends StatelessWidget {
       color: AppColors.surface1,
       position: PopupMenuPosition.under,
       onSelected: (prompt) =>
-          StartAgentDialog.show(context, kind: kind, prompt: prompt),
+          StartAgentDialog.show(context, type: type, prompt: prompt),
       itemBuilder: (context) => [
         for (final prompt in prompts)
           PopupMenuItem(
@@ -205,7 +207,7 @@ class _NewAgentButton extends StatelessWidget {
             height: 36,
             child: Row(
               children: [
-                Icon(kind.icon, size: 15, color: color),
+                Icon(type.iconData, size: 15, color: color),
                 const SizedBox(width: 10),
                 Text(
                   prompt.name,
@@ -280,25 +282,25 @@ class _FilterChip extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
-    required this.kind,
+    required this.type,
     required this.filter,
     required this.hasPrompts,
   });
 
-  final AgentKind kind;
+  final AgentType type;
   final _AgentFilter filter;
   final bool hasPrompts;
 
   @override
   Widget build(BuildContext context) {
-    final noun = '${kind.label.toLowerCase()} agents';
+    final noun = '${type.label.toLowerCase()} agents';
     final (title, hint) = switch (filter) {
       _AgentFilter.active => (
         'No active $noun',
         hasPrompts
-            ? 'Start one with "New ${kind.label.toLowerCase()} agent". Agents '
+            ? 'Start one with "New ${type.label.toLowerCase()} agent". Agents '
                   'started elsewhere show up here when they report in.'
-            : 'Give a prompt the ${kind.label} kind in repo settings → '
+            : 'Give a prompt the ${type.label} kind in repo settings → '
                   'Claude Prompts to start agents from here.',
       ),
       _AgentFilter.finished => ('No finished $noun', null),
@@ -311,7 +313,7 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              kind.icon,
+              type.iconData,
               size: 44,
               color: AppColors.textMuted.withValues(alpha: 0.6),
             ),

@@ -124,6 +124,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = document.agentKind;
+    final type = kind == null ? null : agentTypeOf(context, kind);
     final from = document.worktreePath == null
         ? null
         : p.basename(document.worktreePath!);
@@ -166,11 +167,11 @@ class _Header extends StatelessWidget {
                         onTap: () =>
                             JiraIssueDialog.show(context, issueKey: key),
                       ),
-                    if (kind != null)
+                    if (type != null)
                       _LinkText(
-                        icon: kind.icon,
-                        text: 'From ${kind.label}',
-                        color: kind.color,
+                        icon: type.iconData,
+                        text: 'From ${type.label}',
+                        color: type.colorValue,
                         onTap: () => _showAgentPage(context),
                       ),
                     if (from != null) _MutedText(from),

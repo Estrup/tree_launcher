@@ -20,6 +20,7 @@ import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
 import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
@@ -126,9 +127,7 @@ void main() {
           if (agents != null)
             ChangeNotifierProvider<AgentsController>.value(value: agents),
           if (documents != null)
-            ChangeNotifierProvider<DocumentsController>.value(
-              value: documents,
-            ),
+            ChangeNotifierProvider<DocumentsController>.value(value: documents),
           ChangeNotifierProvider<JiraTitlesController>(
             create: (_) => _FakeJiraTitles(),
           ),
@@ -183,13 +182,34 @@ void main() {
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
     expect(find.text('Worktrees'), findsOneWidget);
     expect(find.text('Jira'), findsOneWidget);
-    expect(find.text('Activity'), findsOneWidget);
+    // Activity and Documents are only tabs above the repo.
+    expect(find.text('Activity'), findsNothing);
     // The issue's session goes under Jira, the other under Worktrees.
     expect(top('spike'), greaterThan(top('Worktrees')));
     expect(top('spike'), lessThan(top('Jira')));
-    final issueSession = top('udlaan-sker-til-en-kontakt-au2-5788');
-    expect(issueSession, greaterThan(top('Jira')));
-    expect(issueSession, lessThan(top('Activity')));
+    expect(
+      top('udlaan-sker-til-en-kontakt-au2-5788'),
+      greaterThan(top('Jira')),
+    );
+  });
+
+  testWidgets('an agent type switched off for the repo has no page', (
+    tester,
+  ) async {
+    final agents = AgentsController(store: AgentRunStore(testDatabase()));
+    addTearDown(agents.dispose);
+    final repo = workspace.selectedRepo!;
+    await workspace.updateRepoClaudePrompts(repo, [
+      ClaudePrompt(name: 'Verify it', prompt: 'x', kind: AgentKind.verify),
+    ]);
+    await pumpSidebar(tester, agents: agents);
+    expect(find.text('Verify'), findsOneWidget);
+
+    await workspace.updateDisabledAgentTypes(workspace.selectedRepo!, [
+      AgentKind.verify,
+    ]);
+    await tester.pump();
+    expect(find.text('Verify'), findsNothing);
   });
 
   testWidgets('sessions under a page are newest first', (tester) async {
@@ -474,6 +494,7 @@ void main() {
     test('a listed build agent stands for its worktree\'s shortcut', () {
       final sessions = sessionsByPage(
         repo,
+        agentTypes: defaultAgentTypes,
         pageKeys: pages,
         runs: [build('a1', AgentState.running)],
         isOpen: (_) => false,
@@ -500,6 +521,7 @@ void main() {
       () {
         final sessions = sessionsByPage(
           repo,
+          agentTypes: defaultAgentTypes,
           pageKeys: pages,
           runs: [build('a1', AgentState.done)],
           isOpen: (_) => false,
@@ -507,10 +529,10 @@ void main() {
         );
 
         // Under the agent's page still (the newest agent in the worktree), but
-      // as the shortcut rather than the run.
-      final listed = sessions[agentPageKey(AgentKind.build)]!.single;
-      expect(listed.run, isNull);
-      expect(listed.path, '/w/a');
+        // as the shortcut rather than the run.
+        final listed = sessions[agentPageKey(AgentKind.build)]!.single;
+        expect(listed.run, isNull);
+        expect(listed.path, '/w/a');
       },
     );
   });

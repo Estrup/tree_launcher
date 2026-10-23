@@ -1,3 +1,5 @@
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/jira/domain/jira_trigger_schedule.dart';
 
@@ -56,6 +58,10 @@ class AppSettings {
   /// When Jira is checked for the repos' triggers.
   final JiraTriggerSchedule jiraTriggerSchedule;
 
+  /// The catalog of agent types, in tab order. Each repo switches off the
+  /// ones it doesn't use (`RepoConfig.disabledAgentTypes`).
+  final List<AgentType> agentTypes;
+
   AppSettings({
     this.terminalApp = TerminalApp.terminal,
     this.customTerminalCommand,
@@ -74,6 +80,7 @@ class AppSettings {
     this.jiraTags = const [],
     this.jiraTagsByIssue = const {},
     this.jiraTriggerSchedule = const JiraTriggerSchedule(),
+    this.agentTypes = defaultAgentTypes,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -117,6 +124,12 @@ class AppSettings {
               json['jiraTriggerSchedule'] as Map<String, dynamic>,
             )
           : const JiraTriggerSchedule(),
+      agentTypes:
+          (json['agentTypes'] as List<dynamic>?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(AgentType.fromJson)
+              .toList() ??
+          defaultAgentTypes,
     );
   }
 
@@ -138,7 +151,11 @@ class AppSettings {
     'jiraTags': [for (final tag in jiraTags) tag.toJson()],
     'jiraTagsByIssue': jiraTagsByIssue,
     'jiraTriggerSchedule': jiraTriggerSchedule.toJson(),
+    'agentTypes': [for (final type in agentTypes) type.toJson()],
   };
+
+  /// The catalog's type for [kind], or a stand-in when it has none.
+  AgentType agentType(AgentKind kind) => agentTypeIn(agentTypes, kind);
 
   /// The tags [issueKey] has, in [jiraTags] order.
   List<JiraTag> tagsFor(String issueKey) {
@@ -169,6 +186,7 @@ class AppSettings {
     List<JiraTag>? jiraTags,
     Map<String, List<String>>? jiraTagsByIssue,
     JiraTriggerSchedule? jiraTriggerSchedule,
+    List<AgentType>? agentTypes,
   }) {
     return AppSettings(
       terminalApp: terminalApp ?? this.terminalApp,
@@ -196,6 +214,7 @@ class AppSettings {
       jiraTags: jiraTags ?? this.jiraTags,
       jiraTagsByIssue: jiraTagsByIssue ?? this.jiraTagsByIssue,
       jiraTriggerSchedule: jiraTriggerSchedule ?? this.jiraTriggerSchedule,
+      agentTypes: agentTypes ?? this.agentTypes,
     );
   }
 }

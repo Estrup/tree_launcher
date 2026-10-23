@@ -1,4 +1,5 @@
 import 'package:tree_launcher/features/activity/domain/predefined_issue.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/jira/domain/jira_trigger.dart';
@@ -54,6 +55,11 @@ class RepoConfig {
   /// itself can't serve when the repo is bare.
   final String? agentWorkingDirectory;
 
+  /// The agent types (of the catalog in the app settings) switched off for
+  /// this repo: it has no tab for them, their prompts don't start agents and
+  /// the agent API refuses to register them.
+  final List<AgentKind> disabledAgentTypes;
+
   RepoConfig({
     required this.name,
     required this.path,
@@ -70,6 +76,7 @@ class RepoConfig {
     this.predefinedIssues = const [],
     this.useNestedWorktrees = false,
     this.agentWorkingDirectory,
+    this.disabledAgentTypes = const [],
   });
 
   factory RepoConfig.fromJson(Map<String, dynamic> json) {
@@ -115,6 +122,12 @@ class RepoConfig {
           [],
       useNestedWorktrees: json['useNestedWorktrees'] as bool? ?? false,
       agentWorkingDirectory: json['agentWorkingDirectory'] as String?,
+      disabledAgentTypes: [
+        for (final id
+            in (json['disabledAgentTypes'] as List<dynamic>? ?? const [])
+                .whereType<String>())
+          AgentKind(id),
+      ],
     );
   }
 
@@ -139,6 +152,8 @@ class RepoConfig {
     'useNestedWorktrees': useNestedWorktrees,
     if (agentWorkingDirectory != null)
       'agentWorkingDirectory': agentWorkingDirectory,
+    if (disabledAgentTypes.isNotEmpty)
+      'disabledAgentTypes': [for (final kind in disabledAgentTypes) kind.id],
   };
 
   RepoConfig copyWith({
@@ -161,6 +176,7 @@ class RepoConfig {
     List<PredefinedIssue>? predefinedIssues,
     bool? useNestedWorktrees,
     String? agentWorkingDirectory,
+    List<AgentKind>? disabledAgentTypes,
   }) {
     return RepoConfig(
       name: name ?? this.name,
@@ -187,8 +203,12 @@ class RepoConfig {
       useNestedWorktrees: useNestedWorktrees ?? this.useNestedWorktrees,
       agentWorkingDirectory:
           agentWorkingDirectory ?? this.agentWorkingDirectory,
+      disabledAgentTypes: disabledAgentTypes ?? this.disabledAgentTypes,
     );
   }
+
+  /// Whether the agent type [kind] is switched on for this repo.
+  bool usesAgentType(AgentKind kind) => !disabledAgentTypes.contains(kind);
 
   /// The base branch mapped to the first of [fixVersionIds] that has one.
   String? baseBranchForFixVersions(Iterable<String> fixVersionIds) {

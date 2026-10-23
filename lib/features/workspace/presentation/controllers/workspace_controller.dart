@@ -10,6 +10,7 @@ import 'package:tree_launcher/features/jira/domain/jira_trigger.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/data/repo_config_store.dart';
 import 'package:tree_launcher/features/workspace/data/worktree_metadata_store.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
@@ -199,6 +200,16 @@ class WorkspaceController extends ChangeNotifier
     List<ClaudePrompt> prompts,
   ) async {
     final updated = await preferences.updateRepoClaudePrompts(repo, prompts);
+    _replaceSelection(repo, updated);
+    return updated;
+  }
+
+  /// Switches the agent types [kinds] off for [repo], and the others on.
+  Future<RepoConfig?> updateDisabledAgentTypes(
+    RepoConfig repo,
+    List<AgentKind> kinds,
+  ) async {
+    final updated = await preferences.updateDisabledAgentTypes(repo, kinds);
     _replaceSelection(repo, updated);
     return updated;
   }

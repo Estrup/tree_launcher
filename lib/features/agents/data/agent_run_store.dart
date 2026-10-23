@@ -165,7 +165,7 @@ Future<void> writeAgentRun(AppDatabase db, AgentRun run) async {
       .insertOnConflictUpdate(
         AgentRunsCompanion.insert(
           id: run.id,
-          kind: run.kind.name,
+          kind: run.kind.id,
           repo: run.repoName,
           title: Value(run.title),
           state: run.state.name,

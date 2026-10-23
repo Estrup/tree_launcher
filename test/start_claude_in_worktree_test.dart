@@ -3,6 +3,7 @@ import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_in_worktree.dart';
 import 'package:tree_launcher/app/use_cases/start_claude_session.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/agents/domain/claude_session_starter.dart';
@@ -148,7 +149,10 @@ class _Start implements StartClaudeSession {
       startedAt: now,
       updatedAt: now,
     );
-    return (title: AgentLauncher.titleFor(run), agent: run);
+    return (
+      title: AgentLauncher.titleFor(run, agentTypeIn(defaultAgentTypes, kind)),
+      agent: run,
+    );
   }
 }
 

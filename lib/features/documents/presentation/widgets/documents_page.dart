@@ -8,6 +8,7 @@ import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/core/platform/open_external.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/documents/domain/session_document.dart';
 import 'package:tree_launcher/features/documents/presentation/controllers/documents_controller.dart';
@@ -41,6 +42,14 @@ class _DocumentsPageState extends State<DocumentsPage> {
 
     final all = documents.documentsFor(repoName: repo.name);
     final kinds = {for (final d in all) ?d.agentKind};
+    // In catalog order, then the kinds it no longer has.
+    final catalog = agentTypesOf(context);
+    final kindTypes = [
+      for (final type in catalog)
+        if (kinds.contains(type.kind)) type,
+      for (final kind in kinds)
+        if (!catalog.any((t) => t.kind == kind)) AgentType.unknown(kind),
+    ];
     final query = _search.text.trim().toLowerCase();
     final visible = [
       for (final d in all)
@@ -76,15 +85,14 @@ class _DocumentsPageState extends State<DocumentsPage> {
                         selected: _kind == null,
                         onTap: () => setState(() => _kind = null),
                       ),
-                      for (final kind in AgentKind.values)
-                        if (kinds.contains(kind))
-                          _KindChip(
-                            label: kind.label,
-                            icon: kind.icon,
-                            color: kind.color,
-                            selected: _kind == kind,
-                            onTap: () => setState(() => _kind = kind),
-                          ),
+                      for (final type in kindTypes)
+                        _KindChip(
+                          label: type.label,
+                          icon: type.iconData,
+                          color: type.colorValue,
+                          selected: _kind == type.kind,
+                          onTap: () => setState(() => _kind = type.kind),
+                        ),
                     ],
                   ),
                 ],
@@ -227,6 +235,7 @@ class _DocumentRowState extends State<_DocumentRow> {
   Widget build(BuildContext context) {
     final d = widget.document;
     final kind = d.agentKind;
+    final type = kind == null ? null : agentTypeOf(context, kind);
     final details = [
       ...d.issueKeys,
       if (d.worktreePath != null) p.basename(d.worktreePath!),
@@ -261,9 +270,9 @@ class _DocumentRowState extends State<_DocumentRow> {
               Padding(
                 padding: const EdgeInsets.only(top: 1),
                 child: Icon(
-                  kind?.icon ?? documentIcon(d.format),
+                  type?.iconData ?? documentIcon(d.format),
                   size: 16,
-                  color: kind?.color ?? AppColors.textSecondary,
+                  color: type?.colorValue ?? AppColors.textSecondary,
                 ),
               ),
               const SizedBox(width: 8),

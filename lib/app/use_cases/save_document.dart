@@ -12,6 +12,7 @@ import 'package:tree_launcher/features/documents/domain/document_library.dart';
 import 'package:tree_launcher/features/documents/domain/document_references.dart';
 import 'package:tree_launcher/features/documents/domain/session_document.dart';
 import 'package:tree_launcher/features/documents/presentation/controllers/documents_controller.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_creator.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_metadata.dart';
@@ -27,17 +28,20 @@ class SaveDocument implements DocumentSaver {
     required AgentRegistry agents,
     required WorktreeMetadata? Function(String worktreePath) metadataFor,
     required DocumentsController documents,
+    required AppSettingsSource settings,
     void Function(String message, {SnackBarAction? action})? notify,
   }) : _repos = repos,
        _agents = agents,
        _metadataFor = metadataFor,
        _documents = documents,
+       _settings = settings,
        _notify = notify ?? showAppSnackBar;
 
   final RepoCatalog _repos;
   final AgentRegistry _agents;
   final WorktreeMetadata? Function(String worktreePath) _metadataFor;
   final DocumentsController _documents;
+  final AppSettingsSource _settings;
   final void Function(String message, {SnackBarAction? action}) _notify;
 
   @override
@@ -107,7 +111,7 @@ class SaveDocument implements DocumentSaver {
       _documents.open(document.id);
     } else {
       final from = run != null
-          ? AgentLauncher.titleFor(run)
+          ? AgentLauncher.titleFor(run, _settings.settings.agentType(run.kind))
           : p.basename(worktreePath ?? repoName);
       _notify(
         'Document from $from: ${document.title}',

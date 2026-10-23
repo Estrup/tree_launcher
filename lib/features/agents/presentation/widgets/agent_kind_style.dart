@@ -1,27 +1,65 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 
-extension AgentKindStyle on AgentKind {
-  IconData get icon => switch (this) {
-    AgentKind.refine => Icons.edit_note_rounded,
-    AgentKind.build => Icons.construction_rounded,
-    AgentKind.verify => Icons.fact_check_outlined,
-    AgentKind.review => Icons.rate_review_outlined,
-    AgentKind.docs => Icons.menu_book_rounded,
+/// How an agent type looks, from the names its catalog entry keeps.
+extension AgentTypeStyle on AgentType {
+  IconData get iconData => switch (icon) {
+    'edit_note' => Icons.edit_note_rounded,
+    'construction' => Icons.construction_rounded,
+    'fact_check' => Icons.fact_check_outlined,
+    'rate_review' => Icons.rate_review_outlined,
+    'menu_book' => Icons.menu_book_rounded,
+    'support_agent' => Icons.support_agent_rounded,
+    'bug_report' => Icons.bug_report_outlined,
+    'science' => Icons.science_outlined,
+    'search' => Icons.search_rounded,
+    'rocket_launch' => Icons.rocket_launch_outlined,
+    'security' => Icons.security_rounded,
+    'speed' => Icons.speed_rounded,
+    'psychology' => Icons.psychology_outlined,
+    'forum' => Icons.forum_outlined,
+    _ => Icons.smart_toy_outlined,
   };
 
-  Color get color => switch (this) {
-    AgentKind.refine => AppColors.current.ansiMagenta,
-    AgentKind.build => AppColors.accent,
-    AgentKind.verify => AppColors.success,
-    AgentKind.review => AppColors.vscode,
-    AgentKind.docs => AppColors.branch,
-  };
+  Color get colorValue => agentTypeColor(color);
 }
+
+/// The color called [name] (one of `agentTypeColors`) in the current theme.
+Color agentTypeColor(String name) => switch (name) {
+  'accent' => AppColors.accent,
+  'magenta' => AppColors.current.ansiMagenta,
+  'green' => AppColors.success,
+  'blue' => AppColors.vscode,
+  'branch' => AppColors.branch,
+  'cyan' => AppColors.current.ansiCyan,
+  'yellow' => agentWaitingColor,
+  'red' => AppColors.error,
+  _ => AppColors.textSecondary,
+};
+
+/// The catalog of agent types in the settings (the default one where no
+/// [SettingsController] is provided), rebuilding with it when [listen].
+List<AgentType> agentTypesOf(BuildContext context, {bool listen = true}) =>
+    Provider.of<SettingsController?>(
+      context,
+      listen: listen,
+    )?.settings.agentTypes ??
+    defaultAgentTypes;
+
+/// The type of [kind] in the settings' catalog (a stand-in for one it no
+/// longer has), rebuilding with the catalog when [listen].
+AgentType agentTypeOf(
+  BuildContext context,
+  AgentKind kind, {
+  bool listen = true,
+}) => agentTypeIn(agentTypesOf(context, listen: listen), kind);
 
 /// Amber, for anything waiting on a human. The light palette's terminal
 /// yellow is a dark brown (for text on white), so it gets its own amber.
@@ -133,7 +171,8 @@ class AgentKindChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = kind.color;
+    final type = agentTypeOf(context, kind);
+    final color = type.colorValue;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
@@ -144,10 +183,10 @@ class AgentKindChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(kind.icon, size: 12, color: color),
+          Icon(type.iconData, size: 12, color: color),
           const SizedBox(width: 4),
           Text(
-            kind.label,
+            type.label,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,

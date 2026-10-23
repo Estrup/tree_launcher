@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/agent_types_section.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/claude_prompts_section.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/custom_commands_section.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_settings/general_section.dart';
@@ -17,6 +18,7 @@ enum _SettingsSection {
   vscodeConfigs,
   customCommands,
   claudePrompts,
+  agentTypes,
   predefinedIssues,
   github,
   jira,
@@ -147,6 +149,15 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
                       ),
                     ),
                     SettingsNavItem(
+                      icon: Icons.smart_toy_outlined,
+                      label: 'Agents',
+                      isSelected:
+                          _selectedSection == _SettingsSection.agentTypes,
+                      onTap: () => setState(
+                        () => _selectedSection = _SettingsSection.agentTypes,
+                      ),
+                    ),
+                    SettingsNavItem(
                       icon: Icons.confirmation_number_outlined,
                       label: 'Issue Keys',
                       isSelected:
@@ -196,6 +207,8 @@ class _RepoSettingsViewState extends State<RepoSettingsView> {
         return const RepoCustomCommandsSection();
       case _SettingsSection.claudePrompts:
         return const RepoClaudePromptsSection();
+      case _SettingsSection.agentTypes:
+        return const RepoAgentTypesSection();
       case _SettingsSection.predefinedIssues:
         return const RepoPredefinedIssuesSection();
       case _SettingsSection.github:

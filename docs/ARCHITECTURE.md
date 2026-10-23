@@ -50,7 +50,7 @@ the schema dumps in `drift_schemas/`.
 | `workspace` | Repos and their settings, worktrees and their metadata, the sidebar, the worktree list and its buttons, the New Worktree / Start Claude dialog | `WorkspaceController` (with the repo registry, selection, preferences, worktree list and worktree metadata controllers), `GitService`, `RepoConfigStore`, `WorktreeMetadataStore` |
 | `terminal` | The built-in terminal (xterm + a PTY), its sessions, Claude CLI commands, handing a session over to Claude Desktop | `TerminalController`, `TerminalSession`, `ClaudeDesktopHandoff`, `buildClaudeCliCommand` |
 | `session_panel` | The resizable panel beside a Claude session in the built-in terminal: its worktree's Info (branch, base, upstream, changes, issue, PR, agent run, documents), Files (everything on disk, gitignored entries dimmed, folders read when opened, watched while shown; a filter over a background walk of the worktree) and open file tabs (read-only: Markdown, HTML and PDF in `DocumentView`, images, other text with line numbers; shown again when the file changes) | `SessionPanelController` (width, shown state, tabs, git status and file tree per worktree), `WorktreeFilesController`, `WorktreeFileSystem`, `SessionPanelSplit`, `SessionPanel`, `SessionInfoTab`, `WorktreeFilesTab`, `FileTabView`, `GitService.worktreeStatus` / `ignoredPaths` |
-| `agents` | Agent runs (refine, build, verify, review, docs), their tabs and cards, the saved prompts that start them | `AgentsController` (the `AgentRegistry`), `AgentRunStore`, `AgentRun`, `ClaudePrompt` |
+| `agents` | Agent runs of the user's agent types (refine, build, verify, review, docs, support, …), their tabs and cards, the saved prompts that start them | `AgentsController` (the `AgentRegistry`), `AgentRunStore`, `AgentRun`, `AgentType`, `ClaudePrompt` |
 | `activity` | The activity timeline: worktree events, the days Claude was active (from its transcripts), manual posts | `ActivityController`, `ActivityService`, `WorktreeEventStore`, `ManualPostStore`, `ClaudeSessionActivity` |
 | `jira` | The Jira tab, the issue dialog (wiki-markup rendering, attachments, the comment composer), issue titles, local tags | `JiraIssuesController`, `JiraTitlesController`, `JiraApiService`, `JiraIssueCache`, `JiraTagStore`, `JiraCommentDraftStore` |
 | `github_issues` | The Issues tab and issue dialog | `GithubIssuesController`, `GithubIssuesApiService`, `GithubIssueCache` |
@@ -65,13 +65,15 @@ the schema dumps in `drift_schemas/`.
 
 - **The sidebar** (`repo_sidebar.dart` and `sidebar/` in
   `lib/features/workspace/presentation/widgets/`):
-  the repos, and under each repo its pages with the Claude sessions and agent
-  runs that belong to them. It collapses to a rail.
+  the repos, and under each repo its pages (all but Documents and Activity,
+  which are only tabs) with the Claude sessions and agent runs that belong
+  to them. It collapses to a rail.
 - **The selected repo's pages**, as tabs:
   - Worktrees;
   - PRs and Issues, when GitHub is set up;
   - Jira, when the repo has a project key;
-  - one tab per agent kind that has prompts or runs;
+  - one tab per agent type the repo has switched on and has prompts or
+    runs of;
   - Documents, when the repo has saved documents;
   - Activity.
 

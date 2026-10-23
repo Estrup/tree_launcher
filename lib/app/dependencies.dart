@@ -193,6 +193,7 @@ class AppDependencies {
         agents: agents,
         metadataFor: workspace.metadataFor,
         documents: documents,
+        settings: settings,
       ),
       gitService: this.gitService,
       jiraService: jiraService,

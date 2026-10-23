@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
+import 'package:tree_launcher/features/agents/presentation/widgets/agent_kind_style.dart';
 import 'package:tree_launcher/features/jira/domain/jira_trigger.dart';
 import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/terminal/domain/claude_cli_command.dart';
@@ -256,7 +257,7 @@ class _TriggerCardState extends State<_TriggerCard> {
                         child: Text(
                           prompt.kind == null
                               ? prompt.name
-                              : '${prompt.name} (${prompt.kind!.label})',
+                              : '${prompt.name} (${agentTypeOf(context, prompt.kind!).label})',
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),

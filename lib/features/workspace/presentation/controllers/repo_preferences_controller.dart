@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/jira/domain/jira_trigger.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/features/workspace/domain/custom_command.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
@@ -67,6 +68,16 @@ class RepoPreferencesController extends ChangeNotifier {
     List<ClaudePrompt> prompts,
   ) async {
     final updated = repo.copyWith(claudePrompts: prompts);
+    await _registry.replaceRepo(repo, updated);
+    notifyListeners();
+    return updated;
+  }
+
+  Future<RepoConfig?> updateDisabledAgentTypes(
+    RepoConfig repo,
+    List<AgentKind> kinds,
+  ) async {
+    final updated = repo.copyWith(disabledAgentTypes: kinds);
     await _registry.replaceRepo(repo, updated);
     notifyListeners();
     return updated;

@@ -99,7 +99,7 @@ class StartClaudeSession {
         effort: effort,
         show: show,
       );
-      return (title: AgentLauncher.titleFor(run), agent: run);
+      return (title: _agents.tabTitleFor(run), agent: run);
     }
     final sessionTitle = await _sessions.start(
       repoPath: repo.path,

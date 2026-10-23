@@ -55,8 +55,12 @@ class RepoTile extends StatefulWidget {
 class _RepoTileState extends State<RepoTile> {
   bool _hovered = false;
 
+  /// Pages only shown as tabs above the repo, never under it here.
+  static const _tabOnlyPageKeys = {documentsPageKey, activityPageKey};
+
   /// Under the repo: its pages (all of them for the selected repo, else only
-  /// those with sessions), each with the Claude sessions that belong to it.
+  /// those with sessions) but the [_tabOnlyPageKeys], each with the Claude
+  /// sessions that belong to it.
   @override
   Widget build(BuildContext context) {
     final repo = widget.repo;
@@ -64,9 +68,11 @@ class _RepoTileState extends State<RepoTile> {
     final tp = context.watch<TerminalController>();
     final active = tp.isVisible ? tp.activeSession : null;
     final documents = Provider.of<DocumentsController?>(context);
+    final agentTypes = agentTypesOf(context);
     final pages = repoPagesFor(
       repo,
       agents,
+      agentTypes: agentTypes,
       hasDocuments: documents?.hasDocumentsFor(repo.name) ?? false,
     );
     final pageKeys = {for (final page in pages) page.key};
@@ -74,6 +80,7 @@ class _RepoTileState extends State<RepoTile> {
     final metadata = context.read<WorkspaceController>().metadata;
     final sessions = sessionsByPage(
       repo,
+      agentTypes: agentTypes,
       pageKeys: pageKeys,
       runs: agents?.runs ?? const [],
       isOpen: (run) => tp.claudeSessionForAgent(run.id) != null,
@@ -82,7 +89,9 @@ class _RepoTileState extends State<RepoTile> {
 
     final shown = [
       for (final page in pages)
-        if (widget.isSelected || sessions.containsKey(page.key)) page,
+        if (!_tabOnlyPageKeys.contains(page.key) &&
+            (widget.isSelected || sessions.containsKey(page.key)))
+          page,
     ];
     if (shown.isEmpty) return _buildRepoRow();
 
@@ -108,8 +117,11 @@ class _RepoTileState extends State<RepoTile> {
                 padding: const EdgeInsets.only(left: 24),
                 child: _ClaudeSessionTile(
                   worktreePath: run.worktreePath ?? '',
-                  label: run.title ?? run.promptName ?? run.kind.label,
-                  icon: run.kind.icon,
+                  label:
+                      run.title ??
+                      run.promptName ??
+                      agentTypeOf(context, run.kind).label,
+                  icon: agentTypeOf(context, run.kind).iconData,
                   jiraIssue: run.issueKeys.firstOrNull,
                   documents: _agentDocuments(documents, run),
                   isRunning: tp.claudeSessionForAgent(run.id) != null,
@@ -636,7 +648,10 @@ class _PageTileState extends State<_PageTile> {
   Widget build(BuildContext context) {
     final page = widget.page;
     final isActive = widget.isActive;
-    final color = page.agentKind?.color ?? AppColors.accent;
+    final kind = page.agentKind;
+    final color = kind == null
+        ? AppColors.accent
+        : agentTypeOf(context, kind).colorValue;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),

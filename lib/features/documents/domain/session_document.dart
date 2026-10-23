@@ -118,7 +118,7 @@ class SessionDocument {
     'name': name,
     'format': format.name,
     'agentId': agentId,
-    'agentKind': agentKind?.name,
+    'agentKind': agentKind?.id,
     'issueKeys': issueKeys,
     'worktreePath': worktreePath,
     'branch': branch,

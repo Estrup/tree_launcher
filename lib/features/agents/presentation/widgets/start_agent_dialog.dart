@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:tree_launcher/core/design_system/app_form_fields.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
-import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_type.dart';
 import 'package:tree_launcher/features/agents/domain/claude_prompt.dart';
 import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
 import 'package:tree_launcher/features/agents/domain/agent_environment.dart';
@@ -43,28 +43,28 @@ class _StartAgentResult {
 /// prompt of that kind), where it runs, the issue (and PR) it works on, and
 /// the model and effort.
 ///
-/// A build agent runs in the issue's worktree (picked, or created from
-/// here). The other kinds run in a shared worktree, which is remembered for
-/// the repo's next agent.
+/// An agent whose type [AgentType.ownsWorktree] (a build agent) runs in the
+/// issue's worktree (picked, or created from here). The others run in a
+/// shared worktree, which is remembered for the repo's next agent.
 class StartAgentDialog extends StatefulWidget {
   const StartAgentDialog({
     super.key,
-    required this.kind,
+    required this.type,
     required this.repo,
     required this.prompts,
     required this.initialPrompt,
   });
 
-  final AgentKind kind;
+  final AgentType type;
   final RepoConfig repo;
   final List<ClaudePrompt> prompts;
   final ClaudePrompt initialPrompt;
 
-  /// Shows the dialog for [kind] in the selected repo, starting with
+  /// Shows the dialog for [type] in the selected repo, starting with
   /// [prompt] picked, and launches the agent.
   static Future<void> show(
     BuildContext context, {
-    required AgentKind kind,
+    required AgentType type,
     required ClaudePrompt prompt,
   }) async {
     final workspace = context.read<WorkspaceController>();
@@ -72,7 +72,7 @@ class StartAgentDialog extends StatefulWidget {
     if (repo == null) return;
     final prompts = [
       for (final p in repo.claudePrompts)
-        if (p.kind == kind) p,
+        if (p.kind == type.kind) p,
     ];
     final launcher = context.read<AgentLauncher>();
     final settings = context.read<SettingsController>();
@@ -81,7 +81,7 @@ class StartAgentDialog extends StatefulWidget {
     final result = await showDialog<_StartAgentResult>(
       context: context,
       builder: (_) => StartAgentDialog(
-        kind: kind,
+        type: type,
         repo: repo,
         prompts: prompts,
         initialPrompt: prompt,
@@ -90,7 +90,7 @@ class StartAgentDialog extends StatefulWidget {
     if (result == null) return;
 
     await settings.updateClaudeModelAndEffort(result.model, result.effort);
-    if (kind != AgentKind.build) {
+    if (!type.ownsWorktree) {
       await workspace.updateAgentWorkingDirectory(repo, result.worktree.path);
     }
     await launcher.start(
@@ -128,7 +128,7 @@ class _StartAgentDialogState extends State<StartAgentDialog> {
   bool _issueEdited = false;
   bool _prEdited = false;
 
-  bool get _isBuild => widget.kind == AgentKind.build;
+  bool get _isBuild => widget.type.ownsWorktree;
 
   @override
   void initState() {
@@ -251,8 +251,8 @@ class _StartAgentDialogState extends State<StartAgentDialog> {
   @override
   Widget build(BuildContext context) {
     final worktrees = context.watch<WorkspaceController>().worktrees;
-    final kind = widget.kind;
-    final color = kind.color;
+    final type = widget.type;
+    final color = type.colorValue;
     final worktree = _worktree;
     final preview = _resolved(worktree);
 
@@ -286,14 +286,14 @@ class _StartAgentDialogState extends State<StartAgentDialog> {
                       color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(kind.icon, size: 18, color: color),
+                    child: Icon(type.iconData, size: 18, color: color),
                   ),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'New ${kind.label.toLowerCase()} agent',
+                        'New ${type.label.toLowerCase()} agent',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,

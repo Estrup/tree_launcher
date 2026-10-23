@@ -7,6 +7,7 @@ import 'package:tree_launcher/features/agents/domain/agent_event.dart';
 import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
 import 'package:tree_launcher/features/agents/domain/agent_registry.dart';
 import 'package:tree_launcher/features/agents/domain/agent_run.dart';
+import 'package:tree_launcher/features/settings/domain/app_settings_source.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_catalog.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
@@ -18,13 +19,16 @@ class AgentRoutes {
     required RepoCatalog repos,
     required GitService gitService,
     required AgentRegistry registry,
+    required AppSettingsSource settings,
   }) : _repos = repos,
        _gitService = gitService,
-       _registry = registry;
+       _registry = registry,
+       _settings = settings;
 
   final RepoCatalog _repos;
   final GitService _gitService;
   final AgentRegistry _registry;
+  final AppSettingsSource _settings;
 
   void mount(Router router) => router
     ..get('/v1/agents', _list)
@@ -44,7 +48,7 @@ class AgentRoutes {
     AgentKind? kind;
     if (kindParam != null && kindParam.isNotEmpty) {
       kind = AgentKind.tryParse(kindParam);
-      if (kind == null) return _unknownKind(kindParam);
+      if (kind == null || !_isAgentType(kind)) return _unknownKind(kindParam);
     }
     final active = boolQuery(query, 'active');
     if (active.error != null) return active.error!;
@@ -132,7 +136,9 @@ class AgentRoutes {
     final id = field('id');
     final kindName = field('kind');
     final kind = AgentKind.tryParse(kindName);
-    if (kindName != null && kind == null) return _unknownKind(kindName);
+    if (kindName != null && (kind == null || !_isAgentType(kind))) {
+      return _unknownKind(kindName);
+    }
     var repo = field('repo');
     final worktreePath = field('worktreePath');
     if (id == null && repo == null && worktreePath != null) {
@@ -152,6 +158,19 @@ class AgentRoutes {
       final repos = await _repos.loadedRepos();
       if (!repos.any((r) => r.name == repo)) {
         return jsonResponse({'error': 'repo not found: $repo'}, status: 404);
+      }
+    }
+    if (kind != null) {
+      final runRepo =
+          repo ?? (id == null ? null : registry.runById(id)?.repoName);
+      final repos = await _repos.loadedRepos();
+      final config = repos.where((r) => r.name == runRepo).firstOrNull;
+      if (config != null && !config.usesAgentType(kind)) {
+        return jsonResponse({
+          'error':
+              'agent type "${kind.id}" is switched off for repo ${config.name} '
+              '(repo settings → Agents)',
+        }, status: 409);
       }
     }
 
@@ -406,9 +425,12 @@ class AgentRoutes {
     return found.nonNulls.firstOrNull;
   }
 
-  static Response _unknownKind(String kind) => jsonResponse({
+  bool _isAgentType(AgentKind kind) =>
+      _settings.settings.agentTypes.any((t) => t.kind == kind);
+
+  Response _unknownKind(String kind) => jsonResponse({
     'error':
         'unknown kind "$kind" — expected one of: '
-        '${AgentKind.values.map((k) => k.name).join(', ')}',
+        '${_settings.settings.agentTypes.map((t) => t.kind.id).join(', ')}',
   }, status: 400);
 }

@@ -506,7 +506,7 @@ class AgentRun {
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'kind': kind.name,
+    'kind': kind.id,
     'repo': repoName,
     'prompt': promptName,
     'title': title,
