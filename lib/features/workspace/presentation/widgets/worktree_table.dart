@@ -9,8 +9,11 @@ import 'package:tree_launcher/features/github_prs/domain/github_config.dart';
 import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
+import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/row_sessions.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_actions.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/claude_button.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/custom_commands_button.dart';
@@ -132,6 +135,11 @@ class _WorktreeTableState extends State<WorktreeTable> {
         ? false
         : (_selected.length == widget.worktrees.length ? true : null);
 
+    final twoLine = context
+        .watch<SettingsController>()
+        .settings
+        .twoLineWorktreeRows;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final showPr = constraints.maxWidth >= _kHidePrBelow;
@@ -139,6 +147,7 @@ class _WorktreeTableState extends State<WorktreeTable> {
 
         Widget buildRow(Worktree wt) => _WorktreeRow(
           worktree: wt,
+          twoLine: twoLine,
           showPr: showPr,
           showJiraTitle: showJiraTitle,
           selected: _selected.contains(wt.path),
@@ -181,6 +190,7 @@ class _WorktreeTableState extends State<WorktreeTable> {
                 onClear: () => setState(_selected.clear),
               ),
             _HeaderRow(
+              twoLine: twoLine,
               showPr: showPr,
               showJiraTitle: showJiraTitle,
               selectAllState: selectAllState,
@@ -302,6 +312,9 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _HeaderRow extends StatefulWidget {
+  /// Whether the rows are spread over two lines, so only the worktree and
+  /// actions columns are labelled.
+  final bool twoLine;
   final bool showPr;
   final bool showJiraTitle;
 
@@ -311,6 +324,7 @@ class _HeaderRow extends StatefulWidget {
   final VoidCallback onToggleSelectAll;
 
   const _HeaderRow({
+    required this.twoLine,
     required this.showPr,
     required this.showJiraTitle,
     required this.selectAllState,
@@ -337,8 +351,9 @@ class _HeaderRowState extends State<_HeaderRow> {
 
   @override
   Widget build(BuildContext context) {
-    final showPr = widget.showPr;
-    final showJiraTitle = widget.showJiraTitle;
+    final twoLine = widget.twoLine;
+    final showPr = !twoLine && widget.showPr;
+    final showJiraTitle = !twoLine && widget.showJiraTitle;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -361,23 +376,27 @@ class _HeaderRowState extends State<_HeaderRow> {
               ),
             ),
             const SizedBox(width: _kColumnGap),
-            Expanded(flex: _kNameFlex, child: _label('Worktree')),
-            const SizedBox(width: _kColumnGap),
-            Expanded(flex: _kBranchFlex, child: _label('Branch')),
-            const SizedBox(width: _kColumnGap),
-            SizedBox(
-              width: _kJiraWidth,
-              child: _label(
-                context
-                            .watch<WorkspaceController>()
-                            .selectedRepo
-                            ?.githubConfig
-                            ?.showsIssues ??
-                        false
-                    ? 'Issue'
-                    : 'Jira',
+            if (twoLine)
+              Expanded(child: _label('Worktree'))
+            else ...[
+              Expanded(flex: _kNameFlex, child: _label('Worktree')),
+              const SizedBox(width: _kColumnGap),
+              Expanded(flex: _kBranchFlex, child: _label('Branch')),
+              const SizedBox(width: _kColumnGap),
+              SizedBox(
+                width: _kJiraWidth,
+                child: _label(
+                  context
+                              .watch<WorkspaceController>()
+                              .selectedRepo
+                              ?.githubConfig
+                              ?.showsIssues ??
+                          false
+                      ? 'Issue'
+                      : 'Jira',
+                ),
               ),
-            ),
+            ],
             if (showJiraTitle) ...[
               const SizedBox(width: _kColumnGap),
               Expanded(flex: _kJiraTitleFlex, child: _label('Jira title')),
@@ -403,6 +422,11 @@ class _HeaderRowState extends State<_HeaderRow> {
 
 class _WorktreeRow extends StatefulWidget {
   final Worktree worktree;
+
+  /// Whether the row is spread over two lines: the name and actions, then
+  /// the branch, issue, its title and PR. [showPr] and [showJiraTitle] only
+  /// apply to the one-line row.
+  final bool twoLine;
   final bool showPr;
   final bool showJiraTitle;
   final bool selected;
@@ -411,6 +435,7 @@ class _WorktreeRow extends StatefulWidget {
 
   const _WorktreeRow({
     required this.worktree,
+    required this.twoLine,
     required this.showPr,
     required this.showJiraTitle,
     required this.selected,
@@ -456,15 +481,26 @@ class _WorktreeRowState extends State<_WorktreeRow> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = context.watch<WorkspaceController>().selectedRepo;
+    final workspace = context.watch<WorkspaceController>();
+    final repo = workspace.selectedRepo;
     final customCommands = repo?.customCommands ?? [];
     final wt = widget.worktree;
+    final twoLine = widget.twoLine;
+    final sessions = repo == null
+        ? const <PageSession>[]
+        : watchSessions(
+            context,
+            repo,
+            inWorktree: (m) => m.path == wt.path,
+            runMatches: (run) => run.worktreePath == wt.path,
+          );
+    final sessionsExpanded = workspace.isSessionsExpanded(wt.path);
     final launcherService = context.read<LauncherService>();
 
     // Match this worktree to an open PR by branch. Both own worktrees and
     // review worktrees check out the PR's head branch, so this finds either.
     GithubPullRequest? matchPr;
-    if (widget.showPr) {
+    if (twoLine || widget.showPr) {
       final prs = context.watch<GithubPrsController>().pullRequests;
       for (final pr in prs) {
         if (pr.headBranch == wt.branch) {
@@ -475,149 +511,239 @@ class _WorktreeRowState extends State<_WorktreeRow> {
     }
 
     final jiraKey = wt.jiraIssue;
-    final jiraTitle = widget.showJiraTitle && jiraKey != null
+    final jiraTitle = (twoLine || widget.showJiraTitle) && jiraKey != null
         ? context.watch<JiraTitlesController>().titleFor(jiraKey)
         : null;
+    final hasIssue =
+        jiraKey != null ||
+        (repo?.githubConfig?.isConfigured == true && wt.githubIssue != null);
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-        decoration: BoxDecoration(
-          color: widget.selected
-              ? AppColors.accentMuted
-              : _hovered
-              ? AppColors.surface2
-              : Colors.transparent,
-          border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+    // Selection checkbox (space always reserved to keep columns fixed)
+    final checkbox = SizedBox(
+      width: _kCheckboxWidth,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SelectCheckbox(
+          value: widget.selected,
+          visible: _hovered || widget.selected || widget.selectionActive,
+          onTap: () => widget.onSelectedChanged(!widget.selected),
         ),
-        child: Row(
-          children: [
-            // Selection checkbox (space always reserved to keep columns fixed)
-            SizedBox(
-              width: _kCheckboxWidth,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: SelectCheckbox(
-                  value: widget.selected,
-                  visible:
-                      _hovered || widget.selected || widget.selectionActive,
-                  onTap: () => widget.onSelectedChanged(!widget.selected),
+      ),
+    );
+
+    // Name (+ PRIMARY badge, documents and sessions)
+    final name = Row(
+      children: [
+        Flexible(
+          child: Tooltip(
+            message: wt.name,
+            waitDuration: const Duration(milliseconds: 300),
+            child: Text(
+              wt.name,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.2,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+        if (wt.isMain) ...[
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.accentMuted,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              'PRIMARY',
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w700,
+                color: AppColors.accent,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ),
+        ],
+        // Shrinks with a narrow name column rather than
+        // overflowing it.
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: WorktreeDocumentsBadge(
+              worktreePath: wt.path,
+              issueKey: wt.jiraIssue,
+            ),
+          ),
+        ),
+        if (sessions.isNotEmpty)
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: SessionsToggle(
+                sessions: sessions,
+                expanded: sessionsExpanded,
+                onTap: () => workspace.toggleSessionsExpanded(wt.path),
+              ),
+            ),
+          ),
+      ],
+    );
+
+    // Branch (click to copy)
+    final branch = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => copyToClipboard(context, wt.branch, 'Branch'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.branchBg,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.branch.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.call_split_rounded, size: 11, color: AppColors.branch),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  wt.branch,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.branch,
+                    fontFamily: 'monospace',
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ),
-            const SizedBox(width: _kColumnGap),
+            ],
+          ),
+        ),
+      ),
+    );
 
-            // Name (+ PRIMARY badge)
-            Expanded(
-              flex: _kNameFlex,
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Tooltip(
-                      message: wt.name,
-                      waitDuration: const Duration(milliseconds: 300),
-                      child: Text(
-                        wt.name,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.2,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  if (wt.isMain) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.accentMuted,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'PRIMARY',
-                        style: TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.accent,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                    ),
-                  ],
-                  // Shrinks with a narrow name column rather than
-                  // overflowing it.
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: WorktreeDocumentsBadge(
-                        worktreePath: wt.path,
-                        issueKey: wt.jiraIssue,
-                      ),
-                    ),
-                  ),
-                ],
+    final dash = Text(
+      '—',
+      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+    );
+
+    // Jira title (when known)
+    final title = jiraTitle == null
+        ? null
+        : Tooltip(
+            message: jiraTitle,
+            waitDuration: const Duration(milliseconds: 300),
+            child: Text(
+              jiraTitle,
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+
+    // PR (link to GitHub)
+    final pr = matchPr == null
+        ? null
+        : PrBadge(
+            number: matchPr.number,
+            htmlUrl: matchPr.htmlUrl,
+            compact: true,
+            showIcon: false,
+          );
+
+    final actions = SizedBox(
+      width: _kActionsWidth,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TerminalButton(
+            worktreePath: wt.path,
+            worktreeName: wt.name,
+            launcherService: launcherService,
+            compact: true,
+          ),
+          const SizedBox(width: 6),
+          VscodeButton(
+            worktreePath: wt.path,
+            launcherService: launcherService,
+            compact: true,
+          ),
+          const SizedBox(width: 6),
+          ClaudeButton(wt: wt, launcherService: launcherService, compact: true),
+          if (customCommands.isNotEmpty) ...[
+            const SizedBox(width: 6),
+            CustomCommandsButton(
+              worktreePath: wt.path,
+              worktreeName: wt.name,
+              commands: customCommands,
+              compact: true,
+            ),
+          ],
+          const SizedBox(width: 6),
+          PullButton(worktree: wt, compact: true),
+          const SizedBox(width: 6),
+          SizedBox(width: 24, child: WorktreeOptionsButton(worktree: wt)),
+        ],
+      ),
+    );
+
+    final List<Widget> lines;
+    if (twoLine) {
+      lines = [
+        Row(
+          children: [
+            checkbox,
+            const SizedBox(width: _kColumnGap),
+            Expanded(child: name),
+            const SizedBox(width: _kColumnGap),
+            actions,
+          ],
+        ),
+        // Branch, issue, its title and PR, under the name.
+        Padding(
+          padding: const EdgeInsets.only(
+            left: _kCheckboxWidth + _kColumnGap,
+            top: 6,
+          ),
+          child: Row(
+            children: [
+              Flexible(
+                flex: 0,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  child: branch,
+                ),
               ),
-            ),
+              if (hasIssue) ...[
+                const SizedBox(width: 12),
+                _issueBadges(wt, repo?.githubConfig),
+              ],
+              const SizedBox(width: 10),
+              Expanded(child: title ?? const SizedBox.shrink()),
+              if (pr != null) ...[const SizedBox(width: 10), pr],
+            ],
+          ),
+        ),
+      ];
+    } else {
+      lines = [
+        Row(
+          children: [
+            checkbox,
             const SizedBox(width: _kColumnGap),
-
-            // Branch (click to copy)
+            Expanded(flex: _kNameFlex, child: name),
+            const SizedBox(width: _kColumnGap),
             Expanded(
               flex: _kBranchFlex,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () => copyToClipboard(context, wt.branch, 'Branch'),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.branchBg,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppColors.branch.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.call_split_rounded,
-                            size: 11,
-                            color: AppColors.branch,
-                          ),
-                          const SizedBox(width: 5),
-                          Flexible(
-                            child: Text(
-                              wt.branch,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.branch,
-                                fontFamily: 'monospace',
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              child: Align(alignment: Alignment.centerLeft, child: branch),
             ),
             const SizedBox(width: _kColumnGap),
 
@@ -631,103 +757,55 @@ class _WorktreeRowState extends State<_WorktreeRow> {
             ),
             if (widget.showJiraTitle) ...[
               const SizedBox(width: _kColumnGap),
-
-              // Jira title (when known)
-              Expanded(
-                flex: _kJiraTitleFlex,
-                child: jiraTitle != null
-                    ? Tooltip(
-                        message: jiraTitle,
-                        waitDuration: const Duration(milliseconds: 300),
-                        child: Text(
-                          jiraTitle,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      )
-                    : Text(
-                        '—',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-              ),
+              Expanded(flex: _kJiraTitleFlex, child: title ?? dash),
             ],
             if (widget.showPr) ...[
               const SizedBox(width: _kColumnGap),
-
-              // PR (link to GitHub)
               SizedBox(
                 width: _kPrWidth,
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: matchPr != null
-                      ? PrBadge(
-                          number: matchPr.number,
-                          htmlUrl: matchPr.htmlUrl,
-                          compact: true,
-                          showIcon: false,
-                        )
-                      : Text(
-                          '—',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
+                  child: pr ?? dash,
                 ),
               ),
             ],
-
             const SizedBox(width: _kColumnGap),
+            actions,
+          ],
+        ),
+      ];
+    }
 
-            // Actions
-            SizedBox(
-              width: _kActionsWidth,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TerminalButton(
-                    worktreePath: wt.path,
-                    worktreeName: wt.name,
-                    launcherService: launcherService,
-                    compact: true,
-                  ),
-                  const SizedBox(width: 6),
-                  VscodeButton(
-                    worktreePath: wt.path,
-                    launcherService: launcherService,
-                    compact: true,
-                  ),
-                  const SizedBox(width: 6),
-                  ClaudeButton(
-                    wt: wt,
-                    launcherService: launcherService,
-                    compact: true,
-                  ),
-                  if (customCommands.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    CustomCommandsButton(
-                      worktreePath: wt.path,
-                      worktreeName: wt.name,
-                      commands: customCommands,
-                      compact: true,
-                    ),
-                  ],
-                  const SizedBox(width: 6),
-                  PullButton(worktree: wt, compact: true),
-                  const SizedBox(width: 6),
-                  SizedBox(
-                    width: 24,
-                    child: WorktreeOptionsButton(worktree: wt),
-                  ),
-                ],
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: twoLine ? 10 : 8,
+        ),
+        decoration: BoxDecoration(
+          color: widget.selected
+              ? AppColors.accentMuted
+              : _hovered
+              ? AppColors.surface2
+              : Colors.transparent,
+          border: Border(bottom: BorderSide(color: AppColors.borderSubtle)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ...lines,
+            if (sessionsExpanded && sessions.isNotEmpty && repo != null)
+              Padding(
+                // Lined up with the name, less the lines' own padding.
+                padding: const EdgeInsets.only(
+                  left: _kCheckboxWidth + _kColumnGap - 8,
+                  top: 4,
+                ),
+                child: SessionList(repo: repo, sessions: sessions),
               ),
-            ),
           ],
         ),
       ),

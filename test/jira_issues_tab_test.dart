@@ -5,6 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/design_system/app_theme.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/domain/agent_run.dart';
+import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/jira/data/jira_api_service.dart';
 import 'package:tree_launcher/features/jira/domain/jira_issue.dart';
 import 'package:tree_launcher/features/jira/domain/jira_transition.dart';
@@ -13,8 +16,11 @@ import 'package:tree_launcher/features/jira/domain/jira_version.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_issues_controller.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_issues_tab.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
+import 'package:tree_launcher/features/terminal/presentation/controllers/terminal_controller.dart';
 import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/row_sessions.dart';
 import 'package:tree_launcher/features/settings/domain/app_settings.dart';
 import 'package:tree_launcher/features/jira/domain/jira_tag.dart';
 import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
@@ -113,23 +119,45 @@ class _FakeGitService extends GitService {
 
   @override
   Future<List<String>> listBranches(String repoPath) async => const ['develop'];
+
+  @override
+  Future<bool> isGitRepo(String path) async => true;
 }
+
+/// A terminal whose sessions are set by the test, without starting PTYs.
+class _FakeTerminal extends TerminalController {
+  final fakeSessions = <TerminalSession>[];
+
+  @override
+  TerminalSession? claudeSessionFor(String workingDirectory) => fakeSessions
+      .where((s) => s.isClaude && s.workingDirectory == workingDirectory)
+      .firstOrNull;
+
+  @override
+  TerminalSession? claudeSessionForAgent(String agentId) =>
+      fakeSessions.where((s) => s.agentId == agentId).firstOrNull;
+}
+
+WorkspaceController _workspace() => WorkspaceController(
+  gitService: _FakeGitService(),
+  repoConfigStore: FakeRepoConfigStore(),
+  eventStore: WorktreeEventStore(testDatabase()),
+  metadataStore: MemoryWorktreeMetadataStore(),
+);
 
 Future<_FakeJiraService> _pumpTab(
   WidgetTester tester, {
   required double width,
   SettingsController? settings,
+  WorkspaceController? workspace,
+  AgentsController? agents,
+  TerminalController? terminal,
 }) async {
   tester.view.physicalSize = Size(width, 900);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
-  final workspace = WorkspaceController(
-    gitService: _FakeGitService(),
-    repoConfigStore: FakeRepoConfigStore(),
-    eventStore: WorktreeEventStore(testDatabase()),
-    metadataStore: MemoryWorktreeMetadataStore(),
-  );
+  workspace ??= _workspace();
   settings ??= SettingsController(store: FakeAppSettingsStore());
   final service = _FakeJiraService();
   final jira = JiraIssuesController(service: service)
@@ -146,6 +174,10 @@ Future<_FakeJiraService> _pumpTab(
         ChangeNotifierProvider<WorkspaceController>.value(value: workspace),
         ChangeNotifierProvider<SettingsController>.value(value: settings),
         ChangeNotifierProvider<JiraIssuesController>.value(value: jira),
+        if (agents != null)
+          ChangeNotifierProvider<AgentsController>.value(value: agents),
+        if (terminal != null)
+          ChangeNotifierProvider<TerminalController>.value(value: terminal),
       ],
       child: MaterialApp(
         theme: AppTheme.current,
@@ -421,6 +453,71 @@ void main() {
 
     expect(service.applied, {'AU2-5928': '31', 'AU2-5905': '31'});
     expect(find.text('2 selected'), findsNothing);
+  });
+
+  testWidgets("an issue's sessions show below it, open or not", (tester) async {
+    const repoPath = '/repos/au2';
+    const worktreePath = '/repos/au2-5905';
+    final workspace = _workspace();
+    final terminal = _FakeTerminal();
+    late AgentsController agents;
+    // Made with real async, so their pending writes complete.
+    await tester.runAsync(() async {
+      await workspace.addRepo(repoPath);
+      await workspace.rememberClaudeSession(repoPath, worktreePath);
+      await workspace.updateJiraIssue(worktreePath, 'AU2-5905');
+      agents = AgentsController(store: MemoryAgentRunStore());
+      final run = await agents.createForLaunch(
+        kind: AgentKind.refine,
+        repoName: workspace.selectedRepo!.name,
+        title: 'Afklar værksted',
+        issueKeys: ['AU2-5928'],
+      );
+      await agents.report(run.id, const AgentReport(state: AgentState.done));
+      await agents.flush();
+    });
+    terminal.fakeSessions.add(
+      TerminalSession(
+        title: 'Claude',
+        workingDirectory: worktreePath,
+        repoPath: repoPath,
+        isClaude: true,
+      ),
+    );
+    addTearDown(agents.dispose);
+    addTearDown(terminal.dispose);
+    await _pumpTab(
+      tester,
+      width: 1400,
+      workspace: workspace,
+      agents: agents,
+      terminal: terminal,
+    );
+
+    // A toggle on each issue with a session; collapsed at first.
+    expect(find.byType(SessionsToggle), findsNWidgets(2));
+    expect(find.text('Afklar værksted'), findsNothing);
+
+    await tester.tap(find.byType(SessionsToggle).last);
+    await tester.pumpAndSettle();
+    expect(_inList('au2-5905'), findsOneWidget);
+    expect(_inList('Open'), findsOneWidget);
+
+    await tester.tap(find.byType(SessionsToggle).first);
+    await tester.pumpAndSettle();
+    expect(_inList('Afklar værksted'), findsOneWidget);
+    expect(_inList('Done'), findsOneWidget);
+
+    // A closed session offers to reopen or archive it.
+    await tester.tap(_inList('Afklar værksted'));
+    await tester.pumpAndSettle();
+    expect(find.text('Reopen'), findsOneWidget);
+    await tester.tap(find.text('Archive'));
+    await tester.pumpAndSettle();
+
+    expect(agents.runs.single.archived, isTrue);
+    expect(find.text('Afklar værksted'), findsNothing);
+    expect(find.byType(SessionsToggle), findsOneWidget);
   });
 
   group('bulkMoveSummary', () {

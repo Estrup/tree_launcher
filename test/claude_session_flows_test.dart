@@ -29,6 +29,8 @@ import 'package:tree_launcher/features/workspace/domain/worktree_metadata.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/repo_sidebar.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/row_sessions.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
 
 import 'fake_config_stores.dart';
 import 'launch_use_cases.dart';
@@ -182,6 +184,17 @@ class _RecordingTerminal extends TerminalController {
     focused.add(workingDirectory);
     return true;
   }
+
+  @override
+  TerminalSession? claudeSessionFor(String workingDirectory) =>
+      running.contains(workingDirectory)
+      ? TerminalSession(
+          title: 'Claude',
+          workingDirectory: workingDirectory,
+          repoPath: _repoPath,
+          isClaude: true,
+        )
+      : null;
 }
 
 void main() {
@@ -574,6 +587,42 @@ void main() {
       for (final m in metadataStore.saved.values)
         if (m.session != null) m.path,
     ], isEmpty);
+  });
+
+  testWidgets("a PR shows a badge for the Jira issue in its title", (
+    tester,
+  ) async {
+    await pump(tester, const GithubPrsTab());
+
+    expect(find.byType(JiraBadge), findsNWidgets(2));
+    // Between the number and the title.
+    final badge = tester.getCenter(find.text('AU2-6001'));
+    expect(badge.dx, greaterThan(tester.getCenter(find.text('#42')).dx));
+    expect(
+      badge.dx,
+      lessThan(tester.getTopLeft(find.text('Fix konto (AU2-6001)')).dx),
+    );
+  });
+
+  testWidgets("a PR lists the sessions in its branch's worktree", (
+    tester,
+  ) async {
+    await workspace.rememberClaudeSession(_repoPath, _existingPath);
+    terminal.running.add(_existingPath);
+    await pump(tester, const GithubPrsTab());
+
+    // Only #7 has its branch checked out.
+    expect(find.byType(SessionsToggle), findsOneWidget);
+    expect(find.text('au2-wt'), findsNothing);
+
+    await tester.tap(find.byType(SessionsToggle));
+    await tester.pumpAndSettle();
+    expect(find.text('Open'), findsOneWidget);
+
+    // An open session is shown in the terminal.
+    await tester.tap(find.text('au2-wt'));
+    await tester.pumpAndSettle();
+    expect(terminal.focused, [_existingPath]);
   });
 
   testWidgets('starts Claude on a PR branch with the PR context', (

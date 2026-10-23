@@ -83,6 +83,12 @@ class SettingsController extends ChangeNotifier
     notifyListeners();
   }
 
+  Future<void> updateTwoLineWorktreeRows(bool value) async {
+    _settings = _settings.copyWith(twoLineWorktreeRows: value);
+    await _store.save(_settings);
+    notifyListeners();
+  }
+
   Future<void> updateAgentApiPort(int port) async {
     _settings = _settings.copyWith(agentApiPort: port);
     await _store.save(_settings);

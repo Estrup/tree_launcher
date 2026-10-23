@@ -101,8 +101,8 @@ class WorktreeList extends StatelessWidget {
   }
 }
 
-/// Overflow menu in the Worktrees tab row, holding worktree-list view options.
-/// Currently a single checkable "Show hidden worktrees" item.
+/// Overflow menu in the Worktrees tab row, holding worktree-list view options:
+/// checkable "Show hidden worktrees" and "Two-line rows" items.
 class WorktreeListOptionsButton extends StatefulWidget {
   const WorktreeListOptionsButton({super.key});
 
@@ -117,6 +117,7 @@ class _WorktreeListOptionsButtonState extends State<WorktreeListOptionsButton> {
   void _showMenu(BuildContext context) {
     final settingsProvider = context.read<SettingsController>();
     final showHidden = settingsProvider.settings.showHiddenWorktrees;
+    final twoLine = settingsProvider.settings.twoLineWorktreeRows;
     final RenderBox button = context.findRenderObject() as RenderBox;
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromRect(
@@ -137,25 +138,35 @@ class _WorktreeListOptionsButtonState extends State<WorktreeListOptionsButton> {
         side: BorderSide(color: AppColors.border),
       ),
       items: [
-        CheckedPopupMenuItem<String>(
-          value: 'show_hidden',
-          checked: showHidden,
-          child: Text(
-            'Show hidden worktrees',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
+        _item('show_hidden', 'Show hidden worktrees', checked: showHidden),
+        _item('two_line', 'Two-line rows', checked: twoLine),
       ],
     ).then((value) {
-      if (value == 'show_hidden') {
-        settingsProvider.updateShowHiddenWorktrees(!showHidden);
+      switch (value) {
+        case 'show_hidden':
+          settingsProvider.updateShowHiddenWorktrees(!showHidden);
+        case 'two_line':
+          settingsProvider.updateTwoLineWorktreeRows(!twoLine);
       }
     });
   }
+
+  CheckedPopupMenuItem<String> _item(
+    String value,
+    String text, {
+    required bool checked,
+  }) => CheckedPopupMenuItem<String>(
+    value: value,
+    checked: checked,
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textPrimary,
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {

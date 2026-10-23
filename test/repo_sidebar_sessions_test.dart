@@ -603,4 +603,74 @@ void main() {
       },
     );
   });
+
+  group('sessionsForIssue', () {
+    final repo = RepoConfig(name: 'r', path: '/r');
+    WorktreeMetadata worktree(String path, String? issue, [DateTime? at]) =>
+        WorktreeMetadata(
+          path: path,
+          repoPath: '/r',
+          jiraIssue: issue,
+          session: at == null ? null : RememberedSession(startedAt: at),
+        );
+    AgentRun run(
+      String id, {
+      AgentKind kind = AgentKind.refine,
+      List<String> issueKeys = const [],
+      String? worktreePath,
+      String repoName = 'r',
+      bool archived = false,
+      int hour = 12,
+    }) => AgentRun(
+      id: id,
+      kind: kind,
+      repoName: repoName,
+      issueKeys: issueKeys,
+      worktreePath: worktreePath,
+      state: AgentState.done,
+      archived: archived,
+      startedAt: DateTime(2026, 10, 19, hour),
+      updatedAt: DateTime(2026, 10, 19, hour),
+    );
+
+    test(
+      "lists the issue's runs and its worktrees' sessions, newest first",
+      () {
+        final sessions = sessionsForIssue(
+          repo,
+          'AU2-1',
+          agentTypes: defaultAgentTypes,
+          runs: [
+            run('by-key', issueKeys: ['AU2-1'], hour: 9),
+            run('in-worktree', worktreePath: '/w/a', hour: 11),
+            run('other-issue', issueKeys: ['AU2-2']),
+            run('archived', issueKeys: ['AU2-1'], archived: true),
+            run('other-repo', issueKeys: ['AU2-1'], repoName: 'x'),
+          ],
+          worktrees: [
+            worktree('/w/a', 'AU2-1', DateTime(2026, 10, 19, 10)),
+            worktree('/w/b', 'AU2-2', DateTime(2026, 10, 19, 10)),
+            worktree('/w/c', 'AU2-1'),
+          ],
+        );
+
+        expect(
+          [for (final s in sessions) s.run?.id ?? s.path],
+          ['in-worktree', '/w/a', 'by-key'],
+        );
+      },
+    );
+
+    test("a build agent stands for its worktree's session", () {
+      final sessions = sessionsForIssue(
+        repo,
+        'AU2-1',
+        agentTypes: defaultAgentTypes,
+        runs: [run('b1', kind: AgentKind.build, worktreePath: '/w/a')],
+        worktrees: [worktree('/w/a', 'AU2-1', DateTime(2026, 10, 19, 10))],
+      );
+
+      expect([for (final s in sessions) s.run?.id], ['b1']);
+    });
+  });
 }

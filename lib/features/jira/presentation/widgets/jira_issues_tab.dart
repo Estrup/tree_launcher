@@ -16,10 +16,13 @@ import 'package:tree_launcher/features/jira/presentation/widgets/jira_status_men
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_styles.dart';
 import 'package:tree_launcher/features/jira/presentation/widgets/jira_tags.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/row_sessions.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/action_buttons.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
 import 'package:tree_launcher/core/errors/user_message.dart';
@@ -56,7 +59,9 @@ const double _kFixedListWidth =
 /// search by key or text finds, with a status filter and per-issue buttons that open New Worktree prefilled, start a
 /// Claude session for the issue, change its status or assign it to me.
 /// Selected issues can have their status changed together. Issues can also
-/// get the user's own tags (from Settings), kept only on this Mac.
+/// get the user's own tags (from Settings), kept only on this Mac. An issue
+/// with Claude sessions (agent runs, or sessions in its worktrees) can show
+/// them below its row.
 class JiraIssuesTab extends StatelessWidget {
   const JiraIssuesTab({super.key});
 
@@ -270,6 +275,14 @@ class JiraIssuesTab extends StatelessWidget {
             itemCount: visible.length,
             itemBuilder: (context, index) {
               final issue = visible[index];
+              final sessions = repo == null
+                  ? const <PageSession>[]
+                  : watchSessions(
+                      context,
+                      repo,
+                      inWorktree: (m) => m.jiraIssue == issue.key,
+                      runMatches: (run) => run.issueKeys.contains(issue.key),
+                    );
               // The branch mapped to the issue's fixVersion; an issue cached
               // before fixVersions were fetched falls back to the listed one.
               final baseBranch = repo?.baseBranchForFixVersions([
@@ -280,6 +293,10 @@ class JiraIssuesTab extends StatelessWidget {
               return _IssueRow(
                 issue: issue,
                 worktree: worktreesByIssue[issue.key],
+                repo: repo,
+                sessions: sessions,
+                sessionsExpanded: jira.isExpanded(issue.key),
+                onToggleSessions: () => jira.toggleExpanded(issue.key),
                 showAssignee: showAssignee,
                 tags: settings.settings.tagsFor(issue.key),
                 allTags: settings.settings.jiraTags,
@@ -474,6 +491,13 @@ class _HeaderRow extends StatelessWidget {
 class _IssueRow extends StatefulWidget {
   final JiraIssue issue;
   final Worktree? worktree;
+  final RepoConfig? repo;
+
+  /// The issue's Claude sessions, shown below the row when
+  /// [sessionsExpanded].
+  final List<PageSession> sessions;
+  final bool sessionsExpanded;
+  final VoidCallback onToggleSessions;
   final bool showAssignee;
 
   /// The issue's tags, and every tag (none hides tagging).
@@ -492,6 +516,10 @@ class _IssueRow extends StatefulWidget {
   const _IssueRow({
     required this.issue,
     required this.worktree,
+    required this.repo,
+    required this.sessions,
+    required this.sessionsExpanded,
+    required this.onToggleSessions,
     required this.showAssignee,
     required this.tags,
     required this.allTags,
@@ -575,169 +603,202 @@ class _IssueRowState extends State<_IssueRow> {
                 : AppColors.borderSubtle,
           ),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SelectCheckbox(
-              value: widget.selected,
-              visible: _hovered || widget.selected || widget.selectionActive,
-              onTap: () => widget.onSelectedChanged(!widget.selected),
-            ),
-            const SizedBox(width: _kColumnGap),
-            SizedBox(
-              width: _kTypeWidth,
-              child: Tooltip(
-                message: issue.issueType?.trim() ?? 'Unknown type',
-                child: Icon(typeIcon, size: 16, color: typeColor),
-              ),
-            ),
-            const SizedBox(width: _kColumnGap),
-            SizedBox(
-              width: _kKeyWidth,
-              // Scales a long key down rather than overflowing the column.
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: JiraBadge(issueKey: issue.key, compact: true),
-              ),
-            ),
-            const SizedBox(width: _kColumnGap),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) => Row(
-                  children: [
-                    Flexible(
-                      child: Tooltip(
-                        message: issue.summary,
-                        waitDuration: const Duration(milliseconds: 500),
-                        child: Text(
-                          issue.summary,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary,
+            Row(
+              children: [
+                SelectCheckbox(
+                  value: widget.selected,
+                  visible:
+                      _hovered || widget.selected || widget.selectionActive,
+                  onTap: () => widget.onSelectedChanged(!widget.selected),
+                ),
+                const SizedBox(width: _kColumnGap),
+                SizedBox(
+                  width: _kTypeWidth,
+                  child: Tooltip(
+                    message: issue.issueType?.trim() ?? 'Unknown type',
+                    child: Icon(typeIcon, size: 16, color: typeColor),
+                  ),
+                ),
+                const SizedBox(width: _kColumnGap),
+                SizedBox(
+                  width: _kKeyWidth,
+                  // Scales a long key down rather than overflowing the column.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: JiraBadge(issueKey: issue.key, compact: true),
+                  ),
+                ),
+                const SizedBox(width: _kColumnGap),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => Row(
+                      children: [
+                        Flexible(
+                          child: Tooltip(
+                            message: issue.summary,
+                            waitDuration: const Duration(milliseconds: 500),
+                            child: Text(
+                              issue.summary,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    IssueDocumentsBadge(issueKey: issue.key),
-                    if (widget.allTags.isNotEmpty)
-                      // The summary keeps at least 40% of the cell.
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: constraints.maxWidth * 0.6,
-                        ),
-                        child: IssueTags(
-                          tags: widget.tags,
-                          allTags: widget.allTags,
-                          showHint: _hovered,
-                          onChanged: widget.onTagChanged,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: _kColumnGap),
-            SizedBox(
-              width: _kStatusWidth,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Builder(
-                  builder: (pillContext) => _StatusPill(
-                    status: issue.status ?? '—',
-                    category: issue.statusCategory,
-                    busy: _changingStatus,
-                    onTap: () => _changeStatus(pillContext),
-                  ),
-                ),
-              ),
-            ),
-            if (widget.showAssignee) ...[
-              const SizedBox(width: _kColumnGap),
-              SizedBox(
-                width: _kAssigneeWidth,
-                child: Text(
-                  issue.assignee ?? 'Unassigned',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: issue.assignee == null
-                        ? AppColors.textMuted
-                        : AppColors.textSecondary,
-                    fontStyle: issue.assignee == null
-                        ? FontStyle.italic
-                        : FontStyle.normal,
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(width: _kColumnGap),
-            SizedBox(
-              width: _kActionsWidth,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (worktree != null) ...[
-                    Tooltip(
-                      message: 'Worktree: ${worktree.name}',
-                      child: Icon(
-                        Icons.account_tree_rounded,
-                        size: 15,
-                        color: AppColors.success,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  if (!widget.assignedToMe) ...[
-                    Tooltip(
-                      message: 'Assign to me',
-                      child: _assigning
-                          ? SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: Padding(
-                                padding: const EdgeInsets.all(7),
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.accent,
-                                ),
-                              ),
-                            )
-                          : ActionButton(
-                              compact: true,
-                              icon: Icons.person_add_alt_1_rounded,
-                              color: AppColors.accent,
-                              bgColor: AppColors.accentMuted,
-                              onPressed: _assignToMe,
+                        if (widget.sessions.isNotEmpty)
+                          SessionsToggle(
+                            sessions: widget.sessions,
+                            expanded: widget.sessionsExpanded,
+                            onTap: widget.onToggleSessions,
+                          ),
+                        IssueDocumentsBadge(issueKey: issue.key),
+                        if (widget.allTags.isNotEmpty)
+                          // The summary keeps at least 40% of the cell.
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: constraints.maxWidth * 0.6,
                             ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Tooltip(
-                    message: 'Claude session for ${issue.key}…',
-                    child: ActionButton(
-                      compact: true,
-                      svgAsset: 'assets/icons/claude.svg',
-                      color: AppColors.claude,
-                      bgColor: AppColors.claudeBg,
-                      onPressed: widget.onStartClaude,
+                            child: IssueTags(
+                              tags: widget.tags,
+                              allTags: widget.allTags,
+                              showHint: _hovered,
+                              onChanged: widget.onTagChanged,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Tooltip(
-                    message: 'Create worktree for ${issue.key}…',
-                    child: ActionButton(
-                      compact: true,
-                      icon: Icons.add_rounded,
-                      color: AppColors.terminal,
-                      bgColor: AppColors.terminalBg,
-                      onPressed: widget.onCreateWorktree,
+                ),
+                const SizedBox(width: _kColumnGap),
+                SizedBox(
+                  width: _kStatusWidth,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Builder(
+                      builder: (pillContext) => _StatusPill(
+                        status: issue.status ?? '—',
+                        category: issue.statusCategory,
+                        busy: _changingStatus,
+                        onTap: () => _changeStatus(pillContext),
+                      ),
+                    ),
+                  ),
+                ),
+                if (widget.showAssignee) ...[
+                  const SizedBox(width: _kColumnGap),
+                  SizedBox(
+                    width: _kAssigneeWidth,
+                    child: Text(
+                      issue.assignee ?? 'Unassigned',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: issue.assignee == null
+                            ? AppColors.textMuted
+                            : AppColors.textSecondary,
+                        fontStyle: issue.assignee == null
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                      ),
                     ),
                   ),
                 ],
-              ),
+                const SizedBox(width: _kColumnGap),
+                SizedBox(
+                  width: _kActionsWidth,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (worktree != null) ...[
+                        Tooltip(
+                          message: 'Worktree: ${worktree.name}',
+                          child: Icon(
+                            Icons.account_tree_rounded,
+                            size: 15,
+                            color: AppColors.success,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (!widget.assignedToMe) ...[
+                        Tooltip(
+                          message: 'Assign to me',
+                          child: _assigning
+                              ? SizedBox(
+                                  width: 28,
+                                  height: 28,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(7),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.accent,
+                                    ),
+                                  ),
+                                )
+                              : ActionButton(
+                                  compact: true,
+                                  icon: Icons.person_add_alt_1_rounded,
+                                  color: AppColors.accent,
+                                  bgColor: AppColors.accentMuted,
+                                  onPressed: _assignToMe,
+                                ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Tooltip(
+                        message: 'Claude session for ${issue.key}…',
+                        child: ActionButton(
+                          compact: true,
+                          svgAsset: 'assets/icons/claude.svg',
+                          color: AppColors.claude,
+                          bgColor: AppColors.claudeBg,
+                          onPressed: widget.onStartClaude,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Tooltip(
+                        message: 'Create worktree for ${issue.key}…',
+                        child: ActionButton(
+                          compact: true,
+                          icon: Icons.add_rounded,
+                          color: AppColors.terminal,
+                          bgColor: AppColors.terminalBg,
+                          onPressed: widget.onCreateWorktree,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
+            if (widget.sessionsExpanded &&
+                widget.sessions.isNotEmpty &&
+                widget.repo != null)
+              Padding(
+                // Lined up with the summary, less the lines' own padding.
+                padding: const EdgeInsets.only(
+                  left:
+                      selectCheckboxSize +
+                      _kColumnGap +
+                      _kTypeWidth +
+                      _kColumnGap +
+                      _kKeyWidth +
+                      _kColumnGap -
+                      8,
+                  top: 4,
+                ),
+                child: SessionList(
+                  repo: widget.repo!,
+                  sessions: widget.sessions,
+                ),
+              ),
           ],
         ),
       ),

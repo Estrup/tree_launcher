@@ -53,6 +53,9 @@ class GithubPrsController extends ChangeNotifier {
 
   bool _hasLoadedOnce = false;
 
+  /// Numbers of the PRs whose sessions are shown below their row.
+  final Set<int> _sessionsExpanded = {};
+
   /// Invoked on every transition into "requested as a reviewer" for a PR.
   /// Wired at the app level to clear a worktree's snooze so it reappears once
   /// the PR is again assigned to me.
@@ -70,6 +73,15 @@ class GithubPrsController extends ChangeNotifier {
   String? get error => _error;
   DateTime? get lastRefreshed => _lastRefreshed;
   bool get hasPendingReviewToast => _pendingReviewToasts.isNotEmpty;
+
+  /// Whether PR [number]'s sessions are shown below its row.
+  bool isSessionsExpanded(int number) => _sessionsExpanded.contains(number);
+
+  /// Shows or hides PR [number]'s sessions below its row.
+  void toggleSessionsExpanded(int number) {
+    if (!_sessionsExpanded.remove(number)) _sessionsExpanded.add(number);
+    notifyListeners();
+  }
 
   /// Removes and returns the next pending review-request notification, or null.
   PrReviewNotification? consumeReviewToast() {
@@ -123,6 +135,7 @@ class GithubPrsController extends ChangeNotifier {
       _everRequestedMe.clear();
       _hasLoadedOnce = false;
       _pendingReviewToasts.clear();
+      _sessionsExpanded.clear();
     }
 
     _activeConfig = config;
@@ -221,6 +234,7 @@ class GithubPrsController extends ChangeNotifier {
     _everRequestedMe.clear();
     _hasLoadedOnce = false;
     _pendingReviewToasts.clear();
+    _sessionsExpanded.clear();
     notifyListeners();
   }
 

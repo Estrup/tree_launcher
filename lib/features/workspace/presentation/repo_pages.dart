@@ -220,6 +220,74 @@ Map<String, List<PageSession>> sessionsByPage(
   return sessions;
 }
 
+/// The sessions in [repo] that a row of a list stands for, newest first,
+/// finished or not: [repo]'s unarchived agent [runs] that [runMatches] picks
+/// or that work in a worktree [inWorktree] picks, and the session shortcuts
+/// remembered in those worktrees (among [worktrees], [repo]'s metadata). As
+/// in [sessionsByPage], an agent whose type [AgentType.ownsWorktree] (of
+/// [agentTypes]) stands for its worktree's shortcut.
+List<PageSession> sessionsWhere(
+  RepoConfig repo, {
+  required bool Function(WorktreeMetadata worktree) inWorktree,
+  bool Function(AgentRun run)? runMatches,
+  required List<AgentType> agentTypes,
+  required Iterable<AgentRun> runs,
+  required Iterable<WorktreeMetadata> worktrees,
+}) {
+  final paths = {
+    for (final m in worktrees)
+      if (inWorktree(m)) m.path,
+  };
+  final worktreeOwnerKinds = {
+    for (final type in agentTypes)
+      if (type.ownsWorktree) type.kind,
+  };
+  final sessions = <PageSession>[];
+  final agentPaths = <String>{};
+  for (final run in runs) {
+    if (run.repoName != repo.name || run.archived) continue;
+    final path = run.worktreePath;
+    if (!paths.contains(path) && !(runMatches?.call(run) ?? false)) continue;
+    sessions.add((startedAt: run.startedAt, order: 0, path: null, run: run));
+    if (worktreeOwnerKinds.contains(run.kind) && path != null) {
+      agentPaths.add(path);
+    }
+  }
+  for (final (index, worktree) in worktrees.indexed) {
+    final session = worktree.session;
+    if (session == null || !paths.contains(worktree.path)) continue;
+    if (agentPaths.contains(worktree.path)) continue;
+    sessions.add((
+      startedAt: session.startedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+      order: index,
+      path: worktree.path,
+      run: null,
+    ));
+  }
+  sessions.sort((a, b) {
+    final byStart = b.startedAt.compareTo(a.startedAt);
+    return byStart != 0 ? byStart : b.order.compareTo(a.order);
+  });
+  return sessions;
+}
+
+/// The sessions of Jira issue [issueKey] in [repo] (see [sessionsWhere]):
+/// the agent runs that work on it, and the sessions in its worktrees.
+List<PageSession> sessionsForIssue(
+  RepoConfig repo,
+  String issueKey, {
+  required List<AgentType> agentTypes,
+  required Iterable<AgentRun> runs,
+  required Iterable<WorktreeMetadata> worktrees,
+}) => sessionsWhere(
+  repo,
+  inWorktree: (m) => m.jiraIssue == issueKey,
+  runMatches: (run) => run.issueKeys.contains(issueKey),
+  agentTypes: agentTypes,
+  runs: runs,
+  worktrees: worktrees,
+);
+
 /// Whether [run] shows as a session under its agent page in the sidebar:
 /// unarchived, and unfinished or with its terminal still open.
 bool showsAgentSession(AgentRun run, {required bool isOpen}) =>

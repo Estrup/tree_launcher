@@ -9,10 +9,14 @@ import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/pr_worktree_actions.dart';
 import 'package:tree_launcher/features/github_prs/presentation/widgets/github_styles.dart';
+import 'package:tree_launcher/features/workspace/domain/repo_config.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree_naming.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/repo_pages.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/add_worktree_dialog.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/row_sessions.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/action_buttons.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_buttons/jira_badge.dart';
 import 'package:tree_launcher/core/platform/open_external.dart';
 import 'package:tree_launcher/core/widgets/issue_list.dart';
 
@@ -217,8 +221,37 @@ class _PullRequestRow extends StatelessWidget {
     required this.onStartClaude,
   });
 
+  /// The sessions of [pr] in [repo]: agent runs on it, and the sessions in
+  /// the worktrees that have its branch checked out.
+  List<PageSession> _sessions(
+    BuildContext context,
+    WorkspaceController workspace,
+    RepoConfig repo,
+  ) {
+    final paths = {
+      for (final wt in workspace.worktrees)
+        if (wt.branch == pr.headBranch) wt.path,
+    };
+    return watchSessions(
+      context,
+      repo,
+      inWorktree: (m) => paths.contains(m.path),
+      runMatches: (run) =>
+          run.prNumber == pr.number || paths.contains(run.worktreePath),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final workspace = context.watch<WorkspaceController>();
+    final repo = workspace.selectedRepo;
+    final prs = context.watch<GithubPrsController>();
+    final sessions = repo == null
+        ? const <PageSession>[]
+        : _sessions(context, workspace, repo);
+    final sessionsExpanded = prs.isSessionsExpanded(pr.number);
+    // The Jira issue named in the title, when the repo uses Jira.
+    final jiraKey = repo?.jiraProjectKey == null ? null : pr.jiraKey;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -247,6 +280,10 @@ class _PullRequestRow extends StatelessWidget {
                   fontFamily: 'monospace',
                 ),
               ),
+              if (jiraKey != null) ...[
+                const SizedBox(width: 10),
+                JiraBadge(issueKey: jiraKey, compact: true),
+              ],
               const SizedBox(width: 10),
               Expanded(
                 child: MouseRegion(
@@ -267,8 +304,13 @@ class _PullRequestRow extends StatelessWidget {
                   ),
                 ),
               ),
-              if (context.watch<WorkspaceController>().selectedRepo
-                  case final repo?)
+              if (sessions.isNotEmpty)
+                SessionsToggle(
+                  sessions: sessions,
+                  expanded: sessionsExpanded,
+                  onTap: () => prs.toggleSessionsExpanded(pr.number),
+                ),
+              if (repo != null)
                 PullRequestDocumentsBadge(
                   repoName: repo.name,
                   number: pr.number,
@@ -416,6 +458,12 @@ class _PullRequestRow extends StatelessWidget {
               ),
             ),
           ],
+          if (sessionsExpanded && sessions.isNotEmpty && repo != null)
+            Padding(
+              // Lined up with the metadata, less the lines' own padding.
+              padding: const EdgeInsets.only(left: 20, top: 6),
+              child: SessionList(repo: repo, sessions: sessions),
+            ),
         ],
       ),
     );

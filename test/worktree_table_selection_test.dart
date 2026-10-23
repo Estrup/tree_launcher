@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/core/platform/launcher_service.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
 import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/jira/data/jira_issue_cache.dart';
 import 'package:tree_launcher/features/jira/presentation/controllers/jira_titles_controller.dart';
@@ -14,6 +16,8 @@ import 'package:tree_launcher/features/workspace/data/git_service.dart';
 import 'package:tree_launcher/features/workspace/domain/worktree.dart';
 import 'package:tree_launcher/features/settings/presentation/controllers/settings_controller.dart';
 import 'package:tree_launcher/features/workspace/presentation/controllers/workspace_controller.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/row_sessions.dart';
+import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_list.dart';
 import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_table.dart';
 
 import 'fake_config_stores.dart';
@@ -87,7 +91,11 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> pumpApp(WidgetTester tester, List<Worktree> worktrees) async {
+  Future<void> pumpApp(
+    WidgetTester tester,
+    List<Worktree> worktrees, {
+    AgentsController? agents,
+  }) async {
     // A realistic window width; the default 800px test surface is below what
     // the desktop app ever runs at and overflows the fixed-width columns.
     tester.view.physicalSize = const Size(1600, 1000);
@@ -99,6 +107,8 @@ void main() {
           ChangeNotifierProvider<WorkspaceController>.value(value: workspace),
           ChangeNotifierProvider<SettingsController>.value(value: settings),
           ChangeNotifierProvider<GithubPrsController>.value(value: prs),
+          if (agents != null)
+            ChangeNotifierProvider<AgentsController>.value(value: agents),
           ChangeNotifierProvider(
             create: (_) =>
                 JiraTitlesController(cache: JiraIssueCache(testDatabase())),
@@ -106,7 +116,15 @@ void main() {
           Provider.value(value: LauncherService()),
         ],
         child: MaterialApp(
-          home: Scaffold(body: WorktreeTable(worktrees: worktrees)),
+          home: Scaffold(
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const WorktreeListOptionsButton(),
+                Expanded(child: WorktreeTable(worktrees: worktrees)),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -187,5 +205,88 @@ void main() {
     }
     // Selection cleared even though the rows were not rebuilt away.
     expect(find.text('Hide'), findsNothing);
+  });
+
+  testWidgets(
+    "a worktree lists the sessions in it, and archives a closed one",
+    (tester) async {
+      late AgentsController agents;
+      // Made with real async, so their pending writes complete.
+      await tester.runAsync(() async {
+        await workspace.rememberClaudeSession('/tmp/repo', '/tmp/repo/one');
+        agents = AgentsController(store: MemoryAgentRunStore());
+        await agents.createForLaunch(
+          kind: AgentKind.verify,
+          repoName: workspace.selectedRepo!.name,
+          title: 'Verify two',
+          worktreePath: '/tmp/repo/two',
+        );
+      });
+      addTearDown(agents.dispose);
+      await pumpApp(tester, [
+        _wt('main', isMain: true),
+        _wt('one'),
+        _wt('two'),
+      ], agents: agents);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SessionsToggle), findsNWidgets(2));
+      await tester.tap(find.byType(SessionsToggle).last);
+      await tester.pumpAndSettle();
+      expect(find.text('Verify two'), findsOneWidget);
+
+      await tester.tap(find.byType(SessionsToggle).first);
+      await tester.pumpAndSettle();
+      expect(find.text('Closed'), findsOneWidget);
+
+      await tester.tap(find.text('Closed'));
+      await tester.pumpAndSettle();
+      expect(find.text('Reopen'), findsOneWidget);
+      await tester.tap(find.text('Archive'));
+      await tester.pumpAndSettle();
+
+      expect(workspace.metadata.sessionsFor('/tmp/repo'), isEmpty);
+      expect(find.byType(SessionsToggle), findsOneWidget);
+    },
+  );
+
+  testWidgets('two-line rows put the branch under the name', (tester) async {
+    await pumpApp(tester, [
+      Worktree(
+        path: '/tmp/repo/one',
+        branch: 'feature/one',
+        name: 'one',
+        isMain: false,
+        commitHash: 'abc123',
+        jiraIssue: 'AU2-1',
+      ),
+    ]);
+    await tester.pumpAndSettle();
+
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(find.text('BRANCH'), findsOneWidget);
+    expect(
+      top('feature/one'),
+      lessThan(tester.getBottomLeft(find.text('one')).dy),
+    );
+
+    await tester.tap(find.byTooltip('View options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Two-line rows'));
+    await tester.pumpAndSettle();
+    expect(settings.settings.twoLineWorktreeRows, isTrue);
+
+    // Fits a window too narrow for the one-line row.
+    tester.view.physicalSize = const Size(800, 1000);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    // Only the worktree and actions are labelled; branch and issue go on the
+    // second line.
+    expect(find.text('BRANCH'), findsNothing);
+    expect(find.text('WORKTREE'), findsOneWidget);
+    final nameBottom = tester.getBottomLeft(find.text('one')).dy;
+    expect(top('feature/one'), greaterThan(nameBottom));
+    expect(top('AU2-1'), greaterThan(nameBottom));
   });
 }

@@ -24,10 +24,22 @@ class WorktreeController extends ChangeNotifier {
   String? _error;
   bool _isBareLayout = false;
 
+  /// Paths of the worktrees whose sessions are shown below their row.
+  final Set<String> _sessionsExpanded = {};
+
   List<Worktree> get worktrees => List.unmodifiable(_worktrees);
   bool get loading => _loading;
   String? get error => _error;
   bool get isBareLayout => _isBareLayout;
+
+  /// Whether the sessions of the worktree at [path] are shown below its row.
+  bool isSessionsExpanded(String path) => _sessionsExpanded.contains(path);
+
+  /// Shows or hides the sessions of the worktree at [path] below its row.
+  void toggleSessionsExpanded(String path) {
+    if (!_sessionsExpanded.remove(path)) _sessionsExpanded.add(path);
+    notifyListeners();
+  }
 
   void _onMetadataChanged() {
     if (_worktrees.isEmpty) return;

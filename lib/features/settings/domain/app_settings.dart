@@ -19,6 +19,10 @@ class AppSettings {
   final double? terminalFontSize;
   final bool showHiddenWorktrees;
 
+  /// Whether the worktree list spreads each row over two lines: the name and
+  /// actions, then the branch, issue, its title and PR.
+  final bool twoLineWorktreeRows;
+
   /// Repo paths the user has hidden from the sidebar.
   final List<String> hiddenRepos;
 
@@ -70,6 +74,7 @@ class AppSettings {
     this.terminalFontFamily,
     this.terminalFontSize,
     this.showHiddenWorktrees = false,
+    this.twoLineWorktreeRows = false,
     this.hiddenRepos = const [],
     this.agentApiPort = 8765,
     this.claudeCliArgs = defaultClaudeCliArgs,
@@ -99,6 +104,7 @@ class AppSettings {
       terminalFontFamily: json['terminalFontFamily'] as String?,
       terminalFontSize: (json['terminalFontSize'] as num?)?.toDouble(),
       showHiddenWorktrees: json['showHiddenWorktrees'] as bool? ?? false,
+      twoLineWorktreeRows: json['twoLineWorktreeRows'] as bool? ?? false,
       hiddenRepos:
           (json['hiddenRepos'] as List<dynamic>?)?.cast<String>() ?? const [],
       agentApiPort: json['agentApiPort'] as int? ?? 8765,
@@ -141,6 +147,7 @@ class AppSettings {
     'terminalFontFamily': terminalFontFamily,
     'terminalFontSize': terminalFontSize,
     'showHiddenWorktrees': showHiddenWorktrees,
+    'twoLineWorktreeRows': twoLineWorktreeRows,
     'hiddenRepos': hiddenRepos,
     'agentApiPort': agentApiPort,
     'claudeCliArgs': claudeCliArgs,
@@ -174,6 +181,7 @@ class AppSettings {
     bool clearTerminalFontFamily = false,
     bool clearTerminalFontSize = false,
     bool? showHiddenWorktrees,
+    bool? twoLineWorktreeRows,
     List<String>? hiddenRepos,
     int? agentApiPort,
     String? claudeCliArgs,
@@ -201,6 +209,7 @@ class AppSettings {
           ? null
           : (terminalFontSize ?? this.terminalFontSize),
       showHiddenWorktrees: showHiddenWorktrees ?? this.showHiddenWorktrees,
+      twoLineWorktreeRows: twoLineWorktreeRows ?? this.twoLineWorktreeRows,
       hiddenRepos: hiddenRepos ?? this.hiddenRepos,
       agentApiPort: agentApiPort ?? this.agentApiPort,
       claudeCliArgs: claudeCliArgs ?? this.claudeCliArgs,

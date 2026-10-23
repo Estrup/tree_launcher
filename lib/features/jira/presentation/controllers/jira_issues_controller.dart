@@ -47,6 +47,9 @@ class JiraIssuesController extends IssueListController<JiraIssue, String> {
   List<JiraIssue> _issues = const [];
   final Set<String> _statusFilter = {};
 
+  /// Keys of the issues whose sessions are shown below them.
+  final Set<String> _expanded = {};
+
   /// The token's user, once looked up; null until then or when that failed.
   JiraUser? _me;
 
@@ -189,6 +192,15 @@ class JiraIssuesController extends IssueListController<JiraIssue, String> {
     notify();
   }
 
+  /// Whether [key]'s sessions are shown below it.
+  bool isExpanded(String key) => _expanded.contains(key);
+
+  /// Shows or hides [key]'s sessions below it.
+  void toggleExpanded(String key) {
+    if (!_expanded.remove(key)) _expanded.add(key);
+    notify();
+  }
+
   void clearStatusFilter() {
     if (_statusFilter.isEmpty) return;
     _statusFilter.clear();
@@ -284,6 +296,7 @@ class JiraIssuesController extends IssueListController<JiraIssue, String> {
     _selectedVersion = null;
     _issues = const [];
     _statusFilter.clear();
+    _expanded.clear();
     notify();
   }
 }

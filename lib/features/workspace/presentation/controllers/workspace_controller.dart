@@ -81,6 +81,13 @@ class WorkspaceController extends ChangeNotifier
   bool get showSettings => selection.showSettings;
   bool get isBareLayout => worktreesController.isBareLayout;
 
+  /// Whether the sessions of the worktree at [path] are shown below its row.
+  bool isSessionsExpanded(String path) =>
+      worktreesController.isSessionsExpanded(path);
+
+  void toggleSessionsExpanded(String path) =>
+      worktreesController.toggleSessionsExpanded(path);
+
   void _relay() => notifyListeners();
 
   void toggleSettings() => selection.toggleSettings();

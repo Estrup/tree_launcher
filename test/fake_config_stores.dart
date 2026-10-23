@@ -1,3 +1,6 @@
+import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
+import 'package:tree_launcher/features/agents/domain/agent_event.dart';
+import 'package:tree_launcher/features/agents/domain/agent_run.dart';
 import 'package:tree_launcher/features/jira/data/jira_comment_draft_store.dart';
 import 'package:tree_launcher/features/github_prs/data/github_token_store.dart';
 import 'package:tree_launcher/features/settings/data/app_settings_store.dart';
@@ -119,6 +122,30 @@ class MemoryWorktreeMetadataStore implements WorktreeMetadataStore {
       if (!entry.isEmpty) saved.putIfAbsent(entry.path, () => entry);
     }
   }
+}
+
+/// Agent runs and their events in memory. Widget tests use it because
+/// database futures don't complete under their fake async.
+class MemoryAgentRunStore implements AgentRunStore {
+  List<AgentRun> runs = const [];
+  List<AgentEvent> events = const [];
+
+  @override
+  Future<List<AgentRun>> loadRuns() async => runs;
+
+  @override
+  Future<void> saveRuns(List<AgentRun> runs) async => this.runs = runs;
+
+  @override
+  Future<void> appendEvent(AgentEvent event) async =>
+      events = [...events, event];
+
+  @override
+  Future<List<AgentEvent>> loadEvents() async => events;
+
+  @override
+  Future<void> replaceEvents(List<AgentEvent> events) async =>
+      this.events = events;
 }
 
 class MemoryJiraCommentDraftStore implements JiraCommentDraftStore {
