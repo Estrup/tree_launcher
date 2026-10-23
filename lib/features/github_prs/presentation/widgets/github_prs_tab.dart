@@ -193,6 +193,7 @@ class GithubPrsTab extends StatelessWidget {
       initialCreateNewBranch: false,
       prAuthor: pr.author,
       prNumber: pr.number,
+      prBaseBranch: pr.baseBranch,
       contextPrompt: prClaudeContextPrompt(pr),
       contextPromptLabel: 'PR context',
       contextPromptId: prContextPromptId,

@@ -12,12 +12,16 @@ class PrBadge extends StatefulWidget {
   /// A fixed height, to line up with buttons beside it; null fits the text.
   final double? height;
 
+  /// Off shows the number alone, e.g. in a column headed PR.
+  final bool showIcon;
+
   const PrBadge({
     super.key,
     required this.number,
     required this.htmlUrl,
     this.compact = false,
     this.height,
+    this.showIcon = true,
   });
 
   @override
@@ -58,8 +62,14 @@ class _PrBadgeState extends State<PrBadge> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.merge_type_rounded, size: iconSize, color: _prColor),
-                const SizedBox(width: 6),
+                if (widget.showIcon) ...[
+                  Icon(
+                    Icons.merge_type_rounded,
+                    size: iconSize,
+                    color: _prColor,
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 Text(
                   '#${widget.number}',
                   style: TextStyle(

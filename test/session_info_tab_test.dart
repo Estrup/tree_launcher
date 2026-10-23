@@ -5,6 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
+import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
+import 'package:tree_launcher/features/agents/domain/agent_kind.dart';
+import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
+import 'package:tree_launcher/features/github_prs/domain/pull_request.dart';
+import 'package:tree_launcher/features/github_prs/presentation/controllers/github_prs_controller.dart';
 import 'package:tree_launcher/features/session_panel/presentation/controllers/session_panel_controller.dart';
 import 'package:tree_launcher/features/session_panel/presentation/widgets/session_info_tab.dart';
 import 'package:tree_launcher/features/terminal/data/terminal_session.dart';
@@ -46,6 +51,31 @@ class _FakeGitService extends GitService {
   }
 }
 
+/// Serves fixed pull requests instead of calling GitHub.
+class _FakePrs extends GithubPrsController {
+  @override
+  List<GithubPullRequest> get pullRequests => [
+    GithubPullRequest(
+      number: 7,
+      title: 'Branch PR',
+      htmlUrl: 'https://github.com/o/r/pull/7',
+      createdAt: DateTime(2026, 10, 1),
+      author: 'kim',
+      headBranch: 'feature/au2-1',
+      baseBranch: 'develop',
+    ),
+    GithubPullRequest(
+      number: 42,
+      title: 'Fix konto (AU2-6001)',
+      htmlUrl: 'https://github.com/o/r/pull/42',
+      createdAt: DateTime(2026, 10, 2),
+      author: 'jane',
+      headBranch: 'feature/au2-6001-fix-konto',
+      baseBranch: 'develop',
+    ),
+  ];
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final tempDir = Directory.systemTemp.createTempSync('session_info_test');
@@ -82,11 +112,21 @@ void main() {
     workspace.dispose();
   });
 
-  Future<void> pump(WidgetTester tester, String worktree) => tester.pumpWidget(
+  Future<void> pump(
+    WidgetTester tester,
+    String worktree, {
+    AgentsController? agents,
+    String? agentId,
+    GithubPrsController? prs,
+  }) => tester.pumpWidget(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: workspace),
         ChangeNotifierProvider.value(value: panel),
+        if (agents != null)
+          ChangeNotifierProvider<AgentsController>.value(value: agents),
+        if (prs != null)
+          ChangeNotifierProvider<GithubPrsController>.value(value: prs),
       ],
       child: MaterialApp(
         home: Scaffold(
@@ -96,6 +136,7 @@ void main() {
               workingDirectory: worktree,
               repoPath: '/tmp/repo',
               isClaude: true,
+              agentId: agentId,
             ),
           ),
         ),
@@ -140,4 +181,46 @@ void main() {
 
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets(
+    'an agent in a shared checkout shows the PR and issue it was started on',
+    (tester) async {
+      late AgentsController agents;
+      late String runId;
+      await tester.runAsync(() async {
+        agents = AgentsController(store: AgentRunStore(testDatabase()));
+        final run = await agents.createForLaunch(
+          kind: AgentKind.review,
+          repoName: workspace.selectedRepo!.name,
+          issueKeys: ['AU2-6001'],
+          worktreePath: '/tmp/repo-au2-1',
+          prNumber: 42,
+        );
+        runId = run.id;
+        await agents.flush();
+      });
+      addTearDown(agents.dispose);
+      final prs = _FakePrs();
+      addTearDown(prs.dispose);
+
+      // The checkout is on another PR's branch, and has another issue.
+      await pump(
+        tester,
+        '/tmp/repo-au2-1',
+        agents: agents,
+        agentId: runId,
+        prs: prs,
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('#42'), findsOneWidget);
+      expect(find.text('Fix konto (AU2-6001)'), findsOneWidget);
+      expect(find.text('#7'), findsNothing);
+      expect(find.text('AU2-6001'), findsOneWidget);
+      expect(find.text('AU2-1'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }

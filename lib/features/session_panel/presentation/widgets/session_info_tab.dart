@@ -125,7 +125,13 @@ class _SessionInfoTabState extends State<SessionInfoTab> {
             .firstOrNull
             ?.branch;
 
-    final jiraKey = metadata?.jiraIssue;
+    final agents = context.watch<AgentsController?>();
+    final agentId = session.agentId;
+    final run = agentId == null ? null : agents?.runById(agentId);
+    final type = run == null ? null : agentTypeOf(context, run.kind);
+
+    // An agent's own issue, else the worktree's.
+    final jiraKey = run?.issueKey ?? metadata?.jiraIssue;
     if (jiraKey != null && jiraKey.isNotEmpty) {
       context.read<JiraTitlesController?>()?.ensureTitles([jiraKey]);
       _loadJiraStatus(jiraKey);
@@ -136,20 +142,22 @@ class _SessionInfoTabState extends State<SessionInfoTab> {
     final githubIssue = metadata?.githubIssue;
     final githubConfig = repo?.githubConfig;
 
-    // The PR list only covers the selected repo.
+    // The PR the agent was started on, else the one from the branch (a
+    // session in a shared checkout isn't on the PR's branch). The PR list
+    // only covers the selected repo.
     final prsCoverRepo = workspace.selectedRepo?.path == session.repoPath;
-    final pr = !prsCoverRepo || branch == null
+    final prNumber = run?.prNumber;
+    final pr = !prsCoverRepo || (prNumber == null && branch == null)
         ? null
         : context
               .watch<GithubPrsController?>()
               ?.pullRequests
-              .where((pr) => pr.headBranch == branch)
+              .where(
+                (pr) => prNumber != null
+                    ? pr.number == prNumber
+                    : pr.headBranch == branch,
+              )
               .firstOrNull;
-
-    final agents = context.watch<AgentsController?>();
-    final agentId = session.agentId;
-    final run = agentId == null ? null : agents?.runById(agentId);
-    final type = run == null ? null : agentTypeOf(context, run.kind);
 
     final documents = context.watch<DocumentsController?>();
     final docs =

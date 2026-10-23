@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:tree_launcher/app/use_cases/agent_launcher.dart';
+import 'package:tree_launcher/features/activity/data/claude_session_activity.dart';
 import 'package:tree_launcher/features/activity/data/worktree_event_store.dart';
 import 'package:tree_launcher/features/agents/data/agent_run_store.dart';
 import 'package:tree_launcher/features/agents/presentation/controllers/agents_controller.dart';
@@ -70,6 +72,12 @@ class _FakeTerminal extends TerminalController {
   @override
   TerminalSession? claudeSessionForAgent(String agentId) =>
       fakeSessions.where((s) => s.agentId == agentId).firstOrNull;
+
+  @override
+  void closeAgentSession(String agentId) {
+    fakeSessions.removeWhere((s) => s.agentId == agentId);
+    notifyListeners();
+  }
 
   void changed() => notifyListeners();
 }
@@ -327,6 +335,65 @@ void main() {
     await tester.pump();
     expect(find.text('Factory: udlån'), findsNothing);
     expect(find.text('udlaan-sker-til-en-kontakt-au2-5788'), findsOneWidget);
+  });
+
+  test("stopping a build agent drops its worktree's shortcut too", () async {
+    final agents = AgentsController(store: AgentRunStore(testDatabase()));
+    addTearDown(agents.dispose);
+    final launcher = AgentLauncher(
+      terminal: terminal,
+      agents: agents,
+      workspace: workspace,
+      settings: settings,
+      claudeActivity: ClaudeSessionActivity(),
+    );
+    final run = await agents.createForLaunch(
+      kind: AgentKind.build,
+      repoName: workspace.selectedRepo!.name,
+      worktreePath: withIssue,
+    );
+    terminal.fakeSessions.add(
+      TerminalSession(
+        title: 'Claude',
+        workingDirectory: withIssue,
+        repoPath: repoPath,
+        isClaude: true,
+        agentId: run.id,
+      ),
+    );
+
+    await launcher.stop(run);
+
+    expect(agents.runById(run.id)!.state, AgentState.stopped);
+    expect(terminal.fakeSessions, isEmpty);
+    expect(
+      [for (final m in workspace.metadata.sessionsFor(repoPath)) m.path],
+      [withoutIssue],
+    );
+  });
+
+  test('stopping a verify agent leaves the shortcut in its checkout', () async {
+    final agents = AgentsController(store: AgentRunStore(testDatabase()));
+    addTearDown(agents.dispose);
+    final launcher = AgentLauncher(
+      terminal: terminal,
+      agents: agents,
+      workspace: workspace,
+      settings: settings,
+      claudeActivity: ClaudeSessionActivity(),
+    );
+    final run = await agents.createForLaunch(
+      kind: AgentKind.verify,
+      repoName: workspace.selectedRepo!.name,
+      worktreePath: withIssue,
+    );
+
+    await launcher.stop(run);
+
+    expect(
+      [for (final m in workspace.metadata.sessionsFor(repoPath)) m.path],
+      [withIssue, withoutIssue],
+    );
   });
 
   testWidgets('tapping a page shows it', (tester) async {

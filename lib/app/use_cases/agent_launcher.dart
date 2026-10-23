@@ -203,9 +203,24 @@ class AgentLauncher {
     );
   }
 
-  /// Closes [run]'s session (interrupting Claude) and marks it stopped.
+  /// Closes [run]'s session (interrupting Claude) and marks it stopped. The
+  /// worktree shortcut [start] remembered for an agent that
+  /// [AgentType.ownsWorktree] goes too, or it would take the agent's place
+  /// in the sidebar; one a plain Claude session there still uses stays.
   Future<void> stop(AgentRun run) async {
     _terminal.closeAgentSession(run.id);
     if (!run.state.isFinished) await _agents.markStopped(run.id);
+    final path = run.worktreePath;
+    final repoPath = _workspace.repos
+        .where((r) => r.name == run.repoName)
+        .firstOrNull
+        ?.path;
+    if (path == null ||
+        repoPath == null ||
+        !_settings.settings.agentType(run.kind).ownsWorktree ||
+        _terminal.claudeSessionFor(path) != null) {
+      return;
+    }
+    await _workspace.forgetClaudeSession(repoPath, path);
   }
 }

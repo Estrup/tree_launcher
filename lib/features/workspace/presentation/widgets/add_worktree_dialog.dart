@@ -83,6 +83,11 @@ class AddWorktreeDialog extends StatefulWidget {
   /// prompts. Without it, `{pr}` is the open PR from the worktree's branch.
   final int? prNumber;
 
+  /// The branch the PR the dialog was opened from merges into: the base of
+  /// a worktree that checks out the PR's branch ([initialBaseBranch]), in
+  /// its metadata and in the prompt, instead of that branch itself.
+  final String? prBaseBranch;
+
   /// In start-Claude mode, replaces the issue-context first message (e.g.
   /// with a PR's context), shown as [contextPromptLabel] in the picker.
   final String? contextPrompt;
@@ -112,6 +117,7 @@ class AddWorktreeDialog extends StatefulWidget {
     this.prAuthor,
     this.githubIssue,
     this.prNumber,
+    this.prBaseBranch,
     this.startClaude = false,
     this.existingWorktree,
     this.contextPrompt,
@@ -129,6 +135,7 @@ class AddWorktreeDialog extends StatefulWidget {
     String? prAuthor,
     int? githubIssue,
     int? prNumber,
+    String? prBaseBranch,
     bool startClaude = false,
     Worktree? existingWorktree,
     String? contextPrompt,
@@ -148,6 +155,7 @@ class AddWorktreeDialog extends StatefulWidget {
           prAuthor: prAuthor,
           githubIssue: githubIssue,
           prNumber: prNumber,
+          prBaseBranch: prBaseBranch,
           startClaude: startClaude,
           existingWorktree: existingWorktree,
           contextPrompt: contextPrompt,
@@ -172,6 +180,7 @@ class AddWorktreeDialog extends StatefulWidget {
     String? prAuthor,
     int? githubIssue,
     int? prNumber,
+    String? prBaseBranch,
     String? contextPrompt,
     String? contextPromptLabel,
     String contextPromptId = issueContextPromptId,
@@ -193,6 +202,7 @@ class AddWorktreeDialog extends StatefulWidget {
       prAuthor: prAuthor,
       githubIssue: githubIssue,
       prNumber: prNumber,
+      prBaseBranch: prBaseBranch,
       startClaude: true,
       existingWorktree: existingWorktree,
       contextPrompt: contextPrompt,
@@ -398,6 +408,22 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   /// else the picked existing worktree's.
   int? get _githubIssue => widget.githubIssue ?? _existing?.githubIssue;
 
+  /// The base of the worktree to create: the PR's base when it checks out
+  /// the PR's own branch, else the branch picked.
+  String? get _newWorktreeBase =>
+      !_createNewBranch &&
+          widget.prBaseBranch != null &&
+          _selectedBranch == widget.initialBaseBranch
+      ? widget.prBaseBranch
+      : _selectedBranch;
+
+  /// The base of [worktree]: the PR's base when it has the PR's branch
+  /// checked out, else the one recorded for it.
+  String? _baseOf(Worktree worktree) =>
+      widget.prBaseBranch != null && worktree.branch == widget.initialBaseBranch
+      ? widget.prBaseBranch
+      : worktree.baseBranch;
+
   /// Picks [option] in the prompt panel. Unless the user chose new / existing
   /// themselves, an agent other than build runs in an existing worktree
   /// (it only reads the code); anything else goes back to the default.
@@ -420,7 +446,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         widget.contextPrompt ??
         claudeContextPromptFor(
           issue: _issueKey,
-          base: existing != null ? existing.baseBranch : _selectedBranch,
+          base: existing != null ? _baseOf(existing) : _newWorktreeBase,
         );
     return [
       PromptOption(
@@ -542,7 +568,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
             worktreePath: existing.path,
             issue: issue,
             githubIssue: _githubIssue,
-            baseBranch: existing.baseBranch,
+            baseBranch: _baseOf(existing),
           ),
           claudeModel: _model,
           claudeEffort: _effort,
@@ -590,6 +616,7 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
         jiraIssue: jira.isNotEmpty ? jira : null,
         githubIssue: widget.githubIssue,
         prAuthor: widget.prAuthor,
+        recordedBaseBranch: _newWorktreeBase,
       );
 
       // Save last used base branch for this repo, unless it was preset (a
@@ -609,13 +636,14 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
           worktreePath != null
               ? AddWorktreeResult(
                   worktreePath: worktreePath,
-                  branch: newBranch.isNotEmpty ? newBranch : null,
+                  // The branch checked out: the new one, or the one picked.
+                  branch: newBranch.isNotEmpty ? newBranch : _selectedBranch,
                   claudePrompt: widget.startClaude
                       ? _resolvePrompt(
                           worktreePath: worktreePath,
                           issue: jira.isNotEmpty ? jira : null,
                           githubIssue: _githubIssue,
-                          baseBranch: _selectedBranch,
+                          baseBranch: _newWorktreeBase,
                         )
                       : null,
                   claudeModel: widget.startClaude ? _model : null,

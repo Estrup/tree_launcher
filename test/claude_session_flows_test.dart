@@ -216,7 +216,7 @@ void main() {
           ),
           ClaudePrompt(
             name: 'Review PR',
-            prompt: 'Review PR #{pr} for {issue}',
+            prompt: 'Review PR #{pr} for {issue} into {base_branch}',
           ),
           ClaudePrompt(
             name: 'Verify',
@@ -343,7 +343,8 @@ void main() {
 
     expect(
       terminal.launched.single.command,
-      "claude $_discordArgs $_launchFlags -- 'Review PR #7 for AU2-5928'",
+      "claude $_discordArgs $_launchFlags -- 'Review PR #7 for AU2-5928 into "
+      "develop'",
     );
   });
 
@@ -607,6 +608,8 @@ void main() {
     final metadata = workspace.metadataFor(created)!;
     expect(metadata.prAuthor, 'jane');
     expect(metadata.jiraIssue, 'AU2-6001');
+    // Its base is the branch the PR merges into, not the PR's own branch.
+    expect(metadata.baseBranch, 'develop');
     expect(sessionPaths(), [created]);
     // A PR branch doesn't become the default base for new worktrees.
     expect(repo.lastBaseBranch, isNull);
@@ -649,7 +652,8 @@ void main() {
 
     expect(
       terminal.launched.single.command,
-      "claude $_discordArgs $_launchFlags -- 'Review PR #42 for AU2-6001'",
+      "claude $_discordArgs $_launchFlags -- 'Review PR #42 for AU2-6001 into "
+      "develop'",
     );
   });
 }

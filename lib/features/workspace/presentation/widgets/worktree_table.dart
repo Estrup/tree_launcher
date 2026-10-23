@@ -24,7 +24,7 @@ import 'package:tree_launcher/features/workspace/presentation/widgets/worktree_b
 /// Shared column layout so the header and every row line up.
 const double _kCheckboxWidth = 24;
 const double _kJiraWidth = 120;
-const double _kPrWidth = 80;
+const double _kPrWidth = 60;
 const double _kActionsWidth = 296;
 const double _kColumnGap = 16;
 const int _kNameFlex = 3;
@@ -670,6 +670,7 @@ class _WorktreeRowState extends State<_WorktreeRow> {
                           number: matchPr.number,
                           htmlUrl: matchPr.htmlUrl,
                           compact: true,
+                          showIcon: false,
                         )
                       : Text(
                           '—',

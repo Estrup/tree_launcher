@@ -16,12 +16,14 @@ Future<void> createWorktreeForPr(
   final name = worktreeNameForPrBranch(pr.headBranch, jiraKey: pr.jiraKey);
   try {
     // Attach the Jira ticket parsed from the PR title (e.g. "AU2-5555") and the
-    // PR author, so the worktree carries its PR origin.
+    // PR author, so the worktree carries its PR origin, and record the branch
+    // the PR merges into as its base.
     final path = await workspace.addWorktree(
       name,
       baseBranch: pr.headBranch,
       jiraIssue: pr.jiraKey,
       prAuthor: pr.author,
+      recordedBaseBranch: pr.baseBranch,
     );
     showAppSnackBar(
       path != null

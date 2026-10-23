@@ -289,6 +289,11 @@ class WorkspaceController extends ChangeNotifier
     return worktreesController.listBranches(selectedRepo?.path);
   }
 
+  /// Creates a worktree in the selected repo from [baseBranch] (on
+  /// [newBranch] when given) and records what it is for.
+  /// [recordedBaseBranch] is recorded as its base instead of [baseBranch],
+  /// e.g. the branch a PR merges into for a worktree that checks out the
+  /// PR's own branch.
   Future<String?> addWorktree(
     String name, {
     String? baseBranch,
@@ -296,6 +301,7 @@ class WorkspaceController extends ChangeNotifier
     String? jiraIssue,
     int? githubIssue,
     String? prAuthor,
+    String? recordedBaseBranch,
   }) {
     final repo = selectedRepo;
     if (repo == null) return Future.value(null);
@@ -307,6 +313,7 @@ class WorkspaceController extends ChangeNotifier
       jiraIssue: jiraIssue,
       githubIssue: githubIssue,
       prAuthor: prAuthor,
+      recordedBaseBranch: recordedBaseBranch,
     );
   }
 
@@ -326,6 +333,7 @@ class WorkspaceController extends ChangeNotifier
     int? githubIssue,
     String? prAuthor,
     String? kickoffPrompt,
+    String? recordedBaseBranch,
   }) async {
     final isSelected = repo.path == selectedRepo?.path;
 
@@ -369,15 +377,14 @@ class WorkspaceController extends ChangeNotifier
     }
 
     // Record what the worktree was made for and from.
+    final base = recordedBaseBranch ?? baseBranch;
     await metadata.update(
       repo.path,
       worktreePath,
       (m) => m.copyWith(
         jiraIssue: jiraIssue != null && jiraIssue.isNotEmpty ? jiraIssue : null,
         githubIssue: githubIssue,
-        baseBranch: baseBranch != null && baseBranch.isNotEmpty
-            ? baseBranch
-            : null,
+        baseBranch: base != null && base.isNotEmpty ? base : null,
         prAuthor: prAuthor != null && prAuthor.isNotEmpty ? prAuthor : null,
         kickoffPromptPath: kickoffPath,
       ),

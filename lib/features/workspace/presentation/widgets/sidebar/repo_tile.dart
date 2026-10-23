@@ -332,36 +332,18 @@ class _RepoTileState extends State<RepoTile> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.repo.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: widget.isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: widget.isSelected
-                                ? AppColors.textPrimary
-                                : AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.repo.path.replaceFirst(
-                            RegExp(r'^/Users/[^/]+'),
-                            '~',
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      widget.repo.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: widget.isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: widget.isSelected
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
