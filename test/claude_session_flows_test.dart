@@ -664,6 +664,27 @@ void main() {
     expect(repo.lastBaseBranch, isNull);
   });
 
+  testWidgets('a PR branch gets a new worktree even when existing was last '
+      'picked', (tester) async {
+    await settings.updateClaudeStartChoices(
+      prompt: noClaudePromptId,
+      useExistingWorktree: true,
+    );
+    await pump(tester, const GithubPrsTab());
+
+    await tester.tap(find.byTooltip('Claude session for #42…'));
+    await tester.pumpAndSettle();
+    expect(find.text('WORKTREE NAME'), findsOneWidget);
+
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+
+    expect(git.createdFrom.single.baseBranch, 'feature/au2-6001-fix-konto');
+    expect(git.createdFrom.single.newBranch, isNull);
+    // The last choice still holds for other sessions.
+    expect(settings.settings.claudeUseExistingWorktree, isTrue);
+  });
+
   testWidgets('reuses the worktree that has the PR branch checked out', (
     tester,
   ) async {

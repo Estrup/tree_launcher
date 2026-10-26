@@ -45,7 +45,8 @@ class AddWorktreeResult {
   final String? promptId;
 
   /// In start-Claude mode, whether "Existing worktree" was picked; null when
-  /// the dialog opened on the issue's own worktree (not a choice to keep).
+  /// the dialog opened on the issue's own worktree or a PR's branch (not a
+  /// choice to keep).
   final bool? useExistingWorktree;
 
   const AddWorktreeResult({
@@ -248,9 +249,19 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
   /// worktree, else on the last choice ([_defaultUseExisting]).
   late bool _useExisting = _defaultUseExisting;
 
+  /// Opened to check out a given branch (a PR's) rather than to branch off.
+  bool get _checksOutBranch =>
+      widget.initialBaseBranch != null && !widget.initialCreateNewBranch;
+
+  /// A PR's branch without a worktree gets a new one checking it out, not the
+  /// last choice (that would run in the develop/main checkout).
   late final bool _defaultUseExisting =
       widget.existingWorktree != null ||
-      context.read<SettingsController>().settings.claudeUseExistingWorktree;
+      (!_checksOutBranch &&
+          context
+              .read<SettingsController>()
+              .settings
+              .claudeUseExistingWorktree);
 
   /// Whether the user picked new / existing themselves, so picking an agent
   /// prompt doesn't switch it.
@@ -651,7 +662,11 @@ class _AddWorktreeDialogState extends State<AddWorktreeDialog> {
                   savedPrompt: widget.startClaude ? _selectedSavedPrompt : null,
                   issueKey: jira.isNotEmpty ? jira : null,
                   promptId: widget.startClaude ? _promptId : null,
-                  useExistingWorktree: widget.startClaude ? false : null,
+                  // A PR's branch always starts on a new worktree; not a
+                  // choice to keep.
+                  useExistingWorktree: widget.startClaude && !_checksOutBranch
+                      ? false
+                      : null,
                 )
               : null,
         );
